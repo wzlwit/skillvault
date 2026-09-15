@@ -1,0 +1,50 @@
+{
+  "name": "skillvault-upsert",
+  "title": "SkillVault Upsert",
+  "version": "1.0.0",
+  "status": "public",
+  "visibility": "public",
+  "kind": "agent",
+  "description": "Create or edit skill source files and catalog entries in the SkillVault repo, from scratch or a URL; can install the result afterward.",
+  "tags": ["skillvault", "authoring", "upsert", "open-source", "scaffold"],
+  "author": "wzlwit",
+  "license": "MIT",
+  "homepage": "https://github.com/wzlwit/skillvault",
+  "source": {
+    "repo": "skillvault",
+    "path": "skills/public/core/skillvault-upsert"
+  },
+  "install": {
+    "global": true,
+    "project": false,
+    "session": false,
+    "defaultScope": "global",
+    "globalPath": "~/.copilot/skills",
+    "strategy": "copy"
+  },
+  "inputs": [
+    {
+      "name": "nameOrUrl",
+      "required": true,
+      "type": "string",
+      "description": "Existing repository skill name to edit, new skill name to create from scratch, or source URL to derive a skill from. A name does not automatically import an installed copy."
+    },
+    {
+      "name": "scope",
+      "required": false,
+      "type": "string",
+      "default": "default",
+      "enum": ["default", "global", "project", "session", "none"],
+      "description": "Install scope after upsert. default means auto-guess from the created skill manifest. none means do not install."
+    }
+  ],
+  "outputs": ["upsert-summary", "install-summary", "validation-summary"],
+  "dependencies": ["git"],
+  "examples": [
+    "/skillvault-upsert code-review",
+    "/skillvault-upsert https://github.com/twpayne/chezmoi project",
+    "/skv-upsert https://github.com/twpayne/chezmoi default publish",
+    "/sv-upsert schedule-helper none"
+  ],
+  "readme": "SKILL.md"
+}

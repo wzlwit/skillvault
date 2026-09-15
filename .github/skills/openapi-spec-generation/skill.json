@@ -1,0 +1,29 @@
+{
+  "name": "openapi-spec-generation",
+  "title": "OpenAPI Specification Generation",
+  "version": null,
+  "kind": "agent",
+  "description": "Design, generate, and validate REST API contracts with OpenAPI.",
+  "tags": ["api", "openapi", "contracts", "rest"],
+  "author": "Seth Hobson",
+  "maintainer": "wzlwit",
+  "license": "MIT",
+  "homepage": "https://github.com/wshobson/agents/tree/main/plugins/documentation-generation/skills/openapi-spec-generation",
+  "source": {
+    "repo": "skillvault",
+    "path": "skills/public/api/openapi-spec-generation"
+  },
+  "upstream": {
+    "repo": "https://github.com/wshobson/agents",
+    "path": "plugins/documentation-generation/skills/openapi-spec-generation",
+    "license": "MIT"
+  },
+  "install": {
+    "global": true,
+    "project": true,
+    "session": true,
+    "defaultScope": "project",
+    "strategy": "copy"
+  },
+  "readme": "SKILL.md"
+}

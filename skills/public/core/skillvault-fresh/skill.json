@@ -1,0 +1,50 @@
+{
+  "name": "skillvault-fresh",
+  "title": "SkillVault Source Refresh",
+  "version": "1.0.0",
+  "status": "public",
+  "visibility": "public",
+  "kind": "agent",
+  "description": "Create or run a scheduled one-way freshening pass for source-backed skills installed from SkillVault. Use interval 0 for an immediate refresh. Skips pinned v#.#.# installs.",
+  "tags": ["bootstrap", "sync", "schedule", "automation"],
+  "author": "wzlwit",
+  "license": "MIT",
+  "homepage": "https://github.com/wzlwit/skillvault",
+  "source": {
+    "repo": "skillvault",
+    "path": "skills/public/core/skillvault-fresh"
+  },
+  "install": {
+    "global": true,
+    "project": false,
+    "session": false,
+    "defaultScope": "global",
+    "globalPath": "~/.copilot/skills",
+    "strategy": "copy"
+  },
+  "inputs": [
+    {
+      "name": "intervalDay",
+      "required": false,
+      "type": "number",
+      "default": 1,
+      "description": "One-way refresh interval in days. Defaults to 1. Decimal values are allowed. Use 0 to run one immediate refresh without scheduling."
+    }
+  ],
+  "outputs": ["sync-schedule-summary", "sync-run-summary"],
+  "dependencies": ["git", "skillvault-install"],
+  "examples": [
+    "/skillvault-fresh",
+    "/skillvault-fresh 0",
+    "/skillvault-fresh 0.5",
+    "/skillvault-fresh 1",
+    "/sv-fresh",
+    "/sv-fresh 0",
+    "/sv-fresh 0.5",
+    "/sv-fresh 1",
+    "/skv-fresh 0",
+    "/skillvault-sync",
+    "/sv-sync"
+  ],
+  "readme": "SKILL.md"
+}

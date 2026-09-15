@@ -1,0 +1,24 @@
+{
+  "name": "new-skill-template",
+  "title": "New Skill Template",
+  "version": "1.0.0",
+  "status": "template",
+  "visibility": "public",
+  "kind": "template",
+  "description": "Template for creating new skills in SkillVault.",
+  "tags": ["template", "starter"],
+  "author": "Your Name",
+  "license": "MIT",
+  "source": {
+    "repo": "skillvault",
+    "path": "skills/templates/new-skill-template"
+  },
+  "install": {
+    "global": true,
+    "project": true,
+    "session": true,
+    "defaultScope": "project",
+    "globalPath": "~/.copilot/skills",
+    "strategy": "copy"
+  }
+}

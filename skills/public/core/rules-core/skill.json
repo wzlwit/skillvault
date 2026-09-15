@@ -1,0 +1,25 @@
+{
+  "name": "rules-core",
+  "title": "Rules Core",
+  "version": "1.0.0",
+  "status": "public",
+  "visibility": "public",
+  "kind": "instruction",
+  "description": "Apply evidence-based, scoped, proportionate rules to coding work.",
+  "tags": ["core", "engineering", "quality", "guidance"],
+  "author": "wzlwit",
+  "license": "MIT",
+  "homepage": "https://github.com/wzlwit/skillvault",
+  "source": {
+    "repo": "skillvault",
+    "path": "skills/public/core/rules-core"
+  },
+  "install": {
+    "global": true,
+    "project": true,
+    "session": true,
+    "defaultScope": "global",
+    "strategy": "copy"
+  },
+  "readme": "SKILL.md"
+}

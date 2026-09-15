@@ -1,0 +1,34 @@
+{
+  "name": "skillvault-search",
+  "title": "SkillVault Search",
+  "version": "1.0.0",
+  "status": "public",
+  "visibility": "public",
+  "kind": "agent",
+  "description": "Find skills across local, configured internal, official, and external sources.",
+  "tags": ["skillvault", "discovery", "search", "agent-skills"],
+  "author": "wzlwit",
+  "license": "MIT",
+  "homepage": "https://github.com/wzlwit/skillvault",
+  "source": {
+    "repo": "skillvault",
+    "path": "skills/public/core/skillvault-search"
+  },
+  "install": {
+    "global": true,
+    "project": true,
+    "session": true,
+    "defaultScope": "global",
+    "strategy": "copy"
+  },
+  "inputs": [
+    {
+      "name": "description",
+      "required": true,
+      "type": "string",
+      "description": "Capability, workflow, or problem used to find relevant skills."
+    }
+  ],
+  "outputs": ["skill-candidates", "source-links", "search-summary"],
+  "readme": "SKILL.md"
+}

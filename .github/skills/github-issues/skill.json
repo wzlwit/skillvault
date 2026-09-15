@@ -1,0 +1,29 @@
+{
+  "name": "github-issues",
+  "title": "GitHub Issues",
+  "version": null,
+  "kind": "agent",
+  "description": "Find, draft, and update GitHub issues with repository-aware metadata and explicit authorization.",
+  "tags": ["github", "issues", "triage", "workflow"],
+  "author": "GitHub contributors",
+  "maintainer": "wzlwit",
+  "license": "MIT",
+  "homepage": "https://github.com/github/awesome-copilot/tree/main/skills/github-issues",
+  "source": {
+    "repo": "skillvault",
+    "path": "skills/public/github/github-issues"
+  },
+  "upstream": {
+    "repo": "https://github.com/github/awesome-copilot",
+    "path": "skills/github-issues",
+    "license": "MIT"
+  },
+  "install": {
+    "global": true,
+    "project": true,
+    "session": true,
+    "defaultScope": "project",
+    "strategy": "copy"
+  },
+  "readme": "SKILL.md"
+}

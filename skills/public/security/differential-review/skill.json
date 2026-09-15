@@ -1,0 +1,29 @@
+{
+  "name": "differential-review",
+  "title": "Differential Security Review",
+  "version": null,
+  "kind": "agent",
+  "description": "Review code changes for reachable security regressions against a known baseline.",
+  "tags": ["security", "review", "git", "regression"],
+  "author": "Trail of Bits",
+  "maintainer": "wzlwit",
+  "license": "CC-BY-SA-4.0",
+  "homepage": "https://github.com/trailofbits/skills/tree/main/plugins/differential-review/skills/differential-review",
+  "source": {
+    "repo": "skillvault",
+    "path": "skills/public/security/differential-review"
+  },
+  "upstream": {
+    "repo": "https://github.com/trailofbits/skills",
+    "path": "plugins/differential-review/skills/differential-review",
+    "license": "CC-BY-SA-4.0"
+  },
+  "install": {
+    "global": true,
+    "project": true,
+    "session": true,
+    "defaultScope": "project",
+    "strategy": "copy"
+  },
+  "readme": "SKILL.md"
+}

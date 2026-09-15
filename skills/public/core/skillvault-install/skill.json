@@ -1,0 +1,61 @@
+{
+  "name": "skillvault-install",
+  "title": "SkillVault Install",
+  "version": "1.1.0",
+  "status": "public",
+  "visibility": "public",
+  "kind": "agent",
+  "description": "Install or update copies of existing SkillVault catalog skills in your environment; does not edit repository source skills.",
+  "tags": ["bootstrap", "installer", "meta"],
+  "author": "wzlwit",
+  "license": "MIT",
+  "homepage": "https://github.com/wzlwit/skillvault",
+  "source": {
+    "repo": "skillvault",
+    "path": "skills/public/core/skillvault-install"
+  },
+  "install": {
+    "global": true,
+    "project": false,
+    "session": false,
+    "defaultScope": "global",
+    "globalPath": "~/.copilot/skills",
+    "strategy": "copy"
+  },
+  "inputs": [
+    {
+      "name": "skillOrFolderOrKeyword",
+      "required": false,
+      "type": "string",
+      "description": "Name, folder, or keyword used to install or update catalog skills. Omit to explore; use update to refresh approved managed installed copies."
+    },
+    {
+      "name": "scope",
+      "required": false,
+      "type": "string",
+      "enum": ["global", "project", "session"],
+      "description": "Optional second positional target: global (~/.copilot/skills), project (.github/skills), or session (current AI session only). Defaults to the resolved skill's install.defaultScope, then project."
+    },
+    {
+      "name": "version",
+      "required": false,
+      "type": "string",
+      "default": "latest",
+      "description": "Optional third positional version: latest or a tag in v#.#.# format. Defaults to latest."
+    }
+  ],
+  "outputs": ["installed-skill-summary", "catalog-listing"],
+  "dependencies": ["git"],
+  "examples": [
+    "/sv-install",
+    "/sv-install schedule-manager",
+    "/sv-install schedule project latest",
+    "/sv-install schedule-manager project",
+    "/sv-install schedule-manager session latest",
+    "/sv-install public global v1.0.0",
+    "/sv-install update",
+    "/skillvault-install schedule-manager",
+    "/skv-install schedule-manager"
+  ],
+  "readme": "SKILL.md"
+}

@@ -1,0 +1,47 @@
+{
+  "name": "rules",
+  "title": "Rules",
+  "version": "1.0.0",
+  "status": "public",
+  "visibility": "public",
+  "kind": "agent",
+  "description": "Review and safely add, modify, or remove AI working rules.",
+  "tags": ["rules", "instructions", "governance", "core"],
+  "author": "wzlwit",
+  "license": "MIT",
+  "homepage": "https://github.com/wzlwit/skillvault",
+  "source": {
+    "repo": "skillvault",
+    "path": "skills/public/core/rules"
+  },
+  "install": {
+    "global": true,
+    "project": true,
+    "session": true,
+    "defaultScope": "global",
+    "strategy": "copy"
+  },
+  "inputs": [
+    {
+      "name": "operation",
+      "required": true,
+      "type": "string",
+      "enum": ["add", "modify", "remove"],
+      "description": "Rule change to propose."
+    },
+    {
+      "name": "rule",
+      "required": true,
+      "type": "string",
+      "description": "New rule text, or an existing rule heading or exact text to modify or remove."
+    },
+    {
+      "name": "location",
+      "required": false,
+      "type": "string",
+      "description": "Authoritative rules document path. Ask for it when it cannot be identified safely."
+    }
+  ],
+  "outputs": ["rule-change-proposal", "confirmed-rule-update"],
+  "readme": "SKILL.md"
+}

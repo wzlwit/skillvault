@@ -1,0 +1,140 @@
+[
+  {
+    "name": "archify",
+    "description": "Reference guide to the upstream Archify diagram skill; its renderer and CLI are not bundled.",
+    "path": "skills/public/codeview/archify",
+    "version": null
+  },
+  {
+    "name": "architecture-decision-records",
+    "description": "Record decisions, rationale, and superseded history; overlaps with grilling on trade-offs and planning-with-files on decision notes.",
+    "path": "skills/public/documentation/architecture-decision-records",
+    "version": null
+  },
+  {
+    "name": "differential-review",
+    "description": "Review code changes for reachable security regressions against a known baseline.",
+    "path": "skills/public/security/differential-review",
+    "version": null
+  },
+  {
+    "name": "github-issues",
+    "description": "Find, draft, and update GitHub issues with repository-aware metadata and explicit authorization.",
+    "path": "skills/public/github/github-issues",
+    "version": null
+  },
+  {
+    "name": "graphify",
+    "description": "Reference guide to the upstream Graphify knowledge-graph skill; its CLI is not installed here.",
+    "path": "skills/public/codeview/graphify",
+    "version": null
+  },
+  {
+    "name": "grilling",
+    "description": "Stress-test plans through interviews; overlaps with architecture-decision-records on trade-offs and planning-with-files on planning.",
+    "path": "skills/public/planning/grilling",
+    "version": null
+  },
+  {
+    "name": "humanizer",
+    "description": "Reference guide to the upstream Humanizer rewriting skill; its full editing rules are not bundled.",
+    "path": "skills/public/writing/humanizer",
+    "version": null
+  },
+  {
+    "name": "openapi-spec-generation",
+    "description": "Design, generate, and validate REST API contracts with OpenAPI.",
+    "path": "skills/public/api/openapi-spec-generation",
+    "version": null
+  },
+  {
+    "name": "planning-with-files",
+    "description": "Reference to upstream task planning and recovery; overlaps with grilling on planning and architecture-decision-records on notes. No hooks or scripts bundled.",
+    "path": "skills/public/planning/planning-with-files",
+    "version": null
+  },
+  {
+    "name": "rules",
+    "description": "Review and safely add, modify, or remove AI working rules.",
+    "path": "skills/public/core/rules",
+    "version": "1.0.0"
+  },
+  {
+    "name": "rules-core",
+    "description": "Apply evidence-based, scoped, proportionate rules to coding work.",
+    "path": "skills/public/core/rules-core",
+    "version": "1.0.0"
+  },
+  {
+    "name": "schedule-manager",
+    "description": "List, enable, disable, or delete Windows scheduled tasks by index, range, or keyword.",
+    "path": "skills/public/system/schedule-manager",
+    "version": "1.1.0"
+  },
+  {
+    "name": "skillvault-evaluate",
+    "description": "Evaluate a URL or skill name before upsert, reusing installed-skill inventory first.",
+    "path": "skills/public/core/skillvault-evaluate",
+    "version": "1.0.0"
+  },
+  {
+    "name": "skillvault-fresh",
+    "description": "Schedule one-way latest refreshes for source-backed SkillVault installs.",
+    "path": "skills/public/core/skillvault-fresh",
+    "version": "1.0.0"
+  },
+  {
+    "name": "skillvault-install",
+    "description": "Install or update copies of existing SkillVault catalog skills in your environment; does not edit repository source skills.",
+    "path": "skills/public/core/skillvault-install",
+    "version": "1.1.0"
+  },
+  {
+    "name": "skillvault-list",
+    "description": "List and uninstall global, project, or explicit session skill folders by selector.",
+    "path": "skills/public/core/skillvault-list",
+    "version": "1.0.0"
+  },
+  {
+    "name": "skillvault-remove",
+    "description": "Remove selected source skills and catalog entries from a local repository after confirmation.",
+    "path": "skills/public/core/skillvault-remove",
+    "version": "1.0.0"
+  },
+  {
+    "name": "skillvault-search",
+    "description": "Find skills across local, configured internal, official, and external sources.",
+    "path": "skills/public/core/skillvault-search",
+    "version": "1.0.0"
+  },
+  {
+    "name": "skillvault-uninstall",
+    "description": "Uninstall global, project, or session skill folders by index, range, keyword, or skill name.",
+    "path": "skills/public/core/skillvault-uninstall",
+    "version": "1.0.0"
+  },
+  {
+    "name": "skillvault-upsert",
+    "description": "Create or edit skill source files and catalog entries in the SkillVault repo, from scratch or a URL; can install the result afterward.",
+    "path": "skills/public/core/skillvault-upsert",
+    "version": "1.0.0"
+  },
+  {
+    "name": "supabase-postgres-best-practices",
+    "description": "Review Postgres queries, schema, indexes, connections, and row-level security.",
+    "path": "skills/public/data/supabase-postgres-best-practices",
+    "version": null
+  },
+  {
+    "name": "trading-signal-analysis",
+    "description": "Evaluate historical trading signals, target-hit rates, and matched-peer differences without look-ahead bias.",
+    "path": "skills/public/finance/trading-signal-analysis",
+    "version": null
+  },
+  {
+    "name": "webapp-testing",
+    "description": "Verify local web application workflows with Playwright and browser evidence.",
+    "path": "skills/public/testing/webapp-testing",
+    "version": null
+  }
+]

@@ -1,0 +1,48 @@
+{
+  "name": "skillvault-evaluate",
+  "title": "SkillVault Evaluate",
+  "version": "1.0.0",
+  "status": "public",
+  "visibility": "public",
+  "kind": "agent",
+  "description": "Evaluate a source URL or skill name for purpose, value, fit, overlap, and risks before deciding whether to upsert it. Reuses installed inventory, catalogs, and the official SkillVault repository before external lookup.",
+  "tags": ["skillvault", "evaluate", "review", "decision", "open-source"],
+  "author": "wzlwit",
+  "license": "MIT",
+  "homepage": "https://github.com/wzlwit/skillvault",
+  "source": {
+    "repo": "skillvault",
+    "path": "skills/public/core/skillvault-evaluate"
+  },
+  "install": {
+    "global": true,
+    "project": false,
+    "session": false,
+    "defaultScope": "global",
+    "globalPath": "~/.copilot/skills",
+    "strategy": "copy"
+  },
+  "inputs": [
+    {
+      "name": "url|skillName",
+      "required": true,
+      "type": "string",
+      "description": "Source URL or existing SkillVault skill name to evaluate before upsert."
+    },
+    {
+      "name": "location",
+      "required": false,
+      "type": "string",
+      "description": "Explicit local path or source URL to evaluate for a named skill, bypassing default name lookup."
+    }
+  ],
+  "outputs": ["evaluation-summary", "upsert-recommendation", "risk-notes"],
+  "dependencies": ["git"],
+  "examples": [
+    "/skillvault-evaluate https://github.com/twpayne/chezmoi",
+    "/sv-evaluate schedule-manager",
+    "/sv-evaluate archify https://github.com/tt-a1i/archify",
+    "/skv-evaluate https://github.com/twpayne/chezmoi"
+  ],
+  "readme": "SKILL.md"
+}

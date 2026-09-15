@@ -1,0 +1,22 @@
+{
+  "name": "trading-signal-analysis",
+  "title": "Trading Signal Analysis",
+  "version": null,
+  "kind": "agent",
+  "description": "Evaluate historical trading signals, target-hit rates, and matched-peer differences without look-ahead bias.",
+  "tags": ["finance", "research", "backtesting", "signals", "benchmarks"],
+  "author": "wzlwit",
+  "license": null,
+  "source": {
+    "repo": "skillvault",
+    "path": "skills/public/finance/trading-signal-analysis"
+  },
+  "install": {
+    "global": true,
+    "project": true,
+    "session": true,
+    "defaultScope": "project",
+    "strategy": "copy"
+  },
+  "readme": "README.md"
+}

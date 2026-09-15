@@ -1,0 +1,47 @@
+{
+  "name": "skillvault-remove",
+  "title": "SkillVault Remove",
+  "version": "1.0.0",
+  "status": "public",
+  "visibility": "public",
+  "kind": "agent",
+  "description": "Remove selected source skills and catalog entries from a local repository after confirmation.",
+  "tags": ["skillvault", "remove", "source", "catalog"],
+  "author": "wzlwit",
+  "license": "MIT",
+  "homepage": "https://github.com/wzlwit/skillvault",
+  "source": {
+    "repo": "skillvault",
+    "path": "skills/public/core/skillvault-remove"
+  },
+  "install": {
+    "global": true,
+    "project": false,
+    "session": false,
+    "defaultScope": "global",
+    "globalPath": "~/.copilot/skills",
+    "strategy": "copy"
+  },
+  "inputs": [
+    {
+      "name": "name",
+      "required": true,
+      "type": "string",
+      "description": "Exact catalog skill name or comma-separated list of exact names."
+    },
+    {
+      "name": "repo-path",
+      "required": false,
+      "type": "string",
+      "description": "Explicit local SkillVault source checkout; defaults to the current checkout or existing source cache."
+    }
+  ],
+  "outputs": ["source-removal-preview", "source-removal-summary"],
+  "dependencies": ["skillvault-install"],
+  "examples": [
+    "/sv-remove architecture-decision-records",
+    "/sv-remove architecture-decision-records,planning-with-files C:\\repos\\skillvault",
+    "/skv-remove planning-with-files"
+  ],
+  "readme": "SKILL.md"
+}
