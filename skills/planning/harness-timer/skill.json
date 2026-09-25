@@ -1,0 +1,71 @@
+{
+  "name": "harness-timer",
+  "title": "Harness Timer",
+  "version": "1.0.0",
+  "ownershipProtocol": 1,
+  "runtimeInterfaces": {
+    "scheduler": 1
+  },
+  "requiredInterfaces": {
+    "harness": {
+      "harness-runtime": 1
+    },
+    "skillvault-installation": {
+      "compatibility": 1
+    },
+    "skillvault-refresh": {
+      "structured-refresh": 1
+    }
+  },
+  "kind": "agent",
+  "description": "Manage logical schedules under one user-wide heartbeat. Use /harness-timer or /hn-timer with list, set, disable, resume, clean, or migrate. Targets are project, pr, refresh, maintenance, or heartbeat settings. Bare invocation lists only. Overlaps with schedule-manager on task administration; owns SkillVault schedules. Maintenance delegates historical-data cleanup to harness.",
+  "tags": [
+    "harness",
+    "scheduling",
+    "windows"
+  ],
+  "author": "wzlwit",
+  "source": {
+    "repo": "skillvault",
+    "path": "skills/planning/harness-timer"
+  },
+  "install": {
+    "global": true,
+    "project": true,
+    "session": false,
+    "defaultScope": "global",
+    "strategy": "copy"
+  },
+  "dependencies": [
+    "harness",
+    "rules",
+    "pr-review",
+    "skillvault-installation",
+    "skillvault-refresh"
+  ],
+  "examples": [
+    "/harness-timer",
+    "/harness-timer list",
+    "/harness-timer set",
+    "/harness-timer list heartbeat",
+    "/harness-timer set heartbeat 12h"
+  ],
+  "readme": "SKILL.md",
+  "inputs": [
+    {
+      "name": "action",
+      "required": false,
+      "type": "string",
+      "default": "list",
+      "enum": [
+        "list",
+        "set",
+        "disable",
+        "resume",
+        "clean",
+        "migrate"
+      ],
+      "description": "Primary action; omitted means read-only list. Compatibility aliases remain in SKILL.md. Operation-specific approvals still apply."
+    }
+  ]
+}

@@ -1,0 +1,53 @@
+{
+  "name": "harness-monitor",
+  "title": "Harness Monitor",
+  "version": "1.0.0",
+  "kind": "agent",
+  "description": "Declare monitors, check structured observations, and propose incident investigations. Use /harness-monitor or /hn-monitor with list, declare, check, or accept. Overlaps with harness-test on checks, harness-task on intake, and kpi-dashboard on metric contracts; never launches automatic fixes.",
+  "tags": [
+    "harness",
+    "monitoring",
+    "observations",
+    "incidents"
+  ],
+  "author": "wzlwit",
+  "source": {
+    "repo": "skillvault",
+    "path": "skills/planning/harness-monitor"
+  },
+  "install": {
+    "global": true,
+    "project": true,
+    "session": true,
+    "defaultScope": "global",
+    "strategy": "copy"
+  },
+  "dependencies": [
+    "harness",
+    "harness-task",
+    "harness-link",
+    "harness-timer",
+    "rules"
+  ],
+  "examples": [
+    "/harness-monitor",
+    "/harness-monitor list",
+    "/harness-monitor declare"
+  ],
+  "readme": "SKILL.md",
+  "inputs": [
+    {
+      "name": "action",
+      "required": false,
+      "type": "string",
+      "default": "list",
+      "enum": [
+        "list",
+        "declare",
+        "check",
+        "accept"
+      ],
+      "description": "Primary action; omitted means read-only list. Compatibility aliases remain in SKILL.md. Operation-specific approvals still apply."
+    }
+  ]
+}

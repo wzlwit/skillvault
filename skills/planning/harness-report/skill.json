@@ -1,0 +1,50 @@
+{
+  "name": "harness-report",
+  "title": "Harness Report",
+  "version": "1.0.0",
+  "kind": "agent",
+  "description": "Coordinate dashboard, report, and query authoring. Use /harness-report or /hn-report with list or upsert. The create/update actions and legacy /harness-report-create and /hn-report-create commands use upsert. Overlaps with harness-dev on implementation, kpi-dashboard on design, and jarvis-metrics on Jarvis authoring; owns artifact identity and validation, not publishing.",
+  "tags": [
+    "harness",
+    "reports",
+    "dashboards",
+    "authoring"
+  ],
+  "author": "wzlwit",
+  "source": {
+    "repo": "skillvault",
+    "path": "skills/planning/harness-report"
+  },
+  "install": {
+    "global": true,
+    "project": true,
+    "session": true,
+    "defaultScope": "global",
+    "strategy": "copy"
+  },
+  "dependencies": [
+    "rules",
+    "kpi-dashboard",
+    "harness-dev",
+    "harness-link"
+  ],
+  "examples": [
+    "/harness-report",
+    "/harness-report list",
+    "/harness-report upsert"
+  ],
+  "readme": "SKILL.md",
+  "inputs": [
+    {
+      "name": "action",
+      "required": false,
+      "type": "string",
+      "default": "list",
+      "enum": [
+        "list",
+        "upsert"
+      ],
+      "description": "Primary action; omitted means read-only list. Compatibility aliases remain in SKILL.md. Operation-specific approvals still apply."
+    }
+  ]
+}

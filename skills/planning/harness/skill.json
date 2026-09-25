@@ -1,0 +1,71 @@
+{
+  "name": "harness",
+  "title": "Harness",
+  "version": "1.0.0",
+  "ownershipProtocol": 1,
+  "runtimeInterfaces": {
+    "harness-runtime": 1
+  },
+  "requiredInterfaces": {
+    "skillvault-installation": {
+      "compatibility": 1
+    }
+  },
+  "kind": "agent",
+  "description": "Inspect harness state, select its root with a move confirmation after initialization, initialize, read context, or clean historical data. Use /harness or /hn with list, root, init, context, or clean. Accepts legacy root/init/loc/context and management commands. Context summaries overlap with handoff; harness-link owns links. Owns retention; harness-timer schedules maintenance. Bare invocation only lists.",
+  "tags": [
+    "harness",
+    "initialization",
+    "planning"
+  ],
+  "author": "wzlwit",
+  "source": {
+    "repo": "skillvault",
+    "path": "skills/planning/harness"
+  },
+  "install": {
+    "global": true,
+    "project": true,
+    "session": true,
+    "defaultScope": "global",
+    "strategy": "copy"
+  },
+  "dependencies": [
+    "rules",
+    "skillvault-installation",
+    "architecture-decision-records",
+    "graphify",
+    "grilling"
+  ],
+  "readme": "SKILL.md",
+  "inputs": [
+    {
+      "name": "action",
+      "required": false,
+      "type": "string",
+      "default": "list",
+      "enum": [
+        "list",
+        "root",
+        "init",
+        "context",
+        "clean"
+      ],
+      "description": "Primary action; omitted means read-only list. Compatibility aliases remain in SKILL.md. Operation-specific approvals still apply."
+    },
+    {
+      "name": "path",
+      "required": false,
+      "type": "string",
+      "description": "Existing parent/controller path for root. Omission only displays locations. Select a valid new path, then prompt to move an initialized previous harness; Move is the default, including no answer. Explicit answers or user instructions override it. A skipped or failed move keeps the new root selected. Invalid paths do not change Root."
+    }
+  ],
+  "examples": [
+    "/harness",
+    "/harness list",
+    "/harness root",
+    "/harness clean",
+    "/harness root C:\\controllers\\project",
+    "/hn-root C:\\controllers\\project"
+  ]
+}
