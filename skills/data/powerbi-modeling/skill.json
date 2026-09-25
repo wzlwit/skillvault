@@ -1,0 +1,43 @@
+{
+  "name": "powerbi-modeling",
+  "title": "Power BI Modeling",
+  "version": null,
+  "kind": "agent",
+  "description": "Design and review Power BI semantic models, star schemas, fact and dimension grain, relationships, DAX measures, RLS, and performance. Use for /powerbi-modeling, model design, cardinality, cross-filter direction, or model optimization. Overlaps with kpi-dashboard on grain and metric definitions; owns model structure and validation, not dashboard layout or automatic deployment. Design-only use needs no live connection.",
+  "tags": [
+    "power-bi",
+    "semantic-modeling",
+    "data",
+    "dax",
+    "star-schema",
+    "security"
+  ],
+  "author": null,
+  "maintainer": "wzlwit",
+  "license": "MIT",
+  "homepage": "https://github.com/github/awesome-copilot/tree/main/skills/powerbi-modeling",
+  "source": {
+    "repo": "skillvault",
+    "path": "skills/data/powerbi-modeling"
+  },
+  "upstream": {
+    "repo": "https://github.com/github/awesome-copilot",
+    "path": "skills/powerbi-modeling",
+    "revision": "1f5644080a525d26a2e24f61a7609fb9b261c21a",
+    "license": "MIT"
+  },
+  "install": {
+    "global": true,
+    "project": true,
+    "session": true,
+    "defaultScope": "global",
+    "strategy": "copy"
+  },
+  "examples": [
+    "/powerbi-modeling design a sales model from these schemas without connecting",
+    "/powerbi-modeling review relationships in the identified model read-only",
+    "/powerbi-modeling check order counts and filter semantics"
+  ],
+  "readme": "SKILL.md",
+  "dependencies": []
+}
