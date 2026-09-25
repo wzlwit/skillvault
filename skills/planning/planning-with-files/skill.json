@@ -1,0 +1,31 @@
+{
+  "name": "planning-with-files",
+  "title": "Planning with Files Reference",
+  "version": null,
+  "status": "public",
+  "visibility": "public",
+  "kind": "reference",
+  "description": "Reference to upstream task planning and recovery; overlaps with grilling on planning and architecture-decision-records on notes. No hooks or scripts bundled.",
+  "tags": ["planning", "long-running-tasks", "session-recovery", "reference"],
+  "author": "OthmanAdi",
+  "maintainer": "wzlwit",
+  "license": "MIT",
+  "homepage": "https://github.com/OthmanAdi/planning-with-files",
+  "source": {
+    "repo": "skillvault",
+    "path": "skills/planning/planning-with-files"
+  },
+  "upstream": {
+    "repo": "https://github.com/OthmanAdi/planning-with-files",
+    "path": ".agents/skills/planning-with-files",
+    "license": "MIT"
+  },
+  "install": {
+    "global": true,
+    "project": true,
+    "session": false,
+    "defaultScope": "global",
+    "strategy": "copy"
+  },
+  "readme": "SKILL.md"
+}

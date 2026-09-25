@@ -1,0 +1,25 @@
+{
+  "name": "grilling",
+  "title": "Grilling",
+  "version": null,
+  "status": "public",
+  "visibility": "public",
+  "kind": "agent",
+  "description": "Stress-test plans through interviews; overlaps with architecture-decision-records on trade-offs and planning-with-files on planning.",
+  "tags": ["planning", "design", "decision-making", "review"],
+  "author": null,
+  "maintainer": "wzlwit",
+  "license": null,
+  "source": {
+    "repo": "skillvault",
+    "path": "skills/planning/grilling"
+  },
+  "install": {
+    "global": true,
+    "project": true,
+    "session": true,
+    "defaultScope": "global",
+    "strategy": "copy"
+  },
+  "readme": "SKILL.md"
+}

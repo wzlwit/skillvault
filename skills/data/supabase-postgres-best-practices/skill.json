@@ -1,0 +1,29 @@
+{
+  "name": "supabase-postgres-best-practices",
+  "title": "Supabase Postgres Best Practices",
+  "version": null,
+  "kind": "agent",
+  "description": "Review Postgres queries, schema, indexes, connections, and row-level security.",
+  "tags": ["data", "postgres", "sql", "performance", "rls"],
+  "author": "Supabase",
+  "maintainer": "wzlwit",
+  "license": "MIT",
+  "homepage": "https://github.com/supabase/agent-skills/tree/main/skills/supabase-postgres-best-practices",
+  "source": {
+    "repo": "skillvault",
+    "path": "skills/data/supabase-postgres-best-practices"
+  },
+  "upstream": {
+    "repo": "https://github.com/supabase/agent-skills",
+    "path": "skills/supabase-postgres-best-practices",
+    "license": "MIT"
+  },
+  "install": {
+    "global": true,
+    "project": true,
+    "session": true,
+    "defaultScope": "global",
+    "strategy": "copy"
+  },
+  "readme": "SKILL.md"
+}

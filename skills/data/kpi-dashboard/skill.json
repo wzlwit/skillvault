@@ -1,0 +1,41 @@
+{
+  "name": "kpi-dashboard",
+  "title": "KPI Dashboard",
+  "version": null,
+  "kind": "agent",
+  "description": "Define actionable KPIs and design dashboard layouts, comparisons, filters, and freshness states. Use for /kpi-dashboard, legacy /kpi-dashboard-design, executive SaaS dashboards, MRR/churn/LTV-CAC metrics, operations-center views, cohort retention, or conflicting metric calculations. Overlaps with harness-report on authoring, harness-monitor on metric contracts, jarvis-metrics on dashboard design, and powerbi-modeling on grain and measure semantics; supplies reusable, platform-agnostic design guidance, not a platform writer, incident engine, or Jarvis-specific metric-source workflow.",
+  "tags": [
+    "data",
+    "kpi",
+    "dashboards",
+    "metrics",
+    "design"
+  ],
+  "author": "Seth Hobson",
+  "maintainer": "wzlwit",
+  "license": "MIT",
+  "homepage": "https://github.com/wshobson/agents/tree/main/plugins/business-analytics/skills/kpi-dashboard-design",
+  "source": {
+    "repo": "skillvault",
+    "path": "skills/data/kpi-dashboard"
+  },
+  "upstream": {
+    "repo": "https://github.com/wshobson/agents",
+    "path": "plugins/business-analytics/skills/kpi-dashboard-design",
+    "license": "MIT"
+  },
+  "install": {
+    "global": true,
+    "project": true,
+    "session": true,
+    "defaultScope": "global",
+    "strategy": "copy"
+  },
+  "examples": [
+    "/kpi-dashboard-design service-health",
+    "/kpi-dashboard-design review our retention dashboard",
+    "/kpi-dashboard-design sales metrics for Power BI"
+  ],
+  "readme": "SKILL.md",
+  "dependencies": []
+}

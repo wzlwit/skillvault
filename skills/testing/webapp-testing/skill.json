@@ -1,0 +1,29 @@
+{
+  "name": "webapp-testing",
+  "title": "Web Application Testing",
+  "version": null,
+  "kind": "agent",
+  "description": "Verify local web application workflows with Playwright and browser evidence.",
+  "tags": ["testing", "playwright", "browser", "regression"],
+  "author": "Anthropic",
+  "maintainer": "wzlwit",
+  "license": "MIT",
+  "homepage": "https://github.com/anthropics/skills/tree/main/skills/webapp-testing",
+  "source": {
+    "repo": "skillvault",
+    "path": "skills/testing/webapp-testing"
+  },
+  "upstream": {
+    "repo": "https://github.com/anthropics/skills",
+    "path": "skills/webapp-testing",
+    "license": "Apache-2.0"
+  },
+  "install": {
+    "global": true,
+    "project": true,
+    "session": true,
+    "defaultScope": "global",
+    "strategy": "copy"
+  },
+  "readme": "SKILL.md"
+}

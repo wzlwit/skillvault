@@ -1,0 +1,31 @@
+{
+  "name": "humanizer",
+  "title": "Humanizer Reference",
+  "version": null,
+  "status": "public",
+  "visibility": "public",
+  "kind": "reference",
+  "description": "Reference guide to the upstream Humanizer rewriting skill; its full editing rules are not bundled.",
+  "tags": ["writing", "editing", "prose", "reference"],
+  "author": "blader",
+  "maintainer": "wzlwit",
+  "license": "MIT",
+  "homepage": "https://github.com/blader/humanizer",
+  "source": {
+    "repo": "skillvault",
+    "path": "skills/writing/humanizer"
+  },
+  "upstream": {
+    "repo": "https://github.com/blader/humanizer",
+    "path": ".",
+    "license": "MIT"
+  },
+  "install": {
+    "global": true,
+    "project": true,
+    "session": true,
+    "defaultScope": "global",
+    "strategy": "copy"
+  },
+  "readme": "SKILL.md"
+}
