@@ -1,0 +1,47 @@
+{
+  "name": "pr-watch",
+  "title": "PR Watchlist",
+  "version": "1.0.0",
+  "kind": "agent",
+  "description": "Manage the single user-wide PR review watchlist. Use /pr-watch list, add, or remove; replaces /pr-review-add, /pr-review-list, and /pr-review-remove. Watchlist changes do not run reviews or change schedules; pr-review owns execution and harness-timer owns its logical schedule.",
+  "tags": [
+    "github",
+    "pull-request",
+    "watchlist"
+  ],
+  "author": "wzlwit",
+  "source": {
+    "repo": "skillvault",
+    "path": "skills/github/pr-watch"
+  },
+  "install": {
+    "global": true,
+    "project": true,
+    "session": true,
+    "defaultScope": "global",
+    "strategy": "copy"
+  },
+  "dependencies": [
+    "pr-review"
+  ],
+  "examples": [
+    "/pr-watch",
+    "/pr-watch list",
+    "/pr-watch add"
+  ],
+  "readme": "SKILL.md",
+  "inputs": [
+    {
+      "name": "action",
+      "required": false,
+      "type": "string",
+      "default": "list",
+      "enum": [
+        "list",
+        "add",
+        "remove"
+      ],
+      "description": "Primary action; omitted means read-only list. Compatibility aliases remain in SKILL.md. Operation-specific approvals still apply."
+    }
+  ]
+}
