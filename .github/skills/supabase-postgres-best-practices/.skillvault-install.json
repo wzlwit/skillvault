@@ -1,0 +1,9 @@
+{
+  "installedBy": "skillvault",
+  "sourceRepo": "https://github.com/wzlwit/skillvault.git",
+  "sourcePath": "skills/data/supabase-postgres-best-practices",
+  "scope": "project",
+  "requestedVersion": "latest",
+  "installedVersion": null,
+  "installedAt": "2026-09-25T02:55:47.5570506Z"
+}

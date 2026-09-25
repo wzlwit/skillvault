@@ -1,0 +1,45 @@
+{
+  "name": "brainstorming",
+  "title": "Brainstorming",
+  "version": null,
+  "status": "public",
+  "visibility": "public",
+  "kind": "agent",
+  "description": "Explore ideas and compare designs before implementation; overlaps with grilling on questions and trade-offs, but focuses on developing alternatives.",
+  "tags": ["planning", "brainstorming", "design", "requirements", "alternatives"],
+  "author": "Jesse Vincent",
+  "maintainer": "wzlwit",
+  "license": "MIT",
+  "homepage": "https://github.com/obra/superpowers/tree/main/skills/brainstorming",
+  "source": {
+    "repo": "skillvault",
+    "path": "skills/planning/brainstorming"
+  },
+  "upstream": {
+    "repo": "https://github.com/obra/superpowers",
+    "path": "skills/brainstorming",
+    "license": "MIT"
+  },
+  "install": {
+    "global": true,
+    "project": true,
+    "session": true,
+    "defaultScope": "global",
+    "strategy": "copy"
+  },
+  "inputs": [
+    {
+      "name": "ideaOrDocument",
+      "required": false,
+      "type": "string",
+      "description": "Idea, requirement, or existing design document to explore; defaults to the current discussion when clear."
+    }
+  ],
+  "outputs": ["design-options", "recommended-direction", "decisions-and-open-questions"],
+  "dependencies": [],
+  "examples": [
+    "/brainstorming design a periodic verify-and-fix workflow",
+    "/brainstorming compare approaches in the current design draft"
+  ],
+  "readme": "README.md"
+}

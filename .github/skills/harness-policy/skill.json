@@ -1,0 +1,51 @@
+{
+  "name": "harness-policy",
+  "title": "Harness Policy",
+  "version": "1.0.0",
+  "kind": "agent",
+  "description": "Inspect or change harness limits and failure responses. Use /harness-policy or /hn-policy with list, set, pause, stop, or resume. Legacy harness-restrict, harness-fallback, /hn-restrict, and /hn-fallback select the matching action. Limits and failure handling share execution policy but remain separate configuration objects.",
+  "tags": [
+    "harness",
+    "restrictions",
+    "permissions",
+    "budgets"
+  ],
+  "author": "wzlwit",
+  "source": {
+    "repo": "skillvault",
+    "path": "skills/planning/harness-policy"
+  },
+  "install": {
+    "global": true,
+    "project": true,
+    "session": true,
+    "defaultScope": "global",
+    "strategy": "copy"
+  },
+  "dependencies": [
+    "harness",
+    "rules"
+  ],
+  "examples": [
+    "/harness-policy",
+    "/harness-policy list",
+    "/harness-policy set"
+  ],
+  "readme": "SKILL.md",
+  "inputs": [
+    {
+      "name": "action",
+      "required": false,
+      "type": "string",
+      "default": "list",
+      "enum": [
+        "list",
+        "set",
+        "pause",
+        "stop",
+        "resume"
+      ],
+      "description": "Primary action; omitted means read-only list. Compatibility aliases remain in SKILL.md. Operation-specific approvals still apply."
+    }
+  ]
+}

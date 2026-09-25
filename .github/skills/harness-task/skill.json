@@ -1,0 +1,48 @@
+{
+  "name": "harness-task",
+  "title": "Harness Task",
+  "version": "1.0.0",
+  "kind": "agent",
+  "description": "Record or inspect harness tasks without executing them. Use /harness-task or /hn-task with list, add, or update. Overlaps with harness-dev and harness-monitor on intake; owns task records and readiness.",
+  "tags": [
+    "harness",
+    "tasks",
+    "planning"
+  ],
+  "author": "wzlwit",
+  "source": {
+    "repo": "skillvault",
+    "path": "skills/planning/harness-task"
+  },
+  "install": {
+    "global": true,
+    "project": true,
+    "session": true,
+    "defaultScope": "global",
+    "strategy": "copy"
+  },
+  "dependencies": [
+    "harness",
+    "rules"
+  ],
+  "readme": "SKILL.md",
+  "inputs": [
+    {
+      "name": "action",
+      "required": false,
+      "type": "string",
+      "default": "list",
+      "enum": [
+        "list",
+        "add",
+        "update"
+      ],
+      "description": "Primary action; omitted means read-only list. Compatibility aliases remain in SKILL.md. Operation-specific approvals still apply."
+    }
+  ],
+  "examples": [
+    "/harness-task",
+    "/harness-task list",
+    "/harness-task add"
+  ]
+}

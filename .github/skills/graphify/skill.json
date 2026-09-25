@@ -1,0 +1,31 @@
+{
+  "name": "graphify",
+  "title": "Graphify Reference",
+  "version": null,
+  "status": "public",
+  "visibility": "public",
+  "kind": "reference",
+  "description": "Reference guide to the upstream Graphify knowledge-graph skill; its CLI is not installed here.",
+  "tags": ["knowledge-graph", "code-analysis", "reference", "graphify"],
+  "author": "Graphify-Labs",
+  "maintainer": "wzlwit",
+  "license": "MIT",
+  "homepage": "https://github.com/Graphify-Labs/graphify",
+  "source": {
+    "repo": "skillvault",
+    "path": "skills/codeview/graphify"
+  },
+  "upstream": {
+    "repo": "https://github.com/Graphify-Labs/graphify",
+    "path": ".",
+    "license": "Apache-2.0"
+  },
+  "install": {
+    "global": true,
+    "project": true,
+    "session": false,
+    "defaultScope": "global",
+    "strategy": "copy"
+  },
+  "readme": "SKILL.md"
+}

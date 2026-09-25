@@ -1,0 +1,91 @@
+{
+  "name": "skillvault-installation",
+  "title": "SkillVault Installation",
+  "version": "1.1.0",
+  "runtimeInterfaces": {
+    "compatibility": 1,
+    "installation-transactions": 1
+  },
+  "status": "public",
+  "visibility": "public",
+  "kind": "agent",
+  "description": "Manage installed SkillVault copies. Use /skillvault-installation or /sv-installation list, install, update, or uninstall. Replaces skillvault-install, skillvault-list, skillvault-uninstall and /sv-install, /sv-list, /sv-uninstall. List defaults to installed copies; list catalog inspects sources. Does not edit SkillVault source or application code; skillvault-authoring owns skill authoring.",
+  "tags": [
+    "bootstrap",
+    "installer",
+    "meta"
+  ],
+  "author": "wzlwit",
+  "license": "MIT",
+  "homepage": "https://github.com/wzlwit/skillvault",
+  "source": {
+    "repo": "skillvault",
+    "path": "skills/core/skillvault-installation"
+  },
+  "install": {
+    "global": true,
+    "project": true,
+    "session": true,
+    "defaultScope": "global",
+    "globalPath": "~/.copilot/skills",
+    "strategy": "copy"
+  },
+  "inputs": [
+    {
+      "name": "action",
+      "required": false,
+      "type": "string",
+      "default": "list",
+      "enum": [
+        "list",
+        "install",
+        "update",
+        "uninstall"
+      ],
+      "description": "Primary action; omitted means read-only list. Compatibility aliases remain in SKILL.md. Operation-specific approvals still apply."
+    },
+    {
+      "name": "skillOrFolderOrKeyword",
+      "required": false,
+      "type": "string",
+      "description": "Name, folder, or keyword used to install or update catalog skills. Omit to explore; use update to refresh approved managed installed copies."
+    },
+    {
+      "name": "scope",
+      "required": false,
+      "type": "string",
+      "enum": [
+        "global",
+        "project",
+        "session"
+      ],
+      "description": "Optional second positional target: global (~/.copilot/skills), project (.github/skills), or session (current AI session only). Defaults to the resolved skill's install.defaultScope, then project."
+    },
+    {
+      "name": "version",
+      "required": false,
+      "type": "string",
+      "default": "latest",
+      "description": "Optional third positional version: latest or a tag in v#.#.# format. Defaults to latest."
+    },
+    {
+      "name": "repoPath",
+      "required": false,
+      "type": "string",
+      "description": "Explicit verified source checkout through --repo <path>. Otherwise use the known C:\\repos\\skillvault checkout; never silently select a cache or another session's clone. Separate from the target project."
+    }
+  ],
+  "outputs": [
+    "installed-skill-summary",
+    "catalog-listing"
+  ],
+  "dependencies": [
+    "git"
+  ],
+  "examples": [
+    "/skillvault-installation",
+    "/skillvault-installation list",
+    "/skillvault-installation install"
+  ],
+  "readme": "SKILL.md"
+}

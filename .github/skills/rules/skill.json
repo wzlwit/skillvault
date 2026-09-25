@@ -1,0 +1,52 @@
+{
+  "name": "rules",
+  "title": "Rules",
+  "version": "1.0.0",
+  "status": "public",
+  "visibility": "public",
+  "kind": "instruction",
+  "description": "Apply or manage AI working rules. Use /rules list, apply, add, update, or remove. The apply action replaces /rules-core and supplies compact coding guidance without editing files; persistent rule changes require confirmation.",
+  "tags": [
+    "core",
+    "engineering",
+    "quality",
+    "guidance"
+  ],
+  "author": "wzlwit",
+  "license": "MIT",
+  "homepage": "https://github.com/wzlwit/skillvault",
+  "source": {
+    "repo": "skillvault",
+    "path": "skills/core/rules"
+  },
+  "install": {
+    "global": true,
+    "project": true,
+    "session": true,
+    "defaultScope": "global",
+    "strategy": "copy"
+  },
+  "readme": "SKILL.md",
+  "dependencies": [],
+  "inputs": [
+    {
+      "name": "action",
+      "required": false,
+      "type": "string",
+      "default": "list",
+      "enum": [
+        "list",
+        "apply",
+        "add",
+        "update",
+        "remove"
+      ],
+      "description": "Primary action; omitted means read-only list. Compatibility aliases remain in SKILL.md. Operation-specific approvals still apply."
+    }
+  ],
+  "examples": [
+    "/rules",
+    "/rules list",
+    "/rules apply"
+  ]
+}

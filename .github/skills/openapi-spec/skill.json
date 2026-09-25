@@ -1,0 +1,35 @@
+{
+  "name": "openapi-spec",
+  "title": "OpenAPI Specification",
+  "version": null,
+  "kind": "agent",
+  "description": "Design and validate REST API contracts. Use for /openapi-spec, legacy /openapi-spec-generation, OpenAPI or Swagger specifications, code-first API documentation, request and response schemas, contract drift, or SDK input specifications.",
+  "tags": [
+    "api",
+    "openapi",
+    "contracts",
+    "rest"
+  ],
+  "author": "Seth Hobson",
+  "maintainer": "wzlwit",
+  "license": "MIT",
+  "homepage": "https://github.com/wshobson/agents/tree/main/plugins/documentation-generation/skills/openapi-spec-generation",
+  "source": {
+    "repo": "skillvault",
+    "path": "skills/api/openapi-spec"
+  },
+  "upstream": {
+    "repo": "https://github.com/wshobson/agents",
+    "path": "plugins/documentation-generation/skills/openapi-spec-generation",
+    "license": "MIT"
+  },
+  "install": {
+    "global": true,
+    "project": true,
+    "session": true,
+    "defaultScope": "global",
+    "strategy": "copy"
+  },
+  "readme": "SKILL.md",
+  "dependencies": []
+}

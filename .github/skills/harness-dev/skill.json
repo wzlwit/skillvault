@@ -1,0 +1,49 @@
+{
+  "name": "harness-dev",
+  "title": "Harness Dev",
+  "version": "1.0.0",
+  "kind": "agent",
+  "description": "Run or queue tracked development, verification, and fixes. Use /harness-dev or /hn-dev with list, run, or queue. Overlaps with harness-task on intake, harness-test on validation, and harness-report on implementation; owns execution and independent review.",
+  "tags": [
+    "harness",
+    "development",
+    "verification"
+  ],
+  "author": "wzlwit",
+  "source": {
+    "repo": "skillvault",
+    "path": "skills/planning/harness-dev"
+  },
+  "install": {
+    "global": true,
+    "project": true,
+    "session": true,
+    "defaultScope": "global",
+    "strategy": "copy"
+  },
+  "dependencies": [
+    "harness",
+    "harness-task",
+    "rules"
+  ],
+  "readme": "SKILL.md",
+  "inputs": [
+    {
+      "name": "action",
+      "required": false,
+      "type": "string",
+      "default": "list",
+      "enum": [
+        "list",
+        "run",
+        "queue"
+      ],
+      "description": "Primary action; omitted means read-only list. Compatibility aliases remain in SKILL.md. Operation-specific approvals still apply."
+    }
+  ],
+  "examples": [
+    "/harness-dev",
+    "/harness-dev list",
+    "/harness-dev run"
+  ]
+}

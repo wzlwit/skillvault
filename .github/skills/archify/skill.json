@@ -1,0 +1,31 @@
+{
+  "name": "archify",
+  "title": "Archify Reference",
+  "version": null,
+  "status": "public",
+  "visibility": "public",
+  "kind": "reference",
+  "description": "Reference guide to the upstream Archify diagram skill; its renderer and CLI are not bundled.",
+  "tags": ["architecture", "diagrams", "codeview", "visualization", "reference"],
+  "author": "tt-a1i",
+  "maintainer": "wzlwit",
+  "license": "MIT",
+  "homepage": "https://github.com/tt-a1i/archify",
+  "source": {
+    "repo": "skillvault",
+    "path": "skills/codeview/archify"
+  },
+  "upstream": {
+    "repo": "https://github.com/tt-a1i/archify",
+    "path": "archify",
+    "license": "MIT"
+  },
+  "install": {
+    "global": true,
+    "project": true,
+    "session": true,
+    "defaultScope": "global",
+    "strategy": "copy"
+  },
+  "readme": "SKILL.md"
+}

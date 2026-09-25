@@ -1,0 +1,57 @@
+{
+  "name": "harness-decision",
+  "title": "Harness Decision",
+  "version": "1.0.0",
+  "kind": "agent",
+  "description": "List open harness decisions separately from optional configuration, filter closed/all decisions, or record a choice. Use /harness-decision or /hn-decision with list or record; also accepts legacy /harness-decide and /hn-decide. Overlaps with architecture-decision-records on history; owns the compact bulletin and decision register.",
+  "tags": [
+    "planning",
+    "decisions",
+    "harness",
+    "csv"
+  ],
+  "author": "wzlwit",
+  "source": {
+    "repo": "skillvault",
+    "path": "skills/planning/harness-decision"
+  },
+  "install": {
+    "global": true,
+    "project": true,
+    "session": true,
+    "defaultScope": "global",
+    "strategy": "copy"
+  },
+  "dependencies": [
+    "rules",
+    "architecture-decision-records"
+  ],
+  "examples": [
+    "/harness-decision",
+    "/harness-decision list",
+    "/harness-decision list all",
+    "/harness-decision record"
+  ],
+  "readme": "SKILL.md",
+  "inputs": [
+    {
+      "name": "action",
+      "required": false,
+      "type": "string",
+      "default": "list",
+      "enum": [
+        "list",
+        "record"
+      ],
+      "description": "Primary action; omitted means read-only list. Compatibility aliases remain in SKILL.md. Operation-specific approvals still apply."
+    },
+    {
+      "name": "filter",
+      "required": false,
+      "type": "string",
+      "default": "open",
+      "enum": ["open", "closed", "all"],
+      "description": "Decision status filter for list. Open adds a brief optional-configuration summary; all includes its detailed checklist. Closed and exact-ID views omit configuration; an exact ID is displayed regardless of status."
+    }
+  ]
+}

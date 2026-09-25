@@ -1,0 +1,38 @@
+{
+  "name": "handoff",
+  "title": "Handoff",
+  "version": null,
+  "kind": "agent",
+  "description": "Prepare concise continuation notes; overlaps with harness on context summaries, adding blockers, process uncertainty, and next steps without controlling execution.",
+  "tags": [
+    "planning",
+    "handoff",
+    "context"
+  ],
+  "author": "Matt Pocock",
+  "maintainer": "wzlwit",
+  "license": "MIT",
+  "homepage": "https://github.com/mattpocock/skills/blob/main/skills/productivity/handoff/SKILL.md",
+  "source": {
+    "repo": "skillvault",
+    "path": "skills/planning/handoff"
+  },
+  "upstream": {
+    "repo": "https://github.com/mattpocock/skills",
+    "path": "skills/productivity/handoff",
+    "license": "MIT"
+  },
+  "install": {
+    "global": true,
+    "project": true,
+    "session": true,
+    "defaultScope": "global",
+    "strategy": "copy"
+  },
+  "examples": [
+    "/handoff",
+    "/handoff continue the blocked documentation search",
+    "/handoff investigate the failing test --output docs/handoff-test.md"
+  ],
+  "readme": "README.md"
+}

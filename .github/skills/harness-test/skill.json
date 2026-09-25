@@ -1,0 +1,50 @@
+{
+  "name": "harness-test",
+  "title": "Harness Test",
+  "version": "1.0.0",
+  "kind": "agent",
+  "description": "Declare or run reusable harness tests. Use /harness-test or /hn-test with list, declare, or run. Overlaps with harness-dev on validation and harness-monitor on checks; executes declared tests rather than evaluating incident episodes.",
+  "tags": [
+    "harness",
+    "testing",
+    "environments",
+    "validation"
+  ],
+  "author": "wzlwit",
+  "source": {
+    "repo": "skillvault",
+    "path": "skills/planning/harness-test"
+  },
+  "install": {
+    "global": true,
+    "project": true,
+    "session": true,
+    "defaultScope": "global",
+    "strategy": "copy"
+  },
+  "dependencies": [
+    "harness",
+    "harness-timer",
+    "rules"
+  ],
+  "examples": [
+    "/harness-test",
+    "/harness-test list",
+    "/harness-test declare"
+  ],
+  "readme": "SKILL.md",
+  "inputs": [
+    {
+      "name": "action",
+      "required": false,
+      "type": "string",
+      "default": "list",
+      "enum": [
+        "list",
+        "declare",
+        "run"
+      ],
+      "description": "Primary action; omitted means read-only list. Compatibility aliases remain in SKILL.md. Operation-specific approvals still apply."
+    }
+  ]
+}

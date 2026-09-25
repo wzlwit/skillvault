@@ -1,0 +1,47 @@
+{
+  "name": "harness-review",
+  "title": "Harness Review",
+  "version": "1.0.0",
+  "kind": "agent",
+  "description": "Review current-project changes with a whole-repository Fresh pass when no new findings appear, automatically restarting when local files change. Use /harness-review or /hn-review with list, run, or explicit review options. Overlaps with pr-review on general review and differential-review on security; PR URLs delegate to pr-review.",
+  "tags": [
+    "harness",
+    "review",
+    "git"
+  ],
+  "author": "wzlwit",
+  "source": {
+    "repo": "skillvault",
+    "path": "skills/planning/harness-review"
+  },
+  "install": {
+    "global": true,
+    "project": true,
+    "session": true,
+    "defaultScope": "global",
+    "strategy": "copy"
+  },
+  "dependencies": [
+    "harness",
+    "rules"
+  ],
+  "examples": [
+    "/harness-review",
+    "/harness-review list",
+    "/harness-review run"
+  ],
+  "readme": "SKILL.md",
+  "inputs": [
+    {
+      "name": "action",
+      "required": false,
+      "type": "string",
+      "default": "list",
+      "enum": [
+        "list",
+        "run"
+      ],
+      "description": "Primary action; omitted means read-only list. Compatibility aliases remain in SKILL.md. Operation-specific approvals still apply."
+    }
+  ]
+}

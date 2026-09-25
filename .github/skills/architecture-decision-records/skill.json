@@ -1,0 +1,34 @@
+{
+  "name": "architecture-decision-records",
+  "title": "Architecture Decision Records",
+  "version": null,
+  "kind": "agent",
+  "description": "Preserve architectural rationale and supersession; overlaps with grilling on trade-offs, planning-with-files on notes, and harness-decision on decision history.",
+  "tags": [
+    "documentation",
+    "adr",
+    "architecture",
+    "decisions"
+  ],
+  "author": "Seth Hobson",
+  "maintainer": "wzlwit",
+  "license": "MIT",
+  "homepage": "https://github.com/wshobson/agents/tree/main/plugins/documentation-generation/skills/architecture-decision-records",
+  "source": {
+    "repo": "skillvault",
+    "path": "skills/writing/architecture-decision-records"
+  },
+  "upstream": {
+    "repo": "https://github.com/wshobson/agents",
+    "path": "plugins/documentation-generation/skills/architecture-decision-records",
+    "license": "MIT"
+  },
+  "install": {
+    "global": true,
+    "project": true,
+    "session": true,
+    "defaultScope": "global",
+    "strategy": "copy"
+  },
+  "readme": "SKILL.md"
+}

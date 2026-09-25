@@ -1,0 +1,57 @@
+{
+  "name": "pr-review",
+  "title": "PR Review",
+  "version": "1.0.0",
+  "ownershipProtocol": 1,
+  "requiredInterfaces": {
+    "harness": {
+      "harness-runtime": 1
+    }
+  },
+  "kind": "agent",
+  "description": "Review a PR URL, repository, or user-wide watchlist. Use /pr-review list, run, configure, or explicit PR input. Overlaps with harness-review on general review and differential-review on security; owns remote selection and isolated evidence, while pr-watch manages targets.",
+  "tags": [
+    "github",
+    "pull-request",
+    "review",
+    "automation"
+  ],
+  "author": "wzlwit",
+  "source": {
+    "repo": "skillvault",
+    "path": "skills/github/pr-review"
+  },
+  "install": {
+    "global": true,
+    "project": true,
+    "session": true,
+    "defaultScope": "global",
+    "strategy": "copy"
+  },
+  "dependencies": [
+    "git",
+    "gh",
+    "harness",
+    "rules"
+  ],
+  "examples": [
+    "/pr-review",
+    "/pr-review list",
+    "/pr-review run"
+  ],
+  "readme": "SKILL.md",
+  "inputs": [
+    {
+      "name": "action",
+      "required": false,
+      "type": "string",
+      "default": "list",
+      "enum": [
+        "list",
+        "run",
+        "configure"
+      ],
+      "description": "Primary action; omitted means read-only list. Compatibility aliases remain in SKILL.md. Operation-specific approvals still apply."
+    }
+  ]
+}
