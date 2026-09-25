@@ -1,0 +1,14 @@
+{
+  "name": "skillvault-validation",
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "validate": "node scripts/validate-skill-files.mjs",
+    "test": "node --test scripts/test-skill-files.mjs"
+  },
+  "devDependencies": {
+    "yaml": "2.9.0"
+  }
+}
