@@ -1,0 +1,86 @@
+{
+  "name": "skillvault-authoring",
+  "title": "SkillVault Authoring",
+  "version": "1.0.0",
+  "status": "public",
+  "visibility": "public",
+  "kind": "agent",
+  "description": "Author and maintain skill bundles and catalog entries in the SkillVault repository, not application source or installed copies. Use /skillvault-authoring or /sv-authoring list, upsert, or remove; create/update are upsert aliases. Accepts legacy /skillvault-source, /sv-source, skillvault-upsert, skillvault-remove and their shortcuts. Can install afterward through skillvault-installation with separate target and approval.",
+  "tags": [
+    "skillvault",
+    "authoring",
+    "upsert",
+    "open-source",
+    "scaffold"
+  ],
+  "author": "wzlwit",
+  "license": "MIT",
+  "homepage": "https://github.com/wzlwit/skillvault",
+  "source": {
+    "repo": "skillvault",
+    "path": "skills/core/skillvault-authoring"
+  },
+  "install": {
+    "global": true,
+    "project": false,
+    "session": false,
+    "defaultScope": "global",
+    "globalPath": "~/.copilot/skills",
+    "strategy": "copy"
+  },
+  "inputs": [
+    {
+      "name": "action",
+      "required": false,
+      "type": "string",
+      "default": "list",
+      "enum": [
+        "list",
+        "upsert",
+        "remove"
+      ],
+      "description": "Primary action; omitted means read-only list. Compatibility aliases remain in SKILL.md. Operation-specific approvals still apply."
+    },
+    {
+      "name": "nameOrUrl",
+      "required": false,
+      "type": "string",
+      "description": "Existing repository skill name to edit, new skill name to create from scratch, or source URL to derive a skill from. A name does not automatically import an installed copy. Required only for the selected operation, not status or help."
+    },
+    {
+      "name": "scope",
+      "required": false,
+      "type": "string",
+      "default": "default",
+      "enum": [
+        "default",
+        "global",
+        "project",
+        "session",
+        "none"
+      ],
+      "description": "Install scope after upsert. default means auto-guess from the created skill manifest. none means do not install."
+    },
+    {
+      "name": "repoPath",
+      "required": false,
+      "type": "string",
+      "description": "Explicit SkillVault checkout through --repo <path>. Relative to the working project; must pass Git-root and origin verification. Does not select the installation destination."
+    }
+  ],
+  "outputs": [
+    "upsert-summary",
+    "install-summary",
+    "validation-summary"
+  ],
+  "dependencies": [
+    "git",
+    "skillvault-installation"
+  ],
+  "examples": [
+    "/skillvault-authoring",
+    "/skillvault-authoring list",
+    "/skillvault-authoring upsert"
+  ],
+  "readme": "SKILL.md"
+}

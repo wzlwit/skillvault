@@ -1,0 +1,67 @@
+{
+  "name": "skillvault-discovery",
+  "title": "SkillVault Discovery",
+  "version": "1.0.0",
+  "status": "public",
+  "visibility": "public",
+  "kind": "agent",
+  "description": "Discover skills, evaluate candidates, and explain skills, tools, or products. Use /skillvault-discovery or /sv-discovery list, search, evaluate, or explain. Replaces skillvault-search, skillvault-evaluate, skillvault-key-points and /sv-search, /sv-evaluate, /sv-key-points. Evaluation saves a public-safe assessment unless chat-only; search and explanation are read-only. None installs, runs, or edits the target.",
+  "tags": [
+    "skillvault",
+    "discovery",
+    "search",
+    "agent-skills"
+  ],
+  "author": "wzlwit",
+  "license": "MIT",
+  "homepage": "https://github.com/wzlwit/skillvault",
+  "source": {
+    "repo": "skillvault",
+    "path": "skills/core/skillvault-discovery"
+  },
+  "install": {
+    "global": true,
+    "project": true,
+    "session": true,
+    "defaultScope": "global",
+    "strategy": "copy"
+  },
+  "inputs": [
+    {
+      "name": "action",
+      "required": false,
+      "type": "string",
+      "default": "list",
+      "enum": [
+        "list",
+        "search",
+        "evaluate",
+        "explain"
+      ],
+      "description": "Primary action; omitted means read-only list. Compatibility aliases remain in SKILL.md. Operation-specific approvals still apply."
+    },
+    {
+      "name": "description",
+      "required": false,
+      "type": "string",
+      "description": "Skill name, tool/product name, URL, capability, workflow, or problem for the selected action. Required only for that operation, not list or help."
+    }
+  ],
+  "outputs": [
+    "skill-candidates",
+    "source-links",
+    "search-summary"
+  ],
+  "readme": "SKILL.md",
+  "dependencies": [
+    "git",
+    "skillvault-installation"
+  ],
+  "examples": [
+    "/skillvault-discovery",
+    "/skillvault-discovery list",
+    "/skillvault-discovery search",
+    "/skillvault-discovery evaluate https://playwright.dev/",
+    "/skillvault-discovery explain playwright"
+  ]
+}

@@ -1,0 +1,74 @@
+{
+  "name": "skillvault-refresh",
+  "title": "SkillVault Refresh",
+  "version": "1.0.0",
+  "ownershipProtocol": 1,
+  "runtimeInterfaces": {
+    "structured-refresh": 1
+  },
+  "requiredInterfaces": {
+    "skillvault-installation": {
+      "compatibility": 1,
+      "installation-transactions": 1
+    }
+  },
+  "status": "public",
+  "visibility": "public",
+  "kind": "agent",
+  "description": "Refresh managed global latest skill copies one way from recorded Git sources. Use /skillvault-refresh or /sv-refresh list or run; accepts skillvault-fresh, /sv-fresh, /skv-fresh, /skillvault-sync and /sv-sync. Scheduling delegates to harness-timer set refresh. Does not push upstream or update project copies.",
+  "tags": [
+    "bootstrap",
+    "sync",
+    "schedule",
+    "automation"
+  ],
+  "author": "wzlwit",
+  "license": "MIT",
+  "homepage": "https://github.com/wzlwit/skillvault",
+  "source": {
+    "repo": "skillvault",
+    "path": "skills/core/skillvault-refresh"
+  },
+  "install": {
+    "global": true,
+    "project": false,
+    "session": false,
+    "defaultScope": "global",
+    "globalPath": "~/.copilot/skills",
+    "strategy": "copy"
+  },
+  "inputs": [
+    {
+      "name": "action",
+      "required": false,
+      "type": "string",
+      "default": "list",
+      "enum": [
+        "list",
+        "run"
+      ],
+      "description": "Primary action; omitted means read-only list. Compatibility aliases remain in SKILL.md. Operation-specific approvals still apply."
+    },
+    {
+      "name": "intervalDay",
+      "required": false,
+      "type": "number",
+      "default": 1,
+      "description": "One-way refresh interval in days. Defaults to 1. Decimal values are allowed. Use 0 to run one immediate refresh without scheduling."
+    }
+  ],
+  "outputs": [
+    "sync-schedule-summary",
+    "sync-run-summary"
+  ],
+  "dependencies": [
+    "git",
+    "skillvault-installation"
+  ],
+  "examples": [
+    "/skillvault-refresh",
+    "/skillvault-refresh list",
+    "/skillvault-refresh run"
+  ],
+  "readme": "SKILL.md"
+}
