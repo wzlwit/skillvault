@@ -19,6 +19,7 @@ $projectRoot = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFrom
 if (-not (Test-Path -LiteralPath $projectRoot -PathType Container)) { throw "Project directory not found: $projectRoot" }
 $configPath = Join-Path $projectRoot '.harness_sv/config.json'
 $legacyConfigPath = Join-Path $projectRoot '.harness/config.json'
+if (Test-Path -LiteralPath (Join-Path $projectRoot '.harness/config/project.json')) { $legacyConfigPath = Join-Path $projectRoot '.harness/config/project.json' }
 if (-not (Test-Path -LiteralPath (Join-Path $projectRoot '.harness_sv')) -and (Test-Path -LiteralPath $legacyConfigPath -PathType Leaf)) {
     $legacyConfig = $null
     try { $legacyConfig = [IO.File]::ReadAllText($legacyConfigPath) | ConvertFrom-Json }
@@ -29,7 +30,11 @@ if (-not (Test-Path -LiteralPath (Join-Path $projectRoot '.harness_sv')) -and (T
         $configPath = $legacyConfigPath
     }
 }
-if (Test-Path -LiteralPath (Join-Path (Split-Path -Parent $configPath) 'move.pending.json')) { throw 'Harness relocation is incomplete. Preserve both locations before recording decisions.' }
+$controlRoot = if ($configPath -ieq $legacyConfigPath) { Join-Path $projectRoot '.harness' } else { Join-Path $projectRoot '.harness_sv' }
+if (Test-Path -LiteralPath (Join-Path $controlRoot 'config/project.json')) { $configPath = Join-Path $controlRoot 'config/project.json' }
+foreach ($pending in @('move.pending.json', 'migrate.pending.json', 'runtime/config.pending.json', 'board-name.pending.json', 'runtime/board-name.pending.json')) {
+    if (Test-Path -LiteralPath (Join-Path $controlRoot $pending)) { throw 'Harness relocation, migration, or configuration update is incomplete. Preserve recovery evidence before recording decisions.' }
+}
 if (-not $PSBoundParameters.ContainsKey('BoardPath') -and (Test-Path -LiteralPath $configPath -PathType Leaf)) {
     $config = [System.IO.File]::ReadAllText($configPath) | ConvertFrom-Json
     if ($config.schemaVersion -ne 1 -or $config.projectRoot -ine $projectRoot -or [string]::IsNullOrWhiteSpace([string]$config.boardPath)) { throw 'Harness board configuration is invalid for this project.' }
@@ -137,7 +142,9 @@ if (-not (Test-Path -LiteralPath $boardRoot)) { New-Item -ItemType Directory -Pa
 $temporaryPath = Join-Path $boardRoot ('.decisions-' + [guid]::NewGuid().ToString('N') + '.tmp')
 $recordLock = [IO.File]::Open((Join-Path $boardRoot 'decisions.lock'), [IO.FileMode]::OpenOrCreate, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
 try {
-    if (Test-Path -LiteralPath (Join-Path (Split-Path -Parent $configPath) 'move.pending.json')) { throw 'Harness relocation is incomplete. Read the selected controller again before recording.' }
+    foreach ($pending in @('move.pending.json', 'migrate.pending.json', 'runtime/config.pending.json', 'board-name.pending.json', 'runtime/board-name.pending.json')) {
+        if (Test-Path -LiteralPath (Join-Path $controlRoot $pending)) { throw 'Harness relocation, migration, or configuration update is incomplete. Read the selected controller again before recording.' }
+    }
     $currentSnapshot = if (Test-Path -LiteralPath $registerPath) { [IO.File]::ReadAllText($registerPath) } else { $null }
     if ($currentSnapshot -cne $registerSnapshot) { throw 'The decision register changed. Read its latest records before applying this choice.' }
     [System.IO.File]::WriteAllLines($temporaryPath, [string[]]$csvLines, (New-Object System.Text.UTF8Encoding($false)))

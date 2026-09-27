@@ -16,7 +16,7 @@ function Assert-PolicyFailure {
 
 try {
     New-Item -ItemType Directory -Path $fixtureRoot | Out-Null
-    $paths = Get-HarnessPaths $fixtureRoot
+    $paths = Get-HarnessPaths $fixtureRoot -LayoutVersion 1
     $dispatcher = Join-Path $PSScriptRoot '..\skills\planning\harness\scripts\harness.ps1'
     $view = Get-HarnessPolicyView $paths fallback
     if ($view.initialized -or (Test-Path -LiteralPath $paths.Control)) { throw 'Policy inspection initialized project state.' }
@@ -224,8 +224,9 @@ $ErrorActionPreference = 'Stop'
 . (Join-Path $RuntimePath 'harness-store.ps1')
 . (Join-Path $RuntimePath 'harness-policy.ps1')
 $paths = Get-HarnessPaths $ProjectPath
-$null = Set-HarnessPause $paths project 'Fixture child requests its own stop' 'Fixture owner' -Stop
 [Console]::Out.Write('fixture stop requested')
+[Console]::Out.Flush()
+$null = Set-HarnessPause $paths project 'Fixture child requests its own stop' 'Fixture owner' -Stop
 [System.Threading.ManualResetEventSlim]::new($false).Wait()
 '@ | Set-Content -LiteralPath $childScript -Encoding UTF8
     $runtimePath = Join-Path $PSScriptRoot '..\skills\planning\harness\scripts'

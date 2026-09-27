@@ -43,6 +43,20 @@ Use the [read-only resolver](./scripts/resolve-source-repo.ps1) before writing. 
 verified source-selection order; a working project is eligible only if it is the intended
 verified SkillVault checkout. Do not silently choose another checkout or change a Git remote.
 
+Requests to improve skills from task experience use the
+[experience review](./references/upsert.md#improve-from-task-experience) within `upsert`.
+Check the cause, appropriate destination, existing owner, and applicability before making a
+durable change. This does not make ordinary task completion permission to rewrite skills or rules.
+
+For book-, document-, or URL-derived skills, follow
+[document-derived authoring](./references/upsert.md#author-from-documents): map supported knowledge
+to a usable procedure, check extraction coverage, and separate source content and rights from action
+permissions. Reuse existing approval; ask the user before an action with missing or unclear permission.
+
+Choose [validation checks](./references/upsert.md#validation) before editing. Offer a baseline
+comparison for substantive behavior changes, and check new or materially changed triggers.
+Model runs retain their permission and budget requirements; small wording edits keep focused checks.
+
 Show **SkillVault repository**, **working project**, and any **installation target** separately.
 `--repo` selects the first, never the other two. Preserve public authorship, versions, dependencies,
 and overlap descriptions. Removal is previewed and confirmed. Authoring does not authorize

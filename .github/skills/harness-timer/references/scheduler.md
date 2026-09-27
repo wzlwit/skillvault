@@ -38,10 +38,13 @@ remain singleton logical targets, not per-watch or per-repository schedules.
 
 ## Scope and Execution
 
-Reuse Root selected through `/harness root` and pass `-ProjectPath` explicitly. Project schedule
-definitions, interval, nextDue, enabled state, and active claims live in the resolved control's
-`schedules.json`; `schedules.lock` protects that file. New control is `<root>/.harness_sv`;
-recognized legacy SkillVault controllers remain at `.harness` without migration.
+Reuse Root selected through `/harness root` and pass `-ProjectPath` explicitly. In layout 2,
+`config/schedules.json` is the authoritative project declaration: definitions, interval, anchor,
+and enabled setting. `runtime/schedules.json` holds nextDue, results, recovery, and active invocation
+snapshots; `runtime/locks/schedules.lock` protects updates. Direct edits activate at the next safe
+operation; a launched invocation stays stable until completion. Ticks do not rewrite declarations.
+New control is `<root>/.harness_sv`; legacy flat files and recognized `.harness` controllers stay
+in place until explicit `/hn migrate`, separate from this topic's legacy OS-task migration.
 
 The default user-wide scheduler root is `~/.copilot/skillvault/scheduler`. Its `schedules.json`
 holds project registrations, the PR/refresh logical schedules, shared maintenance settings,
@@ -65,7 +68,8 @@ credential/service design. No password, token extraction, auto-login, or elevati
 The baseline is a scheduling setting, not an agent profile. Routine ticks do not invoke a model.
 Scheduled harness AI workers retain their existing explicit/inherited runner configuration and
 verified-profile selection; their native fallback is `auto` with intelligence-oriented routing.
-PR review retains its own approved profiles. Changing the baseline changes none of these settings.
+Discovery status verification uses model auto without forcing intelligence routing or development's
+Max settings. PR review retains its own approved profiles. Changing the baseline changes none of these settings.
 
 The project adapter reuses [project preflight](project.md) for model/tool limits, approved test
 environments, runner availability, and durable pauses. PR reuses its installed readiness checks;

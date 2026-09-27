@@ -96,7 +96,8 @@ try {
     $state = Read-HarnessSchedules $paths
     if ($Action -eq 'Clean') { $result = Invoke-HarnessSchedulerCleanup $paths $state -Apply -DeleteStale:$DeleteStale }
     else { $state.maintenance.enabled = $Enabled; $result = $state.maintenance }
-    Write-HarnessSchedules $paths $state
+    $changedJobs = @($result.schedules | Where-Object action -In @('Disable', 'Delete') | ForEach-Object id)
+    Write-HarnessSchedules $paths $state -RuntimeOnly:($changedJobs.Count -eq 0) -ChangedJobIds $changedJobs
     $null = Sync-HarnessHeartbeat $paths $state
     $result | ConvertTo-Json -Depth 25
 }

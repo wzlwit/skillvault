@@ -1,6 +1,6 @@
 param(
     [ValidateNotNullOrEmpty()][string]$ProjectPath,
-    [ValidateSet('Init', 'Status', 'Context', 'Root', 'Clean', 'Board', 'Task', 'UpdateTask', 'Ref', 'Dev', 'Review', 'Cycle', 'Recover', 'Test', 'TestConfig', 'Restrict', 'Fallback', 'Monitor', 'MonitorConfig', 'MonitorTask')][string]$Action = 'Status',
+    [ValidateSet('Init', 'Status', 'Context', 'Root', 'Migrate', 'Clean', 'Board', 'Task', 'UpdateTask', 'Ref', 'Dev', 'Review', 'Cycle', 'Recover', 'Test', 'TestConfig', 'Restrict', 'Fallback', 'Monitor', 'MonitorConfig', 'MonitorTask', 'MonitorAssess')][string]$Action = 'Status',
     [string]$Id,
     [string]$Title,
     [string]$Text,
@@ -36,12 +36,17 @@ param(
     [string]$Target,
     [string]$Actor,
     [string]$Reason,
-    [switch]$Apply
+    [switch]$Apply,
+    [string]$SourceOwner,
+    [switch]$AllMonitors,
+    [string]$CurrentFileName,
+    [string]$ViewTopic,
+    [string[]]$ViewMonitors
 )
 
 . (Join-Path $PSScriptRoot 'harness-ownership.ps1')
 $entryOwnership = $null
-$guardsExecution = $Action -in @('Dev', 'Cycle', 'Review') -or ($Action -eq 'Test' -and $Flow) -or ($Action -eq 'Monitor' -and $MonitorName)
+$guardsExecution = $Action -in @('Dev', 'Cycle', 'Review', 'MonitorAssess') -or ($Action -eq 'Test' -and $Flow) -or ($Action -eq 'Monitor' -and ($MonitorName -or $AllMonitors))
 try {
 if ($guardsExecution) {
     try { $entryOwnership = Enter-HarnessOwnership -Paths ([pscustomobject]@{ Project = $ProjectPath }) -Role dispatcher }
@@ -55,6 +60,9 @@ if ($guardsExecution) {
 if (($Move -or $PSBoundParameters.ContainsKey('DestinationPath')) -and $Action -ne 'Root') { throw 'Move and DestinationPath apply only to Root.' }
 if ($SecurityReview -and $Action -ne 'Review') { throw 'SecurityReview applies only to the independent Review action.' }
 if ($ConfirmLocation -and $Action -ne 'Init') { throw 'ConfirmLocation applies only to Init.' }
+if ($AllMonitors -and ($Action -ne 'Monitor' -or $MonitorName)) { throw 'AllMonitors requires Monitor without a single MonitorName.' }
+if ($PSBoundParameters.ContainsKey('CurrentFileName') -and ($Action -notin @('Init', 'Board') -or $BoardPath -or $Scheduled)) { throw 'CurrentFileName requires attended Init or Board without a simultaneous board relocation.' }
+if (($ViewTopic -or $ViewMonitors) -and ($Action -ne 'Board' -or $CurrentFileName -or $BoardPath -or $Scheduled)) { throw 'Filtered view options require attended Board without a simultaneous rename or relocation.' }
 if ($PSBoundParameters.ContainsKey('FollowUpOf') -and ($Action -notin @('Task', 'Dev') -or $Id)) { throw 'FollowUpOf creates a task through Task or Dev without Id; use UpdateTask -Id to revise a completed task.' }
 if ($PSBoundParameters.ContainsKey('RepositoryRef') -and $Action -notin @('Task', 'UpdateTask', 'Dev', 'Review')) { throw 'RepositoryRef selects a coding target; use it with Task, UpdateTask, Dev, or Review.' }
 if ($PSBoundParameters.ContainsKey('RepositoryRef') -and (($Action -eq 'Task' -and -not $Title -and -not $FollowUpOf) -or ($Action -eq 'Dev' -and -not $Id -and -not $Title -and -not $FollowUpOf))) { throw 'RepositoryRef requires a new task title or Dev -Id; use UpdateTask -Id to change a queued task.' }
@@ -76,12 +84,19 @@ if ($Action -eq 'Root') {
     if ($Apply -or $PSBoundParameters.ContainsKey('DestinationPath')) { throw 'Ordinary Root is read-only. Use explicit -Move with -DestinationPath for relocation.' }
     $initialized = Test-Path -LiteralPath $paths.Config -PathType Leaf
     $config = if ($initialized) { Read-HarnessConfig $paths } else { $null }
-    $board = if ($initialized) { Get-HarnessBoard $paths $config } else { $paths.Control }
-    [ordered]@{ project = $paths.Project; control = $paths.Control; config = $paths.Config; state = $paths.State; board = $board; executionRoot = $(if ($initialized) { Get-HarnessExecutionRoot $config }); initialized = $initialized; selection = $(if ($defaultRoot) { 'CurrentDirectory' } else { 'Explicit' }) } | ConvertTo-Json
+    $board = if ($initialized) { Get-HarnessBoard $paths $config } else { Get-HarnessDefaultBoard $paths }
+    $current = if ($initialized) { Get-HarnessCurrentPath $paths $config } else { Join-Path $board ('current-' + (Get-HarnessProjectSlug $paths) + '.csv') }
+    [ordered]@{ project = $paths.Project; control = $paths.Control; config = $paths.Config; state = $paths.State; board = $board; current = $current; executionRoot = $(if ($initialized) { Get-HarnessExecutionRoot $config }); initialized = $initialized; selection = $(if ($defaultRoot) { 'CurrentDirectory' } else { 'Explicit' }) } | ConvertTo-Json
     return
 }
 $RunnerContext = Read-HarnessRunnerContext -RunnerContext $RunnerContext -ContextPath $RunnerContextPath -ProjectRoot $paths.Project
-if ($Action -eq 'Monitor' -and -not $MonitorName) {
+if ($Action -eq 'Migrate') {
+    if ($Scheduled) { throw 'Layout migration is an attended explicit operation, never a scheduled tick.' }
+    . (Join-Path $PSScriptRoot 'harness-migration.ps1')
+    Invoke-HarnessMigration -Paths $paths -Apply:$Apply -RunnerContext $RunnerContext | ConvertTo-Json -Depth 12
+    return
+}
+if ($Action -eq 'Monitor' -and -not $MonitorName -and -not $AllMonitors) {
     if ($Scheduled -or $Id -or $Apply) { throw 'Choose a monitor name before supplying run options.' }
     Get-HarnessMonitorView $paths | ConvertTo-Json -Depth 15
     return
@@ -98,7 +113,7 @@ if ($Action -in @('Restrict', 'Fallback')) {
     }
     else {
         if ($Action -ne 'Fallback' -or $DefinitionPath) { throw 'Only Fallback supports target Pause, Stop, and Resume actions.' }
-        $null = Read-HarnessConfig $paths
+        if ($PolicyAction -eq 'Resume') { $null = Read-HarnessConfig $paths }
         Assert-HarnessPolicyTarget $Target
         if (-not $Apply) {
             [ordered]@{ preview = $true; action = $PolicyAction; target = $Target; actor = $Actor; reason = $Reason; currentPause = Get-HarnessPause $paths $Target; confirmStopped = [bool]$ConfirmStopped } | ConvertTo-Json -Depth 10
@@ -115,19 +130,21 @@ if ($Action -in @('Restrict', 'Fallback')) {
 if ($Action -eq 'Init') {
     if ($Scheduled) { throw 'Init requires a session initialization request; scheduled initialization is not allowed.' }
     if (-not $ConfirmLocation) { throw "Supply -ConfirmLocation to acknowledge the resolved Root '$($paths.Project)'. Reuse the selected location without another user confirmation." }
-    Initialize-Harness $paths | ConvertTo-Json -Depth 8
+    $initOptions = @{}
+    if ($PSBoundParameters.ContainsKey('CurrentFileName')) { $initOptions.CurrentFileName = $CurrentFileName }
+    Initialize-Harness $paths @initOptions | ConvertTo-Json -Depth 8
     return
 }
 if (-not (Test-Path -LiteralPath $paths.Config)) {
     if ($Action -in @('Status', 'Context', 'Board') -or ($Action -eq 'Test' -and -not $Flow)) {
-        [ordered]@{ initialized = $false; project = $paths.Project; board = $paths.Control; next = '/harness init' } | ConvertTo-Json
+        [ordered]@{ initialized = $false; project = $paths.Project; board = Get-HarnessDefaultBoard $paths; next = '/harness init' } | ConvertTo-Json
         return
     }
 }
 $config = Read-HarnessConfig $paths
 $state = Read-HarnessState $paths
 $taskFields = @{}
-foreach ($field in @('Title', 'Scope', 'Acceptance', 'Source', 'SourceRevision', 'Kind', 'Priority', 'Risk', 'AutoEligible', 'RepositoryRef')) {
+foreach ($field in @('Title', 'Scope', 'Acceptance', 'Source', 'SourceRevision', 'SourceOwner', 'Kind', 'Priority', 'Risk', 'AutoEligible', 'RepositoryRef')) {
     if ($PSBoundParameters.ContainsKey($field)) { $taskFields[$field] = $PSBoundParameters[$field] }
 }
 if ($PSBoundParameters.ContainsKey('Text')) { $taskFields.Description = $Text }
@@ -149,10 +166,15 @@ switch ($Action) {
         if (-not $Id -or $Scheduled -or $AutoEligible) { throw 'MonitorTask requires an exact incident Id and never permits scheduled or automatic task execution.' }
         Add-HarnessMonitorTask -Paths $paths -IncidentId $Id -Apply:$Apply -Actor $Actor -Reason $Reason | ConvertTo-Json -Depth 15
     }
+    'MonitorAssess' {
+        if (-not $MonitorName -or -not $DefinitionPath -or $Scheduled) { throw 'MonitorAssess requires a named monitor and assessment file; scheduled collection uses reviewed adapter assessments.' }
+        Set-HarnessDiscoveryAssessment -Paths $paths -Name $MonitorName -DefinitionPath $DefinitionPath -Apply:$Apply -RunnerContext $RunnerContext | ConvertTo-Json -Depth 15
+    }
     'Monitor' {
-        $result = Invoke-HarnessMonitor -Paths $paths -Name $MonitorName -Scheduled:$Scheduled -RunnerContext $RunnerContext
+        $result = if ($AllMonitors) { Invoke-HarnessMonitorBatch -Paths $paths -Scheduled:$Scheduled -RunnerContext $RunnerContext }
+            else { Invoke-HarnessMonitor -Paths $paths -Name $MonitorName -Scheduled:$Scheduled -RunnerContext $RunnerContext }
         $result | ConvertTo-Json -Depth 15
-        if ($result.status -in @('Failed', 'Blocked', 'NeedsRecovery')) { throw "Monitoring did not establish current health: $($result.status). Report: $($result.report)" }
+        if ($result.status -in @('Failed', 'Blocked', 'NeedsRecovery', 'Partial')) { throw "Monitoring did not establish a complete result: $($result.status). Report: $($result.report)" }
     }
     'TestConfig' {
         if (-not $DefinitionPath) { throw 'TestConfig requires an explicit declaration file.' }
@@ -169,7 +191,7 @@ switch ($Action) {
         if ($result.status -in @('Failed', 'Blocked')) { throw "Test flow $Flow $($result.status). See the saved report: $($result.report)" }
     }
     'Status' {
-        [ordered]@{ project = $paths.Project; board = Get-HarnessBoard $paths $config; active = $state.active; tasks = $state.tasks; nextQueue = $state.nextQueue; nowQueue = $state.nowQueue; resumeQueue = $state.resumeQueue; safety = Get-HarnessSafetyState $state } | ConvertTo-Json -Depth 10
+        [ordered]@{ project = $paths.Project; board = Get-HarnessBoard $paths $config; current = Get-HarnessCurrentPath $paths $config; active = $state.active; tasks = $state.tasks; nextQueue = $state.nextQueue; nowQueue = $state.nowQueue; resumeQueue = $state.resumeQueue; safety = Get-HarnessSafetyState $state } | ConvertTo-Json -Depth 10
     }
     'Context' {
         $task = $null
@@ -185,6 +207,7 @@ switch ($Action) {
             project = $paths.Project
             executionRoot = $executionRoot
             board = Get-HarnessBoard $paths $config
+            current = Get-HarnessCurrentPath $paths $config
             task = $task
             repository = $repository
             effectiveRunner = (Resolve-HarnessRunnerConfig $config $RunnerContext).runner | Select-Object command, model, reasoningEffort, contextTier, workspaceMode, maxMinutes, maxCredits, maxTasksPerCycle, criticalReview, availableTools
@@ -194,8 +217,16 @@ switch ($Action) {
         } | ConvertTo-Json -Depth 10
     }
     'Board' {
+        if ($ViewTopic -or $ViewMonitors) {
+            Export-HarnessCurrentView $paths $ViewTopic $ViewMonitors -Apply:$Apply -RunnerContext $RunnerContext | ConvertTo-Json -Depth 10
+            break
+        }
+        if ($PSBoundParameters.ContainsKey('CurrentFileName')) {
+            Set-HarnessCurrentFileName $paths $CurrentFileName -Apply:$Apply -RunnerContext $RunnerContext | ConvertTo-Json -Depth 10
+            break
+        }
         if ($PSBoundParameters.ContainsKey('BoardPath')) { $config = Set-HarnessBoard $paths $BoardPath }
-        [ordered]@{ project = $paths.Project; board = Get-HarnessBoard $paths $config } | ConvertTo-Json
+        [ordered]@{ project = $paths.Project; board = Get-HarnessBoard $paths $config; current = Get-HarnessCurrentPath $paths $config } | ConvertTo-Json
     }
     'Task' {
         if ($Title -or $FollowUpOf) {

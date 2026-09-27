@@ -38,3 +38,6 @@ not the rule-editing workflow. Applying rules does not grant tools, permissions,
 Grilling resolves human decisions and may propose a reusable rule. It never automatically
 edits the authoritative rule document, overrides a security requirement, or substitutes for
 tests and independent review. Persistent changes still use the confirmed management route.
+Lessons from completed work use the same [proposal checks](./references/manage.md#lessons-proposed-as-rules).
+Verify the cause and scope, test for overgeneralization, and retain the existing approval boundary.
+This does not add a reflection hook or change the four rules applied to ordinary work.

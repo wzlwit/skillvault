@@ -1,4 +1,4 @@
-param([switch]$RefreshRetryOnly)
+param([switch]$RefreshRetryOnly, [switch]$LayoutOnly)
 
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot '../skills/planning/harness/scripts/harness-duration.ps1')
@@ -29,6 +29,44 @@ $fixture = Join-Path ([IO.Path]::GetTempPath()) ('sv-scheduler-' + [guid]::NewGu
 $savedFixtureOwnershipRoot = $env:SKILLVAULT_OWNERSHIP_ROOT
 $env:SKILLVAULT_OWNERSHIP_ROOT = Join-Path $fixture 'runtime-ownership'
 try {
+    if ($LayoutOnly) {
+        $project = Join-Path $fixture 'declarative'
+        New-Item -ItemType Directory -Path $project -Force | Out-Null
+        $projectPaths = Get-HarnessPaths $project
+        $config = Initialize-Harness $projectPaths
+        $paths = Get-HarnessSchedulerPaths (Join-Path $fixture 'scheduler')
+        function Sync-HarnessHeartbeat { param($Paths, $State, $Now, $DeferredJobIds); [pscustomobject]@{ taskName = 'fixture' } }
+        $script:launchedArguments = @()
+        function Start-HarnessScheduledWorker { param($Paths, $Job, $RunId); $script:launchedArguments = @($Job.arguments); [pscustomobject]@{ processId = 4321; processStartedAt = '2026-09-25T10:00:00Z' } }
+        function Test-HarnessScheduledProcess { param($Active); $true }
+        $definition = [pscustomobject]@{ key = 'layout'; kind = 'project'; projectRoot = $project; projectId = $config.projectId; directory = $project; executable = 'pwsh'; arguments = @('original') }
+        $now = [datetimeoffset]'2026-09-25T10:00:00Z'
+        $created = Set-HarnessSchedule $paths $definition '1h' -Now $now -Apply
+        $declaration = [IO.File]::ReadAllText($projectPaths.ScheduleConfig)
+        $tick = Invoke-HarnessSchedulerTick $paths -Now $now.AddHours(1)
+        if ($tick.started.Count -ne 1 -or $script:launchedArguments[0] -cne 'original' -or [IO.File]::ReadAllText($projectPaths.ScheduleConfig) -cne $declaration) { throw 'Tick changed declarations or failed to launch the declared invocation.' }
+        $edited = Read-HarnessConfigObject $projectPaths.ScheduleConfig
+        $edited.jobs[0].arguments = @('next-operation')
+        Write-HarnessJson $projectPaths.ScheduleConfig $edited
+        $changed = [IO.File]::ReadAllText($projectPaths.ScheduleConfig)
+        $null = Set-HarnessHeartbeatInterval $paths '12h' -Apply
+        if ([IO.File]::ReadAllText($projectPaths.ScheduleConfig) -cne $changed) { throw 'Heartbeat settings overwrote an edited active schedule declaration.' }
+        $running = Read-HarnessSchedules $paths
+        if ($running.jobs[0].arguments[0] -cne 'original') { throw 'Active invocation was not stable.' }
+        New-Item -ItemType Directory -Path $paths.Receipts -Force | Out-Null
+        Write-HarnessJson (Join-Path $paths.Receipts ($created.job.id + '.json')) ([pscustomobject]@{ runId = $running.jobs[0].active.runId; status = 'Succeeded'; exitCode = 0 })
+        $null = Invoke-HarnessSchedulerTick $paths -Now $now.AddMinutes(61)
+        $latest = Read-HarnessSchedules $paths
+        if ($latest.jobs[0].arguments[0] -cne 'next-operation' -or $latest.jobs[0].active -or [IO.File]::ReadAllText($projectPaths.ScheduleConfig) -cne $changed) { throw 'Completed-worker reconciliation did not activate the saved declaration without rewriting it.' }
+        $edited.jobs[0].interval = '2h'
+        Write-HarnessJson $projectPaths.ScheduleConfig $edited
+        Assert-SchedulerFailure { Write-HarnessSchedules $paths $latest }
+        Remove-Item -LiteralPath $projectPaths.ScheduleState
+        Assert-SchedulerFailure { Read-HarnessProjectSchedules $projectPaths }
+        if (@((Read-HarnessSchedules $paths).unavailableProjects).Count -ne 1) { throw 'Missing schedule progress was treated as an idle controller.' }
+        Write-Output 'Declarative scheduler checks passed: runtime-only ticks, frozen invocations, safe-boundary activation, and concurrent declaration preservation.'
+        return
+    }
     $retryStart = [datetimeoffset]'2026-09-24T08:00:00Z'
     $retryJob = [pscustomobject]@{
         kind = 'refresh'; enabled = $true; retiredAt = ''; recoveryRequired = $false
@@ -84,7 +122,7 @@ try {
     if (Test-Path $paths.Root) { throw 'Rejected heartbeat settings created scheduler state.' }
     $project = Join-Path $fixture 'project'
     New-Item -ItemType Directory -Path $project -Force | Out-Null
-    $projectPaths = Get-HarnessPaths $project
+    $projectPaths = Get-HarnessPaths $project -LayoutVersion 1
     $config = Initialize-Harness $projectPaths
     $script:heartbeatCalls = 0
     function Sync-HarnessHeartbeat { param($Paths, $State, $Now); $script:heartbeatCalls++; [pscustomobject]@{ taskName = 'fixture-heartbeat' } }
@@ -336,7 +374,7 @@ if ($RetryPlanPath) {
     if ($maintenanceTrigger.StartBoundary.DayOfWeek -ne [DayOfWeek]::Saturday -or $maintenanceTrigger.StartBoundary.TimeOfDay -ne [timespan]::FromHours(8.5) -or $maintenanceTrigger.Interval -ne [timespan]::FromDays(7)) { throw 'Maintenance-only setup did not wait quietly for Saturday 08:30.' }
     $historyProject = Join-Path $fixture 'history-boundary'
     New-Item -ItemType Directory -Path $historyProject | Out-Null
-    $historyPaths = Get-HarnessPaths $historyProject
+    $historyPaths = Get-HarnessPaths $historyProject -LayoutVersion 1
     $historyConfig = Initialize-Harness $historyPaths
     $report = Join-Path $historyPaths.Control 'history/old.md'
     New-Item -ItemType Directory -Path (Split-Path -Parent $report) | Out-Null

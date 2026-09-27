@@ -11,7 +11,7 @@ if (-not $harnessScripts) { throw 'Install the sibling harness-init dependency b
 function Get-PrReviewPaths {
     param([string]$DataRoot = (Join-Path $HOME '.copilot/pr-review'))
     $root = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($DataRoot)
-    $configPath = if (Test-Path -LiteralPath $root -PathType Container) { (Get-HarnessPaths $root).Config } else { Join-Path $root '.harness_sv/config.json' }
+    $configPath = if (Test-Path -LiteralPath $root -PathType Container) { (Get-HarnessPaths $root).Config } else { Join-Path $root '.harness_sv/config/project.json' }
     [pscustomobject]@{
         Root = $root
         Watchlist = Join-Path $root 'watchlist.json'
@@ -191,7 +191,7 @@ function Set-PrReviewConfiguration {
             foreach ($field in @('command', 'maxMinutes', 'maxCredits', 'rulesPath', 'model', 'reasoningEffort', 'contextTier')) { $config.runner | Add-Member -NotePropertyName $field -NotePropertyValue $runner.$field -Force }
             $profile = Select-PrReviewProfile $config
             Assert-HarnessRestrictions -Config $config -ProjectRoot $runtime.Project -Workspace $runtime.Project -Model $profile.model -Tools @('view', 'glob', 'grep') -Executable $runner.command
-            Write-HarnessJson $runtime.Config $config
+            Write-HarnessConfig $runtime $config
             [pscustomobject]@{ configured = $true; dataRoot = $Paths.Root; selection = $profile; scheduleChanged = $false }
         }
         finally { $runLock.Dispose() }

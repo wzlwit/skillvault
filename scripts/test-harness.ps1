@@ -1,3 +1,5 @@
+param([switch]$LayoutOnly, [switch]$BoardNameOnly)
+
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot '..\skills\planning\harness\scripts\harness-store.ps1')
 . (Join-Path $PSScriptRoot '..\skills\planning\harness\scripts\harness-runner.ps1')
@@ -18,7 +20,192 @@ function Assert-HarnessFailure {
 
 try {
     New-Item -ItemType Directory -Path $fixtureRoot | Out-Null
-    $paths = Get-HarnessPaths $fixtureRoot
+    if ($BoardNameOnly) {
+        $project = Join-Path $fixtureRoot 'DAS Platform'
+        New-Item -ItemType Directory -Path $project | Out-Null
+        $paths = Get-HarnessPaths $project
+        $config = Initialize-Harness $paths
+        $currentPath = Get-HarnessCurrentPath $paths $config
+        if (-not (Test-Path $currentPath) -or (Test-Path (Join-Path (Get-HarnessBoard $paths $config) 'current.csv')) -or
+            (Get-HarnessProjectSlug $paths) -cne 'das-platform' -or (Read-HarnessConfig $paths).currentFileName -cne 'current-das-platform.csv') { throw 'Configured board naming did not produce one project-qualified canonical file.' }
+        if ([IO.File]::ReadAllText((Join-Path $paths.Control 'README.md')) -notmatch 'board/current-das-platform\.csv') { throw 'Navigation did not follow the configured current filename.' }
+        foreach ($invalid in @('../current-other.csv', 'history.csv', 'current[das].csv', '', 'current-das.csv/other', 'C:\current-das.csv')) {
+            Assert-HarnessFailure { Get-HarnessCurrentFileName ([pscustomobject]@{ currentFileName = $invalid }) } 'currentFileName'
+        }
+        $legacyRoot = Join-Path $fixtureRoot 'legacy'
+        New-Item -ItemType Directory -Path $legacyRoot | Out-Null
+        $legacyPaths = Get-HarnessPaths $legacyRoot -LayoutVersion 1
+        $legacy = Initialize-Harness $legacyPaths
+        Write-HarnessViews $legacyPaths $legacy (Read-HarnessState $legacyPaths)
+        if ((Get-HarnessCurrentFileName (Read-HarnessConfig $legacyPaths)) -cne 'current.csv' -or -not (Test-Path (Get-HarnessCurrentPath $legacyPaths $legacy))) { throw 'Legacy controllers did not preserve their current.csv filename.' }
+        $task = Add-HarnessTask $paths -Title 'Preserve identity' -Description 'Keep the same work' -Scope fixture -Acceptance 'Same task and queue'
+        $stateBefore = [IO.File]::ReadAllText($paths.State)
+        $configBefore = [IO.File]::ReadAllText($paths.Config)
+        $preview = Set-HarnessCurrentFileName $paths 'current-service.csv'
+        if (-not $preview.preview -or (Test-Path $preview.destination) -or [IO.File]::ReadAllText($paths.Config) -cne $configBefore) { throw 'Board rename preview wrote files.' }
+        $writer = ${function:Write-HarnessNavigation}
+        try {
+            function Write-HarnessNavigation { throw 'Injected navigation failure.' }
+            Assert-HarnessFailure { Set-HarnessCurrentFileName $paths 'current-service.csv' -Apply } 'Injected navigation failure'
+        }
+        finally { Set-Item Function:Write-HarnessNavigation -Value $writer }
+        if ([IO.File]::ReadAllText($paths.Config) -cne $configBefore -or -not (Test-Path $currentPath) -or (Test-Path $preview.destination)) { throw 'Failed rename did not roll back its files and configuration.' }
+        $dispatcher = Join-Path $PSScriptRoot '../skills/planning/harness/scripts/harness.ps1'
+        $renamed = & $dispatcher -ProjectPath $project -Action Board -CurrentFileName 'current-service.csv' -Apply | ConvertFrom-Json
+        if ($renamed.status -cne 'Renamed' -or (Test-Path $currentPath) -or -not (Test-Path $renamed.destination) -or [IO.File]::ReadAllText($paths.State) -cne $stateBefore -or
+            @(Import-Csv $renamed.destination)[0].id -cne $task.id) { throw 'Rename lost records, changed task state, or left duplicate canonical boards.' }
+        Assert-HarnessFailure { Initialize-Harness $paths -CurrentFileName 'current-other.csv' } 'Init does not rename'
+        [IO.File]::WriteAllText((Join-Path (Get-HarnessBoard $paths $config) 'current-collision.csv'), 'Preserve unrelated file')
+        Assert-HarnessFailure { Set-HarnessCurrentFileName $paths 'current-collision.csv' -Apply } 'already exists'
+        $config = Read-HarnessConfig $paths
+        $config.monitoring.monitors = @([pscustomobject]@{ name = 'design'; kind = 'discovery'; source = [pscustomobject]@{ type = 'folder'; path = 'design' }; environment = 'local'; maxMinutes = 1; maxAgeMinutes = 60; verification = [pscustomobject]@{ enabled = $false } })
+        Write-HarnessConfig $paths $config
+        $null = Update-HarnessState $paths {
+            param($saved)
+            $saved | Add-Member -NotePropertyName monitoring -NotePropertyValue ([pscustomobject]@{ candidates = @([pscustomobject]@{ id = 'C-001'; title = 'Design concern'; monitor = 'design'; taskId = $task.id; source = $task.source; disposition = 'Deferred'; lastSeenAt = [datetimeoffset]::UtcNow.ToString('o') }); latest = @() })
+        }
+        $canonicalBefore = [IO.File]::ReadAllText($renamed.destination)
+        $stateBefore = [IO.File]::ReadAllText($paths.State)
+        $exportPreview = Export-HarnessCurrentView $paths 'planning' @('design')
+        if (-not $exportPreview.preview -or (Test-Path $exportPreview.path)) { throw 'Filtered-view preview created an artifact.' }
+        $exported = & $dispatcher -ProjectPath $project -Action Board -ViewTopic planning -ViewMonitors design -Apply | ConvertFrom-Json
+        if ([IO.Path]::GetFileName($exported.path) -cne 'current-service-planning.csv' -or @(Import-Csv $exported.path).Count -ne 1 -or
+            [IO.File]::ReadAllText($renamed.destination) -cne $canonicalBefore -or [IO.File]::ReadAllText($paths.State) -cne $stateBefore) { throw 'Filtered export changed canonical data or lost its explicit scope.' }
+        Assert-HarnessFailure { Export-HarnessCurrentView $paths planning @('unknown') -Apply } 'exact configured monitor'
+        $held = Enter-HarnessLock $paths.RunLock
+        try { Assert-HarnessFailure { Set-HarnessCurrentFileName $paths 'current-busy.csv' -Apply } 'busy' }
+        finally { $held.Dispose() }
+        $null = Update-HarnessState $paths { param($saved); $saved.active = [pscustomobject]@{ taskId = $task.id; runId = 'active' } }
+        Assert-HarnessFailure { Set-HarnessCurrentFileName $paths 'current-active.csv' -Apply } 'active work'
+        $null = Update-HarnessState $paths { param($saved); $saved.active = $null }
+        $reference = Set-HarnessReference $paths -Source $renamed.destination -Note 'Canonical board link'
+        $decisionHelper = Join-Path $PSScriptRoot '../skills/planning/harness-decision/scripts/harness-decide.ps1'
+        $decision = & $decisionHelper -ProjectPath $project -Action Record -Question 'Which board?' -Choice 'Canonical' -Owner Fixture -Reference $renamed.destination | ConvertFrom-Json
+        $linkedRename = Set-HarnessCurrentFileName $paths 'current-linked.csv' -Apply
+        if (((Read-HarnessState $paths).references | Where-Object id -CEQ $reference.id).source -cne $linkedRename.destination -or
+            (Import-Csv (Join-Path (Get-HarnessBoard $paths $config) 'decisions.csv')).reference -cne $linkedRename.destination) { throw 'Stored board reference or decision links did not follow the explicit rename.' }
+        . (Join-Path $PSScriptRoot '../skills/planning/harness/scripts/harness-move.ps1')
+        function Get-ScheduledTask { param($TaskPath); @() }
+        $movedProject = Join-Path $fixtureRoot 'Renamed Parent'
+        New-Item -ItemType Directory -Path $movedProject | Out-Null
+        $moved = Move-HarnessRoot $paths $movedProject -SchedulerRoot (Join-Path $fixtureRoot 'scheduler') -Apply
+        $movedPaths = Get-HarnessPaths $movedProject
+        $movedConfig = Read-HarnessConfig $movedPaths
+        if ($moved.status -cne 'Moved' -or $movedConfig.currentFileName -cne 'current-linked.csv' -or -not (Test-Path (Get-HarnessCurrentPath $movedPaths $movedConfig))) { throw 'Relocation changed the persisted board filename or lost its projection.' }
+        $snapshotProject = Join-Path $fixtureRoot 'snapshot'
+        New-Item -ItemType Directory -Path $snapshotProject | Out-Null
+        $snapshotPaths = Get-HarnessPaths $snapshotProject
+        $snapshotConfig = Initialize-Harness $snapshotPaths
+        $snapshotConfig = Set-HarnessBoard $snapshotPaths '.'
+        Write-HarnessViews $snapshotPaths $snapshotConfig (Read-HarnessState $snapshotPaths)
+        $null = Invoke-HarnessGit $snapshotProject @('init', '--quiet')
+        $null = Invoke-HarnessGit $snapshotProject @('-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid', 'commit', '--allow-empty', '--quiet', '-m', 'Fixture')
+        [IO.File]::WriteAllText((Join-Path $snapshotProject 'current.csv'), 'Unrelated source file must be reviewed')
+        $snapshot = Get-HarnessSnapshot $snapshotPaths $snapshotConfig $snapshotProject -RepositoryRoot $snapshotProject | ConvertFrom-Json
+        if (@($snapshot.untracked | Where-Object path -CEQ $snapshotConfig.currentFileName).Count -or @($snapshot.untracked | Where-Object path -CEQ 'current.csv').Count -ne 1) { throw 'Snapshot exclusion did not distinguish the owned current filename from unrelated source files.' }
+        Write-Output 'Board naming checks passed: configured canonical path, navigation, project slug, legacy fallback, and path/reserved-file rejection.'
+        return
+    }
+    if ($LayoutOnly) {
+        $paths = Get-HarnessPaths $fixtureRoot
+        $config = Initialize-Harness $paths
+        if (-not (Test-Path (Join-Path $paths.Control 'config/project.json')) -or -not (Test-Path (Join-Path $paths.Control 'runtime/state.json')) -or
+            (Test-Path (Join-Path $paths.Control 'config.json'))) { throw 'Declarative initialization did not separate configuration and runtime state.' }
+        $definition = [pscustomobject]@{
+            name = 'fixture'; kind = 'discovery'; source = [pscustomobject]@{ type = 'folder'; path = 'design' }
+            environment = 'local'; maxMinutes = 1; maxAgeMinutes = 60; response = 'report-only'
+        }
+        $config | Add-Member -NotePropertyName monitoring -NotePropertyValue ([pscustomobject]@{ monitors = @($definition) })
+        $config | Add-Member -NotePropertyName restrictions -NotePropertyValue ([pscustomobject]@{ maxTasksPerCycle = 2 })
+        Write-HarnessConfig $paths $config
+        $projectFile = Read-HarnessConfigObject $paths.Config
+        if ($projectFile.PSObject.Properties['monitoring'] -or $projectFile.PSObject.Properties['restrictions']) { throw 'Domain settings were duplicated into project configuration.' }
+        $monitorPath = Join-Path $paths.Control 'config/monitors.json'
+        $declaration = Read-HarnessConfigObject $monitorPath
+        $declaration.monitors[0].maxAgeMinutes = 10
+        Write-HarnessJson $monitorPath $declaration
+        Assert-HarnessFailure { Write-HarnessConfig $paths $config } 'Configuration declarations changed'
+        $loaded = Read-HarnessConfig (Get-HarnessPaths $fixtureRoot)
+        if ($loaded.monitoring.monitors[0].maxAgeMinutes -ne 10 -or $loaded.restrictions.maxTasksPerCycle -ne 2) { throw 'Direct declaration edits were not authoritative.' }
+        $stateBefore = [IO.File]::ReadAllText($paths.State)
+        $null = Initialize-Harness (Get-HarnessPaths $fixtureRoot)
+        if ([IO.File]::ReadAllText($paths.State) -cne $stateBefore) { throw 'Reconnect modified task state.' }
+        Write-HarnessViews $paths $loaded (Read-HarnessState $paths)
+        if (-not (Test-Path (Get-HarnessCurrentPath $paths $loaded))) { throw 'The declarative layout did not separate board views.' }
+        if (-not (Test-Path (Join-Path $paths.Control 'README.md'))) { throw 'The new controller lacks its navigation entry point.' }
+        $decisionHelper = Join-Path $PSScriptRoot '../skills/planning/harness-decision/scripts/harness-decide.ps1'
+        $null = & $decisionHelper -ProjectPath $fixtureRoot -Action Record -Question 'Layout fixture?' -Choice 'Accepted' -Owner Fixture
+        if (-not (Test-Path (Join-Path $paths.Control 'board/decisions.csv'))) { throw 'Decision records ignored the declarative board location.' }
+        $standaloneRoot = Join-Path $fixtureRoot 'standalone-decisions'
+        New-Item -ItemType Directory -Path $standaloneRoot | Out-Null
+        $null = & $decisionHelper -ProjectPath $standaloneRoot -Action Record -Question 'Existing decision?' -Choice 'Preserve' -Owner Fixture
+        $standalonePaths = Get-HarnessPaths $standaloneRoot
+        $standaloneRegister = Join-Path $standalonePaths.Control 'decisions.csv'
+        $standaloneBefore = [IO.File]::ReadAllText($standaloneRegister)
+        $standaloneConfig = Initialize-Harness $standalonePaths
+        $standaloneView = & $decisionHelper -ProjectPath $standaloneRoot -Filter All | ConvertFrom-Json
+        if ((Get-HarnessBoard $standalonePaths $standaloneConfig) -ine $standalonePaths.Control -or $standaloneView.Recent[0].choice -cne 'Preserve' -or
+            [IO.File]::ReadAllText($standaloneRegister) -cne $standaloneBefore) { throw 'Initialization hid or moved standalone decision records.' }
+        $reportPath = Get-HarnessReportPath $paths $loaded 'run-fixture' Monitor ([datetimeoffset]'2026-09-25T12:34:56Z')
+        if ([IO.Path]::GetRelativePath($paths.Control, $reportPath).Replace('\', '/') -cne 'history/2026-09/20260925T123456000Z-monitor-run-fixture.md') { throw 'Run evidence did not use the monthly readable naming contract.' }
+        . (Join-Path $PSScriptRoot '../skills/planning/harness/scripts/harness-maintenance.ps1')
+        if (-not (Test-HarnessOwnedHistoryPath (Get-HarnessBoard $paths $loaded) $reportPath 'run-fixture' -HistoryRoot (Get-HarnessHistoryRoot $paths $loaded)) -or
+            (Test-HarnessOwnedHistoryPath (Get-HarnessBoard $paths $loaded) $reportPath 'another-run' -HistoryRoot (Get-HarnessHistoryRoot $paths $loaded))) { throw 'Retention lost exact report ownership in the dated layout.' }
+        $policyPath = Join-Path $fixtureRoot 'policy-input.json'
+        Write-HarnessJson $policyPath ([pscustomobject]@{ maxTasksPerCycle = 4 })
+        $dispatcher = Join-Path $PSScriptRoot '..\skills\planning\harness\scripts\harness.ps1'
+        $null = & $dispatcher -ProjectPath $fixtureRoot -Action Restrict -PolicyAction Declare -DefinitionPath $policyPath -Apply -Actor Fixture -Reason 'Test policy storage'
+        if ((Read-HarnessConfigObject (Join-Path $paths.Control 'config/policy.json')).restrictions.maxTasksPerCycle -ne 4 -or
+            (Read-HarnessConfigObject $paths.Config).PSObject.Properties['restrictions']) { throw 'Policy mutation bypassed the authoritative domain file.' }
+        $definition.maxAgeMinutes = 5
+        $monitorInput = Join-Path $fixtureRoot 'monitor-input.json'
+        Write-HarnessJson $monitorInput ([pscustomobject]@{ monitors = @($definition) })
+        $null = & $dispatcher -ProjectPath $fixtureRoot -Action MonitorConfig -DefinitionPath $monitorInput -Apply -Actor Fixture -Reason 'Test monitor storage'
+        if ((Read-HarnessConfig $paths).monitoring.monitors[0].maxAgeMinutes -ne 5 -or
+            (Read-HarnessConfigObject $paths.Config).PSObject.Properties['monitoring']) { throw 'Monitor mutation bypassed the authoritative domain file.' }
+        . (Join-Path $PSScriptRoot '../skills/planning/harness/scripts/harness-duration.ps1')
+        $job = [pscustomobject]@{ id = 'schedule-fixture'; interval = '1h'; anchor = '2026-09-25T10:00:00Z'; timeZoneId = 'UTC'; enabled = $true; arguments = @('original'); nextDue = '2026-09-25T11:00:00Z'; active = $null; recoveryRequired = $false; lastResult = $null; staleSince = '' }
+        $schedules = [pscustomobject]@{ schemaVersion = 1; projectId = $config.projectId; jobs = @($job) }
+        Write-HarnessProjectSchedules $paths $schedules
+        $scheduleFile = Read-HarnessConfigObject $paths.ScheduleConfig
+        if ($scheduleFile.jobs[0].PSObject.Properties['nextDue'] -or -not (Test-Path $paths.ScheduleState)) { throw 'Schedule progress was not separated from declarations.' }
+        $scheduleFile.jobs[0].interval = '2h'
+        Write-HarnessJson $paths.ScheduleConfig $scheduleFile
+        $schedules = Read-HarnessProjectSchedules $paths
+        if ([datetimeoffset]$schedules.jobs[0].nextDue -ne [datetimeoffset]'2026-09-25T12:00:00Z') { throw 'A schedule declaration edit was not activated against its saved anchor.' }
+        $schedules.jobs[0].active = [pscustomobject]@{ runId = 'active'; claimedAt = '2026-09-25T12:00:00Z' }
+        Write-HarnessProjectSchedules $paths $schedules -RuntimeOnly
+        $scheduleFile.jobs[0].arguments = @('next-operation')
+        Write-HarnessJson $paths.ScheduleConfig $scheduleFile
+        $running = Read-HarnessProjectSchedules $paths
+        if ($running.jobs[0].arguments[0] -cne 'original') { throw 'Direct schedule edits changed the in-flight invocation.' }
+        $running.jobs[0].active = $null
+        Write-HarnessProjectSchedules $paths $running -RuntimeOnly
+        if ((Read-HarnessProjectSchedules $paths).jobs[0].arguments[0] -cne 'next-operation') { throw 'Runtime progress overwrote the authoritative schedule declaration.' }
+        $ownedTask = Add-HarnessTask $paths -Title 'Owner fixture' -Source 'https://example.invalid/source/one' -SourceOwner 'Known Source Owner' -Scope fixture -Description 'Original work' -Acceptance 'Current source evidence'
+        $retargeted = Update-HarnessTask $paths $ownedTask.id @{ Source = 'https://example.invalid/source/two' }
+        if ($retargeted.sourceOwner) { throw 'Changing the source retained an owner from an unrelated source.' }
+        $null = Update-HarnessTask $paths $ownedTask.id @{ SourceOwner = 'Second Source Owner' }
+        $null = Update-HarnessState $paths { param($saved); (Get-HarnessTask $saved $ownedTask.id).status = 'Completed' }
+        $sameSource = Add-HarnessTask $paths -FollowUpOf $ownedTask.id -Description 'Revised work'
+        $differentSource = Add-HarnessTask $paths -FollowUpOf $ownedTask.id -Source 'https://example.invalid/source/three' -Description 'Other source work'
+        if ($sameSource.sourceOwner -cne 'Second Source Owner' -or $differentSource.sourceOwner) { throw 'Follow-up owner inheritance crossed source identities.' }
+        $policyFile = Join-Path $paths.Control 'config/policy.json'
+        $policyBefore = [IO.File]::ReadAllText($policyFile)
+        Remove-Item -LiteralPath $policyFile
+        Assert-HarnessFailure { Read-HarnessConfig $paths } 'Required configuration declaration is missing'
+        [IO.File]::WriteAllText($policyFile, $policyBefore)
+        $operationConfig = Read-HarnessConfig $paths
+        '{ invalid' | Set-Content $monitorPath
+        Assert-HarnessFailure { Read-HarnessConfig $paths } 'Conversion from JSON failed'
+        $null = Update-HarnessState $paths -Config $operationConfig -Operation { param($saved); $saved | Add-Member -NotePropertyName phaseRecorded -NotePropertyValue $true }
+        if (-not (Read-HarnessState $paths).phaseRecorded) { throw 'Invalid next-operation configuration prevented recording the in-flight phase.' }
+        $stopped = & $dispatcher -ProjectPath $fixtureRoot -Action Fallback -PolicyAction Stop -Target project -Actor Fixture -Reason 'Stop despite invalid declarations' -Apply | ConvertFrom-Json
+        if (-not $stopped.stopRequested -or -not (Get-HarnessPause $paths project)) { throw 'An invalid declaration prevented an emergency stop.' }
+        Write-Output 'Declarative layout checks passed: single authoritative domain files, direct-edit activation, separated state/board, and stable reconnect.'
+        return
+    }
+    $paths = Get-HarnessPaths $fixtureRoot -LayoutVersion 1
     Assert-HarnessFailure { Read-HarnessConfig $paths } 'not initialized'
     if (Test-Path -LiteralPath $paths.Control) { throw 'Reading uninitialized config created state.' }
     $config = Initialize-Harness $paths
@@ -35,7 +222,7 @@ try {
     if (@(Get-ChildItem -LiteralPath $fixtureRoot -Force | Where-Object Name -NE '.harness_sv').Count) { throw 'Default initialization or board views wrote outside .harness_sv.' }
     $legacyProject = Join-Path $fixtureRoot 'legacy-controller'
     New-Item -ItemType Directory -Path $legacyProject | Out-Null
-    $legacyPaths = Get-HarnessPaths $legacyProject
+    $legacyPaths = Get-HarnessPaths $legacyProject -LayoutVersion 1
     $legacyConfig = Initialize-Harness $legacyPaths
     $legacyConfig.boardPath = '.harness'
     Write-HarnessJson $legacyPaths.Config $legacyConfig
@@ -97,7 +284,7 @@ try {
     New-Item -ItemType Directory -Path $commandProject | Out-Null
     $selectedRoot = & $dispatcher -ProjectPath $commandProject -Action Root | ConvertFrom-Json
     if ($selectedRoot.project -ine $commandProject -or $selectedRoot.initialized -or (Test-Path -LiteralPath (Join-Path $commandProject '.harness_sv'))) { throw 'Root selection changed or initialized its target.' }
-    if ($selectedRoot.board -ine (Join-Path $commandProject '.harness_sv')) { throw 'Root inspection did not display the .harness_sv default before initialization.' }
+    if ($selectedRoot.board -ine (Join-Path $commandProject '.harness_sv/board')) { throw 'Root inspection did not display the declarative board default before initialization.' }
     Push-Location $commandProject
     try {
         $defaultRoot = & $dispatcher -Action Root | ConvertFrom-Json
@@ -125,7 +312,7 @@ try {
         if ($inheritedStatus.project -ine $commandProject -or (Test-Path -LiteralPath (Join-Path $otherRoot '.harness_sv'))) { throw 'Root handoff followed the changed terminal directory instead of the selected fallback.' }
     }
     finally { Pop-Location }
-    $confirmedConfigPath = Join-Path $commandProject '.harness_sv/config.json'
+    $confirmedConfigPath = Join-Path $commandProject '.harness_sv/config/project.json'
     $confirmedConfig = [System.IO.File]::ReadAllText($confirmedConfigPath)
     $null = & $dispatcher -ProjectPath $selectedRoot.project -Action Init -ConfirmLocation
     if ([System.IO.File]::ReadAllText($confirmedConfigPath) -cne $confirmedConfig) { throw 'Reconnect through the selected Root changed saved configuration.' }
@@ -167,7 +354,7 @@ try {
     $noChange = & $dispatcher -ProjectPath $commandProject -Action UpdateTask -Id $commandTask.id -Text 'Input' -Acceptance 'Check' | ConvertFrom-Json
     if ($noChange.id -cne $commandTask.id -or $noChange.status -cne 'Completed') { throw 'An unchanged completed request created new work.' }
     if ((Get-HarnessTask (Read-HarnessState $commandPaths) $commandTask.id | ConvertTo-Json -Depth 10) -cne $completedBefore -or [IO.File]::ReadAllText($completionReport) -cne 'Completed task evidence') { throw 'A follow-up rewrote its original task or evidence.' }
-    $followUpView = Import-Csv -LiteralPath (Join-Path $placement.board 'current.csv') | Where-Object id -CEQ $followUp.id
+    $followUpView = Import-Csv -LiteralPath (Get-HarnessCurrentPath $commandPaths (Read-HarnessConfig $commandPaths)) | Where-Object id -CEQ $followUp.id
     if ($followUpView.followUpOf -cne $commandTask.id) { throw 'The current task view lost its follow-up link.' }
     Assert-HarnessFailure { & $dispatcher -ProjectPath $commandProject -Action Task -FollowUpOf $followUp.id } 'requires a completed task'
     $queuedFollowUp = & $dispatcher -ProjectPath $commandProject -Action Dev -Id $commandTask.id -Text 'Another explicit revision' -Risk Low -Mode next | ConvertFrom-Json
@@ -207,7 +394,7 @@ try {
     $null = Invoke-HarnessGit $gitProject @('-c', 'user.name=Harness Test', '-c', 'user.email=harness@example.invalid', '-c', 'commit.gpgSign=false', '-c', ('core.hooksPath=' + (Join-Path $gitProject 'no-hooks')), 'commit', '--quiet', '-m', 'Harness fixture')
     $folderProject = Join-Path $fixtureRoot 'folder controller'
     New-Item -ItemType Directory -Path $folderProject | Out-Null
-    $folderPaths = Get-HarnessPaths $folderProject
+    $folderPaths = Get-HarnessPaths $folderProject -LayoutVersion 1
     $folderConfig = Initialize-Harness $folderPaths
     $folderConfig.runner.workspaceMode = 'current'
     $repoReference = Set-HarnessReference -Paths $folderPaths -Source $gitProject -Note 'Coding repository'
@@ -294,7 +481,7 @@ try {
         ($saved.references | Where-Object id -CEQ $repoReference.id).source = $gitProject
     }
     $folderConfig.runner.workspaceMode = 'current'
-    $gitPaths = Get-HarnessPaths $gitProject
+    $gitPaths = Get-HarnessPaths $gitProject -LayoutVersion 1
     $gitConfig = Initialize-Harness $gitPaths
     $allFilesSnapshot = Get-HarnessSnapshot $gitPaths $gitConfig $gitProject -IncludeAllFiles | ConvertFrom-Json
     if (@($allFilesSnapshot.untracked | Where-Object path -EQ '.harness_sv/config.json').Count -ne 1) { throw 'Explicit complete snapshots excluded source paths named like harness records.' }
@@ -503,7 +690,7 @@ try {
     $script:agentOutput = 'Invalid output that an Idle cycle must never read'
     $idleProject = Join-Path $fixtureRoot 'idle output contract'
     New-Item -ItemType Directory -Path $idleProject | Out-Null
-    $idlePaths = Get-HarnessPaths $idleProject
+    $idlePaths = Get-HarnessPaths $idleProject -LayoutVersion 1
     $idleConfig = Initialize-Harness $idlePaths
     $idleConfig.runner = $config.runner | ConvertTo-Json -Depth 8 | ConvertFrom-Json
     Write-HarnessJson $idlePaths.Config $idleConfig
@@ -860,7 +1047,7 @@ try {
     Assert-HarnessFailure { & $timerPath -ProjectPath $fixtureRoot -MonitorName health -Action Resume -Apply } 'Monitor not found'
     $nativeTimerProject = Join-Path $fixtureRoot 'native timer'
     New-Item -ItemType Directory -Path $nativeTimerProject | Out-Null
-    $nativeTimerPaths = Get-HarnessPaths $nativeTimerProject
+    $nativeTimerPaths = Get-HarnessPaths $nativeTimerProject -LayoutVersion 1
     $nativeTimerConfig = Initialize-Harness $nativeTimerPaths
     $nativeTimerConfig.runner.rulesPath = $ruleFile
     Write-HarnessJson $nativeTimerPaths.Config $nativeTimerConfig

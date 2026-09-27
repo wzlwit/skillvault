@@ -1,5 +1,8 @@
 # Monitor Declarations
 
+This is the numeric health-monitor contract. For work candidates from ADO, local folders, or
+other source adapters, use [discovery declarations](discovery.md) with `kind: discovery` instead.
+
 Import only a `monitors` array with `/harness-monitor declare <file>`. This is a preview; save the
 reviewed declaration with explicit approval, owner, and reason. The example's names, values, and
 paths are illustrative, not installed configuration or recommendations for a real service.
@@ -27,7 +30,7 @@ paths are illustrative, not installed configuration or recommendations for a rea
 | Field | Meaning |
 | --- | --- |
 | `name` | Stable monitor identity using letters, digits, dots, underscores, or hyphens |
-| `source` | Only `json-file` is supported; path resolves against the project unless absolute |
+| `source` | Health monitoring uses `json-file`; path resolves against the project unless absolute |
 | `resource`, `environment`, `metric` | Exact expected observation identity; environment uses the safe name format |
 | `windowMinutes` | Positive finite expected measurement-window duration |
 | `maxAgeMinutes` | Positive finite maximum age of the measurement window end |

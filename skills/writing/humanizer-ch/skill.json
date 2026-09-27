@@ -1,0 +1,32 @@
+{
+  "name": "humanizer-ch",
+  "title": "Humanizer CH Reference",
+  "version": null,
+  "status": "public",
+  "visibility": "public",
+  "kind": "reference",
+  "description": "Reference guide to zjqc/humanizer-ch for Chinese critical essays and theoretical commentary. Use /humanizer-ch to locate upstream guidance; overlaps with humanizer on prose editing. Upstream rules and scripts are not bundled.",
+  "tags": ["writing", "editing", "chinese", "critical-essays", "reference"],
+  "author": null,
+  "maintainer": "wzlwit",
+  "license": null,
+  "homepage": "https://github.com/zjqc/humanizer-ch",
+  "source": {
+    "repo": "skillvault",
+    "path": "skills/writing/humanizer-ch"
+  },
+  "upstream": {
+    "repo": "https://github.com/zjqc/humanizer-ch",
+    "path": ".",
+    "revision": "ae195e61e90b97d32aca683382c5732608b17fb1",
+    "license": null
+  },
+  "install": {
+    "global": true,
+    "project": true,
+    "session": true,
+    "defaultScope": "global",
+    "strategy": "copy"
+  },
+  "readme": "SKILL.md"
+}

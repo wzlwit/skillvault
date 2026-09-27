@@ -1,6 +1,6 @@
 ---
 name: architecture-decision-records
-description: Write or review architecture decision records. Use for ADRs, significant technology choices, design trade-offs, decision history, or superseding an accepted architectural decision. Overlaps with grilling on trade-offs, planning-with-files on decision notes, and harness-decision on decision history; focuses on lasting rationale and supersession.
+description: Write or review architecture decision records. Use for ADRs, significant technology choices, design trade-offs, decision history, or superseding an accepted architectural decision. Overlaps with grilling on trade-offs, planning-with-files on decision notes, harness-decision on decision history, and harness-doc on reader-facing rationale; focuses on lasting rationale and supersession.
 metadata:
   author: Seth Hobson
   maintainer: wzlwit
@@ -59,6 +59,8 @@ the user requests a move. Do not relocate other projects' records as part of app
 history; `humanizer` can improve prose afterward without changing its facts or status.
 `harness-decision` shows open/recent decision bulletins and maintains a compact CSV register; use
 this skill for the full architectural rationale and superseding ADRs.
+`harness-doc` turns verified rationale into feature guides, onboarding, and troubleshooting material
+for readers. It references accepted records without replacing decision history or changing statuses.
 No CLI, external service, template bundle, or automatic hook is required by this guide.
 
 ## Source and Curation

@@ -7,10 +7,14 @@
 2. With no input, use the shared script's `-Action Task` to list tasks. For a file/URL, read the
    actual source through an authorized connector. Preserve its identity, revision when available,
    and intended task scope. General background with no requested work belongs in `/harness-link`.
+   The canonical board also shows C- rows marked `recordType: candidate`; these are not T- execution
+   tasks. Accept them through the monitor workflow before a development request.
 3. Call `harness/scripts/harness.ps1 -ProjectPath <root> -Action Task` with `-Title`, `-Text`,
    `-Scope`, and `-Acceptance`. Use `-Source` and `-SourceRevision` for linked input. Do not invent
    unreadable source content; retain missing details as `NeedsEvidence`. Priority is 1 through 5,
    with 1 highest. Kind is feature/fix/verify. Risk defaults to Unknown.
+   When authoritative input supplies ownership, use `-SourceOwner` for that display name. It is
+   source metadata, not assignment of a Harness executor. Unknown/unassigned owners remain blank.
    For a separate coding repository, map `--repo-ref <reference-id>` to `-RepositoryRef` (alias
    `-RepoRef`). Select an active `/harness-link` entry for the intended existing local Git root. Keep
    `-ProjectPath` at the controller folder; `-Source` is the requirement, not the coding destination.
@@ -48,7 +52,13 @@ after readiness/configuration checks. Adding it here is never execution approval
 An unselected coding target in a non-Git controller is unresolved, not permission to pick the
 first reference or create/clone a repository. Separate repositories use separate task records.
 
-`/harness-monitor` can propose an investigation tied to one breach episode. Use its explicit
-`task <incident-id>` acceptance to retain the incident/task link while reusing this task helper.
+`/harness-monitor` can propose work from an ADO/folder/adapter candidate or an investigation tied
+to a health breach. Use its explicit `accept <candidate-or-incident-id>` to retain the source/task
+link while reusing this task helper. Discovery intake queues previously postponed backlog with its
+source priority; generic On-Hold is reassessment backlog, while explicit dependency blocks remain. Unknown risk and automatic eligibility
+still require the normal readiness and execution decisions; old postponement alone is not a blocker.
 Do not use a dashboard URL alone as the identity for distinct incidents or grant auto-eligibility
-merely because a monitor proposed work. Repeated readings update evidence, not task completion.
+merely because a monitor proposed work. Fresh source collections refresh `sourceOwner` on the
+candidate and linked task without changing priority or execution ownership; failed/partial/stale
+reads preserve captured evidence. Auto verification may reconcile local AlreadyFixed/Stale outcomes
+only under its evidence and unchanged-task checks; a source status or owner change alone cannot.

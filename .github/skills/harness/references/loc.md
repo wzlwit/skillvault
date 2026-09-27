@@ -31,6 +31,51 @@ The runtime reuses a recognized legacy SkillVault `.harness` controller in place
 `.harness_sv` directory exists. It does not adopt an unrelated `.harness` directory or merge
 two controllers. Show the actual resolved paths; author new artifacts under that resolved control.
 
+## Current View Names
+
+One canonical current-work view combines all sources. For new controllers its filename is
+`current-<project-slug>.csv`, for example `current-das.csv`. The runtime derives a lowercase ASCII
+slug once from the selected parent folder, normalizes separators to hyphens, and falls back to
+`project` when no usable letters/digits remain. The persisted `currentFileName` stays stable when
+the controller moves or its parent folder name changes. Use `current`, not `todo`, because the view
+includes running, blocked, proposed, and uncertain work as well as queued tasks.
+
+Read Root/Board/Status/Context's `current` path or the generated README; consumers must not guess
+`current.csv`. An existing config with no `currentFileName` still resolves to `current.csv`.
+New initialization may explicitly supply `-CurrentFileName`; reconnect refuses a different name.
+
+`/harness root --current-file current-service.csv` previews a rename in the selected controller.
+Add `--apply` only for an approved rename. The session maps these options to the existing Board
+action, not Root path selection, and never changes board directory and filename in the same call:
+
+```powershell
+& <harness-folder>/scripts/harness.ps1 -ProjectPath <root> -Action Board -CurrentFileName current-service.csv
+& <harness-folder>/scripts/harness.ps1 -ProjectPath <root> -Action Board -CurrentFileName current-service.csv -Apply
+```
+
+The helper updates the authoritative configuration, generated navigation, and registered/decision
+links together. It preserves task identities, queues, and history, removes the old canonical file
+only through that explicit operation, and rejects active work, unowned collisions, unsafe filenames,
+and linked paths. Temporary originals support rollback; incomplete recovery keeps its pending marker.
+The board ownership marker records the published filename, not a second editable configuration.
+Changing the declaration alone does not move files: finish the guarded Board rename before the next
+projection. Review custom external scripts or documents separately; the helper does not rewrite them.
+
+`/harness root --view provisioning --monitors ado-provisioning,design-provisioning` previews an
+explicit filtered snapshot. Map the named monitors exactly to `-ViewMonitors`; the topic is a label,
+not an inferred semantic filter. Applying uses the same canonical rows/schema and writes only the
+selected monitors to `artifacts/board-views/current-<project>-<topic>.csv`:
+
+```powershell
+& <harness-folder>/scripts/harness.ps1 -ProjectPath <root> -Action Board -ViewTopic provisioning -ViewMonitors ado-provisioning,design-provisioning -Apply
+```
+
+Exports are not generated automatically by monitoring, initialization, or installation. They do not
+replace the canonical board, edit task state, or authorize execution. Their ownership metadata records
+filters and generation time; repeat the same explicit request to refresh a snapshot. A different
+filter set needs a distinct label. Unowned files are never overwritten. They are artifacts, not run
+history or another editable task list.
+
 ## Root Selection
 
 `/harness root <path>` selects the parent/controller for this session. It can be a non-Git folder;

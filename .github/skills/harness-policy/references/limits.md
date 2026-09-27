@@ -42,11 +42,14 @@ exact change, rerun with `-Apply -Actor <human-owner> -Reason <approved-reason>`
 `/harness-policy limits declare <file> --apply` authorizes that reviewed declaration; obtain a missing owner
 or reason rather than inventing one. Do not apply unseen file changes after approval.
 
-The declaration **replaces only** `.harness_sv/config.json`'s `restrictions` object; it does not merge
+The declaration **replaces only** `config/policy.json`'s `restrictions` object in layout 2; it does not merge
 omitted fields. Omission removes that additional restriction, and `{}` explicitly clears the
 declared restrictions, so review removals carefully. Runner settings, test definitions, fallback
 policy, and safety pauses remain unchanged. Policy changes require an idle runner and no unresolved
 active-run marker. Applying policy launches no work and changes no schedule.
+Direct edits use that same authoritative file without an import step. Legacy controllers retain
+their flat config until explicit migration. Missing/invalid declarations block new operations;
+pause/stop remains available and changes no declaration.
 
 ## Supported Fields
 

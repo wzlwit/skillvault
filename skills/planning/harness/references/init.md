@@ -64,8 +64,13 @@ must report initialization as pending rather than manufacture runtime configurat
    and maximum verified or native settings through the runtime's Runner Inheritance procedure.
    Do not turn missing model, mode, tools, or resource fields into a setup blocker. Missing or inconsistent
    state is a recovery issue, not permission to replace it with an empty board.
-   New board views and run reports default to `.harness_sv` inside the selected Root. Preserve a
-   saved explicit board location without moving its records; report any legacy layout clearly.
+   New controllers use authoritative `config/` domain files, generated `board/` views, `runtime/`
+   state/locks, monthly `history/`, and a short README linking those locations inside `.harness_sv`.
+   The canonical board defaults to `current-<project-slug>.csv`; its persisted `currentFileName`
+   is resolved centrally. `init --current-file <name>` can select a safe filename for a new controller.
+   Existing controllers keep their previous filename; reconnect never renames it or creates topic copies.
+   Preserve a saved explicit board location without moving records. Reconnect never migrates an
+   existing controller; `/hn migrate` separately previews and applies a requested conversion.
 4. Read the installed Graphify guide and authoritative upstream instructions. Generate or
    refresh architecture context only if its runtime is available and configured. The SkillVault
    entry is reference-only; do not install its CLI, hooks, or upstream plugin without approval.

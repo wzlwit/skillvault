@@ -12,6 +12,7 @@ const harnessProcedures = {
   context: 'harness/references/context.md',
   decide: 'harness-decision/references/workflow.md',
   dev: 'harness-dev/references/workflow.md',
+  doc: 'harness-doc/references/workflow.md',
   fallback: 'harness-policy/references/fallback.md',
   init: 'harness/references/init.md',
   loc: 'harness/references/loc.md',
@@ -78,6 +79,110 @@ test('catalog installation defaults are supported and shared helpers stay coloca
   }
 });
 
+test('chart selection preserves data evidence and requirement-first fallback', () => {
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const content = fs.readFileSync(path.join(root, 'skills/data/kpi-dashboard/SKILL.md'), 'utf8');
+  const selection = content.split('## Profile Before Chart Selection')[1].split('## Calculation and Performance Guidance')[0];
+  assert.ok(content.includes('(#profile-before-chart-selection)'));
+  assert.match(selection, /Explicit requirements[\s\S]*take precedence\s+over defaults/);
+  assert.match(selection, /valid requested view[\s\S]*no mandatory profiling round trip/);
+  assert.match(selection, /uncertain[\s\S]*authorized for inspection/);
+  assert.match(selection, /data types, cardinality, representative values,[\s\S]*entity-versus-detail grain/);
+  assert.match(selection, /uniqueness does not establish the business entity/);
+  assert.match(selection, /Do not silently discard unusual rows/);
+  assert.match(selection, /Design-only work stays design-only/);
+  assert.match(selection, /existing retry and time budgets/);
+  assert.match(selection, /timeout\s+does not prove the prior process stopped/);
+  assert.match(selection, /Preserve pauses and ownership/);
+  assert.match(selection, /Ask before changing[\s\S]*data coverage, or sampling requirement/);
+  assert.match(selection, /Refusal or no answer leaves that change pending/);
+  assert.match(selection, /sample cannot establish whole-dataset totals/);
+  assert.match(selection, /missing evidence Unverified and incomplete\s+scope Partial/);
+});
+
+test('chart evidence and fallback preserve the report contract', () => {
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const workflow = fs.readFileSync(path.join(root, 'skills/planning/harness-report/references/workflow.md'), 'utf8');
+  const fallback = workflow.split('## Requirement-Preserving Fallback')[1].split('## Validate and Deliver')[0];
+  const validation = workflow.split('## Validate and Deliver')[1].split('## Optional Monitoring Handoff')[0];
+  assert.ok(workflow.includes('(#requirement-preserving-fallback)'));
+  assert.match(fallback, /Honor explicit tool, platform, format, chart-type, and data-scope requirements/);
+  assert.match(fallback, /retry eligibility, and remaining time budget/);
+  assert.match(fallback, /Before retrying or switching methods[\s\S]*reconcile possible file or remote writes/);
+  assert.match(fallback, /Do not start a competing writer, clear a pause, or kill an unrelated process/);
+  assert.match(fallback, /approved reader or renderer[\s\S]*artifact identity/);
+  assert.match(fallback, /same metric, data, output, and acceptance contract/);
+  assert.match(fallback, /Ask before changing[\s\S]*sampling requirement[\s\S]*design-only/);
+  assert.match(fallback, /Refusal or no answer leaves the change pending/);
+  assert.match(fallback, /Missing evidence stays Unverified; incomplete deliverables remain Partial or Blocked/);
+  assert.match(validation, /each numeric claim with the final plotted\s+data/);
+  assert.match(validation, /series selection[\s\S]*units, time\s+window, population/);
+  assert.match(validation, /sample preview alone cannot prove totals or extrema/);
+  assert.match(validation, /each failed chart in a\s+batch/);
+  assert.match(validation, /Exclude non-displayed\s+sensitive columns/);
+  assert.match(validation, /bare chart does not require\s+an added narrative/);
+  assert.match(validation, /keep dependent claims Unverified/);
+});
+
+test('editable report acceptance distinguishes native data and conditional checks', () => {
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const workflow = fs.readFileSync(path.join(root, 'skills/planning/harness-report/references/workflow.md'), 'utf8');
+  const contract = workflow.split('### Editability Acceptance')[1].split('## Dispatch and Upsert')[0];
+  const validation = workflow.split('## Validate and Deliver')[1].split('## Optional Monitoring Handoff')[0];
+  assert.ok(workflow.includes('(#editability-acceptance)'));
+  assert.match(contract, /required object types and editing actions/);
+  assert.match(contract, /Edit Data requires a\s+data-backed chart; editable shapes[\s\S]*insufficient/);
+  assert.match(contract, /appearance\s+does not prove its inherited objects can be edited/);
+  assert.match(contract, /Image-only requests acquire no native-editability requirement/);
+  assert.match(contract, /Design-only[\s\S]*without requiring an application trial/);
+  assert.match(contract, /add no platform route or renderer/);
+  assert.match(validation, /actual object types and data[\s\S]*edit, save, and reopen in the intended application/);
+  assert.match(validation, /preview or file extension cannot prove editability/);
+  assert.match(validation, /unsupported\s+or flattened objects[\s\S]*acceptance Unverified/);
+  assert.match(validation, /do not label the artifact Validated until the required checks pass/);
+  assert.match(validation, /fallback preserves[\s\S]*approval, ownership, pause, and budget rules/);
+});
+
+test('workbook acceptance preserves formulas and distinguishes caches from verified results', () => {
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const workflow = fs.readFileSync(path.join(root, 'skills/planning/harness-report/references/workflow.md'), 'utf8');
+  const workbook = workflow.split('### Workbook Acceptance')[1].split('## Dispatch and Upsert')[0];
+  const validation = workflow.split('## Validate and Deliver')[1].split('## Optional Monitoring Handoff')[0];
+  assert.ok(workflow.includes('(#workbook-acceptance)'));
+  assert.match(workbook, /workbook supplies report figures or forms part of an approved deliverable/);
+  assert.match(workbook, /formula expressions and cached results separately/);
+  assert.match(workbook, /blank cache[\s\S]*do not infer zero or missing business data/);
+  assert.match(workbook, /preserve formulas, macros, and external\s+references/);
+  assert.match(workbook, /Do not save a values-only view over a formula workbook/);
+  assert.match(workbook, /approved engine compatible with the workbook/);
+  assert.match(workbook, /retain the original[\s\S]*source mutation needs its own approval/);
+  assert.match(workbook, /structured result and full error counts[\s\S]*formula errors fail acceptance even with exit\s+code zero/);
+  assert.match(workbook, /expected values, ranges, and any required spill results/);
+  assert.match(workbook, /Missing or stale results remain Unverified/);
+  assert.match(workbook, /Values-only CSV input and unchanged workbooks[\s\S]*need no forced recalculation/);
+  assert.match(workbook, /Design-only work[\s\S]*without running a calculation engine/);
+  assert.match(workbook, /add no XLSX route or upstream dependency/);
+  assert.match(validation, /workbook acceptance[\s\S]*before marking\s+the report Validated/);
+});
+
+test('branded output preserves authority and font limitations without mandatory setup', () => {
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const content = fs.readFileSync(path.join(root, 'skills/data/kpi-dashboard/SKILL.md'), 'utf8');
+  const brand = content.split('## Brand and Template Authority')[1].split('## Profile Before Chart Selection')[0];
+  assert.ok(content.includes('(#brand-and-template-authority)'));
+  assert.match(brand, /source\/revision,[\s\S]*palette, title\/body and language-specific fonts,[\s\S]*permitted variation/);
+  assert.match(brand, /visual appearance from required template structure/);
+  assert.match(brand, /sampled colors and inferred fonts as estimates, not official values/);
+  assert.match(brand, /official\s+palette takes precedence over a screenshot estimate/);
+  assert.match(brand, /Clarify material conflicts/);
+  assert.match(brand, /implementation is in scope[\s\S]*check representative output/);
+  assert.match(brand, /unavailable required font[\s\S]*until an alternative is approved/);
+  assert.match(brand, /do not silently\s+substitute fonts, install them, or alter the source template/);
+  assert.match(brand, /Design-only work[\s\S]*without claiming a rendering test/);
+  assert.match(brand, /Unbranded work[\s\S]*without mandatory brand paperwork/);
+  assert.match(content, /Carry agreed brand\/template requirements[\s\S]*existing presentation handoff/);
+});
+
 test('Power BI modeling preserves scope and grain-aware validation cases', () => {
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
   const catalog = parseJson(fs.readFileSync(path.join(root, 'catalog.json'), 'utf8'), 'catalog.json');
@@ -126,7 +231,7 @@ test('Power BI modeling preserves scope and grain-aware validation cases', () =>
 test('harness topics use canonical names and conversational hn shortcuts', () => {
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
   const catalog = parseJson(fs.readFileSync(path.join(root, 'catalog.json'), 'utf8'), 'catalog.json');
-  const topics = ['harness', ...['policy', 'decision', 'dev', 'review', 'task', 'link', 'test', 'monitor', 'report', 'timer'].map(suffix => `harness-${suffix}`)];
+  const topics = ['harness', ...['policy', 'decision', 'dev', 'doc', 'review', 'task', 'link', 'test', 'monitor', 'report', 'timer'].map(suffix => `harness-${suffix}`)];
   assert.deepEqual(catalog.filter(entry => entry.name === 'harness' || entry.name.startsWith('harness-')).map(entry => entry.name).sort(), topics.slice().sort());
   for (const name of topics) {
     const entries = catalog.filter(entry => entry.name === name);
@@ -163,6 +268,196 @@ test('harness topics use canonical names and conversational hn shortcuts', () =>
   }
 });
 
+test('harness documentation declares standalone authoring and post-Humanizer validation', () => {
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const catalog = parseJson(fs.readFileSync(path.join(root, 'catalog.json'), 'utf8'), 'catalog.json');
+  const entry = catalog.find(candidate => candidate.name === 'harness-doc');
+  const directory = path.join(root, entry.path);
+  const manifest = parseJson(fs.readFileSync(path.join(directory, 'skill.json'), 'utf8'), 'harness-doc/skill.json');
+  const content = fs.readFileSync(path.join(directory, 'SKILL.md'), 'utf8');
+  const skill = parseSkill(content, entry.name, manifest);
+  assert.equal(entry.path, 'skills/planning/harness-doc');
+  assert.equal(entry.description, manifest.description);
+  assert.equal(skill.description, manifest.description);
+  assert.deepEqual(manifest.inputs.find(input => input.name === 'action').enum, ['list', 'upsert']);
+  assert.deepEqual(manifest.inputs.find(input => input.name === 'audience').enum, ['internal', 'partner', 'public']);
+  assert.deepEqual(manifest.dependencies, ['rules', 'humanizer']);
+  assert.equal(manifest.requiredInterfaces, undefined);
+  assert.match(content, /without requiring\s+an initialized harness/);
+  const rootGuide = fs.readFileSync(path.join(root, 'skills/planning/harness/SKILL.md'), 'utf8');
+  assert.ok(rootGuide.includes('/harness-doc list|upsert'));
+  const workflow = fs.readFileSync(path.join(directory, 'references/workflow.md'), 'utf8');
+  const phases = ['## Resolve the request', '## Gather evidence', '## Draft the set', '## Humanizer pass', '## Validate and deliver'];
+  const positions = phases.map(phase => workflow.indexOf(phase));
+  assert.ok(positions.every((position, index) => position >= 0 && (index === 0 || position > positions[index - 1])));
+  assert.match(workflow, /reference-only; fetch and\s+read its authoritative upstream guidance/);
+  assert.match(workflow, /Freeze headings and explicit anchors/);
+  assert.match(workflow, /Draft \| Files exist, but essential evidence, Humanizer, or required validation is incomplete/);
+  const template = fs.readFileSync(path.join(directory, 'references/doc-set.md'), 'utf8');
+  const outline = parseJson(/```json\r?\n([\s\S]*?)\r?\n```/.exec(template)[1], 'doc-set outline');
+  assert.deepEqual(outline.pages.map(page => page.purpose), ['overview', 'rationale', 'glossary', 'lifecycle', 'onboarding', 'deep-topic', 'troubleshooting']);
+  assert.equal(new Set(outline.pages.map(page => page.file)).size, outline.pages.length);
+  const decision = catalog.find(candidate => candidate.name === 'architecture-decision-records');
+  const decisionManifest = parseJson(fs.readFileSync(path.join(root, decision.path, 'skill.json'), 'utf8'), 'architecture-decision-records/skill.json');
+  const decisionSkill = parseSkill(fs.readFileSync(path.join(root, decision.path, 'SKILL.md'), 'utf8'), decision.name, decisionManifest);
+  for (const description of [decision.description, decisionManifest.description, decisionSkill.description]) assert.ok(description.includes('harness-doc'));
+});
+
+test('paginated document acceptance checks final pages without widening Markdown output', () => {
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const workflow = fs.readFileSync(path.join(root, 'skills/planning/harness-doc/references/workflow.md'), 'utf8');
+  const validation = workflow.split('## Validate and deliver')[1].split('## Optional restructuring and publication')[0];
+  assert.ok(workflow.indexOf('## Humanizer pass') < workflow.indexOf('## Validate and deliver'));
+  assert.match(validation, /When PDF\/DOCX is an agreed deliverable/);
+  assert.match(validation, /inspect all final rendered pages after Humanizer and any\s+layout-affecting edits/);
+  assert.match(validation, /clipping, page breaks, split tables, captions, headers\/footers/);
+  assert.match(validation, /font\/glyph coverage for the required languages[\s\S]*mixed-language/);
+  assert.match(validation, /passing XML validation does not prove readable pagination/);
+  assert.match(validation, /available, authorized renderers/);
+  assert.match(validation, /Missing rendering or unresolved page defects keeps the\s+artifact Draft/);
+  assert.match(validation, /do not install software or substitute another\s+format without approval/);
+  assert.match(validation, /Markdown-only output requires no Word\/PDF conversion/);
+});
+
+test('Humanizer references preserve Chinese specialization and unknown upstream rights', () => {
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const catalog = parseJson(fs.readFileSync(path.join(root, 'catalog.json'), 'utf8'), 'catalog.json');
+  for (const [name, counterpart] of [['humanizer', 'humanizer-ch'], ['humanizer-ch', 'humanizer']]) {
+    const entry = catalog.find(candidate => candidate.name === name);
+    const directory = path.join(root, entry.path);
+    const manifest = parseJson(fs.readFileSync(path.join(directory, 'skill.json'), 'utf8'), `${name}/skill.json`);
+    const content = fs.readFileSync(path.join(directory, 'SKILL.md'), 'utf8');
+    const skill = parseSkill(content, name, manifest);
+    assert.equal(entry.version, null);
+    assert.equal(manifest.kind, 'reference');
+    assert.equal(manifest.install.defaultScope, 'global');
+    assert.equal(entry.description, manifest.description);
+    assert.equal(skill.description, manifest.description);
+    assert.ok(skill.description.includes(counterpart));
+    assert.match(content, /fetch and read the (?:authoritative )?upstream (?:guidance|instructions)/);
+    assert.equal(fs.existsSync(path.join(directory, 'scripts')), false);
+    assert.equal(fs.existsSync(path.join(directory, 'agents/openai.yaml')), false);
+    if (name === 'humanizer-ch') {
+      assert.equal(entry.path, 'skills/writing/humanizer-ch');
+      assert.equal(manifest.author, null);
+      assert.equal(manifest.license, null);
+      assert.equal(manifest.upstream.license, null);
+      assert.equal(manifest.upstream.repo, 'https://github.com/zjqc/humanizer-ch');
+      assert.match(manifest.upstream.revision, /^[a-f0-9]{40}$/);
+      assert.match(content, /No upstream rewriting rules, examples, scripts, or Codex UI files are bundled/);
+      assert.match(content, /not a general Chinese-language\s+replacement/);
+      assert.match(content, /not an upstream example or a validated Chinese editing result/);
+      assert.match(content, /\/humanizer-ch [\u4e00-\u9fff]/);
+      assert.deepEqual(manifest.dependencies ?? [], []);
+    }
+  }
+});
+
+test('PPT Master reference preserves provenance and unbundled execution boundaries', () => {
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const catalog = parseJson(fs.readFileSync(path.join(root, 'catalog.json'), 'utf8'), 'catalog.json');
+  const entry = catalog.find(candidate => candidate.name === 'ppt-master');
+  assert.equal(entry.path, 'skills/writing/ppt-master');
+  const directory = path.join(root, entry.path);
+  const manifest = parseJson(fs.readFileSync(path.join(directory, 'skill.json'), 'utf8'), 'ppt-master/skill.json');
+  const content = fs.readFileSync(path.join(directory, 'SKILL.md'), 'utf8');
+  const skill = parseSkill(content, entry.name, manifest);
+  assert.equal(entry.version, null);
+  assert.equal(manifest.kind, 'reference');
+  assert.equal(manifest.author, 'Hugo He');
+  assert.equal(manifest.license, 'MIT');
+  assert.equal(manifest.upstream.repo, 'https://github.com/hugohe3/ppt-master');
+  assert.equal(manifest.upstream.path, 'skills/ppt-master');
+  assert.equal(manifest.upstream.version, '6.6.0');
+  assert.equal(manifest.upstream.license, 'MIT');
+  assert.match(manifest.upstream.revision, /^[a-f0-9]{40}$/);
+  assert.ok(content.includes(manifest.upstream.revision));
+  assert.equal(entry.description, manifest.description);
+  assert.equal(skill.description, manifest.description);
+  assert.deepEqual(manifest.dependencies ?? [], []);
+  assert.equal(fs.existsSync(path.join(directory, 'scripts')), false);
+  assert.equal(fs.existsSync(path.join(directory, 'assets')), false);
+  assert.match(content, /No upstream scripts,\s+assets, converter, or full workflow are bundled/);
+  assert.match(content, /fetch and read the upstream instructions/);
+  assert.match(content, /No installation or execution is implied/);
+  assert.match(content, /Default charts\/tables are editable shapes/);
+  assert.match(content, /eligible metadata and `--native-charts-and-tables`/);
+  assert.match(content, /Brand\/Style[\s\S]*remains flat; Layout\/Deck/);
+  assert.match(content, /Edit Native PPTX[\s\S]*inherited Master\/Layout objects/);
+  assert.match(content, /Source inspection does not certify PowerPoint editing/);
+  for (const name of ['harness-report', 'kpi-dashboard']) {
+    assert.ok(skill.description.includes(name));
+    const counterpart = catalog.find(candidate => candidate.name === name);
+    const counterpartManifest = parseJson(fs.readFileSync(path.join(root, counterpart.path, 'skill.json'), 'utf8'), `${name}/skill.json`);
+    const counterpartSkill = parseSkill(fs.readFileSync(path.join(root, counterpart.path, 'SKILL.md'), 'utf8'), name, counterpartManifest);
+    for (const description of [counterpart.description, counterpartManifest.description, counterpartSkill.description]) {
+      assert.ok(description.includes('ppt-master'), `Declare the reference overlap for ${name}`);
+    }
+    assert.equal((counterpartManifest.dependencies ?? []).includes('ppt-master'), false);
+  }
+});
+
+test('office documents reference separates original navigation from proprietary upstream tools', () => {
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const catalog = parseJson(fs.readFileSync(path.join(root, 'catalog.json'), 'utf8'), 'catalog.json');
+  const entry = catalog.find(candidate => candidate.name === 'office-documents');
+  assert.equal(entry.path, 'skills/writing/office-documents');
+  const directory = path.join(root, entry.path);
+  const manifest = parseJson(fs.readFileSync(path.join(directory, 'skill.json'), 'utf8'), 'office-documents/skill.json');
+  const content = fs.readFileSync(path.join(directory, 'SKILL.md'), 'utf8');
+  const skill = parseSkill(content, entry.name, manifest);
+  assert.equal(entry.version, null);
+  assert.equal(manifest.version, null);
+  assert.equal(manifest.kind, 'reference');
+  assert.equal(manifest.author, 'Anthropic, PBC');
+  assert.equal(manifest.license, null);
+  assert.equal(manifest.upstream.repo, 'https://github.com/anthropics/skills');
+  assert.equal(manifest.upstream.path, 'skills');
+  assert.equal(manifest.upstream.license, 'Proprietary');
+  assert.match(manifest.upstream.revision, /^[a-f0-9]{40}$/);
+  assert.equal(entry.description, manifest.description);
+  assert.equal(skill.description, manifest.description);
+  assert.equal(manifest.install.defaultScope, 'global');
+  assert.deepEqual(manifest.dependencies ?? [], []);
+  assert.deepEqual(fs.readdirSync(directory).sort(), ['SKILL.md', 'skill.json']);
+  for (const name of ['pdf', 'docx', 'xlsx']) {
+    assert.ok(content.includes(`/blob/${manifest.upstream.revision}/skills/${name}/SKILL.md`));
+  }
+  assert.match(content, /No upstream\s+prompts, scripts, examples, assets, or document-processing dependencies are bundled/);
+  assert.match(content, /fetch and read the selected instructions and\s+their license/);
+  assert.match(content, /applicable agreement permits that use/);
+  assert.match(content, /not a universal lossless merger/);
+  assert.match(content, /Do not infer Apache licensing/);
+  assert.match(content, /reference grants no rights to the upstream materials/);
+  assert.match(content, /does not certify file preservation, calculation accuracy, or Chinese\/mixed-language rendering/);
+  for (const name of ['harness-doc', 'harness-report']) {
+    assert.ok(skill.description.includes(name));
+    const counterpart = catalog.find(candidate => candidate.name === name);
+    const counterpartManifest = parseJson(fs.readFileSync(path.join(root, counterpart.path, 'skill.json'), 'utf8'), `${name}/skill.json`);
+    const counterpartSkill = parseSkill(fs.readFileSync(path.join(root, counterpart.path, 'SKILL.md'), 'utf8'), name, counterpartManifest);
+    for (const description of [counterpart.description, counterpartManifest.description, counterpartSkill.description]) {
+      assert.ok(description.includes('office-documents'), `Declare the reference overlap for ${name}`);
+    }
+    assert.equal((counterpartManifest.dependencies ?? []).includes('office-documents'), false);
+  }
+});
+
+test('document evidence distinguishes partial extraction from complete coverage', () => {
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const workflow = fs.readFileSync(path.join(root, 'skills/planning/harness-doc/references/workflow.md'), 'utf8');
+  const evidence = workflow.split('## Gather evidence')[1].split('## Draft the set')[0];
+  assert.match(evidence, /requested files\/sections with those actually read/);
+  assert.match(evidence, /skipped or unreadable inputs[\s\S]*existing claim\/source map/);
+  assert.match(evidence, /source-plus-section identities with edition\/revision/);
+  assert.match(evidence, /task-critical tables, code,[\s\S]*reading order against the original/);
+  assert.match(evidence, /OCR uncertainty, missing images/);
+  assert.match(evidence, /Successful extraction or aggregate counts do not prove complete or faithful coverage/);
+  assert.match(evidence, /missing or distorted content[\s\S]*affected guidance\s+Draft/);
+  assert.match(evidence, /explicitly requested subset need not\s+read unrelated chapters/);
+  assert.match(evidence, /already-readable Markdown\/text without a conversion dependency/);
+  assert.match(evidence, /does not authorize[\s\S]*uploading documents/);
+});
+
 test('SkillVault topics register full names and keep sv as conversational shortcuts', () => {
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
   const catalog = parseJson(fs.readFileSync(path.join(root, 'catalog.json'), 'utf8'), 'catalog.json');
@@ -186,6 +481,171 @@ test('SkillVault topics register full names and keep sv as conversational shortc
   assert.equal(fs.existsSync(path.join(root, 'skills/core/skillvault-source')), false);
   const authoring = fs.readFileSync(path.join(root, 'skills/core/skillvault-authoring/SKILL.md'), 'utf8');
   for (const alias of ['/skillvault-source', '/sv-source']) assert.ok(authoring.includes(alias), `Preserve ${alias} compatibility`);
+});
+
+test('experience-driven authoring keeps learning destinations and edit authority separate', () => {
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const directory = path.join(root, 'skills/core/skillvault-authoring');
+  const workflow = fs.readFileSync(path.join(directory, 'references/upsert.md'), 'utf8');
+  const experience = workflow.split('## Improve from Task Experience')[1].split('## Upsert By Name')[0];
+  const destinations = [...experience.matchAll(/^\| ([^|]+) \| ([^|]+) \|\r?$/gm)]
+    .map(([, lesson, destination]) => ({ lesson, destination }));
+  assert.ok(destinations.some(row => /procedure/.test(row.lesson) && /Existing owning skill/.test(row.destination)));
+  assert.ok(destinations.some(row => /fact or user preference/.test(row.lesson) && /Existing host memory/.test(row.destination)));
+  assert.ok(destinations.some(row => /one repository/.test(row.lesson) && /approved editing scope/.test(row.destination)));
+  assert.ok(destinations.some(row => /working rule/.test(row.lesson) && /confirmation/.test(row.destination)));
+  assert.ok(destinations.some(row => /unsupported inference/.test(row.lesson) && /No durable change/.test(row.destination)));
+  assert.match(experience, /Choosing a destination does not authorize writing to it/);
+  assert.match(experience, /Do not add an automatic\s+end-of-task writer/);
+  assert.match(experience, /git diff --no-index[\s\S]*exit code 1 for expected differences/);
+  assert.match(experience, /original case and a nearby case where it\s+should not apply/);
+  assert.match(experience, /not an executed agent test/);
+  const manifest = parseJson(fs.readFileSync(path.join(directory, 'skill.json'), 'utf8'), 'skillvault-authoring/skill.json');
+  assert.deepEqual(manifest.inputs.find(input => input.name === 'action').enum, ['list', 'upsert', 'remove']);
+
+  const management = fs.readFileSync(path.join(root, 'skills/core/rules/references/manage.md'), 'utf8');
+  const proposal = management.split('## Lessons Proposed as Rules')[1].split('## Confirmed Edit Procedure')[0];
+  assert.match(proposal, /expected command result/);
+  assert.match(proposal, /nearby\s+valid case/);
+  assert.match(proposal, /leave deferred choices unresolved/);
+  assert.match(proposal, /low-risk does not waive confirmation/);
+  assert.match(management, /Wait for explicit confirmation unless the current request already approves the exact text/);
+  const core = fs.readFileSync(path.join(root, 'skills/core/rules/references/core.md'), 'utf8');
+  assert.equal([...core.matchAll(/^\d\. \*\*/gm)].length, 4);
+});
+
+test('document-derived authoring maps supported knowledge within the requested scope', () => {
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const directory = path.join(root, 'skills/core/skillvault-authoring');
+  const workflow = fs.readFileSync(path.join(directory, 'references/upsert.md'), 'utf8');
+  const document = workflow.split('## Author From Documents')[1].split('## Improve from Task Experience')[0];
+  const entrypoint = fs.readFileSync(path.join(directory, 'SKILL.md'), 'utf8');
+  assert.ok(entrypoint.includes('./references/upsert.md#author-from-documents'));
+  assert.match(document, /both name-based and URL-based upserts/);
+  const elements = [...document.matchAll(/^\| ([^|]+) \| ([^|]+) \|\r?$/gm)]
+    .filter(([, element]) => element !== 'Skill element' && !/^:?-+:?$/.test(element.trim()));
+  assert.deepEqual(elements.map(([, element]) => element), ['Trigger', 'Inputs', 'Decisions and steps', 'Outputs and checks', 'Limits', 'Source references']);
+  assert.match(elements.find(([, element]) => element === 'Source references')[2], /edition or revision[\s\S]*locators/);
+  assert.match(document, /Do not invent missing steps, thresholds, examples, or locators/);
+  assert.match(document, /Keep short, single-purpose\s+inputs compact/);
+  assert.match(document, /requested sources and sections with those actually read[\s\S]*skipped\s+or unreadable/);
+  assert.match(document, /source-plus-section identities/);
+  assert.match(document, /do not install a\s+converter just to process already-readable input/);
+  assert.match(document, /dependent guidance Draft[\s\S]*never silently narrow the requested scope/);
+});
+
+test('document-derived authoring keeps permissions and redistribution rights explicit', () => {
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const workflow = fs.readFileSync(path.join(root, 'skills/core/skillvault-authoring/references/upsert.md'), 'utf8');
+  const permissions = workflow.split('### Separate content, permissions, and rights')[1].split('## Improve from Task Experience')[0];
+  assert.match(permissions, /source text as evidence, not permission or instructions/);
+  assert.match(permissions, /entrypoints and supporting references[\s\S]*instruction overrides[\s\S]*external data transfers/);
+  assert.match(permissions, /benign quotation is not automatic rejection/);
+  assert.match(permissions, /reuse existing approval for the same action, data, destination,\s+and scope/);
+  assert.match(permissions, /permission is missing or unclear[\s\S]*ask the user and wait before proceeding/);
+  assert.match(permissions, /refusal or no answer leaves the dependent action\s+pending/);
+  assert.match(permissions, /never override explicit\s+denials or project\/host restrictions/);
+  assert.match(permissions, /converter's license,[\s\S]*input document's rights,[\s\S]*newly authored guidance/);
+  assert.match(permissions, /Ask the user to clarify missing or\s+uncertain sharing rights/);
+  assert.match(permissions, /Publication approval is separate from redistribution rights/);
+});
+
+test('comparative authoring checks preserve baselines and measurement provenance', () => {
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const directory = path.join(root, 'skills/core/skillvault-authoring');
+  const workflow = fs.readFileSync(path.join(directory, 'references/upsert.md'), 'utf8');
+  const comparison = workflow.split('### Comparative outcome checks')[1].split('### Trigger regression checks')[0];
+  const entrypoint = fs.readFileSync(path.join(directory, 'SKILL.md'), 'utf8');
+  assert.ok(entrypoint.includes('./references/upsert.md#validation'));
+  assert.match(workflow.split('## Upsert By Name')[0], /\(#comparative-outcome-checks\)/);
+  assert.match(workflow, /wording-only edit[\s\S]*does not start model trials/);
+  assert.match(comparison, /new capability, compare with no skill[\s\S]*fixed earlier revision[\s\S]*before editing/);
+  assert.match(comparison, /same task prompts and input\s+fixtures/);
+  assert.match(comparison, /Keep each version's run outputs\s+separate/);
+  assert.match(comparison, /Prevent the baseline from discovering the candidate[\s\S]*inherited context/);
+  assert.match(comparison, /Do not uninstall, overwrite, or retarget live\s+copies/);
+  assert.match(comparison, /Reuse approval[\s\S]*obtain missing permission[\s\S]*before proceeding/);
+  assert.match(comparison, /omitting a required artifact fails[\s\S]*missing evaluation evidence is Unverified/);
+  assert.match(comparison, /complete comparable pairs[\s\S]*show excluded runs/);
+  assert.match(comparison, /do not label character counts as measured tokens/);
+  assert.match(comparison, /Missing metrics are unavailable, not zero[\s\S]*independently verified task outcomes/);
+  assert.match(comparison, /label a walkthrough as instruction review,[\s\S]*not an executed benchmark/);
+});
+
+test('trigger regression checks separate selection failures from unavailable evidence', () => {
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const workflow = fs.readFileSync(path.join(root, 'skills/core/skillvault-authoring/references/upsert.md'), 'utf8');
+  const triggers = workflow.split('### Trigger regression checks')[1].split('## Publishing')[0];
+  const outcomes = [...triggers.matchAll(/^\| ([^|]+) \| ([^|]+) \| ([^|]+) \|\r?$/gm)]
+    .map(match => match.slice(1).map(value => value.trim()))
+    .filter(row => row[0] !== 'Expected' && !/^:?-+:?$/.test(row[0]));
+  assert.deepEqual(outcomes, [
+    ['Should select', 'Selected', 'Pass'],
+    ['Should select', 'Not selected', 'Fail'],
+    ['Should not select', 'Selected', 'Fail'],
+    ['Should not select', 'Not selected', 'Pass'],
+    ['Either', 'Failed, timed out, blocked, or unobservable', 'Unverified'],
+  ]);
+  assert.match(workflow.split('## Upsert By Name')[0], /\(#trigger-regression-checks\)/);
+  assert.match(triggers, /implicit intent[\s\S]*cases owned by another skill/);
+  assert.match(triggers, /evaluating or explaining[\s\S]*discovery's read-only behavior/);
+  assert.match(triggers, /typo-only edit needs no new model trials/);
+  assert.match(triggers, /execution is approved[\s\S]*intended host[\s\S]*supporting evidence/);
+  assert.match(triggers, /Never count a runner\s+failure as a successful non-trigger/);
+  assert.match(triggers, /Trigger correctness and task-output quality are separate/);
+  assert.match(triggers, /fresh cases not used to revise or select a description/);
+  assert.match(triggers, /Preserve canonical actions,[\s\S]*permission boundaries/);
+  assert.match(triggers, /leave observed triggering Unverified/);
+});
+
+test('installation metadata supports partial selection and explicit exact names', () => {
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const directory = path.join(root, 'skills/core/skillvault-installation');
+  const manifest = parseJson(fs.readFileSync(path.join(directory, 'skill.json'), 'utf8'), 'skillvault-installation/skill.json');
+  const instructions = fs.readFileSync(path.join(directory, 'SKILL.md'), 'utf8');
+  const skill = parseSkill(instructions, manifest.name, manifest);
+  assert.equal(skill.name, 'skillvault-installation');
+  const exact = manifest.inputs.find(input => input.name === 'exact');
+  assert.equal(exact.type, 'boolean');
+  assert.equal(exact.default, false);
+  assert.ok(manifest.examples.includes('/skillvault-installation install harness global'));
+  assert.ok(manifest.examples.includes('/skillvault-installation install --exact harness global'));
+  const guide = fs.readFileSync(path.join(directory, 'references/install.md'), 'utf8');
+  assert.ok(guide.includes('Find-SkillCatalogEntry'));
+  assert.ok(guide.includes('-Select harness'));
+  assert.ok(guide.includes('-Preview'));
+});
+
+test('monitor discovery declares supported sources and a compatible runtime', () => {
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const catalog = parseJson(fs.readFileSync(path.join(root, 'catalog.json'), 'utf8'), 'catalog.json');
+  const entry = catalog.find(candidate => candidate.name === 'harness-monitor');
+  const directory = path.join(root, entry.path);
+  const manifest = parseJson(fs.readFileSync(path.join(directory, 'skill.json'), 'utf8'), 'harness-monitor/skill.json');
+  const skill = parseSkill(fs.readFileSync(path.join(directory, 'SKILL.md'), 'utf8'), entry.name, manifest);
+  assert.equal(entry.description, manifest.description);
+  assert.equal(skill.description, manifest.description);
+  const runtime = parseJson(fs.readFileSync(path.join(root, 'skills/planning/harness/skill.json'), 'utf8'), 'harness/skill.json');
+  assert.equal(manifest.requiredInterfaces.harness['monitor-discovery'], 5);
+  assert.equal(runtime.runtimeInterfaces['monitor-discovery'], 5);
+  assert.equal(runtime.runtimeInterfaces['harness-runtime'], 4);
+  const guide = fs.readFileSync(path.join(directory, 'references/discovery.md'), 'utf8');
+  const cases = [...guide.matchAll(/```json\r?\n([\s\S]*?)\r?\n```/g)].map(match => parseJson(match[1], 'discovery example'));
+  assert.deepEqual(cases[0].monitors.map(monitor => monitor.source.type), ['ado', 'folder']);
+  assert.deepEqual(cases[0].monitors[0].scope.terms, ['DAS', 'PACS', 'DaaP']);
+  assert.deepEqual(cases[0].monitors[1].scope.terms, ['DAS', 'PACS', 'DaaP']);
+  assert.equal(cases[0].monitors[0].topics, undefined);
+  assert.ok(cases[0].monitors.every(monitor => monitor.kind === 'discovery' && monitor.allowScheduled === false));
+  assert.equal(cases[1].schemaVersion, 1);
+  assert.equal(cases[1].items[0].disposition, 'Deferred');
+  assert.equal(cases[1].items[0].priority, 1);
+  assert.equal(typeof cases[1].items[0].sourceOwner, 'string');
+  assert.equal(cases[2].assessments[0].relevance, 'Relevant');
+  assert.equal(cases[2].assessments[0].scope, cases[0].monitors[0].scope.description);
+  assert.deepEqual(cases[3].sameRequirementAs, ['https://example.invalid/tracker/value']);
+  assert.equal(cases[3].claims[0].fact, 'acceptance.value');
+  assert.equal(cases[4].correlations[0].authorities['acceptance.value'], cases[4].correlations[0].sources[1]);
+  assert.ok(guide.includes('"type": "json-feed"'));
 });
 
 test('harness initialization reuses selected root without another location prompt', () => {
@@ -566,6 +1026,33 @@ test('topic action-prefix ADR examples match canonical action menus', () => {
   }
 });
 
+test('discovery search builds scoped queries and evidence-backed shortlists', () => {
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const search = fs.readFileSync(path.join(root, 'skills/core/skillvault-discovery/references/search.md'), 'utf8');
+  assert.ok(search.indexOf('## Prepare the Query') < search.indexOf('## Search Order'));
+  const order = search.split('## Search Order')[1].split('## External Sources')[0];
+  const stages = [...order.matchAll(/^\d+\. (.+)$/gm)].map(([, stage]) => stage);
+  assert.equal(stages.length, 5);
+  for (const [index, source] of ['installed', 'workspace', 'internal', 'official', 'external'].entries()) {
+    assert.ok(stages[index].includes(source), `Preserve discovery lookup stage ${source}`);
+  }
+  assert.match(order, /explicit source\/URL\/path is authoritative/);
+  const external = search.split('## External Sources')[1].split('## Check Candidates')[0];
+  assert.ok(external.includes('https://skills.sh/'));
+  assert.ok(external.includes('--owner <owner>'));
+  assert.match(external, /Do not run `npx`,\s+install packages, or invoke the Skills CLI as a side effect of search/);
+  const results = search.match(/## Results[\s\S]*?```text\r?\n([\s\S]*?)```/)[1];
+  const fields = new Set([...results.matchAll(/^([^:\r\n]+): /gm)].map(([, field]) => field));
+  for (const field of ['Name', 'Source', 'Location', 'Purpose', 'Match', 'Why', 'Requires', 'Evidence', 'Limitations', 'Installed']) {
+    assert.ok(fields.has(field), `Search results need ${field}`);
+  }
+  assert.match(search, /Stars\s+and install counts are optional context, never minimum thresholds/);
+  const fallback = search.split('## When Nothing Fits')[1].split('## Blocked Search Continuation')[0];
+  assert.match(fallback, /one-off task/);
+  assert.match(fallback, /only when a recurring\s+or repeatable gap/);
+  assert.match(fallback, /Search does not start that task or create the\s+skill/);
+});
+
 test('discovery evaluations separate optional runtime advice from the skill decision', () => {
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
   const evaluation = fs.readFileSync(path.join(root, 'skills/core/skillvault-discovery/references/evaluate.md'), 'utf8');
@@ -573,9 +1060,17 @@ test('discovery evaluations separate optional runtime advice from the skill deci
   const fields = new Map([...output.matchAll(/^([^:\r\n]+): (.+)$/gm)].map(([, name, value]) => [name, value.trim()]));
   assert.equal(fields.get('Skill recommendation'), 'upsert/defer/skip');
   assert.equal(fields.has('Recommendation'), false);
+  assert.match(fields.get('Existing-skill improvements'), /None justified \/ Unverified/);
   for (const name of ['Standalone use', 'Harness integration']) assert.match(fields.get(name), /when relevant/);
   assert.match(evaluation, /do not authorize installation, execution, integration, or replacement/);
 
+  const reuse = evaluation.split('## Reuse Inspected Evidence')[1].split('## Behavior')[0];
+  assert.match(reuse, /exact canonical source, skill directory, selected revision\/version, and requested scope/);
+  assert.match(reuse, /new explicit source or location always takes precedence/);
+  assert.match(reuse, /skip name-resolution\s+steps 3-6/);
+  assert.match(reuse, /mutable latest branch, unknown revisions/);
+  assert.match(reuse, /timestamp alone proves neither unchanged content nor runtime availability/);
+  assert.match(reuse, /No persistent search cache or separate evidence store is needed/);
   const checklist = evaluation.split('## Behavior')[1].split('## Output Shape')[0];
   let contentIndent = 0;
   let nestedItems = 0;
@@ -589,6 +1084,31 @@ test('discovery evaluations separate optional runtime advice from the skill deci
     }
   }
   assert.ok(nestedItems > 0, 'Expected nested evaluation checklist items');
+});
+
+test('evaluation proposes existing-skill improvements independently of adoption without applying them', () => {
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const directory = path.join(root, 'skills/core/skillvault-discovery');
+  const evaluation = fs.readFileSync(path.join(directory, 'references/evaluate.md'), 'utf8');
+  const improvements = evaluation.split('## Improve Existing Skills')[1].split('## Output Shape')[0];
+  const details = new Set([...improvements.matchAll(/^\| ([^|]+) \| [^|]+ \|\r?$/gm)].map(([, field]) => field.trim()));
+  for (const field of ['Target', 'Evidence and gap', 'Proposed change', 'Expected benefit', 'Validation']) {
+    assert.ok(details.has(field), `Improvement proposals need ${field}`);
+  }
+  assert.match(improvements, /Read the full relevant section of the current owning skill/);
+  assert.match(improvements, /adoption can remain `skip` or `defer`/);
+  assert.match(improvements, /a nearby valid case it must preserve/);
+  assert.match(improvements, /None justified/);
+  assert.match(improvements, /mark the proposed improvement Unverified/);
+  assert.match(improvements, /evaluation\s+does not edit target skills, rules, manifests, catalogs, or installed copies/);
+  assert.match(improvements, /After the user approves\s+implementation/);
+  assert.match(improvements, /Do not execute the handoff during\s+evaluation/);
+  const record = evaluation.split('## Evaluation Record')[1];
+  assert.match(record, /existing-skill improvement proposals with their targets\/evidence\/checks/);
+  const instructions = fs.readFileSync(path.join(directory, 'SKILL.md'), 'utf8');
+  assert.ok(instructions.includes('./references/evaluate.md#improve-existing-skills'));
+  const manifest = parseJson(fs.readFileSync(path.join(directory, 'skill.json'), 'utf8'), 'skillvault-discovery/skill.json');
+  assert.deepEqual(manifest.inputs.find(input => input.name === 'action').enum, ['list', 'search', 'evaluate', 'explain']);
 });
 
 test('discovery explains the requested tool or product without substituting or running a skill', () => {

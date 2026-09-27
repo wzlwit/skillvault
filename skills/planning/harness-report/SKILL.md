@@ -3,8 +3,9 @@ name: harness-report
 description: "Coordinate dashboard, report, and query authoring. Use
   /harness-report or /hn-report with list or upsert. The create/update actions and
   legacy /harness-report-create and /hn-report-create commands use upsert. Overlaps with
-  harness-dev on implementation, kpi-dashboard on design, and jarvis-metrics on
-  Jarvis authoring; owns artifact identity and validation, not publishing."
+  harness-dev on implementation, kpi-dashboard on design, jarvis-metrics on Jarvis authoring,
+  and the ppt-master and office-documents references on artifact validation; owns artifact identity and validation,
+  not publishing."
 metadata:
   author: wzlwit
   version: "1.0.0"
@@ -44,3 +45,11 @@ unambiguous request or existing artifact; otherwise ask before selecting a platf
 Apply `/rules apply` and project instructions. Load only the selected platform specialist;
 preserve artifact IDs, source contracts, output destinations, validation, and publication approvals.
 Design, created, validated, and published are distinct outcomes. Monitoring remains optional.
+
+`ppt-master` is a reference to a separate presentation workflow, sharing artifact validation
+concerns; it adds no PPTX route or renderer here. Required editability is part of the artifact's
+acceptance contract, not a guarantee from its file extension.
+
+`office-documents` references separate PDF/Word/Excel guidance. Workbook-backed figures need
+formula/cache and expected-value checks; neither this reference nor those checks add an XLSX
+route or bundle the upstream tools.

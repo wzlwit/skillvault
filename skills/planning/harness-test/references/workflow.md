@@ -29,7 +29,7 @@ executor's exit-code semantics. Do not turn every repeated health observation in
 
 ## Declare
 
-`/harness-test declare <JSON-file>` imports a reviewed declaration through:
+`/harness-test declare <JSON-file>` applies a reviewed declaration through:
 
 ```powershell
 & <harness-folder>/scripts/harness.ps1 -ProjectPath <root> -Action TestConfig -DefinitionPath <JSON-file>
@@ -37,7 +37,9 @@ executor's exit-code semantics. Do not turn every repeated health observation in
 
 Resolve the declaration path against the project. For a prose request, derive steps from the
 actual test framework, clarify unresolved commands or environment permissions, and author the
-requested declaration before importing it. Read the existing configuration before any update.
+requested declaration before applying it. In layout 2, edit `config/tests.json` directly or use
+this command to update that same authoritative file; no second imported active copy exists.
+Read the existing configuration before any update.
 
 Environment and flow definitions upsert by name; omitted definitions are preserved. Supplying
 `afterDev` replaces that hook list; omitting it preserves the list. Declaration validates and

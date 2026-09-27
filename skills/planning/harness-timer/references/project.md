@@ -104,10 +104,14 @@ or side effects; review the actual flow. These runs use the existing Test report
 and `test:<flow>:<environment>` safety target.
 
 For a named monitor, read its `/harness-monitor` definition and use `-MonitorName <name>`, with no flow
-or environment override. Require its own `allowScheduled: true`, source file, declared collector
-budget, and approved directory/launcher/environment access. The current source is a local JSON
-snapshot; no online collector or AI worker is implied. Each check can update incident evidence and
-proposals, but never accepts proposals or creates tasks automatically. Its task name is
+or environment override. Require its own `allowScheduled: true`, declared source and collector
+budget, and approved directory/launcher/environment access. Health sources use numeric JSON;
+discovery uses ADO, local folders, or adapter feeds. Scheduled ADO collection needs an approved
+worker credential-delivery mechanism; a feed needs its independently approved producer. Discovery
+status verification uses the read-only model-auto worker under the same budgets and permissions;
+numeric health checks need no AI. Checks can reconcile evidence-backed local task outcomes and
+update candidates/incidents and proposals, but never accept proposals or
+create tasks automatically. Its task name is
 `SkillVault Harness <project-id> Monitor <name>` and its pause target is `monitor:<name>`.
 
 Resolve monitor-versus-flow meaning from existing definitions and an explicit request. If both

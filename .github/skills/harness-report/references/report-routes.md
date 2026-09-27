@@ -60,7 +60,7 @@ source stay in place. Pass the resolved path explicitly to the selected speciali
 - Missing authoring/access capability is Blocked or Partial unless the user accepts a design-only
   deliverable. Offer `/handoff` for an attended next step only when needed and explicitly requested;
   do not launch a second writer. Publishing, sharing, Jarvis monitors/alerts, and IcM routing retain
-  separate authorization. Harness monitoring instead needs its current local numeric JSON contract,
+  separate authorization. Harness health monitoring instead needs its local numeric JSON contract,
   not the Jarvis dashboard URL or a Jarvis-native monitor definition.
 
 ## Web Dashboard

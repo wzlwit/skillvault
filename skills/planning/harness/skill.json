@@ -4,7 +4,8 @@
   "version": "1.0.0",
   "ownershipProtocol": 1,
   "runtimeInterfaces": {
-    "harness-runtime": 1
+    "harness-runtime": 4,
+    "monitor-discovery": 5
   },
   "requiredInterfaces": {
     "skillvault-installation": {
@@ -12,7 +13,7 @@
     }
   },
   "kind": "agent",
-  "description": "Inspect harness state, select its root with a move confirmation after initialization, initialize, read context, or clean historical data. Use /harness or /hn with list, root, init, context, or clean. Accepts legacy root/init/loc/context and management commands. Context summaries overlap with handoff; harness-link owns links. Owns retention; harness-timer schedules maintenance. Bare invocation only lists.",
+  "description": "Inspect harness state, select or relocate its root, initialize, migrate layout, read context, or clean history. Use /harness or /hn with list, root, init, migrate, context, or clean. Accepts legacy root/init/loc/context and management commands. Context summaries overlap with handoff; harness-link owns links. Owns retention; harness-timer schedules maintenance. Bare invocation only lists.",
   "tags": [
     "harness",
     "initialization",
@@ -48,6 +49,7 @@
         "list",
         "root",
         "init",
+        "migrate",
         "context",
         "clean"
       ],
@@ -58,13 +60,21 @@
       "required": false,
       "type": "string",
       "description": "Existing parent/controller path for root. Omission only displays locations. Select a valid new path, then prompt to move an initialized previous harness; Move is the default, including no answer. Explicit answers or user instructions override it. A skipped or failed move keeps the new root selected. Invalid paths do not change Root."
+    },
+    {
+      "name": "current-file",
+      "required": false,
+      "type": "string",
+      "description": "Canonical current-<project>.csv filename. Init accepts it for a new controller; root with this option previews an explicit rename through Board. Existing files change only on approved --apply."
     }
   ],
   "examples": [
     "/harness",
     "/harness list",
     "/harness root",
+    "/harness root --current-file current-service.csv",
     "/harness clean",
+    "/hn migrate",
     "/harness root C:\\controllers\\project",
     "/hn-root C:\\controllers\\project"
   ]

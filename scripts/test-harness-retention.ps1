@@ -1,3 +1,5 @@
+param([switch]$LayoutOnly)
+
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot '../skills/planning/harness/scripts/harness-store.ps1')
 . (Join-Path $PSScriptRoot '../skills/planning/harness/scripts/harness-maintenance.ps1')
@@ -6,7 +8,27 @@ $savedFixtureOwnershipRoot = $env:SKILLVAULT_OWNERSHIP_ROOT
 $env:SKILLVAULT_OWNERSHIP_ROOT = Join-Path $fixture 'runtime-ownership'
 try {
     New-Item -ItemType Directory -Path $fixture | Out-Null
-    $paths = Get-HarnessPaths $fixture
+    if ($LayoutOnly) {
+        $paths = Get-HarnessPaths $fixture
+        $config = Initialize-Harness $paths
+        $state = Read-HarnessState $paths
+        $old = [datetimeoffset]::UtcNow.AddDays(-100)
+        foreach ($identity in @('discardable', 'verification', 'checkpoint')) {
+            $report = Get-HarnessReportPath $paths $config $identity Verify $old
+            New-Item -ItemType Directory -Path (Split-Path -Parent $report) -Force | Out-Null
+            [IO.File]::WriteAllText($report, 'Recorded fixture evidence')
+            $state.runs += [pscustomobject]@{ id = $identity; phase = 'Verify'; status = 'Verified'; startedAt = $old.ToString('o'); finishedAt = $old.AddMinutes(1).ToString('o'); report = $report }
+        }
+        $state | Add-Member -NotePropertyName monitoring -NotePropertyValue ([pscustomobject]@{ candidates = @([pscustomobject]@{ id = 'C-001'; disposition = 'Resolved'; verification = [pscustomobject]@{ report = $state.runs[1].report; outcome = 'unverified' }; verificationCheckpoint = [pscustomobject]@{ report = $state.runs[2].report; outcome = 'open' } }) })
+        Write-HarnessJson $paths.State $state
+        $result = Invoke-HarnessHistoryCleanup $paths -Apply
+        if ($result.status -cne 'Cleaned' -or 'discardable' -notin $result.pruned -or (Test-Path $state.runs[0].report) -or
+            'verification' -notin $result.protected.id -or -not (Test-Path $state.runs[1].report) -or 'checkpoint' -notin $result.protected.id -or
+            -not (Test-Path $state.runs[2].report) -or (Read-HarnessState $paths).runs.Count -ne 2) { throw 'Dated cleanup lost verification/checkpoint evidence or failed to prune owned records and files together.' }
+        Write-Output 'Dated retention checks passed: monthly owned-file deletion and protected verification/checkpoint evidence.'
+        return
+    }
+    $paths = Get-HarnessPaths $fixture -LayoutVersion 1
     $config = Initialize-Harness $paths
     $defaults = Get-HarnessMaintenancePolicy $config
     if ($defaults.maxEntries -ne 5000 -or $defaults.maxAge -ne '90d' -or $defaults.enabled -or $null -ne $defaults.maxEntriesPerTopic) { throw 'Retention defaults changed or auto-enabled cleanup.' }
@@ -93,6 +115,16 @@ try {
     $state.tasks[2].status = 'Completed'
     $closedFollowUp = Get-HarnessHistoryCleanupPlan $paths $config $state $now
     if ('parent' -notin $closedFollowUp.candidates.id -or 'child' -notin $closedFollowUp.candidates.id) { throw 'Completed follow-ups permanently bypassed ordinary retention.' }
+    $state | Add-Member -NotePropertyName monitoring -NotePropertyValue ([pscustomobject]@{
+        latest = @(); incidents = @(); candidates = @([pscustomobject]@{
+            id = 'C-001'; disposition = 'Deferred'; taskId = ''; firstReport = Join-Path $history 'parent.md'; latestReport = Join-Path $history 'child.md'
+        })
+    }) -Force
+    $pendingDiscovery = Get-HarnessHistoryCleanupPlan $paths $config $state $now
+    if ('parent' -notin $pendingDiscovery.protected.id -or 'child' -notin $pendingDiscovery.protected.id) { throw 'Pending discovery candidates lost their source evidence.' }
+    $state.monitoring.candidates[0].disposition = 'Resolved'
+    $closedDiscovery = Get-HarnessHistoryCleanupPlan $paths $config $state $now
+    if ('parent' -notin $closedDiscovery.candidates.id -or 'child' -notin $closedDiscovery.candidates.id) { throw 'Resolved unlinked candidates permanently bypassed retention.' }
     Write-Output 'Retention checks passed: aggregate defaults, age/count limits, no-write preview, protected evidence, coordinated pruning, and active-run isolation.'
 }
 finally {

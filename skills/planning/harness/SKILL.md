@@ -1,10 +1,10 @@
 ---
 name: harness
-description: "Inspect harness state, select its root with a move confirmation after initialization, initialize, read context, or clean historical data. Use /harness or /hn with list, root, init, context, or clean. Accepts legacy root/init/loc/context and management commands. Context summaries overlap with handoff; harness-link owns links. Owns retention; harness-timer schedules maintenance. Bare invocation only lists."
+description: "Inspect harness state, select or relocate its root, initialize, migrate layout, read context, or clean history. Use /harness or /hn with list, root, init, migrate, context, or clean. Accepts legacy root/init/loc/context and management commands. Context summaries overlap with handoff; harness-link owns links. Owns retention; harness-timer schedules maintenance. Bare invocation only lists."
 metadata:
   author: wzlwit
   version: "1.0.0"
-argument-hint: "[list|root|init|context|clean] [<arguments>...]"
+argument-hint: "[list|root|init|migrate|context|clean] [<arguments>...]"
 ---
 
 # Harness
@@ -31,12 +31,27 @@ for a new root, initializing, installing, or starting work. Unknown actions show
 | `list` | Show the selected root, saved status, and actions |
 | `root [<path>]` | [Show or change the root; prompted moves default to Yes after initialization](./references/loc.md) |
 | `init` | [Initialize or reconnect](./references/init.md) |
+| `migrate [--apply]` | [Preview or apply an in-place layout migration](./references/runtime.md#layout-migration) |
 | `context` | [Read rules, plans, decisions, and references](./references/context.md) |
 | `clean [--policy <file>] [--apply]` | [Preview historical-data cleanup or configure retention](./references/runtime.md#history-cleanup) |
 
 `clean` owns retained run records and reports, not schedules, skill folders, application files,
 or worktrees. `/harness-timer` owns cadence and stale schedules; weekly maintenance invokes the
 same history-cleanup operation. No separate management or maintenance topic is registered.
+
+`migrate` is an explicit in-place layout/configuration conversion, not Root relocation or cleanup.
+Preview the exact paths and preserve custom adapters and snapshots. Applying requires approval;
+`init` never migrates an existing controller. New controllers use authoritative domain files under
+`config/`, generated `board/` views, `runtime/` state and locks, and monthly readable history.
+The generated README is navigation only, never a second status store.
+
+New controllers publish one `current-<project-slug>.csv` board, with its name saved as
+`currentFileName` in project configuration. Existing controllers without that field retain
+`current.csv`; init, layout migration, and Root relocation do not silently rename it.
+The [current-view procedure](./references/loc.md#current-view-names) owns explicit
+`root --current-file <name> [--apply]` renames and `root --view <topic> --monitors <names>` exports.
+These options route to the shared Board action, not ordinary Root inspection or parent selection.
+Topic-qualified files are opt-in filtered snapshots under artifacts, never competing task stores.
 
 `root` alone displays the selected root; `root <path>` selects it. `loc` is a compatibility alias.
 Validate and select the requested new root first. If the previously selected harness was initialized
@@ -56,6 +71,9 @@ silently moves existing data. Installed skill folders and linked coding reposito
 Use `/harness-link list|add|remove` for all supporting URLs, files, folders, and coding-repository
 paths. There are no separate `repo` or `url` actions here. Specialized work stays with
 `/harness-dev`, `/harness-review`, `/harness-monitor`, and the other harness topics.
+Use `/harness-doc list|upsert` for reader-facing feature guides, onboarding, and troubleshooting
+in the selected coding repository's documentation tree. It supports direct session authoring
+without initialization; any existing harness task and run records remain controller-local.
 
 Legacy management commands route to these actions. `/hn-root <path>` and `/harness-root <path>` use
 the same move prompt and default as `/hn root <path>`, without a second location prompt for an

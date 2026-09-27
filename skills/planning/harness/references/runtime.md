@@ -1,7 +1,8 @@
 # Local Harness Runtime
 
 The runtime uses PowerShell 7, Git, and the Copilot CLI. Read-only board commands, standalone
-test flows, and named monitor checks do not need the CLI or model settings. Scheduled operation uses Windows Task Scheduler.
+test flows, and numeric health checks do not need the CLI or model settings. Discovery status
+verification uses the CLI's model `auto` mode. Scheduled operation uses Windows Task Scheduler.
 Installing skills does not initialize a project, start an agent, or register a schedule.
 
 Harness bundles default to global availability. Explicit project installations remain supported
@@ -67,14 +68,30 @@ does not request initialization, execution, installation, destructive changes, o
 
 ## Configuration and State
 
-`/harness init` creates `<project-root>/.harness_sv/config.json` and `state.json`. The state file owns
-tasks, references, queue order, active phase, and run history. `current.csv`, `history.csv`, and
-`references.csv` are generated views in the board root, which defaults to `<project-root>/.harness_sv`.
+New `/harness init` controllers use layout version 2. `config/project.json` owns identity and runner
+settings; `config/monitors.json`, `config/tests.json`, and `config/policy.json` own their domains.
+These declarations are the single editable source of truth. Commands update those same files;
+direct edits need no import. The runtime validates a stable set and combines it only in memory.
+Missing, malformed, or conflicting declarations block the next operation; no old active copy is used.
+An in-flight operation keeps its validated configuration and can record its outcome; the next
+operation loads current declarations. Pause/stop stays live even with an invalid declaration.
+
+`runtime/state.json` owns tasks, references, queue order, active phase, run history, and safety state.
+The configured current-work CSV, `history.csv`, and `references.csv` are generated views in the board root, which
+defaults to `<project-root>/.harness_sv/board`.
+An existing standalone decision register retains its original board location on first initialization.
 The existing decision register remains owned by `/harness-decision`. Do not edit generated views as
 competing task queues. Existing unrelated CSV files are never adopted or overwritten.
 
+New controllers save `currentFileName: "current-<project-slug>.csv"` in project configuration;
+the name remains stable across Root relocation. Existing configurations without the field retain
+`current.csv`. `Get-HarnessCurrentPath` and command results' `current` property expose the resolved
+path. A filename change is an explicit filesystem transition: use Board -CurrentFileName with
+preview and approved Apply, not a monitor-only rename or an implicit reconnect migration. The
+[current-view procedure](loc.md#current-view-names) also defines opt-in topic snapshots under artifacts.
+
 Explicit `/harness-policy limits` and `/harness-policy fallback` declarations add `restrictions` and `fallback` sections
-to that same configuration. Safety counters, pauses, and audit events use the state file's
+to `config/policy.json`. Safety counters, pauses, and audit events use the state file's
 `safety` object; there is no second controller or policy database. Bare policy commands are
 read-only, including before initialization. Installing either guide applies no example policy.
 
@@ -86,6 +103,30 @@ Explicit Root relocation includes authored files already inside the control dire
 external project documents. A moved controller saves `executionRoot` for its former implicit
 coding/test target and original instruction lookup; absent means the current `projectRoot`.
 
+Legacy flat controllers remain readable and runnable in place until explicit migration. `init`
+only reconnects. Project schedule declarations use `config/schedules.json` when configured;
+progress and active invocation snapshots use `runtime/schedules.json`. A README links to board,
+history, and configuration without copying task rows. Transaction originals exist only in OS
+temporary storage until success or verified rollback; interrupted updates retain a pending marker.
+
+## Layout Migration
+
+`/hn migrate` (or `/harness migrate`) previews in-place conversion; approved `--apply` maps to:
+
+```powershell
+& <harness-folder>/scripts/harness.ps1 -ProjectPath <root> -Action Migrate -Apply
+```
+
+Preview exact source/destination paths before approval. This differs from Root relocation to a
+different parent and from timer migration of OS tasks. No scheduled migration or implicit Init
+migration is allowed. Refuse active/unrecovered work, conflicting destinations, actual filesystem
+links, ambiguous schedule ownership, or conflicting old declarations. Preserve identities, task
+statuses, queues, pauses, report bytes, explicit external boards, schedule anchors and cadence.
+Existing owned reports move to monthly names and stored links update together. Custom adapters,
+snapshots, unrelated files, and external documents stay in place; inspect adapter path assumptions
+before applying. They are not automatically rewritten or deleted. A failed update restores originals;
+if restoration fails, preserve `migrate.pending.json` and its temporary originals for attended recovery.
+
 ## Artifact Storage
 
 All harness-owned information and files default to `<root>/.harness_sv/`, where Root is selected
@@ -94,15 +135,18 @@ not the whole controller. Keep one authoritative copy; do not mirror records int
 
 | Artifact | Default destination relative to Root |
 | --- | --- |
-| Configuration, task/link/run state, policy and safety state | `.harness_sv/config.json`, `.harness_sv/state.json` |
-| Board views, decision register, and board ownership marker | `.harness_sv/current.csv`, `.harness_sv/history.csv`, `.harness_sv/references.csv`, `.harness_sv/decisions.csv`, `.harness_sv/.harness-board.json` |
-| Run evidence, validation results, and captured command output | `.harness_sv/history/<run-id>.md` |
+| Authoritative project, monitor, test, policy, and schedule declarations | `.harness_sv/config/` |
+| Task/link/run state, safety state, and scheduler progress | `.harness_sv/runtime/state.json`, `.harness_sv/runtime/schedules.json` |
+| Board views, decision register, and board ownership marker | `.harness_sv/board/` |
+| Canonical current-work view for new controllers | `.harness_sv/board/current-<project>.csv` |
+| Explicitly requested filtered board snapshots | `.harness_sv/artifacts/board-views/current-<project>-<topic>.csv` |
+| Run evidence, validation results, and captured command output | `.harness_sv/history/YYYY-MM/<UTC-timestamp>-<topic>-<run-id>.md` |
 | Requested plans and specifications | `.harness_sv/docs/plans/` |
 | Requested ADRs | `.harness_sv/docs/plans/decisions/` |
 | Requested handoff/context notes | `.harness_sv/docs/handoffs/` |
-| Authored policy, test, monitor, and runner declarations | `.harness_sv/definitions/` |
+| Other workflow definitions and approved adapter scripts | `.harness_sv/definitions/`, `.harness_sv/adapters/` |
 | New local reports, dashboards, queries, diagrams, and approved exports | `.harness_sv/artifacts/` |
-| Store, runner, and decision lock files | `.harness_sv/store.lock`, `.harness_sv/runner.lock`, `<board>/decisions.lock` |
+| Store, runner, schedule, and decision lock files | `.harness_sv/runtime/locks/`, `<board>/decisions.lock` |
 | Detached task worktrees when worktree mode is selected | `.harness_sv/worktrees/<task-id>/` |
 
 Create only the files required by an authorized action, not this entire hierarchy on inspection
@@ -296,10 +340,11 @@ harness skills locate this same dependency instead of duplicating storage and ex
 | --- | --- |
 | `Root` | Read-only inspection by default; only this form permits omitted `-ProjectPath`. Explicit `-Move -DestinationPath <existing-parent>` previews relocation from the selected source; approved `-Apply` moves it. Never scheduled. |
 | `Init` | Reuse Root; the session supplies `-ProjectPath` and `-ConfirmLocation` without another location prompt; no scheduled initialization |
+| `Migrate` | Preview in-place layout/configuration migration; explicit approved `-Apply` only, never scheduled |
 | `Status` | Read active state, tasks, and human queues |
 | `Context` | Optional `-Id`; list selected task, coding repository, reference links, and instruction sources |
 | `Clean` | Preview historical records/reports; approved `-Apply` prunes eligible entries. `-DefinitionPath <file>` previews or saves retention settings without running cleanup. |
-| `Board` | Inspect the board; legacy `loc --board` with `-BoardPath` changes only an empty board, not the project |
+| `Board` | Inspect resolved paths; `-CurrentFileName` previews an explicit rename, `-ViewTopic` and `-ViewMonitors` preview a filtered snapshot; each applies only with approval and `-Apply`. Legacy `-BoardPath` still changes only an empty board. |
 | `Task` | List tasks, add with requirement fields, or use `-FollowUpOf <completed-id>` for a linked follow-up; optional source/revision/kind/priority/risk and `-RepositoryRef` |
 | `UpdateTask` | Exact `-Id` and supplied fields; revised completed requirements create a linked task; never update an active task contract or retarget an allocated task |
 | `Ref` | List references, upsert `-Source`/`-Note` with optional task `-Id`, or remove exact `-RemoveId` |
@@ -309,6 +354,7 @@ harness skills locate this same dependency instead of duplicating storage and ex
 | `Test` | List declarations, or run `-Flow` with optional `-TestEnvironment`, task `-Id`, and timer `-Scheduled` |
 | `MonitorConfig` | Preview a `-DefinitionPath` declaration; apply with explicit `-Apply`, human `-Actor`, and `-Reason` |
 | `Monitor` | Show saved monitors/proposals, or check one `-MonitorName`, optionally timer `-Scheduled` |
+| `Monitor -AllMonitors` | Check every configured source, report per-source coverage, and fail closed on an incomplete aggregate |
 | `MonitorTask` | Preview an exact incident `-Id` proposal; explicit Apply/Actor/Reason accepts it as a manual-only investigation task |
 | `Restrict` | Show policy; `-PolicyAction Declare -DefinitionPath <file>` previews a restriction replacement |
 | `Fallback` | Show policy/pauses; explicitly Declare, Pause, Stop, or Resume through `-PolicyAction` |
@@ -321,7 +367,7 @@ Priority 1 is highest; risk and priority are separate. Timer pickup requires exp
 readiness. Unknown/high-risk work needs a reviewed narrower scope, not an automatic risk downgrade.
 
 Explicitly revised completed requirements create a new task linked through `followUpOf`, visible
-in task state and `current.csv`. `UpdateTask -Id` and `Dev -Id` with changed requirement fields
+in task state and the configured current-work CSV. `UpdateTask -Id` and `Dev -Id` with changed requirement fields
 reuse the same intake; `Task`/`Dev -FollowUpOf` can link a new request explicitly. Omitted requirement
 fields inherit from the parent. An identical repeat reuses its task; a source revision alone does
 not create work. Keep the original completion, snapshot, and report unchanged. The new task starts
@@ -642,8 +688,9 @@ production credentials in the worker environment. Shell permissions must be scop
 The `harness-timer` bundle calls the shared runner. Keep it alongside `harness` in the same install
 scope. Bare `/harness-timer` uses read-only `list`. Its Set/Disable/Resume/Clean/Migrate operations
 preview unless given `-Apply` for the approved selection/policy. One current-user heartbeat owns OS
-timer changes; logical project schedules live in the resolved Control's `schedules.json` under
-`schedules.lock`. The central registry and latest job receipts use `~/.copilot/skillvault/scheduler`.
+timer changes. Layout-2 project declarations live in `config/schedules.json`; progress and active
+claims live in `runtime/schedules.json`, protected by `runtime/locks/schedules.lock`. Legacy flat
+files stay in place until migration. The central registry and latest job receipts use `~/.copilot/skillvault/scheduler`.
 Allowance inheritance and all worker gates remain unchanged. Installation/editing creates no live timer.
 
 Timer setup accepts `-RunnerContextPath`, records the absolute non-secret path in its scheduled
@@ -667,7 +714,8 @@ restarts follow the bounded rule above, independently of the development critica
 Existing legacy OS time limits are retained and can bound restart time; they are not increased implicitly.
 `-MonitorName <name>` selects a declared monitor with its own scheduled approval, budget, pause
 target, and `Monitor -Scheduled` action. It is separate from legacy monitor command-flow schedules,
-which are not migrated or replaced automatically. No AI settings or automatic task intake is needed.
+which are not migrated or replaced automatically. Discovery verification uses model auto; health
+checks need no AI. Neither mode permits automatic task intake.
 `-Topic test`, legacy `monitor` flow mode, or another safe topic name uses `-TestFlow` and optional
 `-TestEnvironment` (aliases `-Flow`/`-Environment`).
 These use the existing declared Test executor, scheduled-environment approval, evidence, and
@@ -721,16 +769,77 @@ no second test-state store or automatic task creation is involved.
 
 The `harness-monitor` guide owns declarations and observation format. The shared `harness-monitor.ps1`
 uses `config.monitoring.monitors` for definitions and `state.monitoring` for latest checks and
-incident episodes. Older configs without monitoring read as an empty set; no live monitors or
+incident episodes plus discovery candidates. Older configs without monitoring read as an empty set; no live monitors or
 thresholds are initialized by installation or read-only display. MonitorConfig previews then
 upserts by name on explicit approval. Existing test/runner configuration is unchanged.
 
-The first collector reads a local JSON file through a bounded `pwsh` process using the common
+The health collector reads a local JSON file through a bounded `pwsh` process using the common
 run lock, restrictions, and pause/stop controls. One object supplies resource/environment/metric,
 finite numeric value, explicit-zone timestamps, and the declared window. Compare the metric to
 the explicit breach condition only after checking identity, window duration, data age, and
 previously accepted window order. Structured exports from online queries/dashboard measures need
-separately reviewed producers; this runtime does not install or authenticate provider connectors.
+separately reviewed producers; health collection does not scrape dashboards or provision credentials.
+
+Discovery declarations use `kind: discovery` and the `monitor-discovery: 5` interface. The bounded
+`harness-source-reader.ps1` supports `folder`, `ado` backlog/saved-query, and `json-feed` sources.
+Other approved readers normalize their evidence through the feed contract. The native ADO reader
+needs an existing Entra bearer token supplied through the declared worker environment, not stored
+in configuration, logs, or arguments. No sign-in, refresh, source writes, or credential provisioning
+is implicit. Folder reads permit ordinary OneDrive placeholders, refuse symbolic links/junctions,
+and enforce working-root restrictions on each read. Topic terms are a literal prefilter, not a
+semantic claim that a source concern remains unfixed. ADO requires a declared service scope, with
+service-specific terms and/or verified area paths. Broad BI labels alone are not a platform boundary.
+After collection, the read-only Verify worker uses AI model `auto`, without forcing development's
+model, Max effort, or intelligence tier. It assesses service relevance, verifies current status,
+and ranks remaining work. MonitorAssess also accepts reviewed revision-bound assessments. Only
+current Relevant, verified-open candidates become proposals; inaccessible or uncertain work stays
+Unverified. Explicit `verification.enabled: false` retains collection/assessment-only behavior.
+An optional `verification.repositoryRef` selects an already registered coding repository; it never
+clones or initializes one. Linked tasks keep their repository and workspace.
+
+Complete, fresh discovery results update `state.monitoring.candidates`, with stable C- IDs and
+source identity/revision and optional source priority. Unknown, Deferred, Blocked, Resolved,
+Superseded, and Missing remain distinct.
+`Monitor -AllMonitors` checks all declarations under one run lock and records complete or Partial
+batch evidence. Named checks stay scoped. The canonical configured current-work CSV contains task rows and
+unaccepted candidate rows, identified by `recordType`, with `sourceType`, source/owner timestamps,
+uncertainty, and `checkStatus`, sorted by priority then stable ID. Candidate visibility creates no
+task or execution approval. ADO hierarchy expansion, explicit Markdown-section granularity, and
+per-source diagnostics make coverage auditable. Generic holds are reassessment backlog; concrete
+dependency blocks remain. The monitor guide owns classifications, project category policy, and
+optional isolated authoritative-branch evidence. Pending rollout/PPE/sign-off prevents completion.
+Durable completion is bound to requirements, task contract, scope/authority and report evidence;
+material changes propose explicit follow-ups instead of reopening completed tasks.
+Adapters also supply an optional `sourceOwner` display name from authoritative assignment or leading
+document Owner metadata. It appears on candidates, tasks, and the current-work CSV, separately from execution
+ownership. Fresh successful collections update or clear that metadata; failed/partial/stale reads
+preserve the last captured evidence without claiming a current live assignment.
+Failed/partial/stale/older results preserve prior candidates; disappearance is not completion.
+Explicit MonitorTask acceptance previews source evidence and reuses normal task/reference intake.
+New tasks remain verify/Unknown/manual-only. Previously Deferred work enters the normal queue at
+its source priority; only a current Blocked source creates a Blocked task. Existing readiness and
+pickup approvals still apply before the development selector handles eligible work by priority.
+Verified already-fixed/stale evidence reconciles local nonterminal task statuses and removes those
+tasks from pending queues. Quoted source lines, current code snapshots, collection revisions, and
+unchanged task contracts are checked before applying. Completion needs implementation plus separate
+test/authority evidence; stale needs explicit authoritative supersession, not age, absence, or source
+Closed alone. Read-only verification does not execute tests or prove deployment. It preserves task
+contracts, auto-eligibility, existing terminal outcomes, and concurrent human edits. Development still
+double-checks with its strongest permitted configuration. External ADO/document writes are separate,
+source-specific approvals and are not implemented by this verifier.
+Required candidate reports survive retention and their owned paths follow controller relocation.
+These policies apply to all approved source adapters. `config.monitoring.correlations` holds explicit
+same-requirement relationships and exact fact authorities, not another task store. Candidate/source
+provenance remains separate; aliases share task intake and a canonical board row. Contradictory
+substantive claims or incompatible repository evidence remain Unverified unless the exact disputed
+fact has a declared authority. Owner/status differences alone do not establish a conflict.
+All-source checks collect first, retain verification read leases/snapshots, then reconcile against
+all available group results. Partial checks expose `verifiedSubset` without claiming complete coverage
+or granting automatic pickup. Candidate checkpoints and `state.monitoring.coverage` let the next
+approved check resume within existing budgets. Fresh proofs are reused only after checking current
+inputs; ordinary capacity deferral is distinct from a process timeout or safety pause. Changed
+implementation evidence triggers revalidation, and verified regressions produce explicit follow-ups
+without changing completed history. Checkpoint reports are protected alongside completion evidence.
 
 Collection status and health are separate: a valid breach is Succeeded/Unhealthy. It opens or
 reuses one episode without counting as a monitor failure. Fresh healthy data records recovery;
@@ -743,7 +852,7 @@ MonitorTask acceptance requires fresh latest Unhealthy evidence, reuses task/ref
 and deduplicates by the incident source identity. New tasks are verify/Unknown/manual-only. An
 accepted task is neither executed nor completed by monitoring, and recovery does not prove a fix.
 Checks update incident evidence and its reference note rather than changing a task's contract.
-Reports use the existing board history directory, with monitor/health columns in history.csv.
+Reports use the layout-aware history directory, with monitor/health columns in history.csv.
 Full telemetry stays at its source; saved report data excludes arbitrary extra JSON fields.
 
 Report/query/dashboard authoring belongs to the session-level `harness-report` workflow

@@ -1,0 +1,32 @@
+{
+  "name": "office-documents",
+  "title": "Office Documents Reference",
+  "version": null,
+  "status": "public",
+  "visibility": "public",
+  "kind": "reference",
+  "description": "Reference to Anthropic's PDF, Word, and Excel document skills for merging PDFs, cleaning spreadsheets, and document formatting. Use /office-documents to locate the relevant guidance. Overlaps with harness-doc on document output and harness-report on workbook/report validation; upstream tools are not bundled and their proprietary terms apply.",
+  "tags": ["writing", "pdf", "word", "excel", "document-processing", "reference"],
+  "author": "Anthropic, PBC",
+  "maintainer": "wzlwit",
+  "license": null,
+  "homepage": "https://github.com/anthropics/skills",
+  "source": {
+    "repo": "skillvault",
+    "path": "skills/writing/office-documents"
+  },
+  "upstream": {
+    "repo": "https://github.com/anthropics/skills",
+    "path": "skills",
+    "revision": "33375500bcea98d610eb30ce10ac4e59b89c390d",
+    "license": "Proprietary"
+  },
+  "install": {
+    "global": true,
+    "project": true,
+    "session": true,
+    "defaultScope": "global",
+    "strategy": "copy"
+  },
+  "readme": "SKILL.md"
+}

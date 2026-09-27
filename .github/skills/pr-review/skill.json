@@ -5,7 +5,7 @@
   "ownershipProtocol": 1,
   "requiredInterfaces": {
     "harness": {
-      "harness-runtime": 1
+      "harness-runtime": 4
     }
   },
   "kind": "agent",

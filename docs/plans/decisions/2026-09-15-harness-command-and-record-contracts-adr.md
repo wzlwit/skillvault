@@ -15,6 +15,10 @@ The later [accepted upsert and work-contract ADR](./2026-09-18-upsert-and-harnes
 records the September 18 authoring, Fresh-scope, completion, matching, and follow-up decisions.
 The historical proposal text below is retained; that later record resolves its Fresh-scope question.
 
+The [accepted declarative-layout and Auto-verification ADR](2026-09-25-declarative-harness-and-auto-verification-adr.md)
+supersedes flat controller storage and collection-only discovery status handling. Other historical
+rationale below remains intact; the current plan owns the implemented contract.
+
 ## Context
 
 The requested harness coordinates development, verification, fixes, and independent review

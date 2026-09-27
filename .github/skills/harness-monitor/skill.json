@@ -3,10 +3,20 @@
   "title": "Harness Monitor",
   "version": "1.0.0",
   "kind": "agent",
-  "description": "Declare monitors, check structured observations, and propose incident investigations. Use /harness-monitor or /hn-monitor with list, declare, check, or accept. Overlaps with harness-test on checks, harness-task on intake, and kpi-dashboard on metric contracts; never launches automatic fixes.",
+  "description": "Monitor work across approved source adapters, including ADO and documents; assess relevance, Auto-verify status, correlate explicit requirements, reconcile evidence, and expose verified subsets, or check health observations. Use /harness-monitor or /hn-monitor with list, declare, check, or accept. Overlaps with harness-test on checks, harness-task on intake, and kpi-dashboard on metric contracts; preserves deferred work and never launches development.",
+  "requiredInterfaces": {
+    "harness": {
+      "harness-runtime": 4,
+      "monitor-discovery": 5
+    }
+  },
   "tags": [
     "harness",
     "monitoring",
+    "work-discovery",
+    "ado",
+    "folders",
+    "adapters",
     "observations",
     "incidents"
   ],
@@ -32,7 +42,10 @@
   "examples": [
     "/harness-monitor",
     "/harness-monitor list",
-    "/harness-monitor declare"
+    "/harness-monitor declare",
+    "/harness-monitor check",
+    "/harness-monitor check design-concerns",
+    "/harness-monitor accept C-001"
   ],
   "readme": "SKILL.md",
   "inputs": [

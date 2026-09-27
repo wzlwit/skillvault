@@ -43,7 +43,7 @@ SkillVault is a catalog-driven repository for public, shareable Copilot skills.
 - Use the [harness ADR](docs/plans/decisions/2026-09-15-harness-command-and-record-contracts-adr.md)
   for decision rationale/history. Consult historical material when needed; do not delete it or
   treat an external reference draft as the current project plan.
-- Live task status comes from the configured harness board's `current.csv` or the runtime's
+- Live task status comes from the configured harness board's current-work CSV or the runtime's
   `Status` action; run history is in `history.csv` and linked reports. These are not duplicate
   status documents under `docs/`. Do not invent current status before the project is initialized.
 - Decision bulletins keep explicitly recorded Open/Proposed decisions visible. Missing configuration
@@ -190,18 +190,19 @@ case handling, natural-language routing, full canonical menus, and read-only bar
 Use the existing procedure with its arguments, permissions, and confirmations unchanged; shortening
 an action neither bypasses approval nor adds another confirmation. This is conversational routing,
 not script argument parsing. See the [accepted ADR](docs/plans/decisions/2026-09-23-topic-action-prefix-matching-adr.md).
-Source edits do not refresh installed copies or authorize publication.
+Source edits alone do not refresh installed copies; complete the guarded synchronization under
+Validation below. They do not authorize publication.
 
 ## Harness Skills
 
 Canonical names are `harness`, `harness-policy`, `harness-task`, `harness-dev`,
 `harness-review`, `harness-test`, `harness-monitor`, `harness-timer`, `harness-link`,
-`harness-report`, and `harness-decision`. Names, folders, and dependencies use `harness` or `harness-*`.
+`harness-report`, `harness-doc`, and `harness-decision`. Names, folders, and dependencies use `harness` or `harness-*`.
 `/hn` and `/hn-*` are conversational shorthand only; the first parameter selects a subcommand. See the
 [topic structure and diagram](docs/plans/2026-09-16-topic-skill-refactor.md).
 Use `/harness-<topic> [action1|action2|...] [<arguments>...]` command synopsis notation, not
-one registered skill per action. The top-level `/harness [list|root|init|context|clean]` owns
-project setup, context, and historical-data cleanup; no management or maintenance topic is added.
+one registered skill per action. The top-level `/harness [list|root|init|migrate|context|clean]` owns
+project setup, explicit in-place layout migration, context, and history cleanup; no management topic is added.
 Bare multi-action topics default to read-only `list`, including `/harness-timer`. Use `/harness-dev run`
 and `/harness-review run` for explicit execution. Old full commands and shortcuts route to the
 matching action, not another registered picker entry. The shared runtime exposes `Clean` for
@@ -209,6 +210,36 @@ history; existing execution action names stay unchanged.
 Keep canonical `harness`, `harness-*`, and `skillvault-*` topic folders. Do not create separate
 `hn-*` alias folders or restore the old action-per-skill bundles such as `harness-init`.
 Legacy commands remain text routes to topic subcommands. Installed-copy migration is separate.
+
+`harness-doc` owns full feature doc sets and focused onboarding/troubleshooting updates through
+read-only `list` and explicit `upsert`. It authors directly in the session without requiring a
+controller or adding a runtime action. Reuse an existing approved task and its ownership/pause
+controls when applicable. Reader docs follow the explicit output or coding repository's documentation
+convention, with `docs/guides/<feature>/` as the fallback; task/run records remain controller-local.
+Distinguish implemented, planned, and unverified behavior and internal, partner, and public readers.
+Use Humanizer for the final prose pass, then validate facts, terminology, links, anchors, and diagrams.
+Preserve technical content and stable headings; missing evidence or required checks leaves a Draft.
+Document moves, tool installations, and publication retain separate approval. The
+[documentation ADR](docs/plans/decisions/2026-09-26-harness-documentation-adr.md) records these choices.
+
+New controllers use layout 2: authoritative `config/project.json`, `monitors.json`, `tests.json`,
+`policy.json`, and schedules when configured; generated `board/` views; `runtime/` state/locks;
+monthly readable history and a navigation-only README. Commands update the same declarations;
+direct edits activate after validation at the next operation, with stable in-flight configuration
+and live pause/stop controls. `/hn migrate` previews before approved apply; `init` never migrates.
+Preserve task/queue identities, evidence bytes, external boards, pauses, and schedule cadence.
+Custom adapters and snapshots stay in place for explicit path review, not implicit rewriting or
+deletion. Temporary originals are removed after success/rollback; incomplete recovery stays blocked.
+No live DAS migration is implied. See the [accepted layout and verification ADR](docs/plans/decisions/2026-09-25-declarative-harness-and-auto-verification-adr.md).
+
+New controllers persist `currentFileName` as `current-<project-slug>.csv`; configs without that field
+retain `current.csv`. Resolve it through `Get-HarnessCurrentPath` or the returned `current` path,
+never a monitor-only hard-coded basename. Init, layout migration, and Root relocation preserve
+existing names. `root --current-file` delegates to Board rename preview/approved Apply, preserving
+records and registered/decision links under locks and temporary rollback. Explicit filtered views
+use a topic label plus exact monitor names and become point-in-time artifacts, not canonical boards
+or task stores. No automatic per-topic copies or live renames are enabled by source/copy updates.
+See the [accepted naming ADR](docs/plans/decisions/2026-09-25-project-qualified-board-names-adr.md).
 
 Participating runtimes use shared checkout and installed-bundle ownership in addition to existing
 controller locks. Hold checkout ownership through active development, validation, and review;
@@ -259,11 +290,50 @@ cloning, Git initialization, first-reference choice, permission expansion, or sa
 Standalone review accepts a project-wide repository reference; task-linked tests reuse its workspace.
 `harness-test` declares shared test flows/environments for ad-hoc, timer, and post-dev validation.
 Test-only runs do not require AI settings; scheduled targets require explicit environment approval.
-`harness-monitor` reads declared local JSON observations and separates collection status from
-observed health. Repeated breaches reuse an incident; Unknown cannot record recovery. Checks
-propose tasks only; explicit acceptance uses existing task/reference helpers without auto-eligibility
-or task completion. Named monitor timers use `-MonitorName` and preserve legacy Test-flow timers.
+`harness-monitor` supports work discovery from ADO backlogs/saved queries, local text folders,
+and normalized feeds from other approved adapters, alongside numeric JSON health observations.
+The `monitor-discovery: 5` and `harness-runtime: 4` interfaces are required for discovery. ADO requires an explicit
+service scope, not broad BI keyword matching. `check` includes relevance assessment, AI model `auto`
+verification, evidence-backed local status reconciliation, and priority ranking. Auto is model
+selection mode, not Max or merely scheduling. Development retains its strongest permitted double-check.
+Only Relevant verified-open candidates become ranked proposals; insufficient evidence stays Unverified.
+Exact evidence, current snapshots/revisions, and unchanged task records guard local AlreadyFixed/Stale
+outcomes. Source Closed, disappearance, and age alone are insufficient. External ADO/document status
+writes are separately enabled/approved per source, not provided by the built-in verifier. Source candidates preserve
+identity, revision, deferrals, and bounded evidence; partial/stale/failed reads cannot imply closure.
+Accepted postponed candidates enter the normal queue at source priority; postponement alone is not
+a block. Generic On-Hold labels mean reassess; explicit dependency blocks remain. Readiness/automatic-pickup gates remain. Checks never fix code or create tasks;
+explicit acceptance uses existing task/reference helpers with Unknown risk and no auto-eligibility
+or task completion. Health collection stays separate from service health; repeated breaches reuse
+an incident and Unknown cannot record recovery. ADO read credentials remain outside definitions and
+reports. Named monitor timers use `-MonitorName` and preserve legacy Test-flow timers.
+Expose `sourceOwner` from authoritative ADO assignment, leading document Owner metadata, or the
+adapter field, separately from execution ownership. Unknown/unassigned remains blank; fresh complete
+collection updates linked owner metadata, while failed/partial/stale reads preserve captured evidence.
+Never infer owners from authors, creators, mentions, or AI guesses, or change priority/status for an owner change alone.
+`check` without a name means all configured sources via `-AllMonitors`; bare monitor still lists.
+Named checks are scoped. Batch completeness and per-source diagnostics must be visible; partial
+or unverified work cannot yield a successful aggregate pickup list. Expand ADO descendants and
+support explicit parsed Markdown sections, including introductory context. Review implicit design
+debt, not only TODO/status headings. Source terminal state alone never completes acceptance work.
+Use configured category exclusions/priority floors, not global DAS-specific defaults. Canonical
+The configured current-work CSV includes task/candidate row types, sourceType, owner/freshness and checkStatus, ordered
+by priority then stable ID; candidate rows grant no execution approval. Optional explicit repository
+authority fetches an isolated HTTPS branch snapshot with existing credentials, leaving dirty coding
+trees untouched. Durable completion binds requirements, task contract, scope, authority and evidence;
+material changes propose explicit follow-ups. PR/release claims need accessible provider evidence;
+missing access stays unverified. Remote writes remain separately approved, never implicit.
 No live source, threshold, cadence, automatic intake, or report publication is enabled by install.
+Monitoring policies apply across approved sources; ADO and folders are examples, not limits.
+Partial checks expose an explicitly labeled verified subset for manual acceptance. Explicit
+same-requirement links preserve every source's provenance while sharing one work item; no fuzzy
+merges, repository retargeting, or implicit merging of existing task IDs. Declared authority governs
+only its exact disputed fact. Otherwise substantive contradictions stay Unverified; owner/status
+differences alone are not conflicts. Collect all sources before batch reconciliation and retain read
+ownership through the decision. Revalidate completion against current proof; verified regressions
+propose follow-ups without reopening history. Runtime coverage checkpoints resume on the next
+approved check without new budgets or schedules; ordinary deferral never clears safety pauses.
+See the [accepted source-agnostic monitoring ADR](docs/plans/decisions/2026-09-25-source-agnostic-monitoring-adr.md).
 `harness-report upsert` is a session-level authoring dispatcher, not another runner action or
 renderer. Reuse `harness-dev` for tracked local implementation and `kpi-dashboard` for
 metric/layout guidance; load only the selected platform specialist. Preserve artifact IDs/paths,
@@ -293,7 +363,8 @@ writers. Recurring ticks never ask again. The user-wide PR logical schedule rema
 heartbeat; `set heartbeat <duration>` changes only its user-wide routine baseline, default `1d`.
 Baseline settings accept fixed `m/h/d` durations of at least one minute, with saved-value reuse.
 New work durations require units (`m/h/d/n/y`); fixed units support decimals and calendar
-units whole numbers. Project schedules stay in the resolved control's `schedules.json`. A central
+units whole numbers. Layout-2 project declarations use `config/schedules.json`; runtime progress and
+active invocation snapshots use `runtime/schedules.json`. Ticks do not overwrite declarations. A central
 registry dispatches due nonconflicting work. Faster enabled job intervals shorten the heartbeat,
 active workers retain a 30-minute check cap, and earlier deadlines still win. A tick defers already
 blocked overdue deadlines to the adaptive recheck without changing their due times. Baseline edits
@@ -378,6 +449,15 @@ Do not add tests solely to freeze incidental wording or duplicate the same failu
 Use `scripts/install-skills.ps1` for selected local installs and
 `scripts/verify-installed-skills.ps1` for an explicit source/copy parity check. Local customized
 copies need not match a newer checkout unless a refresh is requested.
+
+Standing owner instruction: after validated skill-source development, update affected existing
+managed `latest` copies in the current user's global and current-project scopes, plus explicitly
+selected targets. This request supplies routine replacement approval; preview exact targets, reuse
+the verified source checkout and guarded installer, update compatible existing companions together,
+and verify source/copy parity before reporting completion. Leave already matching copies unchanged.
+Honor explicit source-only or `none` requests. Preserve pinned/customized copies, missing installs,
+unselected projects, live state, and schedules unless separately authorized. Ownership conflicts or
+unresolved replacements remain pending; source validation alone is not installed-copy completion.
 
 For bootstrap installer changes, run `scripts/test-bootstrap.ps1`, then run
 `scripts/install-global.ps1` for approved targets and verify installed metadata against the

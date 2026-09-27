@@ -1,9 +1,9 @@
 # Test Declarations
 
-Declarations are stored in the project's `.harness_sv/config.json` under `testing`. Existing
-configurations without `testing` behave as an empty declaration set and keep legacy validation.
-Use an existing project test-declaration file, or create the explicitly requested JSON file using
-the project's documentation/configuration conventions. Import it with `/harness-test declare <file>`.
+Layout-2 declarations are authoritative in `.harness_sv/config/tests.json`, combined as `testing`
+only in memory. Direct edits and `/harness-test declare <file>` update that same configuration;
+no separate editable active copy exists. Legacy controllers keep their flat config until explicit
+migration; those without `testing` retain their existing legacy validation behavior.
 
 ## Shape
 

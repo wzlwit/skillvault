@@ -1,26 +1,36 @@
 
 # Harness Monitoring
 
-Consume structured observations, evaluate declared conditions, and keep evidence-linked incident
-proposals on the existing harness. **No arguments only shows saved definitions, latest checks,
-incidents, and proposals.** It does not collect data, initialize state, or create tasks or schedules.
+Discover source-linked work candidates or evaluate structured health observations on the existing
+harness. **No arguments only shows saved definitions, latest checks, candidates, incidents, and
+proposals.** It does not collect data, initialize state, or create tasks or schedules.
 
-This first version reads one numeric observation per monitor from a local JSON file. Queries,
-Power BI measures, APIs, and online dashboards can supply reviewed exports in this format; this
-skill does not connect to them directly or scrape their visual presentation. Use the same metric,
-filters, environment, and time window as the underlying report. Screenshots are not numeric input.
+Use `kind: discovery` and the [discovery contract](discovery.md) for ADO backlogs/saved queries,
+local text folders, or normalized feeds from other approved adapters. URL/folder plus topic requests
+belong here, not in a numeric metric schema. Discovery reads sources, filters candidates, and
+retains source identity/revision and deferral status. `check` then assesses relevance and priority
+against the declared service boundary; it does not finish by reporting raw keyword matches.
+The read-only Auto verifier then checks current status and reconciles local evidence-backed
+outcomes. Only current Relevant, verified-open candidates produce pickup proposals. Collection success alone is
+not assessed readiness, proof of a defect, or execution permission.
+The remaining metric-specific sections below apply to health monitors without `kind`.
+
+Health monitoring reads one numeric observation from a local JSON file. Queries, Power BI measures,
+and online dashboards can supply reviewed exports in that format; a visual dashboard is not a
+numeric input or a work-discovery connector. Keep metric/filter/environment/window semantics intact.
 
 ## Start Here
 
 1. Resolve the project and apply `/rules apply` and applicable instructions. Read the canonical
    `harness` runtime guide and [declaration contract](monitoring.md).
-2. Identify the existing query/export and expected healthy state. Read its actual metric/filter
-   definitions and data-refresh semantics. Do not invent a threshold, source, credentials, or
+2. Choose discovery or health monitoring. For discovery, identify the exact source, topics,
+   access method, and authoritative current status using its contract. For health, identify the
+   existing query/export and healthy state; read its metric/filter and refresh semantics. Do not invent a threshold, source, credentials, or
    scheduling permission. Use `/harness-link` for relevant dashboard/query links; do not create a second
    reference register or copy raw telemetry into the board.
 3. Require existing initialized harness state before declaration or checking. Missing state is
    an `/harness init` prerequisite, not permission to initialize as a side effect. Read-only inspection
-   works before initialization. No AI model is needed for checks.
+   works before initialization. Health checks need no AI; discovery verification uses model auto.
 
 ## Commands
 
@@ -30,8 +40,9 @@ Use the shared `harness/scripts/harness.ps1` with the selected project root:
 | --- | --- |
 | `/harness-monitor` | `-Action Monitor`; show saved state only, including timestamps and pending proposals |
 | `/harness-monitor declare <file>` | `-Action MonitorConfig -DefinitionPath <file>`; validate and preview named definitions |
-| `/harness-monitor check <name>` | `-Action Monitor -MonitorName <name>`; collect once, evaluate, and save a report/incident proposal |
-| `/harness-monitor task <incident-id>` | `-Action MonitorTask -Id <incident-id>`; preview the existing proposal for explicit intake |
+| `/harness-monitor check` or `check all` | `-Action Monitor -AllMonitors`; collect all configured sources, assess/verify, reconcile and audit one complete or Partial batch |
+| `/harness-monitor check <name>` | `-Action Monitor -MonitorName <name>`; collect, assess relevance, Auto-verify status, reconcile local outcomes, then rank proposals |
+| `/harness-monitor accept <id>` | `-Action MonitorTask -Id <id>`; preview a `C-...` discovery candidate or `I-...` incident for explicit intake |
 
 Declaration and task intake preview unless `-Apply` is supplied. Show the exact definitions or
 proposal and require approval before applying with `-Actor <human-owner> -Reason <reason>`.
@@ -39,6 +50,16 @@ A reviewed `--apply` request authorizes that exact operation; obtain missing own
 Do not accept unseen file changes after approval. Declarations upsert by name; unmentioned monitors
 are preserved. Changing a previously observed metric/resource/environment/window/condition needs
 a new monitor name so old incidents retain their meaning. Declarations do not run or schedule checks.
+
+An explicit named check covers only that source. The all-source check continues collecting other
+configured sources after one failure, preserves existing records, and returns `Partial` with
+`complete: false` and no successful aggregate proposal list. Inspect per-source results and the
+batch report; zero accepted candidates is not proof of complete review. Unverified semantics or
+missing source access is visible, not success. Scheduled calls still require each source's approval.
+Show `verifiedSubset` as a separate, explicitly incomplete manual selection, including fresh
+health incidents validated under their own contract. Unavailable/unverified items remain excluded
+from acceptance. Discovery relationships, fact authority, regression checks, and resumable coverage
+use the shared [source-agnostic contract](discovery.md#related-sources-and-conflicts), not provider-specific rules.
 
 ## Results and Incidents
 
@@ -66,6 +87,11 @@ the collector's exit code.
 
 ## Task Intake
 
+Discovery candidates use the same acceptance command and task store. See the discovery contract
+for source review, freshness, source priority, and actual blockers. Previously postponed items enter
+the normal queue when accepted; postponement alone does not block them. The incident rules below remain specific
+to numeric health breaches; do not require an ADO item or document to be Unhealthy.
+
 Default response is `propose-task`; `report-only` suppresses proposals. Checks never create tasks
 automatically. One explicit `task <incident-id>` acceptance reuses `/harness-task` storage and `/harness-link`
 evidence links, with an episode-specific source identity, so repeat acceptance returns the same task.
@@ -90,7 +116,8 @@ After approving `allowScheduled: true` in that monitor definition, use:
 
 These examples select the named monitor through the timer helper's `-MonitorName service-health`,
 not `-TestFlow`. The timer calls `Monitor -Scheduled` using the same collector/evaluator and pause
-target. It does not run an AI worker, create tasks, choose thresholds, or publish dashboards.
+target. Health checks run no AI worker; discovery verification runs the read-only Auto worker.
+Neither creates tasks, chooses thresholds, fixes code, or publishes dashboards.
 Cadence remains positive days, explicitly supplied or reused for that exact target, not an invented
 default. Monitoring declarations and checks do not create schedules, and the default E2E timer
 does not add monitoring automatically.
@@ -101,18 +128,35 @@ guide to resolve that ambiguity. Disabling a timer does not clear a safety pause
 
 ## Storage and Scope
 
-Definitions use `.harness_sv/config.json`'s `monitoring.monitors`. Latest observations and incident
-episodes use `state.json`'s `monitoring` object; normal run history and Markdown evidence stay on
-the configured board. `history.csv` includes separate `monitor` and `health` columns. Keep raw
+Layout-2 definitions use `.harness_sv/config/monitors.json`; direct edits and declaration commands
+share that authoritative file. Latest observations, candidates, verification, and incident episodes
+use `runtime/state.json`'s `monitoring` object. Monthly Markdown evidence uses the runtime history
+directory and `board/history.csv` includes separate `monitor` and `health` columns. Legacy controllers
+retain their flat configuration/state paths until explicit `/hn migrate`. Keep raw
 telemetry in its owning source system and exported snapshots small; the collector saves only the
 selected metric/window/identity and configured links, not arbitrary extra JSON or raw parser errors.
+
+The configured current-work CSV is the single atomic materialized view of open tasks and pending discovery candidates.
+New controllers use `current-<project>.csv`; existing controllers without `currentFileName` keep
+`current.csv`. Use the shared resolver or the returned `current` path, not a monitor-specific filename.
+It excludes terminal tasks and verified terminal/excluded candidates, avoids duplicate accepted
+candidate rows, and sorts priority ascending then ID. `recordType` distinguishes task from candidate;
+`sourceType` distinguishes ado, design, feed, health, and manual input. `sourceOwner`, `sourceState`,
+`sourceObservedAt`, `evidenceStatus`, and `checkStatus` distinguish current facts from uncertainty or
+a partial batch. Candidate rows do not create tasks or grant execution approval. The shared writer
+validates row/source counts, required columns, identity uniqueness, and priority monotonicity before
+atomic replacement. No collector or custom adapter writes a competing CSV schema.
+Explicit topic-filtered exports use `current-<project>-<topic>.csv` under artifacts, through the
+Harness current-view procedure. They are requested snapshots, not automatically split per-source
+boards and not alternative authoritative queues.
 
 Reuse `/harness-policy limits` directory/launcher/environment controls and `/harness-policy fallback` durable pause and
 recovery actions. The current implementation shares the existing `testEnvironments` allowlist for
 monitor environment labels and uses the approved `pwsh` launcher. Those controls are not an OS
 sandbox, credentials boundary, or proof of the producer's data accuracy. Source paths and reference
-notes must not contain secrets. The snapshot reader retries no commands, provisions nothing, and
-does not authenticate to any online service.
+notes must not contain secrets. The health snapshot reader retries no commands and provisions nothing.
+The ADO discovery reader uses separately supplied read authentication; it does not sign in,
+provision credentials, or modify ADO.
 
 ## Related Work
 

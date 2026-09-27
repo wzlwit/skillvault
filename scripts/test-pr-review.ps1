@@ -64,11 +64,12 @@ try {
     $config | Add-Member -NotePropertyName restrictions -NotePropertyValue ([pscustomobject]@{ allowedModels = @('fixture-other') })
     $restricted = Select-PrReviewProfile $config
     if ($restricted.model -cne 'fixture-other') { throw 'Model selection ignored restrictions.' }
-    Write-HarnessJson $runtime.Config $config
+    Write-HarnessConfig $runtime $config
     $restrictedPreview = Set-PrReviewConfiguration $paths $definition
     if ($restrictedPreview.selection.model -cne 'fixture-other') { throw 'Configuration preview ignored the existing model restriction.' }
     $null = Set-PrReviewConfiguration $paths $definition -Apply
     if ((Read-HarnessConfig $runtime).runner.model -cne 'fixture-other') { throw 'Applied runner selection differed from the restricted preview.' }
+    $config = Read-HarnessConfig $runtime
     $config.restrictions.allowedModels = @('unapproved-fixture')
     Assert-PrFailure { Select-PrReviewProfile $config } 'No approved ranked model'
     foreach ($placeholder in @($null, '', ' ', @(), 'None', 'Max')) {
@@ -76,7 +77,7 @@ try {
         if ((Select-PrReviewProfile $config).model -cne 'fixture-best') { throw 'An unspecified model allowance blocked the approved ranked PR profiles.' }
     }
     $config.PSObject.Properties.Remove('restrictions')
-    Write-HarnessJson $runtime.Config $config
+    Write-HarnessConfig $runtime $config
     Assert-PrFailure { Select-PrReviewProfile $config ([pscustomobject]@{ efforts = @('low'); contexts = @('default') }) } 'do not silently choose another model'
     $definition.prReview.profiles[0].model = 'auto'
     Assert-PrFailure { Set-PrReviewConfiguration $paths $definition } 'unique explicit model'

@@ -244,7 +244,7 @@ function Set-HarnessPolicy {
             $safety = Get-HarnessSafetyState $state
             Add-HarnessPolicyEvent $safety 'Declare' $Section $Reason $Actor
             $state | Add-Member -NotePropertyName safety -NotePropertyValue $safety -Force
-            Write-HarnessJson $Paths.Config $config
+            Write-HarnessConfig $Paths $config
             Write-HarnessJson $Paths.State $state
         }
         finally { $lock.Dispose() }

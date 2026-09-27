@@ -17,7 +17,8 @@ harness controller. It does not execute project tasks or require unused features
 2. Use the project's configured board location when available, otherwise `<root>/.harness_sv`.
    Resolve relative board locations against that root, not the skill folder. Never silently
    substitute another board when an explicit path or source is inaccessible.
-   The CSV helper reads `.harness_sv/config.json` when present; explicit `-BoardPath` takes precedence.
+   The CSV helper reads layout-2 `.harness_sv/config/project.json` or the legacy flat configuration
+   when present; explicit `-BoardPath` takes precedence. New controllers default to `board/`.
 3. Read its decision register, governing plan, and relevant ADRs. Follow explicit project
    conventions, including `doc/` or `docs/` locations; do not treat an external reference draft
    as the current plan or adopt its decisions automatically.

@@ -1,5 +1,9 @@
+[CmdletBinding(DefaultParameterSetName = 'Names')]
 param(
-    [Parameter(Mandatory = $true)][string[]]$Name,
+    [Parameter(Mandatory = $true, ParameterSetName = 'Names')][string[]]$Name,
+    [Parameter(Mandatory = $true, ParameterSetName = 'Selection')][string[]]$Select,
+    [Parameter(ParameterSetName = 'Selection')][switch]$Exact,
+    [switch]$Preview,
     [string]$RepoRoot = (Split-Path -Parent $PSScriptRoot),
     [ValidateSet('default', 'global', 'project')][string]$Scope = 'default',
     [string]$ProjectPath = (Get-Location).ProviderPath,
@@ -35,6 +39,10 @@ if (-not (Test-Path -LiteralPath $catalogPath -PathType Leaf)) {
 }
 
 $catalog = Get-Content -LiteralPath $catalogPath -Raw | ConvertFrom-Json
+if ($PSCmdlet.ParameterSetName -eq 'Selection') {
+    $selectedEntries = @(foreach ($query in $Select) { Find-SkillCatalogEntry -Catalog $catalog -Query $query -Exact:$Exact })
+    $Name = @($selectedEntries | Select-Object -ExpandProperty name -Unique)
+}
 $projectSkillsRoot = Join-Path $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($ProjectPath) '.github\skills'
 $globalSkillsRoot = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($GlobalSkillsPath)
 
@@ -73,7 +81,7 @@ foreach ($skillName in @($Name | Select-Object -Unique)) {
         if ($resolvedScope -eq 'global') { $targetRoot = $globalSkillsRoot }
 
         $targetPath = Join-Path $targetRoot $skillName
-        if ((Test-Path -LiteralPath $targetPath) -and -not $Force) {
+        if ((Test-Path -LiteralPath $targetPath) -and -not $Force -and -not $Preview) {
             throw "Skill '$skillName' is already installed at $targetPath. Review the pending changes, then re-run with -Force to overwrite."
         }
 
@@ -93,6 +101,11 @@ foreach ($skillName in @($Name | Select-Object -Unique)) {
 
 if ($preflightErrors.Count -gt 0) {
     throw ('Install preflight failed; no skills were installed:' + [Environment]::NewLine + ($preflightErrors -join [Environment]::NewLine))
+}
+
+if ($Preview) {
+    ConvertTo-Json -Depth 5 -InputObject @($plannedInstalls | Select-Object Name, Scope, SourcePath, @{ Name = 'TargetPath'; Expression = { Join-Path $_.TargetRoot $_.Name } })
+    return
 }
 
 $updateLease = Enter-SkillUpdateOwnership -Paths @($plannedInstalls | ForEach-Object { Join-Path $_.TargetRoot $_.Name }) -ConfirmStopped:$ConfirmStopped

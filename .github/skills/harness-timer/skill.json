@@ -8,7 +8,7 @@
   },
   "requiredInterfaces": {
     "harness": {
-      "harness-runtime": 1
+      "harness-runtime": 4
     },
     "skillvault-installation": {
       "compatibility": 1

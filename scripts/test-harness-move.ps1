@@ -1,3 +1,5 @@
+param([switch]$LayoutOnly)
+
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot '../skills/planning/harness/scripts/harness-move.ps1')
 . (Join-Path $PSScriptRoot '../skills/planning/harness/scripts/harness-runner.ps1')
@@ -13,11 +15,79 @@ $fixture = Join-Path ([IO.Path]::GetTempPath()) ('harness-move-' + [guid]::NewGu
 $savedFixtureOwnershipRoot = $env:SKILLVAULT_OWNERSHIP_ROOT
 $env:SKILLVAULT_OWNERSHIP_ROOT = Join-Path $fixture 'runtime-ownership'
 try {
+    if ($LayoutOnly) {
+        . (Join-Path $PSScriptRoot '../skills/planning/harness/scripts/harness-migration.ps1')
+        New-Item -ItemType Directory -Path $fixture -Force | Out-Null
+        $paths = Get-HarnessPaths $fixture -LayoutVersion 1
+        $config = Initialize-Harness $paths
+        $task = Add-HarnessTask $paths -Title 'Preserved task' -Description 'Keep local records' -Scope 'fixture' -Acceptance 'Evidence intact'
+        $state = Read-HarnessState $paths
+        $report = Join-Path $paths.Control 'history/run-fixture.md'
+        New-Item -ItemType Directory -Path (Split-Path -Parent $report) | Out-Null
+        [IO.File]::WriteAllText($report, 'Immutable original run evidence')
+        $state.runs = @([pscustomobject]@{ id = 'run-fixture'; phase = 'Monitor'; report = $report; startedAt = '2026-09-25T10:00:00Z'; status = 'Succeeded' })
+        $state.tasks[0].lastReport = $report
+        $state.nextQueue = @($task.id)
+        Write-HarnessJson $paths.State $state
+        [IO.File]::WriteAllText((Join-Path $paths.Control 'state.before-custom.json'), 'Preserve this unrelated snapshot')
+        $before = [IO.File]::ReadAllText($paths.State)
+        $preview = Invoke-HarnessMigration $paths
+        if (-not $preview.preview -or (Test-Path (Join-Path $paths.Control 'config')) -or [IO.File]::ReadAllText($paths.State) -cne $before) { throw 'Migration preview changed storage.' }
+        $state.active = [pscustomobject]@{ runId = 'busy' }
+        Write-HarnessJson $paths.State $state
+        Assert-MoveFailure { Invoke-HarnessMigration $paths -Apply } 'active work'
+        $state.active = $null
+        Write-HarnessJson $paths.State $state
+        $writer = ${function:Write-HarnessViews}
+        try {
+            function Write-HarnessViews { throw 'Injected migration failure' }
+            Assert-MoveFailure { Invoke-HarnessMigration $paths -Apply } 'Injected migration failure'
+        }
+        finally { Set-Item Function:Write-HarnessViews -Value $writer }
+        if ((Read-HarnessConfig $paths).projectId -cne $config.projectId -or -not (Test-Path $report) -or (Test-Path (Join-Path $paths.Control 'migrate.pending.json'))) { throw 'Migration rollback did not restore the original controller.' }
+        $result = Invoke-HarnessMigration $paths -Apply
+        $currentPaths = Get-HarnessPaths $fixture
+        $current = Read-HarnessState $currentPaths
+        if ($result.status -cne 'Migrated' -or $currentPaths.LayoutVersion -ne 2 -or (Read-HarnessConfig $currentPaths).projectId -cne $config.projectId -or
+            $current.tasks[0].id -cne $task.id -or $current.tasks[0].status -cne $task.status -or $current.nextQueue[0] -cne $task.id) { throw 'Migration changed task identity, status, or queue order.' }
+        if ([IO.File]::ReadAllText($current.runs[0].report) -cne 'Immutable original run evidence' -or $current.tasks[0].lastReport -cne $current.runs[0].report -or
+            (Test-Path $paths.State) -or (Test-Path $paths.Config) -or (Test-Path $report) -or -not (Test-Path (Join-Path $paths.Control 'state.before-custom.json'))) { throw 'Migration lost evidence, kept duplicate state, or deleted an unrelated snapshot.' }
+        if ((Invoke-HarnessMigration $currentPaths -Apply).status -cne 'Current') { throw 'Repeated migration was not idempotent.' }
+        $public = & (Join-Path $PSScriptRoot '../skills/planning/harness/scripts/harness.ps1') -ProjectPath $fixture -Action Migrate | ConvertFrom-Json
+        if ($public.status -cne 'Current') { throw 'Public migration dispatch did not inspect the selected controller.' }
+        $movedRoot = Join-Path $fixture 'moved-layout'
+        New-Item -ItemType Directory -Path $movedRoot | Out-Null
+        $relocated = Move-HarnessRoot $currentPaths $movedRoot -SchedulerRoot (Join-Path $fixture 'isolated-scheduler') -Apply
+        $movedPaths = Get-HarnessPaths $movedRoot
+        if ($relocated.status -cne 'Moved' -or $movedPaths.LayoutVersion -ne 2 -or (Read-HarnessState $movedPaths).tasks[0].id -cne $task.id -or
+            (Read-HarnessConfig $movedPaths).projectId -cne $config.projectId) { throw 'Root relocation did not preserve the declarative layout.' }
+        $externalRoot = Join-Path $fixture 'external-board-controller'
+        $externalBoard = Join-Path $fixture 'explicit-board'
+        $schedulerRoot = Join-Path $fixture 'declared-scheduler'
+        New-Item -ItemType Directory -Path $externalRoot, $externalBoard, $schedulerRoot | Out-Null
+        $legacyPaths = Get-HarnessPaths $externalRoot -LayoutVersion 1
+        $legacyConfig = Initialize-Harness $legacyPaths
+        $legacyConfig.boardPath = $externalBoard
+        Write-HarnessConfig $legacyPaths $legacyConfig
+        Write-HarnessViews $legacyPaths $legacyConfig (Read-HarnessState $legacyPaths)
+        $job = [pscustomobject]@{ id = [guid]::NewGuid().ToString('N'); kind = 'project'; projectId = $legacyConfig.projectId; projectRoot = $externalRoot; directory = $externalRoot; enabled = $false; interval = '45m'; anchor = '2026-09-25T10:00:00Z'; nextDue = '2026-09-25T10:45:00Z'; timeZoneId = 'UTC'; active = $null; recoveryRequired = $false }
+        Write-HarnessProjectSchedules $legacyPaths ([pscustomobject]@{ schemaVersion = 1; projectId = $legacyConfig.projectId; schedulerRoot = $schedulerRoot; jobs = @($job) })
+        Write-HarnessJson (Join-Path $schedulerRoot 'schedules.json') ([pscustomobject]@{ schemaVersion = 1; projects = @([pscustomobject]@{ projectId = $legacyConfig.projectId; projectRoot = $externalRoot }) })
+        $registryBefore = [IO.File]::ReadAllText((Join-Path $schedulerRoot 'schedules.json'))
+        $null = Invoke-HarnessMigration $legacyPaths -Apply
+        $migratedPaths = Get-HarnessPaths $externalRoot
+        $migratedJob = (Read-HarnessProjectSchedules $migratedPaths).jobs[0]
+        if ((Get-HarnessBoard $migratedPaths (Read-HarnessConfig $migratedPaths)) -ine $externalBoard -or $migratedJob.id -cne $job.id -or $migratedJob.enabled -or
+            $migratedJob.interval -cne '45m' -or [datetimeoffset]$migratedJob.nextDue -ne [datetimeoffset]$job.nextDue -or
+            [IO.File]::ReadAllText((Join-Path $schedulerRoot 'schedules.json')) -cne $registryBefore) { throw 'Migration changed external board placement, schedule cadence, or the heartbeat registration.' }
+        Write-Output 'Layout migration checks passed: no-write preview, active-work refusal, rollback, preserved identities/queues/evidence, readable report links, and idempotent dispatch.'
+        return
+    }
     $oldRoot = Join-Path $fixture 'old project'
     $newRoot = Join-Path $fixture 'new controller'
     New-Item -ItemType Directory -Path $oldRoot, $newRoot -Force | Out-Null
-    $paths = Get-HarnessPaths $oldRoot
-    $destination = Get-HarnessPaths $newRoot
+    $paths = Get-HarnessPaths $oldRoot -LayoutVersion 1
+    $destination = Get-HarnessPaths $newRoot -LayoutVersion 1
     $config = Initialize-Harness $paths
     $planFile = Join-Path $paths.Control 'docs/plan.md'
     New-Item -ItemType Directory -Path (Split-Path -Parent $planFile) -Force | Out-Null
@@ -36,6 +106,21 @@ try {
         [pscustomobject]@{ id = 'R-001'; source = $oldRoot; active = $true }
         [pscustomobject]@{ id = 'R-002'; source = '.harness_sv/docs/plan.md#choice'; active = $true }
     )
+    $discoveryTask = $task | Select-Object *
+    $discoveryTask.id = 'T-050'
+    $discoveryTask.source = ([uri]$planFile).AbsoluteUri
+    $discoveryTask.scope = "Source discovery: $($discoveryTask.source)"
+    $discoveryTask.status = 'Blocked'
+    $state.tasks += $discoveryTask
+    $state | Add-Member -NotePropertyName monitoring -NotePropertyValue ([pscustomobject]@{
+        latest = @(); incidents = @(); candidates = @([pscustomobject]@{
+            id = 'C-001'; sourceId = 'plan.md'; source = $discoveryTask.source; taskId = $discoveryTask.id; disposition = 'Deferred'
+            firstReport = Join-Path $paths.Control 'history/discovery-first.md'; latestReport = Join-Path $paths.Control 'history/discovery-last.md'
+            sameRequirementAs = @($discoveryTask.source + '#related')
+            verificationCheckpoint = [pscustomobject]@{ report = Join-Path $paths.Control 'history/checkpoint.md'; evidence = @([pscustomobject]@{ path = $planFile; hash = 'unchanged'; quote = 'Original decision evidence' }) }
+        })
+    })
+    $config | Add-Member -NotePropertyName monitoring -NotePropertyValue ([pscustomobject]@{ monitors = @(); correlations = @([pscustomobject]@{ name = 'related'; sources = @($discoveryTask.source, $discoveryTask.source + '#related'); authorities = [pscustomobject]@{ 'acceptance.value' = $discoveryTask.source } }) }) -Force
     $moved = ConvertTo-HarnessMovedData $paths $destination $config $state
     if ($moved.config.projectId -cne $config.projectId -or $moved.config.projectRoot -ine $newRoot -or $moved.config.executionRoot -ine $oldRoot) { throw 'Relocation changed identity or failed to preserve the execution root.' }
     if ($moved.config.restrictions.workingRoots[0] -ine $oldRoot -or $moved.config.restrictions.workingRoots[1] -ine (Join-Path $destination.Control 'worktrees')) { throw 'Relative permissions were retargeted or lost.' }
@@ -43,6 +128,15 @@ try {
     if ($moved.state.tasks[0].workspace -ine (Join-Path $destination.Control 'worktrees/T-001') -or $moved.state.tasks[0].snapshot -cne $state.tasks[0].snapshot -or $moved.state.references[0].source -ine $oldRoot) { throw 'Worktree location, historical evidence, or external repository identity was not preserved.' }
     if ($moved.state.references[1].source -ine ((Join-Path $destination.Control 'docs/plan.md') + '#choice')) { throw 'A relocated internal reference lost its destination or fragment.' }
     if ($moved.state.tasks[0].source -cne 'requirement-42') { throw 'An opaque requirement identifier became a file path.' }
+    $movedCandidate = $moved.state.monitoring.candidates[0]
+    $expectedSource = ([uri](Join-Path $destination.Control 'docs/plan.md')).AbsoluteUri
+    if ($movedCandidate.source -cne $expectedSource -or $movedCandidate.firstReport -cne (Join-Path $destination.Control 'history/discovery-first.md') -or
+        $moved.state.tasks[1].source -cne $expectedSource -or $moved.state.tasks[1].scope -cne "Source discovery: $expectedSource" -or $moved.state.tasks[1].status -cne 'Blocked') { throw 'Relocation lost discovery evidence, task identity, or deferral.' }
+    if ($movedCandidate.sameRequirementAs[0] -cne ($expectedSource + '#related') -or $moved.config.monitoring.correlations[0].sources[0] -cne $expectedSource -or
+        $moved.config.monitoring.correlations[0].authorities.'acceptance.value' -cne $expectedSource -or
+        $movedCandidate.verificationCheckpoint.report -cne (Join-Path $destination.Control 'history/checkpoint.md') -or
+        $movedCandidate.verificationCheckpoint.evidence[0].path -cne (Join-Path $destination.Control 'docs/plan.md') -or
+        $movedCandidate.verificationCheckpoint.evidence[0].quote -cne 'Original decision evidence') { throw 'Relocation stranded correlation/checkpoint paths or rewrote evidence content.' }
     if ($config.projectRoot -ine $oldRoot -or (Test-Path -LiteralPath $destination.Control)) { throw 'Relocation planning changed source objects or created a destination.' }
     $file = Join-Path $paths.Control 'artifacts/payload.bin'
     New-Item -ItemType Directory -Path (Split-Path -Parent $file) -Force | Out-Null
@@ -107,7 +201,7 @@ try {
     $scheduledRoot = Join-Path $fixture 'scheduled'
     $scheduledDestination = Join-Path $fixture 'scheduled moved'
     New-Item -ItemType Directory -Path $scheduledRoot, $scheduledDestination | Out-Null
-    $scheduledPaths = Get-HarnessPaths $scheduledRoot
+    $scheduledPaths = Get-HarnessPaths $scheduledRoot -LayoutVersion 1
     $scheduledConfig = Initialize-Harness $scheduledPaths
     $scheduledConfig.boardPath = 'board'
     $scheduledConfig.runner.rulesPath = '.harness_sv/rules.md'

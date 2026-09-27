@@ -71,7 +71,8 @@ if ($Action -eq 'Clean') {
         if ($Apply -and (Test-Path $scheduler.State)) {
             $selectedIds = @($selectedJobs | ForEach-Object id)
             $state.jobs = @($state.jobs | Where-Object { $_.id -cnotin $selectedIds }) + @($subset.jobs)
-            Write-HarnessSchedules $scheduler $state
+            $changedJobs = @(@($result.schedules | Where-Object action -In @('Disable', 'Delete') | ForEach-Object id) + @($RetireId | Where-Object { $_ }) | Select-Object -Unique)
+            Write-HarnessSchedules $scheduler $state -RuntimeOnly:($changedJobs.Count -eq 0) -ChangedJobIds $changedJobs
             $null = Sync-HarnessHeartbeat $scheduler $state
         }
         $result | ConvertTo-Json -Depth 25

@@ -5,7 +5,7 @@
   "status": "public",
   "visibility": "public",
   "kind": "reference",
-  "description": "Reference guide to the upstream Humanizer rewriting skill; its full editing rules are not bundled.",
+  "description": "Reference guide to general Humanizer prose editing; overlaps with humanizer-ch on rewriting, while retaining a general-prose scope. Use to locate authoritative guidance before rewriting. Upstream editing rules are not bundled.",
   "tags": ["writing", "editing", "prose", "reference"],
   "author": "blader",
   "maintainer": "wzlwit",

@@ -35,6 +35,15 @@ and preserve the read-only bare default. This is conversational routing, not scr
 | `evaluate` | [Assess value, fit, overlap, and risk](./references/evaluate.md) |
 | `explain` | [Explain a skill, tool, or product](./references/explain.md) |
 
+`search` prepares task-specific queries and explains each candidate's fit, prerequisites, and
+evidence limits. Public directories remain in the external lookup stage. `evaluate` reuses a
+verified source/revision from that search and rechecks stale evidence instead of repeating lookup.
+An empty search first offers existing tools or direct help; new skill authoring is for a justified
+recurring gap. These refinements add no actions, automatic CLI execution, or installation approval.
+`evaluate` also [proposes worthwhile improvements to existing skills](./references/evaluate.md#improve-existing-skills),
+even when the candidate should be skipped or deferred. Record the target, evidence, change, and
+validation separately from adoption; implementation still requires the user's approval.
+
 Old full names and `/sv-*` or `/skv-*` equivalents select their matching action. Search,
 evaluation, and explanation do not run the target skill. Load only the selected procedure.
 Installation belongs to `/skillvault-installation`; authoring belongs to `/skillvault-authoring`. Preserve source

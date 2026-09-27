@@ -16,12 +16,45 @@ try {
     }
     & (Join-Path $PSScriptRoot 'test-install-skills.ps1') -TransactionOnly
     & (Join-Path $PSScriptRoot 'test-install-skills.ps1') -CompatibilityOnly
+    & (Join-Path $PSScriptRoot 'test-install-skills.ps1') -SelectionOnly
+    if ($PSVersionTable.PSVersion.Major -ge 7) { & (Join-Path $PSScriptRoot 'test-harness.ps1') -BoardNameOnly }
+    else {
+        & pwsh -NoProfile -NonInteractive -File (Join-Path $PSScriptRoot 'test-harness.ps1') -BoardNameOnly
+        if ($LASTEXITCODE -ne 0) { throw 'PowerShell 7 board naming checks failed.' }
+    }
+    foreach ($test in @('test-harness.ps1', 'test-harness-move.ps1', 'test-harness-scheduler.ps1', 'test-harness-retention.ps1')) {
+        if ($PSVersionTable.PSVersion.Major -ge 7) { & (Join-Path $PSScriptRoot $test) -LayoutOnly }
+        else {
+            & pwsh -NoProfile -NonInteractive -File (Join-Path $PSScriptRoot $test) -LayoutOnly
+            if ($LASTEXITCODE -ne 0) { throw "PowerShell 7 $test layout checks failed." }
+        }
+    }
+    if ($PSVersionTable.PSVersion.Major -ge 7) { & (Join-Path $PSScriptRoot 'test-harness-monitor.ps1') -VerificationOnly }
+    else {
+        & pwsh -NoProfile -NonInteractive -File (Join-Path $PSScriptRoot 'test-harness-monitor.ps1') -VerificationOnly
+        if ($LASTEXITCODE -ne 0) { throw 'PowerShell 7 Auto verification checks failed.' }
+    }
+    foreach ($mode in @('ProjectionOnly', 'BatchOnly', 'RepositoryOnly', 'CorrelationOnly')) {
+        if ($PSVersionTable.PSVersion.Major -ge 7) {
+            $options = @{}; $options[$mode] = $true
+            & (Join-Path $PSScriptRoot 'test-harness-monitor.ps1') @options
+        }
+        else {
+            & pwsh -NoProfile -NonInteractive -File (Join-Path $PSScriptRoot 'test-harness-monitor.ps1') "-$mode"
+            if ($LASTEXITCODE -ne 0) { throw "PowerShell 7 monitor $mode checks failed." }
+        }
+    }
     foreach ($test in @('test-harness.ps1', 'test-harness-tests.ps1', 'test-harness-policy.ps1', 'test-harness-monitor.ps1', 'test-harness-retention.ps1', 'test-harness-scheduler.ps1', 'test-harness-move.ps1', 'test-pr-review.ps1')) {
         if ($PSVersionTable.PSVersion.Major -ge 7) { & (Join-Path $PSScriptRoot $test) }
         else {
             & pwsh -NoProfile -NonInteractive -File (Join-Path $PSScriptRoot $test)
             if ($LASTEXITCODE -ne 0) { throw "PowerShell 7 $test failed." }
         }
+    }
+    if ($PSVersionTable.PSVersion.Major -ge 7) { & (Join-Path $PSScriptRoot 'test-harness-monitor.ps1') -DiscoveryOnly }
+    else {
+        & pwsh -NoProfile -NonInteractive -File (Join-Path $PSScriptRoot 'test-harness-monitor.ps1') -DiscoveryOnly
+        if ($LASTEXITCODE -ne 0) { throw 'PowerShell 7 discovery checks failed.' }
     }
     & (Join-Path $PSScriptRoot 'validate-catalog.ps1')
     git -C (Split-Path -Parent $PSScriptRoot) diff --check

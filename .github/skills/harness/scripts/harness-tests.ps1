@@ -71,7 +71,7 @@ function Set-HarnessTestSettings {
             if ('afterDev' -cin $sections) { $settings.afterDev = @($incoming.afterDev) }
             Assert-HarnessTestSettings $settings
             $config | Add-Member -NotePropertyName testing -NotePropertyValue $settings -Force
-            Write-HarnessJson $Paths.Config $config
+            Write-HarnessConfig $Paths $config
             $settings
         }
         finally { $lock.Dispose() }
@@ -252,7 +252,7 @@ function Invoke-HarnessTests {
         $snapshot = ''
         if (Test-Path -LiteralPath (Join-Path $workspace '.git')) { $snapshot = Get-HarnessSnapshot $Paths $config $workspace -RepositoryRoot $repositoryRoot }
         $runId = [guid]::NewGuid().ToString('N')
-        $reportPath = Join-Path (Get-HarnessBoard $Paths $config) "history/$runId.md"
+        $reportPath = Get-HarnessReportPath $Paths $config $runId Test
         $run = [pscustomobject][ordered]@{
             id = $runId; taskId = $TaskId; phase = 'Test'; status = 'Running'
             startedAt = [datetimeoffset]::UtcNow.ToString('o'); finishedAt = ''
@@ -260,7 +260,7 @@ function Invoke-HarnessTests {
             flow = $Flow; environment = $Environment
             repositoryRef = $task.repositoryRef; repositoryRoot = $repositoryRoot
         }
-        $null = Update-HarnessState $Paths {
+        $null = Update-HarnessState $Paths -Config $config -Operation {
             param($saved)
             $saved.runs = @($saved.runs) + @($run)
             $saved.active = [pscustomobject]@{ taskId = $TaskId; runId = $runId; phase = 'Test'; ownerProcessId = $PID; target = $targetName; ownershipClaim = $ownership.id }
@@ -269,7 +269,7 @@ function Invoke-HarnessTests {
         New-Item -ItemType Directory -Path (Split-Path -Parent $reportPath) -Force | Out-Null
         $report = "# Harness test report`n`nHarness project: $($Paths.Project)`nRepository reference: $($task.repositoryRef)`nRepository root: $repositoryRoot`nWorkspace: $workspace`nScheduled: $([bool]$Scheduled)`n`n## Result`n`n" + ($result | ConvertTo-Json -Depth 15) + "`n`n## Source Snapshot`n`n$snapshot`n"
         [System.IO.File]::WriteAllText($reportPath, $report, (New-Object System.Text.UTF8Encoding($false)))
-        $null = Update-HarnessState $Paths {
+        $null = Update-HarnessState $Paths -Config $config -Operation {
             param($saved)
             $savedRun = $saved.runs | Where-Object { $_.id -ceq $runId }
             $savedRun.status = $result.status

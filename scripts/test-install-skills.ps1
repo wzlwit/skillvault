@@ -1,4 +1,4 @@
-param([switch]$OwnershipOnly, [switch]$CompatibilityOnly, [Alias('RecoveryOnly')][switch]$TransactionOnly)
+param([switch]$OwnershipOnly, [switch]$CompatibilityOnly, [Alias('RecoveryOnly')][switch]$TransactionOnly, [switch]$SelectionOnly)
 
 $ErrorActionPreference = 'Stop'
 
@@ -62,6 +62,45 @@ $globalRoot = Join-Path $fixtureRoot 'global'
 
 try {
     New-Item -ItemType Directory -Path $repositoryRoot, $projectRoot, $globalRoot -Force | Out-Null
+
+    if ($SelectionOnly) {
+        $selectionCatalog = @(
+            @{ name = 'harness'; description = 'Project controller'; path = 'skills/planning/harness'; version = '1.0.0' },
+            @{ name = 'harness-dev'; description = 'Development workflow'; path = 'skills/planning/harness-dev'; version = '1.0.0' },
+            @{ name = 'harness-timer'; description = 'Scheduled work'; path = 'skills/planning/harness-timer'; version = '1.0.0' },
+            @{ name = 'utility'; description = 'Observability companion mentioning harness'; path = 'skills/system/utility'; version = '1.0.0' },
+            @{ name = 'report-builder'; description = 'Business KPI dashboards'; path = 'skills/data/report-builder'; version = '1.0.0' },
+            @{ name = 'diagram-guide'; description = 'Architecture views'; path = 'skills/codeview/diagram-guide'; version = '1.0.0' }
+        )
+        foreach ($entry in $selectionCatalog) { $null = New-FixtureSkill $repositoryRoot $entry.path $entry.name $entry.version global }
+        ConvertTo-Json -Depth 5 -InputObject $selectionCatalog | Set-Content (Join-Path $repositoryRoot 'catalog.json')
+        foreach ($query in @('harness', 'arnes', 'HARNESS', 'harness*')) {
+            $matched = @(Find-SkillCatalogEntry $selectionCatalog $query)
+            Assert-True (($matched.name -join ',') -ceq 'harness,harness-dev,harness-timer') 'name matching includes all family members even when one name matches exactly'
+        }
+        Assert-True (@(Find-SkillCatalogEntry $selectionCatalog 'harness-*').Count -eq 2) 'name patterns can select only suffixed members'
+        Assert-True ((@(Find-SkillCatalogEntry $selectionCatalog harness -Exact).name -join ',') -ceq 'harness') 'explicit exact selection keeps a single skill'
+        Assert-True ((@(Find-SkillCatalogEntry $selectionCatalog observability).name -join ',') -ceq 'utility') 'description keywords work when no names match'
+        Assert-True ((@(Find-SkillCatalogEntry $selectionCatalog 'KPI dashboards').name -join ',') -ceq 'report-builder') 'literal keyword phrases are supported'
+        Assert-True ((@(Find-SkillCatalogEntry $selectionCatalog codeview).name -join ',') -ceq 'diagram-guide') 'catalog folder keywords are supported'
+        Assert-True (@(Find-SkillCatalogEntry $selectionCatalog public).Count -eq $selectionCatalog.Count) 'the existing public selector still selects the full catalog'
+        Assert-True (Test-Throws { Find-SkillCatalogEntry $selectionCatalog 'absent*' }) 'unmatched patterns do not select unrelated skills'
+        Assert-True (Test-Throws { Find-SkillCatalogEntry $selectionCatalog ' ' }) 'blank selection does not install everything'
+        $preview = & $installScript -Select harness,arnes -RepoRoot $repositoryRoot -ProjectPath $projectRoot -GlobalSkillsPath $globalRoot -Preview | ConvertFrom-Json
+        Assert-True ($preview.Count -eq 3 -and @(Get-ChildItem $globalRoot -Force).Count -eq 0) 'selection preview is deduplicated and copies nothing'
+        Assert-True (-not (Test-Path $env:SKILLVAULT_OWNERSHIP_ROOT)) 'preview acquires no ownership or runtime state'
+        Assert-True (Test-Throws { & $installScript -Select harness,absent -RepoRoot $repositoryRoot -ProjectPath $projectRoot -GlobalSkillsPath $globalRoot }) 'one unmatched selector blocks the entire batch'
+        Assert-True (@(Get-ChildItem $globalRoot -Force).Count -eq 0) 'a failed selection batch leaves all targets untouched'
+        & $installScript -Select harness -RepoRoot $repositoryRoot -ProjectPath $projectRoot -GlobalSkillsPath $globalRoot | Out-Null
+        Assert-True ((@(Get-ChildItem $globalRoot -Directory | Sort-Object Name).Name -join ',') -ceq 'harness,harness-dev,harness-timer') 'partial selection installs the complete name match set, not description-only neighbors'
+        $repeatPreview = & $installScript -Select harness -RepoRoot $repositoryRoot -ProjectPath $projectRoot -GlobalSkillsPath $globalRoot -Preview | ConvertFrom-Json
+        Assert-True ($repeatPreview.Count -eq 3) 'existing installations can be previewed without force approval'
+        Assert-True (Test-Throws { & $installScript -Select harness -RepoRoot $repositoryRoot -ProjectPath $projectRoot -GlobalSkillsPath $globalRoot }) 'selection does not bypass forced-replacement approval'
+        $exactPreview = & $installScript -Name harness -RepoRoot $repositoryRoot -ProjectPath $projectRoot -GlobalSkillsPath $globalRoot -Preview | ConvertFrom-Json
+        Assert-True (@($exactPreview).Count -eq 1) 'the existing script Name API remains exact'
+        Write-Output 'Selection checks passed: partial names, keywords, patterns, explicit exact names, read-only preview, batching, and replacement approval.'
+        return
+    }
 
     if ($TransactionOnly) {
         $source = New-FixtureSkill $repositoryRoot 'skills/core/alpha' alpha '1.0.0' global
@@ -381,7 +420,8 @@ try {
         $configJson = & pwsh -NoProfile -NonInteractive -File $sharedDispatcher -ProjectPath $project -Action Init -ConfirmLocation
         Assert-True ($LASTEXITCODE -eq 0) 'the global dispatcher initializes only an explicitly selected fixture project'
         $projectConfig = $configJson | ConvertFrom-Json
-        Assert-True ($projectConfig.projectRoot -eq $project -and (Test-Path -LiteralPath (Join-Path $project '.harness_sv/state.json'))) 'runtime records stay in the selected fixture project'
+        Assert-True ($projectConfig.projectRoot -eq $project -and (Test-Path -LiteralPath (Join-Path $project '.harness_sv/runtime/state.json')) -and
+            (Test-Path -LiteralPath (Join-Path $project '.harness_sv/config/project.json')) -and -not (Test-Path -LiteralPath (Join-Path $project '.harness_sv/config.json'))) 'runtime records stay in the selected fixture project'
         $projectIds += $projectConfig.projectId
     }
     Assert-True ($projectIds[0] -cne $projectIds[1] -and -not (Test-Path -LiteralPath (Join-Path $catalogGlobalRoot '.harness_sv')) -and -not (Test-Path -LiteralPath (Join-Path $catalogGlobalRoot 'harness/.harness_sv'))) 'one global runtime preserves separate project identities and stores no runtime state in its installation'

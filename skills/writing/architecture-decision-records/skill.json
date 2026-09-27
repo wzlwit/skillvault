@@ -3,7 +3,7 @@
   "title": "Architecture Decision Records",
   "version": null,
   "kind": "agent",
-  "description": "Preserve architectural rationale and supersession; overlaps with grilling on trade-offs, planning-with-files on notes, and harness-decision on decision history.",
+  "description": "Preserve architectural rationale and supersession; overlaps with grilling on trade-offs, planning-with-files on notes, harness-decision on decision history, and harness-doc on reader-facing rationale.",
   "tags": [
     "documentation",
     "adr",

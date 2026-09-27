@@ -15,7 +15,7 @@ function Assert-TestFlowFailure {
 
 try {
     New-Item -ItemType Directory -Path (Join-Path $fixtureRoot 'ppe') -Force | Out-Null
-    $paths = Get-HarnessPaths $fixtureRoot
+    $paths = Get-HarnessPaths $fixtureRoot -LayoutVersion 1
     $config = Initialize-Harness $paths
     $settings = [pscustomobject]@{
         environments = @(

@@ -1,6 +1,6 @@
 ---
 name: humanizer
-description: Reference guide to the upstream Humanizer rewriting skill; its full editing rules are not bundled. Use to locate authoritative Humanizer guidance before rewriting prose.
+description: "Reference guide to general Humanizer prose editing; overlaps with humanizer-ch on rewriting, while retaining a general-prose scope. Use to locate authoritative guidance before rewriting. Upstream editing rules are not bundled."
 metadata:
   author: blader
   maintainer: wzlwit
@@ -11,6 +11,9 @@ metadata:
 
 Humanizer revises prose that sounds generic or machine-generated while keeping the source's
 facts, links, and intended voice. This entry is a short reference to that upstream project.
+
+`humanizer-ch` references a separate Chinese critical-essay workflow. Choose by the writing task
+and genre, not language alone; it is not an automatic replacement for this general reference.
 
 ## Scope
 

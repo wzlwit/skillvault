@@ -31,7 +31,7 @@ function Set-HarnessMaintenancePolicy {
         try {
             $current = Read-HarnessConfig $Paths
             $current | Add-Member -NotePropertyName maintenance -NotePropertyValue $policy -Force
-            Write-HarnessJson $Paths.Config $current
+            Write-HarnessConfig $Paths $current
         }
         finally { $lock.Dispose() }
     }
@@ -45,17 +45,25 @@ function Get-HarnessHistoryTopic {
 }
 
 function Test-HarnessOwnedHistoryPath {
-    param([string]$Board, [string]$Report, [string]$RunId, [ValidateSet('runs', 'prReviews')][string]$Collection = 'runs')
+    param([string]$Board, [string]$Report, [string]$RunId, [ValidateSet('runs', 'prReviews')][string]$Collection = 'runs', [string]$HistoryRoot)
     if (-not $Report) { return $true }
     if ($RunId -cnotmatch '^[A-Za-z0-9_-]+$') { return $false }
-    $history = [IO.Path]::GetFullPath((Join-Path $Board $(if ($Collection -eq 'prReviews') { 'pr' } else { 'history' })))
+    $history = [IO.Path]::GetFullPath($(if ($Collection -eq 'runs' -and $HistoryRoot) { $HistoryRoot } else { Join-Path $Board $(if ($Collection -eq 'prReviews') { 'pr' } else { 'history' }) }))
     $expected = Join-Path $history ($RunId + '.md')
-    if (-not [IO.Path]::IsPathRooted($Report) -or [IO.Path]::GetFullPath($Report) -ine $expected) { return $false }
-    $current = $expected
+    if (-not [IO.Path]::IsPathRooted($Report)) { return $false }
+    $fullPath = [IO.Path]::GetFullPath($Report)
+    if ($fullPath -ine $expected) {
+        if ($Collection -ne 'runs') { return $false }
+        $relative = [IO.Path]::GetRelativePath($history, $fullPath).Replace('\', '/')
+        if ($relative -cnotmatch ('^(\d{4}-\d{2})/(\d{8}T\d{9}Z)-[a-z0-9-]+-' + [regex]::Escape($RunId) + '\.md$')) { return $false }
+        $stamp = [datetimeoffset]::MinValue
+        if (-not [datetimeoffset]::TryParseExact($Matches[2], 'yyyyMMddTHHmmssfffZ', [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::AssumeUniversal, [ref]$stamp) -or $stamp.ToString('yyyy-MM') -cne $Matches[1]) { return $false }
+    }
+    $current = $fullPath
     while ($current) {
         if (Test-Path -LiteralPath $current) {
             $item = Get-Item -LiteralPath $current -Force
-            if ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) { return $false }
+            if ($item.LinkTarget -or $item.LinkType -in @('SymbolicLink', 'Junction')) { return $false }
         }
         $current = Split-Path -Parent $current
     }
@@ -78,6 +86,9 @@ function Get-HarnessHistoryCleanupPlan {
         $task = $openTask
         while ($task -and $requiredTaskIds.Add($task.id)) {
             if ($task.lastReport) { $null = $protectedReports.Add([string]$task.lastReport) }
+            foreach ($sourceEvidence in $task.sourceEvidence) {
+                foreach ($report in @($sourceEvidence.latestReport, $sourceEvidence.verification.report)) { if ($report) { $null = $protectedReports.Add([string]$report) } }
+            }
             $parentId = [string]$task.followUpOf
             $task = if ($parentId) { $State.tasks | Where-Object id -CEQ $parentId | Select-Object -First 1 } else { $null }
         }
@@ -90,9 +101,16 @@ function Get-HarnessHistoryCleanupPlan {
         if ($reading.runId) { $null = $protectedIds.Add($reading.runId) }
         if ($reading.report) { $null = $protectedReports.Add($reading.report) }
     }
+    if ($State.monitoring.batch.report) { $null = $protectedReports.Add([string]$State.monitoring.batch.report) }
     foreach ($incident in @($State.monitoring.incidents | Where-Object { $_.status -ne 'Recovered' })) {
         foreach ($report in @($incident.firstReport, $incident.latestReport)) { if ($report) { $null = $protectedReports.Add($report) } }
     }
+    foreach ($candidate in @($State.monitoring.candidates | Where-Object { $_ -and ($_.disposition -notin @('Resolved', 'Superseded') -or $requiredTaskIds.Contains([string]$_.taskId)) })) {
+        foreach ($report in @($candidate.firstReport, $candidate.latestReport)) { if ($report) { $null = $protectedReports.Add($report) } }
+    }
+    foreach ($candidate in @($State.monitoring.candidates | Where-Object { $_.verification.report })) { $null = $protectedReports.Add([string]$candidate.verification.report) }
+    foreach ($candidate in @($State.monitoring.candidates | Where-Object { $_.completion.report })) { $null = $protectedReports.Add([string]$candidate.completion.report) }
+    foreach ($candidate in @($State.monitoring.candidates | Where-Object { $_.verificationCheckpoint.report })) { $null = $protectedReports.Add([string]$candidate.verificationCheckpoint.report) }
     $reviews = @($State.runs | Where-Object { $_.phase -eq 'Review' -and -not $_.taskId -and $_.status -in @('clean', 'findings') })
     foreach ($group in @($reviews | Group-Object { @($_.review.repositoryRef, $_.review.repositoryRoot, $_.review.scope, $_.review.baseline.reference, $_.review.baseline.commit, $_.review.securityReview) | ConvertTo-Json -Compress })) {
         $null = $protectedIds.Add(($group.Group | Select-Object -Last 1).id)
@@ -128,7 +146,7 @@ function Get-HarnessHistoryCleanupPlan {
         if (-not $reasons.Count) { continue }
         $run = $item.run
         $reason = if ($protectedIds.Contains($run.id) -or $protectedReports.Contains([string]$run.report)) { 'RequiredEvidence' }
-            elseif (-not (Test-HarnessOwnedHistoryPath $board $run.report $run.id $item.collection)) { 'UnownedPath' } else { '' }
+            elseif (-not (Test-HarnessOwnedHistoryPath $board $run.report $run.id $item.collection -HistoryRoot (Get-HarnessHistoryRoot $Paths $Config))) { 'UnownedPath' } else { '' }
         if ($reason) { $protected.Add([pscustomobject]@{ id = $run.id; reason = $reason }); continue }
         $candidates.Add([pscustomobject]@{ id = $run.id; report = [string]$run.report; collection = $item.collection; topic = $item.topic; finishedAt = $item.finished.ToString('o'); reasons = $reasons })
     }
@@ -175,7 +193,10 @@ function Invoke-HarnessHistoryCleanup {
                 try {
                     $collection = if ($item.collection) { $item.collection } else { 'runs' }
                     $linked = $item.report -iin @($state.references | Where-Object active | ForEach-Object source) -or $item.report -iin @($state.tasks.lastReport) -or $item.id -cin $plan.policy.pinnedRunIds
-                    if ($linked -or $item.id -cin @($state.$collection.id) -or -not (Test-HarnessOwnedHistoryPath (Get-HarnessBoard $Paths $config) $item.report $item.id $collection)) { throw 'Pending file is no longer an owned, unreferenced report.' }
+                    $linked = $linked -or $item.report -iin @($state.monitoring.candidates.verification.report) -or
+                        $item.report -iin @($state.monitoring.candidates.completion.report) -or $item.report -iin @($state.monitoring.candidates.verificationCheckpoint.report) -or
+                        $item.report -iin @($state.tasks.sourceEvidence.latestReport) -or $item.report -iin @($state.tasks.sourceEvidence.verification.report)
+                    if ($linked -or $item.id -cin @($state.$collection.id) -or -not (Test-HarnessOwnedHistoryPath (Get-HarnessBoard $Paths $config) $item.report $item.id $collection -HistoryRoot (Get-HarnessHistoryRoot $Paths $config))) { throw 'Pending file is no longer an owned, unreferenced report.' }
                     if (Test-Path -LiteralPath $item.report -PathType Leaf) { Remove-Item -LiteralPath $item.report -Force -ErrorAction Stop }
                 }
                 catch { $remaining.Add($item); $failures.Add($_.Exception.Message) }

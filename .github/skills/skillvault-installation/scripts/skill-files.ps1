@@ -92,6 +92,38 @@ function Read-SkillManifest {
     return $manifest
 }
 
+function Find-SkillCatalogEntry {
+    param(
+        [Parameter(Mandatory = $true)][object[]]$Catalog,
+        [Parameter(Mandatory = $true)][string]$Query,
+        [switch]$Exact
+    )
+
+    $queryText = $Query.Trim()
+    if (-not $queryText) { throw 'Supply a skill name, name fragment, or keyword.' }
+    if ($Exact) {
+        $selectedEntries = @($Catalog | Where-Object { $_.name -ceq $queryText })
+    }
+    elseif ($queryText -ieq 'public') {
+        $selectedEntries = @($Catalog)
+    }
+    elseif ([Management.Automation.WildcardPattern]::ContainsWildcardCharacters($queryText)) {
+        $pattern = [Management.Automation.WildcardPattern]::new($queryText, [Management.Automation.WildcardOptions]::IgnoreCase)
+        $selectedEntries = @($Catalog | Where-Object { $pattern.IsMatch([string]$_.name) })
+    }
+    else {
+        $selectedEntries = @($Catalog | Where-Object { ([string]$_.name).IndexOf($queryText, [StringComparison]::OrdinalIgnoreCase) -ge 0 })
+        if (-not $selectedEntries.Count) {
+            $selectedEntries = @($Catalog | Where-Object {
+                ([string]$_.description).IndexOf($queryText, [StringComparison]::OrdinalIgnoreCase) -ge 0 -or
+                ([string]$_.path).IndexOf($queryText, [StringComparison]::OrdinalIgnoreCase) -ge 0
+            })
+        }
+    }
+    if (-not $selectedEntries.Count) { throw "No catalog skills match '$queryText'." }
+    $selectedEntries | Sort-Object name
+}
+
 function Read-BootstrapSkillNames {
     param([Parameter(Mandatory = $true)][string]$RepositoryRoot)
 

@@ -18,8 +18,9 @@ The registered management commands are `/skillvault-installation`, `/skillvault-
 in the slash-command picker. `/sv-*` spellings are conversational shortcuts, not separate
 registered skills.
 
-The `writing` category groups technical documentation and prose-editing skills, including
-`architecture-decision-records` and `humanizer`. Their names and workflows stay separate;
+The `writing` category groups documentation, prose-editing, and presentation skills, including
+`architecture-decision-records`, `humanizer`, `humanizer-ch`, and the `ppt-master` and
+`office-documents` references. Their workflows stay separate;
 manifest tags distinguish their focus. Skill categories do not change the project's `docs/` root.
 
 ## Project Documentation
@@ -34,6 +35,8 @@ decision history in `docs/plans/decisions/`. Add other documentation subfolders 
 - [Bounded refresh-contention retries](docs/plans/decisions/2026-09-24-refresh-contention-retries-adr.md)
 - [Recovery, runtime compatibility, and baseline acceptance](docs/plans/decisions/2026-09-24-recovery-compatibility-and-harness-baseline-adr.md)
 - [Current-copy-only installation and temporary rollback](docs/plans/decisions/2026-09-25-current-copy-only-installation-adr.md)
+- [Source-agnostic monitoring and evidence reconciliation](docs/plans/decisions/2026-09-25-source-agnostic-monitoring-adr.md)
+- [Feature documentation authoring](docs/plans/decisions/2026-09-26-harness-documentation-adr.md)
 - [Harness decision record](docs/plans/decisions/2026-09-15-harness-command-and-record-contracts-adr.md)
 - [External harness reference draft](docs/plans/2026-09-15-project-agent-harness.md)
 - [Kusto query optimization session notes](docs/notes/kusto-query-optimization.md)
@@ -121,15 +124,19 @@ An optional follow-up step alone is not material overlap; describe it directly, 
 | --- | --- | --- |
 | `brainstorming` | Questions and trade-offs with `grilling`. | Develop alternative designs collaboratively; preserve existing drafts and seek approval before implementation. |
 | `grilling` | Trade-offs with `architecture-decision-records`; planning with `planning-with-files`. | Interview to test a plan and resolve choices. |
-| `architecture-decision-records` | Trade-offs with `grilling`; decision notes with `planning-with-files`; decision history with `harness-decision`. | Preserve architectural rationale, status, and superseded history. |
+| `architecture-decision-records` | Trade-offs with `grilling`; decision notes with `planning-with-files`; decision history with `harness-decision`; reader-facing rationale with `harness-doc`. | Preserve architectural rationale, status, and superseded history. |
 | `harness-decision` | Decision history with `architecture-decision-records`. | Show open decisions by default, request closed/all views explicitly, and record human choices. |
 | `handoff`, `harness` | Summarizing selected work and its context. | Handoff writes an explicitly requested continuation note; context provides a read-only project/task view. Neither controls execution. |
 | `harness-task`, `harness-dev` | Both accept task input. | Task is add-only; dev adds bounded execution, validation, and independent review. |
 | `harness-test`, `harness-dev` | Executable validation. | Test owns reusable flows/environments and test-only runs; dev invokes declared gates as part of task completion. |
-| `harness-monitor` | Checks with `harness-test`; intake with `harness-task`; metric contracts with `kpi-dashboard`. | Evaluate exported measurements and incident proposals, separating collection success from service health. |
-| `harness-report` | Implementation with `harness-dev`; design with `kpi-dashboard`; Jarvis authoring with `jarvis-metrics`. | Select one report-authoring route, reuse artifact identity, and coordinate validation without a new rendering engine. |
+| `harness-monitor` | Checks with `harness-test`; intake with `harness-task`; metric contracts with `kpi-dashboard`. | Discover work across approved source adapters or evaluate health measurements, preserving source evidence and approval boundaries. |
+| `harness-report` | Implementation with `harness-dev`; design with `kpi-dashboard`; Jarvis authoring with `jarvis-metrics`; artifact validation with the `ppt-master` and `office-documents` references. | Select one report-authoring route, reuse artifact identity, and coordinate validation without a new rendering engine. |
+| `harness-doc` | Design rationale with `architecture-decision-records`; document output with the `office-documents` reference. | Author feature guides, onboarding, and troubleshooting from evidence, with Humanizer followed by validation; reference decision history without rewriting it. |
+| `humanizer`, `humanizer-ch` | Prose editing through upstream references. | Humanizer covers general prose; Humanizer CH points to Chinese critical-essay guidance. Neither bundles upstream rules/scripts or automatically replaces the documentation workflow. |
+| `office-documents` | Document output with `harness-doc`; workbook/report validation with `harness-report`. | Reference Anthropic's PDF/DOCX/XLSX skills without copying their proprietary prompts, scripts, or assets; no runtime or new report route. |
 | `jarvis-metrics` | Design with `kpi-dashboard`; authoring with `harness-report`. | Guide Jarvis metric-source selection and widget configuration without bundling a client, query executor, or alerting API. |
-| `kpi-dashboard` | Design with `harness-report` and `jarvis-metrics`; metric contracts with `harness-monitor`. | Define formulas, populations, units, freshness, and layouts independently of execution or incident intake. |
+| `kpi-dashboard` | Design with `harness-report`, `jarvis-metrics`, and the `ppt-master` reference; metric contracts with `harness-monitor`. | Define formulas, populations, units, freshness, and layouts independently of execution or incident intake. |
+| `ppt-master` | Artifact validation with `harness-report`; presentation design with `kpi-dashboard`. | Reference the upstream editable PowerPoint and brand/template workflows; no converter, assets, or PPTX report route is bundled. |
 | `harness-policy` | Limits and failure handling within one topic. | `limits` defines boundaries; `fallback` handles bounded test retries, failed-run thresholds, and durable pause/stop/resume. |
 | `harness-review`, `pr-review`, `differential-review` | Code review against a baseline. | Harness review stays project-first; PR review selects remote snapshots and the user-wide list. Both share bounded review passes and can load the differential security methodology. |
 | `harness-timer`, `skillvault-refresh`, `schedule-manager` | Schedule setup and controls. | Timer dispatches to existing project, PR, and refresh owners; refresh performs one-way copying; schedule-manager administers Windows tasks broadly. |
@@ -145,6 +152,21 @@ or commit design documents automatically.
 name or URL, preserves or corrects existing overlap notes on updates, and updates relevant
 repository documentation. Partial overlap is not duplication or permission to remove a skill.
 Existing design documents or task notes may already cover some of these roles.
+
+## Feature Documentation
+
+Use `/hn-doc upsert <feature> --audience internal|partner|public` for a full doc set, or add a
+focused request such as `troubleshooting` to update selected pages. The
+[documentation skill](skills/planning/harness-doc/SKILL.md) reuses existing docs and adapts its
+seven-page outline to the feature. Bare `/hn-doc` lists local sets and actions without writing.
+It requires no initialized harness. Explicit output paths take precedence; otherwise reader guides
+stay in the coding repository's documentation tree while harness tracking stays with the controller.
+
+Claims come from the relevant code, configuration, designs, and verified history. Humanizer is the
+final prose-editing pass, followed by factual, link, terminology, and diagram validation. Essential
+evidence gaps or missing checks leave a clearly labeled Draft. Publication and restructuring are
+separately approved. The [accepted decision](docs/plans/decisions/2026-09-26-harness-documentation-adr.md)
+describes the scope and boundaries.
 
 ## Project Decisions
 
@@ -234,6 +256,7 @@ For example, install `harness-dev` through
 | `/harness-test [list\|declare\|run] [<arguments>...]` | Reusable test definitions and execution |
 | `/harness-monitor [list\|declare\|check\|accept] [<arguments>...]` | Observations and incident proposals |
 | `/harness-report [list\|upsert] [<arguments>...]` | Report and query authoring |
+| `/harness-doc [list\|upsert] [<arguments>...]` | Feature doc sets and focused onboarding/troubleshooting authoring |
 | `/harness-timer [list\|set\|disable\|resume\|clean\|migrate] [<arguments>...]` | Cadence and schedule lifecycle, not historical-data cleanup |
 | `/harness-link [list\|add\|remove] [<arguments>...]` | Supporting URLs, files, and coding-repository links |
 | `/harness-decision [list\|record] [<arguments>...]` | Human decisions and their register |
@@ -266,12 +289,14 @@ and test target. See [relocation boundaries and recovery](skills/planning/harnes
 All harness-owned records, reports, logs, documents, declarations, and local outputs default
 to that `.harness_sv/` unless the user explicitly selects another destination. See the
 [complete project hierarchy](docs/plans/2026-09-16-topic-skill-refactor.md#project-storage).
+Reader-facing `harness-doc` guides use the coding repository's documentation tree instead;
+they are project documentation, not controller runtime records.
 Existing configuration and previously selected artifacts move only through the root-change
 workflow above, not through installation or a change to artifact defaults.
 `loc` aliases `root`. A recognized legacy SkillVault `.harness` controller is reused in place
 when `.harness_sv` does not exist; unrelated folders are not adopted or merged.
 
-Other actions derive their project path from Root, including the `./` fallback, without another
+Other shared-runtime actions derive their project path from Root, including the `./` fallback, without another
 location confirmation. This includes `/harness init` and reconnects. The session supplies `-ProjectPath`
 automatically and adds `-ConfirmLocation` for Init; these are caller arguments, not extra user prompts.
 If Root has not been selected and no explicit target was supplied, use `/harness root ./` once first.
@@ -332,15 +357,38 @@ that target every 12 hours when its environment explicitly allows scheduling; it
 the development timer. Definitions do not provision localPPE or install frameworks. Test evidence
 uses the existing history CSV and linked reports, with flow/environment identity and real exits.
 
-Use `/harness-monitor` to inspect saved definitions, health, incidents, and proposals without collecting
-data. `/harness-monitor declare <file>` previews [monitor declarations](skills/planning/harness-monitor/references/monitoring.md);
-`/harness-monitor check <name>` reads a local numeric JSON snapshot from a reviewed query/export and
-evaluates its identity, measurement window, freshness, and declared condition. Repeated breaches
-reuse one incident; stale or failed collection stays Unknown. Unhealthy service data is successful
-monitoring, so it does not pause a working monitor. `/harness-monitor accept <incident-id>` previews
-explicit task acceptance; accepted investigations are manual-only, and recovery never completes
-them automatically. The [monitor guide](skills/planning/harness-monitor/references/workflow.md) explains
-approval and evidence handling. No direct online/PBI connector or automatic intake is bundled.
+Use `/harness-monitor` to inspect saved definitions, candidates, incidents, and proposals without
+collecting data. `/harness-monitor declare <file>` previews either [work discovery](skills/planning/harness-monitor/references/discovery.md)
+or [numeric health](skills/planning/harness-monitor/references/monitoring.md) declarations.
+`/harness-monitor check <name>` reads the declared ADO backlog/query, text folder, adapter feed, or
+numeric snapshot. Discovery preserves source IDs/revisions and deferred status; failed or incomplete
+reads never mean the source is empty or fixed. ADO discovery requires a service scope; the check
+workflow assesses relevance, verifies status with AI model `auto`, reconciles evidence-backed local
+AlreadyFixed/Stale outcomes, then ranks unfinished work. Unverified results remain visible separately
+from pickup proposals. External ADO/document writeback needs separate source-specific approval;
+the built-in verifier provides none. Development retains its strongest permitted double-check. Health checks
+retain metric/window validation and incident episodes. `/harness-monitor accept <id>` previews explicit task intake; discovery `C-...`
+candidates and health `I-...` incidents share the existing task store. Previously postponed work
+enters the priority queue when accepted; actual blockers remain blocked. Readiness,
+automatic development, source authentication, and scheduling remain separately authorized. No PBI
+visual scraping, source writes, or automatic intake is enabled by installing the skill.
+Source ownership is exposed as `sourceOwner` on candidates, tasks, and the current-work CSV: ADO assignment,
+explicit document Owner metadata, or a normalized adapter field. Unknown/unassigned remains blank;
+failed refreshes preserve the last captured evidence, not a claim of current assignment.
+
+`/hn-monitor check` covers all configured sources; `check <name>` explicitly scopes the run.
+Partial source/verification failures remain visibly incomplete. ADO hierarchies and optional
+Markdown-section discovery retain per-item evidence and diagnostics. The canonical board includes
+task/candidate and source types, ordered by priority then ID. Explicit repository authority can
+inspect a fetched branch without touching dirty coding trees. Pending rollout/PPE/sign-off prevents
+completion; unchanged evidenced completion stays closed, and material new requirements become
+follow-up proposals, not automatic development. Domain exclusions/priority floors are local policy.
+
+New boards use `current-<project>.csv`, with the filename persisted centrally as `currentFileName`.
+Existing boards keep `current.csv` unless explicitly renamed. `/hn root --current-file <name>`
+previews the guarded rename; requested topic snapshots use `root --view <topic> --monitors <names>`
+and stay under artifacts. Neither creates another authoritative queue. See the
+[accepted naming decision](docs/plans/decisions/2026-09-25-project-qualified-board-names-adr.md).
 
 Use `/harness-report upsert <purpose> --type powerbi|grafana|jarvis|web|query` for the
 [report-authoring dispatcher](skills/planning/harness-report/references/workflow.md). It loads
@@ -356,6 +404,16 @@ No platform skills/tools are installed automatically, and publishing/monitoring 
 The KPI companion is a curated MIT adaptation with explicit unknown version and no bundled
 untested upstream SQL or Streamlit generator. Both skills default to global availability;
 artifact destinations and access approvals remain specific to the requested project/platform.
+
+The [PPT Master reference](skills/writing/ppt-master/SKILL.md) points to separate upstream deck,
+template, and native-editing workflows. It installs no tools and adds no report route. Editable
+artifact requests must identify required object types/actions and verify representative edits;
+branded outputs retain the supplied palette, fonts, and template authority in their existing specs.
+
+The [office-documents reference](skills/writing/office-documents/SKILL.md) links to Anthropic's
+PDF, Word, and Excel skills under their proprietary terms; it contains none of their implementation.
+Workbook-backed reports check formulas and cached results. Requested PDF/DOCX documents receive
+final-page visual checks; values-only CSV and Markdown-only work keep their existing scope.
 
 The `jarvis` route selects [jarvis-metrics](skills/monitoring/jarvis-metrics/SKILL.md)
 for Geneva/MDM, Kusto-to-Metrics or Logs-to-Metrics source decisions and widget configuration.
@@ -378,12 +436,20 @@ shortened automatically by faster job intervals and earlier deadlines. Active wo
 `list heartbeat` reads it. Applying preserves job cadence, start-time anchors, and maintenance.
 Overdue jobs found unavailable or conflicting wait for the adaptive recheck rather than causing
 one-minute polling. The heartbeat is script-only, not an AI model configured as `auto`.
-Project definitions, nextDue, enabled state, and active
-claims are in `.harness_sv/schedules.json`; the central registry and latest job receipts are under
+Layout-2 project definitions and enabled settings are authoritative in `config/schedules.json`;
+nextDue and active invocation state use `runtime/schedules.json` inside `.harness_sv`. The central registry and latest job receipts are under
 `~/.copilot/skillvault/scheduler`. Intersecting coding roots serialize; independent approved roots
 can run together. Signed-out execution and machine wake are not currently enabled; conditional
 maintenance permission does not activate them. Existing OS tasks need
 an exact `migrate` preview; no install silently changes them or their cadence.
+
+New controllers use authoritative `config/` domain files, generated `board/` CSV views, `runtime/`
+state and locks, monthly readable `history/` reports, and a short README for navigation.
+Commands and direct edits share the same declarations; there is no second active configuration.
+`/hn migrate` separately previews in-place conversion of an existing controller, with approved
+`--apply`, preserved records/evidence/cadence, and rollback. `init` only reconnects legacy state.
+This is separate from Root relocation and timer migration. See the
+[layout and verification decision](docs/plans/decisions/2026-09-25-declarative-harness-and-auto-verification-adr.md).
 
 `/harness clean [--policy <file>] [--apply]` previews historical-data cleanup or configures
 retention. Retention defaults to **90 days and 5,000

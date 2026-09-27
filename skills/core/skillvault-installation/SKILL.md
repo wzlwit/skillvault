@@ -22,7 +22,10 @@ no extra confirmation is required merely for abbreviation. Keep full names in me
 and preserve the read-only bare default. This is conversational routing, not script argument parsing.
 
 Bare invocation or `list` shows the installed inventory. `help` or an unknown action shows
-choices without copying or deleting files. Keep source and installation destinations separate.
+choices without copying or deleting files. If a supplied token is a catalog selector rather than
+an action, show the matching skills and the corrected `install <selector>` command, not only
+an invalid-action error. Do not infer permission to install from this read-only help.
+Keep source and installation destinations separate.
 
 | Action | Procedure |
 | --- | --- |
@@ -30,6 +33,13 @@ choices without copying or deleting files. Keep source and installation destinat
 | `list catalog` | [Verified source catalog](./references/install.md#no-skillname-given-catalog-exploration) |
 | `install`, `update` | [Install or update copies](./references/install.md) |
 | `uninstall` | [Confirmed removal of installed copies](./references/uninstall.md) |
+
+Installation selectors support case-insensitive partial names and keywords. Match name fragments
+first; when no names match, search descriptions and catalog paths. An exact name does not truncate
+a larger name-match set: `install harness` selects `harness` and every `harness-*` topic.
+Use `install --exact harness` for just the base skill, or `install harness-` for the suffixed topics.
+Name patterns such as `harness*` are optional, not required. Preview all matches and required
+companions before copying; preserve existing replacement, pin, and scope approvals.
 
 Legacy `/sv-install`, `/sv-list`, `/sv-uninstall`, their full names, and `/skv-*` equivalents
 retain their operation. A bare old install request explores the catalog; `update` remains an

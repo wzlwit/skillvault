@@ -48,7 +48,14 @@
       "name": "skillOrFolderOrKeyword",
       "required": false,
       "type": "string",
-      "description": "Name, folder, or keyword used to install or update catalog skills. Omit to explore; use update to refresh approved managed installed copies."
+      "description": "Case-insensitive name fragment, folder, or keyword. Select all name matches, even when one is exact; otherwise search descriptions and paths. Omit to explore."
+    },
+    {
+      "name": "exact",
+      "required": false,
+      "type": "boolean",
+      "default": false,
+      "description": "Use --exact with install to select one literal catalog name instead of partial-name or keyword matching."
     },
     {
       "name": "scope",
@@ -85,7 +92,9 @@
   "examples": [
     "/skillvault-installation",
     "/skillvault-installation list",
-    "/skillvault-installation install"
+    "/skillvault-installation install",
+    "/skillvault-installation install harness global",
+    "/skillvault-installation install --exact harness global"
   ],
   "readme": "SKILL.md"
 }

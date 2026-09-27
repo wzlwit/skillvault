@@ -36,12 +36,14 @@ Unavailable checks and state recording remain pending; do not fabricate Complete
    -Reason <approved-reason>`. A reviewed `declare <file> --apply` request authorizes that change;
    obtain missing owner/reason details. Do not apply unseen changes after approval.
 
-Declarations replace only the `fallback` object in `.harness_sv/config.json`; omitted fields revert
+Declarations replace only the `fallback` object in layout-2 `config/policy.json`; omitted fields revert
 to baseline. `{}` removes optional retry/threshold settings and all classified transient exits, so
 it causes no retries. Explicit saved values, including `maxRetries: 0`, override defaults; inspecting
 or resolving a declaration does not rewrite it. Changes require an idle runner with
 no unresolved active-run marker and do not clear counters, pauses, or reports. They launch no
 tests, workers, or schedules. Unknown policy fields are rejected, not silently accepted.
+Direct edits use that same authoritative file without import. Legacy controllers keep their
+flat config until explicit migration; invalid declarations never prevent a pause/stop request.
 
 ## Optional Policy
 

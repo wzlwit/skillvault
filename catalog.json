@@ -7,7 +7,7 @@
   },
   {
     "name": "architecture-decision-records",
-    "description": "Preserve architectural rationale and supersession; overlaps with grilling on trade-offs, planning-with-files on notes, and harness-decision on decision history.",
+    "description": "Preserve architectural rationale and supersession; overlaps with grilling on trade-offs, planning-with-files on notes, harness-decision on decision history, and harness-doc on reader-facing rationale.",
     "path": "skills/writing/architecture-decision-records",
     "version": null
   },
@@ -49,7 +49,7 @@
   },
   {
     "name": "harness",
-    "description": "Inspect harness state, select its root with a move confirmation after initialization, initialize, read context, or clean historical data. Use /harness or /hn with list, root, init, context, or clean. Accepts legacy root/init/loc/context and management commands. Context summaries overlap with handoff; harness-link owns links. Owns retention; harness-timer schedules maintenance. Bare invocation only lists.",
+    "description": "Inspect harness state, select or relocate its root, initialize, migrate layout, read context, or clean history. Use /harness or /hn with list, root, init, migrate, context, or clean. Accepts legacy root/init/loc/context and management commands. Context summaries overlap with handoff; harness-link owns links. Owns retention; harness-timer schedules maintenance. Bare invocation only lists.",
     "path": "skills/planning/harness",
     "version": "1.0.0"
   },
@@ -66,6 +66,12 @@
     "version": "1.0.0"
   },
   {
+    "name": "harness-doc",
+    "description": "Create or update evidence-grounded feature doc sets, onboarding, and troubleshooting guides. Use /harness-doc or /hn-doc with list or upsert. Overlaps with architecture-decision-records on design rationale and the office-documents reference on document output; owns reader-oriented guides, with a final Humanizer pass followed by validation. No harness initialization or publication is implied.",
+    "path": "skills/planning/harness-doc",
+    "version": "1.0.0"
+  },
+  {
     "name": "harness-link",
     "description": "Manage all project and task links in one registry. Use /harness-link or /hn-link with list, add, or remove for HTTP/HTTPS URLs, local files, folders, and coding-repository paths. Accepts legacy /harness-ref and /hn-ref. Adding upserts a link; removing unregisters it, never deletes its target. Does not copy sources, clone repositories, or start work.",
     "path": "skills/planning/harness-link",
@@ -73,7 +79,7 @@
   },
   {
     "name": "harness-monitor",
-    "description": "Declare monitors, check structured observations, and propose incident investigations. Use /harness-monitor or /hn-monitor with list, declare, check, or accept. Overlaps with harness-test on checks, harness-task on intake, and kpi-dashboard on metric contracts; never launches automatic fixes.",
+    "description": "Monitor work across approved source adapters, including ADO and documents; assess relevance, Auto-verify status, correlate explicit requirements, reconcile evidence, and expose verified subsets, or check health observations. Use /harness-monitor or /hn-monitor with list, declare, check, or accept. Overlaps with harness-test on checks, harness-task on intake, and kpi-dashboard on metric contracts; preserves deferred work and never launches development.",
     "path": "skills/planning/harness-monitor",
     "version": "1.0.0"
   },
@@ -85,7 +91,7 @@
   },
   {
     "name": "harness-report",
-    "description": "Coordinate dashboard, report, and query authoring. Use /harness-report or /hn-report with list or upsert. The create/update actions and legacy /harness-report-create and /hn-report-create commands use upsert. Overlaps with harness-dev on implementation, kpi-dashboard on design, and jarvis-metrics on Jarvis authoring; owns artifact identity and validation, not publishing.",
+    "description": "Coordinate dashboard, report, and query authoring. Use /harness-report or /hn-report with list or upsert. The create/update actions and legacy /harness-report-create and /hn-report-create commands use upsert. Overlaps with harness-dev on implementation, kpi-dashboard on design, jarvis-metrics on Jarvis authoring, and the ppt-master and office-documents references on artifact validation; owns artifact identity and validation, not publishing.",
     "path": "skills/planning/harness-report",
     "version": "1.0.0"
   },
@@ -115,8 +121,14 @@
   },
   {
     "name": "humanizer",
-    "description": "Reference guide to the upstream Humanizer rewriting skill; its full editing rules are not bundled.",
+    "description": "Reference guide to general Humanizer prose editing; overlaps with humanizer-ch on rewriting, while retaining a general-prose scope. Use to locate authoritative guidance before rewriting. Upstream editing rules are not bundled.",
     "path": "skills/writing/humanizer",
+    "version": null
+  },
+  {
+    "name": "humanizer-ch",
+    "description": "Reference guide to zjqc/humanizer-ch for Chinese critical essays and theoretical commentary. Use /humanizer-ch to locate upstream guidance; overlaps with humanizer on prose editing. Upstream rules and scripts are not bundled.",
+    "path": "skills/writing/humanizer-ch",
     "version": null
   },
   {
@@ -127,8 +139,14 @@
   },
   {
     "name": "kpi-dashboard",
-    "description": "Define actionable KPIs and design dashboard layouts, comparisons, filters, and freshness states. Use for /kpi-dashboard, legacy /kpi-dashboard-design, executive SaaS dashboards, MRR/churn/LTV-CAC metrics, operations-center views, cohort retention, or conflicting metric calculations. Overlaps with harness-report on authoring, harness-monitor on metric contracts, jarvis-metrics on dashboard design, and powerbi-modeling on grain and measure semantics; supplies reusable, platform-agnostic design guidance, not a platform writer, incident engine, or Jarvis-specific metric-source workflow.",
+    "description": "Define actionable KPIs and design dashboard layouts, comparisons, filters, and freshness states. Use for /kpi-dashboard, legacy /kpi-dashboard-design, executive SaaS dashboards, MRR/churn/LTV-CAC metrics, operations-center views, cohort retention, or conflicting metric calculations. Overlaps with harness-report on authoring, harness-monitor on metric contracts, jarvis-metrics on dashboard design, powerbi-modeling on grain and measure semantics, and the ppt-master reference on presentation design; supplies reusable, platform-agnostic design guidance, not a platform writer, incident engine, or Jarvis-specific metric-source workflow.",
     "path": "skills/data/kpi-dashboard",
+    "version": null
+  },
+  {
+    "name": "office-documents",
+    "description": "Reference to Anthropic's PDF, Word, and Excel document skills for merging PDFs, cleaning spreadsheets, and document formatting. Use /office-documents to locate the relevant guidance. Overlaps with harness-doc on document output and harness-report on workbook/report validation; upstream tools are not bundled and their proprietary terms apply.",
+    "path": "skills/writing/office-documents",
     "version": null
   },
   {
@@ -147,6 +165,12 @@
     "name": "powerbi-modeling",
     "description": "Design and review Power BI semantic models, star schemas, fact and dimension grain, relationships, DAX measures, RLS, and performance. Use for /powerbi-modeling, model design, cardinality, cross-filter direction, or model optimization. Overlaps with kpi-dashboard on grain and metric definitions; owns model structure and validation, not dashboard layout or automatic deployment. Design-only use needs no live connection.",
     "path": "skills/data/powerbi-modeling",
+    "version": null
+  },
+  {
+    "name": "ppt-master",
+    "description": "Reference guide to hugohe3/ppt-master for native editable PowerPoint/PPTX, reusable templates, brand colors, fonts, and slide layouts. Use /ppt-master to locate upstream guidance. Overlaps with harness-report on artifact validation and kpi-dashboard on presentation design; upstream tools are not bundled.",
+    "path": "skills/writing/ppt-master",
     "version": null
   },
   {

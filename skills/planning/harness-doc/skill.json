@@ -1,0 +1,67 @@
+{
+  "name": "harness-doc",
+  "title": "Harness Documentation",
+  "version": "1.0.0",
+  "kind": "agent",
+  "description": "Create or update evidence-grounded feature doc sets, onboarding, and troubleshooting guides. Use /harness-doc or /hn-doc with list or upsert. Overlaps with architecture-decision-records on design rationale and the office-documents reference on document output; owns reader-oriented guides, with a final Humanizer pass followed by validation. No harness initialization or publication is implied.",
+  "tags": [
+    "harness",
+    "documentation",
+    "onboarding",
+    "troubleshooting",
+    "feature-doc-set"
+  ],
+  "author": "wzlwit",
+  "source": {
+    "repo": "skillvault",
+    "path": "skills/planning/harness-doc"
+  },
+  "install": {
+    "global": true,
+    "project": true,
+    "session": true,
+    "defaultScope": "global",
+    "strategy": "copy"
+  },
+  "dependencies": [
+    "rules",
+    "humanizer"
+  ],
+  "readme": "SKILL.md",
+  "inputs": [
+    {
+      "name": "action",
+      "required": false,
+      "type": "string",
+      "default": "list",
+      "enum": ["list", "upsert"],
+      "description": "Omitted means read-only listing. Create and update are aliases for upsert."
+    },
+    {
+      "name": "feature",
+      "required": false,
+      "type": "string",
+      "description": "Feature, existing doc set, or focused authoring request; required for upsert unless clear from the conversation."
+    },
+    {
+      "name": "audience",
+      "required": false,
+      "type": "string",
+      "enum": ["internal", "partner", "public"],
+      "description": "Reuse the established audience or clarify it. Partner access does not imply public disclosure."
+    },
+    {
+      "name": "output",
+      "required": false,
+      "type": "string",
+      "description": "Explicit documentation destination. Otherwise reuse the coding repository's documentation convention, then docs/guides/<feature> when no convention exists."
+    }
+  ],
+  "examples": [
+    "/harness-doc",
+    "/hn-doc list",
+    "/hn-doc upsert cache-refresh --audience partner",
+    "/hn-doc upsert cache-refresh troubleshooting --audience internal",
+    "/harness-doc upsert cache-refresh --output docs/guides/cache-refresh"
+  ]
+}

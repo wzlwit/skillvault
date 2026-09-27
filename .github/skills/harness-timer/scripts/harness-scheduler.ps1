@@ -26,23 +26,27 @@ function Read-HarnessSchedules {
     if (-not $state.PSObject.Properties['heartbeatInterval']) { $state | Add-Member -NotePropertyName heartbeatInterval -NotePropertyValue '1d' }
     $null = ConvertTo-HarnessHeartbeatInterval $state.heartbeatInterval
     $unavailable = @()
+    $declarations = @()
     if (-not $state.PSObject.Properties['projects']) { $state | Add-Member -NotePropertyName projects -NotePropertyValue @() }
     foreach ($project in @($state.projects)) {
         try {
             $projectPaths = Get-HarnessPaths $project.projectRoot
             $config = Read-HarnessConfig $projectPaths
             if ($config.projectId -cne $project.projectId) { throw 'Controller identity changed.' }
-            $file = Join-Path $projectPaths.Control 'schedules.json'
-            $local = Get-Content -LiteralPath $file -Raw | ConvertFrom-Json -NoEnumerate
+            $declarationText = [IO.File]::ReadAllText($projectPaths.ScheduleConfig)
+            $local = Read-HarnessProjectSchedules $projectPaths
+            if ([IO.File]::ReadAllText($projectPaths.ScheduleConfig) -cne $declarationText) { throw 'Schedule declarations changed during the read.' }
             if ($local.schemaVersion -ne 1 -or $local.schedulerRoot -ine $Paths.Root -or $local.projectId -cne $project.projectId -or $local.jobs -isnot [array]) { throw 'Invalid project schedule ownership.' }
             foreach ($job in $local.jobs) {
                 if ($job.kind -ne 'project' -or $job.projectId -cne $project.projectId -or $job.projectRoot -ine $project.projectRoot) { throw 'Project schedule points at a different controller.' }
             }
             $state.jobs = @($state.jobs) + @($local.jobs)
+            $declarations += [pscustomobject]@{ projectId = $project.projectId; content = $declarationText }
         }
         catch { $unavailable += $project }
     }
     $state | Add-Member -NotePropertyName unavailableProjects -NotePropertyValue $unavailable -Force
+    $state | Add-Member -NotePropertyName projectDeclarations -NotePropertyValue $declarations -Force
     $ids = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
     foreach ($job in $state.jobs) {
         if ($job.id -cnotmatch '^[a-f0-9]{32}$' -or -not $ids.Add($job.id) -or $job.enabled -isnot [bool] -or $job.kind -notin @('project', 'pr', 'refresh')) { throw 'Invalid or duplicate logical schedule.' }
@@ -58,7 +62,7 @@ function Read-HarnessSchedules {
 }
 
 function Write-HarnessSchedules {
-    param($Paths, $State)
+    param($Paths, $State, [switch]$RuntimeOnly, [string[]]$ChangedJobIds)
     $registered = @($State.projects)
     foreach ($group in @($State.jobs | Where-Object kind -EQ project | Group-Object projectId)) {
         if ($group.Name -cnotin @($registered.projectId)) {
@@ -69,16 +73,20 @@ function Write-HarnessSchedules {
         if ($project.projectId -cin @($State.unavailableProjects.projectId)) { continue }
         $projectPaths = Get-HarnessPaths $project.projectRoot
         if ((Read-HarnessConfig $projectPaths).projectId -cne $project.projectId) { throw 'Controller identity changed before saving schedules.' }
-        $file = Join-Path $projectPaths.Control 'schedules.json'
-        $projectLock = Enter-HarnessLock (Join-Path $projectPaths.Control 'schedules.lock')
+        $file = $projectPaths.ScheduleConfig
+        $projectLock = Enter-HarnessLock $projectPaths.ScheduleLock
         try {
+            $expectedDeclaration = $null
             if (Test-Path -LiteralPath $file) {
                 $saved = Get-Content -LiteralPath $file -Raw | ConvertFrom-Json
                 if ($saved.schedulerRoot -ine $Paths.Root -or $saved.projectId -cne $project.projectId) { throw 'Project schedules belong to another scheduler; do not replace them.' }
+                $expectedDeclaration = @($State.projectDeclarations | Where-Object projectId -CEQ $project.projectId) | Select-Object -First 1
+                if (-not $RuntimeOnly -and $expectedDeclaration -and [IO.File]::ReadAllText($file) -cne $expectedDeclaration.content) { throw 'Schedule declarations changed; reload before applying the command.' }
             }
             $jobs = @($State.jobs | Where-Object { $_.kind -eq 'project' -and $_.projectId -ceq $project.projectId })
             $project.lockRoots = @(@($project.projectRoot) + @($jobs.lockRoots | Where-Object { $_ }) | Sort-Object -Unique)
-            Write-HarnessJson $file ([pscustomobject]@{ schemaVersion = 1; projectId = $project.projectId; schedulerRoot = $Paths.Root; jobs = $jobs })
+            Write-HarnessProjectSchedules $projectPaths ([pscustomobject]@{ schemaVersion = 1; projectId = $project.projectId; schedulerRoot = $Paths.Root; jobs = $jobs }) -RuntimeOnly:$RuntimeOnly -ChangedJobIds $ChangedJobIds
+            if ($expectedDeclaration -and -not $RuntimeOnly) { $expectedDeclaration.content = [IO.File]::ReadAllText($file) }
         }
         finally { $projectLock.Dispose() }
     }
@@ -86,6 +94,7 @@ function Write-HarnessSchedules {
     $stored = $State | ConvertTo-Json -Depth 30 | ConvertFrom-Json
     $stored.jobs = @($State.jobs | Where-Object kind -NE project)
     $stored.PSObject.Properties.Remove('unavailableProjects')
+    $stored.PSObject.Properties.Remove('projectDeclarations')
     Write-HarnessJson $Paths.State $stored
 }
 
@@ -157,7 +166,7 @@ function Set-HarnessHeartbeatInterval {
         $current = Read-HarnessSchedules $Paths
         if (($current | ConvertTo-Json -Depth 25 -Compress) -cne $expectedState) { throw 'Scheduler changed; refresh the preview.' }
         $current.heartbeatInterval = $Interval
-        Write-HarnessSchedules $Paths $current
+        Write-HarnessSchedules $Paths $current -RuntimeOnly
         $heartbeat = Sync-HarnessHeartbeat $Paths $current $Now
         [pscustomobject]@{ preview = $false; operation = 'HeartbeatInterval'; heartbeatInterval = $Interval; heartbeat = $heartbeat }
     }
@@ -197,9 +206,9 @@ function Set-HarnessSchedule {
         $saved = @($current.jobs | Where-Object { $_.key -ieq $job.key })
         if ($saved.Count -and ($saved[0].active -or $saved[0].recoveryRequired)) { throw 'The schedule became active; retry after it finishes.' }
         $current.jobs = @($current.jobs | Where-Object { $_.key -ine $job.key }) + @($job)
-        Write-HarnessSchedules $Paths $current
+        Write-HarnessSchedules $Paths $current -ChangedJobIds @($job.id)
         try { $heartbeat = Sync-HarnessHeartbeat $Paths $current $Now }
-        catch { $job.enabled = $false; Write-HarnessSchedules $Paths $current; throw }
+        catch { $job.enabled = $false; Write-HarnessSchedules $Paths $current -ChangedJobIds @($job.id); throw }
         [pscustomobject]@{ preview = $false; job = $job; heartbeat = $heartbeat }
     }
     finally { $lock.Dispose() }
@@ -228,7 +237,7 @@ function Set-HarnessScheduleEnabled {
         if ($Enabled -and $selected.recoveryRequired) { throw 'Recover the uncertain worker before resuming.' }
         $selected.enabled = $Enabled
         if (-not $Enabled -and -not $selected.active) { $selected.PSObject.Properties.Remove('refreshRetry') }
-        Write-HarnessSchedules $Paths $state
+        Write-HarnessSchedules $Paths $state -ChangedJobIds @($Id)
         $heartbeat = Sync-HarnessHeartbeat $Paths $state
         [pscustomobject]@{ preview = $false; job = $selected; heartbeat = $heartbeat }
     }
@@ -359,7 +368,7 @@ function Complete-HarnessRefreshSchedule {
         $jobs = @($state.jobs | Where-Object { $_.id -ceq $JobId -and $_.kind -ceq 'refresh' })
         if ($jobs.Count -ne 1 -or -not (Receive-HarnessScheduleResult $jobs[0] $Receipt $Now)) { return }
         $jobs[0].lastResult | Add-Member -NotePropertyName receipt -NotePropertyValue (Join-Path $Paths.Receipts ($JobId + '.json'))
-        Write-HarnessSchedules $Paths $state
+        Write-HarnessSchedules $Paths $state -RuntimeOnly
         $null = Sync-HarnessHeartbeat $Paths $state $Now
     }
     finally { $lock.Dispose() }
@@ -407,17 +416,17 @@ function Invoke-HarnessSchedulerTick {
             $job | Add-Member -NotePropertyName lockRoots -NotePropertyValue @(Get-HarnessScheduleRoots $job) -Force
             $job.active = [pscustomobject]@{ runId = $runId; processId = $null; processStartedAt = ''; claimedAt = $Now.ToString('o') }
             if (-not $job.refreshRetry) { $job.nextDue = (Get-HarnessNextDue $job.interval ([datetimeoffset]::Parse($job.anchor)) $Now $job.timeZoneId).ToString('o') }
-            Write-HarnessSchedules $Paths $state
+            Write-HarnessSchedules $Paths $state -RuntimeOnly
             try {
                 $worker = Start-HarnessScheduledWorker $Paths $job $runId
                 $job.active.processId = $worker.processId; $job.active.processStartedAt = $worker.processStartedAt
                 $started.Add($job.id)
             }
             catch { $job.recoveryRequired = $true; $job.enabled = $false; $job.lastResult = [pscustomobject]@{ status = 'LaunchUncertain'; reason = $_.Exception.Message } }
-            Write-HarnessSchedules $Paths $state
+            Write-HarnessSchedules $Paths $state -RuntimeOnly
         }
         $state.lastTick = $Now.ToString('o')
-        Write-HarnessSchedules $Paths $state
+        Write-HarnessSchedules $Paths $state -RuntimeOnly
         $heartbeat = Sync-HarnessHeartbeat $Paths $state $Now -DeferredJobIds @($deferred)
         [pscustomobject]@{ status = 'Ticked'; started = @($started); deferred = @($deferred); heartbeat = $heartbeat }
     }

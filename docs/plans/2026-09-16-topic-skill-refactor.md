@@ -23,7 +23,7 @@ case handling, natural-language routing, full menus, and existing permissions/co
 unchanged. PowerShell argument parsing and installed copies are not changed by this source update.
 
 The command synopsis is `/harness-<topic> [action1|action2|...] [<arguments>...]`.
-The top-level `/harness [list|root|init|context|clean]` is the agreed project entrypoint;
+The top-level `/harness [list|root|init|migrate|context|clean]` is the agreed project entrypoint;
 there is no `management` topic and actions do not become separate registered skills.
 
 Harness topics register as `/harness` and `/harness-*` with matching folders and dependencies.
@@ -55,7 +55,7 @@ flowchart LR
     HN --> POLICY["harness-policy<br/>list, set, pause, stop, resume"]
     HN --> WORK["harness-task, harness-link, harness-dev"]
     HN --> CHECK["harness-review, harness-test, harness-monitor"]
-    HN --> OUTPUT["harness-report, harness-decision"]
+    HN --> OUTPUT["harness-doc, harness-report, harness-decision"]
     HN --> TIMER["harness-timer<br/>list, set, disable, resume, clean, migrate"]
     PR --> REVIEW["pr-review<br/>list, run, configure"]
     PR --> WATCH["pr-watch<br/>list, add, remove"]
@@ -73,11 +73,17 @@ Historical records/reports and retention settings belong to `/harness clean`; th
 maintenance tick invokes that same cleanup implementation. Existing policies and retention
 protections are unchanged, and no additional maintenance topic is introduced.
 
-Source/report authoring advertises one `upsert` action, with `create` and `update` as aliases.
+Source, report, and documentation authoring advertise one `upsert` action, with `create` and `update` as aliases.
 The [accepted work-contract ADR](./decisions/2026-09-18-upsert-and-harness-work-contracts-adr.md)
 also records whole-repository Fresh review, workspace-based completion, normalized exact task
 identity, and linked follow-ups for explicitly revised completed work. These source changes do
 not refresh installed copies or change live schedules.
+
+`harness-doc` provides session-level feature guides, onboarding, and troubleshooting. It uses
+existing approved task context when applicable and does not require initialization or add a
+`harness.ps1` action. Humanizer edits prose before final validation; decision history remains
+with `architecture-decision-records`. See the
+[accepted documentation ADR](./decisions/2026-09-26-harness-documentation-adr.md).
 
 ## Folder Layout
 
@@ -116,6 +122,7 @@ skills/
   |-- harness/
   |-- harness-decision/
   |-- harness-dev/
+  |-- harness-doc/
   |-- harness-link/
   |-- harness-monitor/
   |-- harness-policy/
@@ -142,16 +149,16 @@ specifies another destination. The following is the complete default artifact hi
 ```mermaid
 flowchart LR
   ROOT["Root selected by /hn root"] --> STORE[".harness_sv/"]
-  STORE --> STATE["config.json<br/>state.json"]
-  STORE --> SCHEDULES["schedules.json<br/>schedules.lock"]
-  STORE --> BOARD["current.csv<br/>history.csv<br/>references.csv<br/>decisions.csv"]
-  STORE --> LOCKS[".harness-board.json<br/>store.lock<br/>runner.lock<br/>decisions.lock"]
-  STORE --> HISTORY["history/<br/>run-id.md and captured output"]
+  STORE --> CONFIG["config/<br/>authoritative domain declarations"]
+  STORE --> STATE["runtime/<br/>state and schedule progress"]
+  STORE --> BOARD["board/<br/>current, history, references, decisions"]
+  STORE --> LOCKS["runtime/locks/<br/>store, runner, schedule locks"]
+  STORE --> HISTORY["history/YYYY-MM/<br/>timestamp-topic-run-id.md"]
   STORE --> DOCS["docs/"]
   DOCS --> PLANS["plans/<br/>plan.md"]
   PLANS --> DECISIONS["decisions/<br/>decision.md"]
   DOCS --> HANDOFFS["handoffs/<br/>handoff.md"]
-  STORE --> DEFINITIONS["definitions/<br/>policy, test, monitor, runner JSON"]
+  STORE --> DEFINITIONS["definitions/<br/>other workflow inputs"]
   STORE --> ARTIFACTS["artifacts/<br/>reports, queries, diagrams, exports"]
   STORE --> WORKTREES["worktrees/<br/>task-id/"]
 ```
@@ -159,20 +166,27 @@ flowchart LR
 ```text
 <root>/
 `-- .harness_sv/
-  |-- config.json
-  |-- state.json
-  |-- schedules.json
-  |-- schedules.lock
-  |-- current.csv
-  |-- history.csv
-  |-- references.csv
-  |-- decisions.csv
-  |-- decisions.lock
-  |-- .harness-board.json
-  |-- store.lock
-  |-- runner.lock
+  |-- README.md
+  |-- config/
+  |   |-- project.json
+  |   |-- monitors.json
+  |   |-- tests.json
+  |   |-- policy.json
+  |   `-- schedules.json
+  |-- board/
+  |   |-- current-<project>.csv
+  |   |-- history.csv
+  |   |-- references.csv
+  |   |-- decisions.csv
+  |   |-- decisions.lock
+  |   `-- .harness-board.json
+  |-- runtime/
+  |   |-- state.json
+  |   |-- schedules.json
+  |   `-- locks/
   |-- history/
-  |   `-- <run-id>.md
+  |   `-- YYYY-MM/
+  |       `-- <UTC-timestamp>-<topic>-<run-id>.md
   |-- docs/
   |   |-- plans/
   |   |   |-- <plan>.md
@@ -181,15 +195,17 @@ flowchart LR
   |   `-- handoffs/
   |       `-- <handoff>.md
   |-- definitions/
-  |   `-- <policy-test-monitor-or-runner>.json
+  |-- adapters/
+  |-- observations/
   |-- artifacts/
   |   `-- <report-query-diagram-or-export>/
   `-- worktrees/
     `-- <task-id>/
 ```
 
-Configuration and state are authoritative runtime data; CSVs are generated views except the
-decision register, which its helper owns. `history/<run-id>.md` stores run summaries, test/review
+Configuration domains are the single editable authority; effective settings are combined only
+in memory. Runtime state is separate. CSVs are generated views except the decision register,
+which its helper owns. Monthly history files store run summaries, test/review
 evidence, errors, and available captured output. Separate logs, when requested, use `history/`
 unless the user specifies another path; do not duplicate reports to fill a logs folder.
 Documents, definitions, artifacts, and worktrees are created only by the corresponding
@@ -198,10 +214,21 @@ authorized operation. The diagram is not a request to create all folders during 
 Pass `.harness_sv` output destinations to delegated authoring skills explicitly. A user-selected
 destination or existing saved configuration takes precedence; preserve existing data and
 report any legacy paths instead of moving records or retargeting schedules automatically.
+Reader-facing `harness-doc` output follows the selected coding repository's documentation
+convention, or explicit output path, rather than this runtime hierarchy. Pass that destination
+explicitly when delegating documentation; any existing harness tracking remains controller-local.
 Application source, linked documents/repositories, installed skills, and existing host instruction
 entrypoints remain separate. The user-wide PR/refresh controllers are not relocated by project `root`.
 `loc` aliases `root`. A verified legacy SkillVault controller at `.harness` is reused in place
 when `.harness_sv` is absent; unrelated `.harness` folders are not adopted.
+
+New controllers use this layout. `/hn migrate` previews and, after approval, converts an existing
+controller in place, preserving IDs, report contents, queues, and cadence while updating owned links.
+`init` never silently migrates. See the [accepted decision](./decisions/2026-09-25-declarative-harness-and-auto-verification-adr.md).
+Existing standalone decision registers retain their board location during first initialization.
+The [accepted naming ADR](./decisions/2026-09-25-project-qualified-board-names-adr.md) records the
+project-qualified default, central `currentFileName` setting, legacy fallback, and guarded explicit
+renames. Topic-filtered CSVs are requested artifact snapshots, never extra canonical boards.
 
 `root <new-parent>` selects the valid new target, then asks whether to move an initialized
 previous harness; no move flag is required. Move is the displayed default, including no answer.
@@ -293,6 +320,7 @@ New specialists map to their own canonical names without implying a previous ins
 | harness-context | harness context |
 | harness-decide | harness-decision |
 | harness-dev | harness-dev |
+| harness-doc | harness-doc upsert |
 | harness-fallback | harness-policy fallback |
 | harness-init | harness init |
 | harness-loc | harness loc |

@@ -12,11 +12,16 @@ in SkillVault; that workflow can optionally install the result afterward.
 
 Parse these from the user's invocation text as positional arguments:
 
-- `skillName` — the name of a specific skill to install or update (matches an entry in `catalog.json`).
-- `folderName` — the name of a category or folder under `skills/`. If the invocation
-  points to a folder that contains multiple skill folders, install or update the skills in that folder.
-- `keyword` — a word or phrase to match against catalog `name`, `description`, or `path`.
-  If multiple skills match, install or update all matched skills after showing the matched set.
+- `skillName` — a full name or case-insensitive name fragment. Select every matching catalog name,
+  even when one is an exact match: `harness` selects the base skill and all `harness-*` topics.
+  Use `--exact <skillName>` when only one exact catalog entry is intended.
+- `folderName` — a catalog path fragment such as `skills/planning`, selecting the skills in that
+  folder. A bare category word first follows name matching; use the path when that word also
+  appears in a skill name, such as `planning-with-files`.
+- `keyword` — a literal word or phrase. Match names first; only when no names match, search catalog
+  `description` and `path`. This keeps references to harness in unrelated descriptions from expanding
+  a requested harness family. Preview every match; do not silently take only the first result.
+  Optional wildcard patterns such as `harness*` match names only. `public` selects the full catalog.
   Numeric or comma-separated selectors are reserved for list/uninstall flows; use words for
   catalog keyword matching.
   If no skill, folder, or keyword is provided, treat this as a catalog exploration request.
@@ -38,7 +43,10 @@ Parse these from the user's invocation text as positional arguments:
 Examples of invocations to recognize:
 - `/skillvault-installation install` → explore the catalog, no specific install.
 - `/skillvault-installation install schedule-manager` → install, update, or use `schedule-manager` with its manifest-defined default scope.
-- `/skillvault-installation install schedule project latest` → install or update all catalog entries whose name, description, or path matches `schedule` into project scope from latest.
+- `/skillvault-installation install harness global` → preview and install the base harness and all matching harness topics globally.
+- `/sv-installation install harness- global` → select all suffixed harness topics and show their required companions.
+- `/sv-installation install --exact harness global` → select only the exact base harness, plus any required companions shown separately.
+- `/skillvault-installation install schedule project latest` → install or update all catalog names containing `schedule` into project scope from latest.
 - `/skillvault-installation install public` → install or update all skills under `skills/`.
 - `/skillvault-installation install schedule-manager project` → install into the current project's
   `.github/skills/`.
@@ -110,13 +118,17 @@ and operation first, then re-resolve the explicit path. Never overwrite another 
 ### `skillName`, `folderName`, or `keyword` given (install/update mode)
 
 1. Resolve the actual source checkout and read its current catalog; stop if no source is resolved.
-2. Resolve the argument as either:
-   - A catalog skill name. Use its `catalog.json` `path` as the source folder.
-   - A containing folder under `<path>/skills/<folderName>`. Install/update each child
-     directory that contains a `skill.json` manifest, including one-level category folders such
-     as `core` or `system`.
-   - A keyword match over `catalog.json` `name`, `description`, or `path`. Install or update every matched
-     catalog entry after showing the matched set. If nothing matches, stop and report no match.
+2. Resolve the selector using `Find-SkillCatalogEntry` in the bundled
+   [file helper](../scripts/skill-files.ps1), rather than inventing a first-match rule:
+   - `--exact`: one literal catalog name only; do not fall back to partial or keyword matching.
+   - `public`: all catalog entries. Wildcard patterns match names only.
+   - Otherwise select all names containing the literal selector, ignoring case. An exact name
+     does not take precedence over other name matches.
+   - If no names match, search descriptions and catalog paths for the literal keyword or phrase.
+    Explicit folder selectors such as `skills/planning` therefore select catalog-backed paths.
+   - No matches stop before any writes. Multiple matches are a batch, not an ambiguity requiring
+     the user to supply each name again. Show the complete matched set and required companions
+     for approval; preserve pins and separately review existing/customized replacements.
 3. Determine target scope:
    - If the user provided `scope`, use it.
    - If the user omitted `scope`, use the resolved skill's `install.defaultScope`.
@@ -131,6 +143,16 @@ and operation first, then re-resolve the explicit path. Never overwrite another 
   Omitted scope resolves per manifest. Show existing target differences and use `-Force`
   only for the approved replacements. It stages the copy and metadata before replacement,
   restores the prior install on swap failure, and excludes Git internals. Do not use symlinks.
+  The script's existing `-Name` array remains exact for approved batch execution. To resolve or
+  preview user selectors directly, use `-Select <selectors> -Preview`; add `-Exact` for `--exact`.
+  Preview validates the source and returns names/scopes/paths without creating target folders or
+  ownership state. Recheck the preview before execution; a selector matching nothing blocks the
+  entire batch. For example:
+
+  ```powershell
+  & <repo>/scripts/install-skills.ps1 -Select harness -Scope global -RepoRoot <repo> -ProjectPath <project> -Preview
+  ```
+
 5. The installer writes `.skillvault-install.json` into each target skill folder:
    - `installedBy`: `skillvault`
    - `sourceRepo`: repository that actually supplies the copied folder; for this catalog use

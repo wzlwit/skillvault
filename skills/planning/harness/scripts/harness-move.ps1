@@ -19,6 +19,15 @@ function ConvertTo-HarnessMovedPath {
     $absolute
 }
 
+function ConvertTo-HarnessMovedSource {
+    param([string]$Value, $Paths, $Destination)
+    $uri = $null
+    if ([uri]::TryCreate($Value, [UriKind]::Absolute, [ref]$uri) -and $uri.IsFile -and $Value -match '^file:') {
+        return ([uri](ConvertTo-HarnessMovedPath $uri.LocalPath $Paths $Destination)).AbsoluteUri + $uri.Query + $uri.Fragment
+    }
+    $Value
+}
+
 function ConvertTo-HarnessMovedData {
     param($Paths, $Destination, $Config, $State, $Schedules)
     $configCopy = $Config | ConvertTo-Json -Depth 40 | ConvertFrom-Json
@@ -44,11 +53,20 @@ function ConvertTo-HarnessMovedData {
     foreach ($monitor in @($configCopy.monitoring.monitors)) {
         if ($monitor.source.path) { $monitor.source.path = ConvertTo-HarnessMovedPath $monitor.source.path $Paths $Destination -ResolveRelative }
     }
+    foreach ($correlation in $configCopy.monitoring.correlations) {
+        $correlation.sources = @($correlation.sources | ForEach-Object { ConvertTo-HarnessMovedSource $_ $Paths $Destination })
+        foreach ($authority in $correlation.authorities.PSObject.Properties) { $authority.Value = ConvertTo-HarnessMovedSource $authority.Value $Paths $Destination }
+    }
     foreach ($task in @($stateCopy.tasks)) {
         foreach ($field in @('workspace', 'lastReport', 'repositoryRoot')) {
             if ($task.$field) { $task.$field = ConvertTo-HarnessMovedPath $task.$field $Paths $Destination }
         }
         if ($task.source) { $task.source = ConvertTo-HarnessMovedPath $task.source $Paths $Destination -ExistingRelative }
+        foreach ($sourceEvidence in $task.sourceEvidence) {
+            $sourceEvidence.source = ConvertTo-HarnessMovedSource $sourceEvidence.source $Paths $Destination
+            if ($sourceEvidence.latestReport) { $sourceEvidence.latestReport = ConvertTo-HarnessMovedPath $sourceEvidence.latestReport $Paths $Destination }
+            if ($sourceEvidence.verification.report) { $sourceEvidence.verification.report = ConvertTo-HarnessMovedPath $sourceEvidence.verification.report $Paths $Destination }
+        }
     }
     foreach ($reference in @($stateCopy.references)) {
         if ($reference.source) { $reference.source = ConvertTo-HarnessMovedPath $reference.source $Paths $Destination -ExistingRelative }
@@ -59,15 +77,33 @@ function ConvertTo-HarnessMovedData {
         }
         if ($run.review.repositoryRoot) { $run.review.repositoryRoot = ConvertTo-HarnessMovedPath $run.review.repositoryRoot $Paths $Destination }
     }
-    foreach ($entry in @($stateCopy.monitoring.latest) + @($stateCopy.maintenance.pendingDeletes) + @($stateCopy.prReviews)) {
+    foreach ($entry in @($stateCopy.monitoring.latest) + @($stateCopy.monitoring.batch) + @($stateCopy.monitoring.batch.sources) + @($stateCopy.maintenance.pendingDeletes) + @($stateCopy.prReviews)) {
         if (-not $entry) { continue }
         foreach ($field in @('report', 'engineReport')) {
             if ($entry.$field) { $entry.$field = ConvertTo-HarnessMovedPath $entry.$field $Paths $Destination }
         }
+        if ($entry.verification.report) { $entry.verification.report = ConvertTo-HarnessMovedPath $entry.verification.report $Paths $Destination }
     }
-    foreach ($incident in @($stateCopy.monitoring.incidents)) {
+    foreach ($incident in @($stateCopy.monitoring.incidents) + @($stateCopy.monitoring.candidates)) {
         foreach ($field in @('firstReport', 'latestReport')) {
             if ($incident.$field) { $incident.$field = ConvertTo-HarnessMovedPath $incident.$field $Paths $Destination }
+        }
+        foreach ($record in @($incident.verification, $incident.completion, $incident.verificationCheckpoint)) {
+            if ($record.report) { $record.report = ConvertTo-HarnessMovedPath $record.report $Paths $Destination }
+            foreach ($proof in $record.evidence) { $proof.path = ConvertTo-HarnessMovedPath $proof.path $Paths $Destination }
+        }
+    }
+    foreach ($candidate in @($stateCopy.monitoring.candidates | Where-Object { $_ })) {
+        if ($candidate.sameRequirementAs) { $candidate.sameRequirementAs = @($candidate.sameRequirementAs | ForEach-Object { ConvertTo-HarnessMovedSource $_ $Paths $Destination }) }
+        $sourceUri = $null
+        if ([uri]::TryCreate([string]$candidate.source, [UriKind]::Absolute, [ref]$sourceUri) -and $sourceUri.IsFile) {
+            $oldSource = $candidate.source
+            $newPath = ConvertTo-HarnessMovedPath $sourceUri.LocalPath $Paths $Destination
+            $candidate.source = ([uri]$newPath).AbsoluteUri + $sourceUri.Query + $sourceUri.Fragment
+            foreach ($linkedTask in @($stateCopy.tasks | Where-Object { $_.id -ceq $candidate.taskId -and $_.source -ceq $oldSource })) {
+                $linkedTask.source = $candidate.source
+                if ($linkedTask.scope -ceq "Source discovery: $oldSource") { $linkedTask.scope = "Source discovery: $($candidate.source)" }
+            }
         }
     }
     $scheduleCopy = $null
@@ -105,7 +141,7 @@ function Get-HarnessMoveFiles {
             }
             else {
                 $relative = [IO.Path]::GetRelativePath($Root, $item.FullName)
-                if ($relative -in @('store.lock', 'runner.lock', 'schedules.lock', 'move.pending.json') -or $item.FullName -in $Exclude) { continue }
+                if ($relative.Replace('\', '/') -in @('store.lock', 'runner.lock', 'schedules.lock', 'move.pending.json', 'runtime/locks/store.lock', 'runtime/locks/runner.lock', 'runtime/locks/schedules.lock') -or $item.FullName -in $Exclude) { continue }
                 [pscustomobject]@{ relative = $relative; source = $item.FullName; hash = (Get-FileHash -LiteralPath $item.FullName -Algorithm SHA256).Hash; directory = $false }
             }
         }
@@ -115,7 +151,7 @@ function Get-HarnessMoveFiles {
 function Get-HarnessMovePlan {
     param($Paths, [string]$DestinationPath, [string]$SchedulerRoot, $RunnerContext)
     if (-not [IO.Path]::IsPathRooted($DestinationPath)) { $DestinationPath = Join-Path $Paths.Project $DestinationPath }
-    $destination = Get-HarnessPaths $DestinationPath
+    $destination = Get-HarnessPaths $DestinationPath -LayoutVersion $Paths.LayoutVersion
     if ($destination.Project -ieq $Paths.Project) { throw 'Choose a different existing parent directory for relocation.' }
     if (Test-Path -LiteralPath $destination.Control) { throw 'The destination already contains harness data; relocation never merges or overwrites it.' }
     foreach ($pair in @(@($Paths.Control, $destination.Control), @($destination.Control, $Paths.Control))) {
@@ -138,8 +174,7 @@ function Get-HarnessMovePlan {
     $state = Read-HarnessState $Paths
     if ($state.active -or @($state.tasks | Where-Object status -EQ Running).Count) { throw 'Finish or recover active work before moving a harness.' }
     Assert-HarnessBoard $Paths $config
-    $localPath = Join-Path $Paths.Control 'schedules.json'
-    $local = if (Test-Path -LiteralPath $localPath) { Get-Content -LiteralPath $localPath -Raw | ConvertFrom-Json -NoEnumerate } else { $null }
+    $local = Read-HarnessProjectSchedules $Paths
     if ($local) {
         if ($local.schemaVersion -ne 1 -or $local.projectId -cne $config.projectId -or $local.jobs -isnot [array]) { throw 'Invalid project schedule ownership.' }
         if (@($local.jobs | Where-Object { $_.active -or $_.recoveryRequired }).Count) { throw 'Finish or recover scheduled workers before relocation.' }
@@ -225,7 +260,7 @@ function Move-HarnessRoot {
         $sourceDecisions = Join-Path $sourceBoard 'decisions.csv'
         if (Test-Path -LiteralPath $sourceBoard) { $decisionLock = Enter-HarnessLock $plan.decisionLockPath }
         if ($plan.board -ieq $sourceBoard) {
-            $externalViews = @(foreach ($name in @('.harness-board.json', 'current.csv', 'history.csv', 'references.csv', 'decisions.csv')) {
+            $externalViews = @(foreach ($name in @('.harness-board.json', (Get-HarnessCurrentFileName $plan.data.config), 'history.csv', 'references.csv', 'decisions.csv')) {
                 $file = Join-Path $sourceBoard $name
                 [pscustomobject]@{ path = $file; content = $(if (Test-Path -LiteralPath $file) { [IO.File]::ReadAllBytes($file) }) }
             })
@@ -241,10 +276,15 @@ function Move-HarnessRoot {
             Copy-Item -LiteralPath $file.source -Destination $target -Force
             if ((Get-FileHash -LiteralPath $target -Algorithm SHA256).Hash -cne $file.hash -or (Get-FileHash -LiteralPath $file.source -Algorithm SHA256).Hash -cne $file.hash) { throw 'Harness files changed while being copied; relocation was not committed.' }
         }
-        Write-HarnessJson (Join-Path $stage 'config.json') $plan.data.config
-        Write-HarnessJson (Join-Path $stage 'state.json') $plan.data.state
+        $stagePaths = $plan.destination | Select-Object *
+        foreach ($property in @('Config', 'State', 'Lock', 'RunLock', 'ScheduleConfig', 'ScheduleState', 'ScheduleLock')) {
+            $stagePaths.$property = Join-Path $stage ([IO.Path]::GetRelativePath($plan.destination.Control, $plan.destination.$property))
+        }
+        $stagePaths.Control = $stage
+        Write-HarnessConfig $stagePaths $plan.data.config
+        Write-HarnessJson $stagePaths.State $plan.data.state
         Write-HarnessJson (Join-Path $stage 'move.pending.json') $marker
-        if ($plan.data.schedules) { Write-HarnessJson (Join-Path $stage 'schedules.json') $plan.data.schedules }
+        if ($plan.data.schedules) { Write-HarnessProjectSchedules $stagePaths $plan.data.schedules }
         $decisions = @()
         if (Test-Path -LiteralPath $sourceDecisions) {
             $decisions = @(Import-Csv -LiteralPath $sourceDecisions)
@@ -312,8 +352,9 @@ function Move-HarnessRoot {
         $retiredSource = Join-Path (Split-Path -Parent $Paths.Control) ('.harness_sv.moved-' + [guid]::NewGuid().ToString('N'))
         [IO.Directory]::Move($Paths.Control, $retiredSource)
         $retiredDecisionLock = ConvertTo-HarnessMovedPath $plan.decisionLockPath $Paths ([pscustomobject]@{ Control = $retiredSource })
-        $retainedFiles = @(Get-HarnessMoveFiles $retiredSource -Exclude $retiredDecisionLock | Where-Object { $_.relative -ne 'config.json' })
-        $expectedFiles = @($plan.files | Where-Object { $_.relative -ne 'config.json' })
+        $configRelative = [IO.Path]::GetRelativePath($Paths.Control, $Paths.Config)
+        $retainedFiles = @(Get-HarnessMoveFiles $retiredSource -Exclude $retiredDecisionLock | Where-Object { $_.relative -ne $configRelative })
+        $expectedFiles = @($plan.files | Where-Object { $_.relative -ne $configRelative })
         if ($retainedFiles.Count -ne $expectedFiles.Count -or @(Compare-Object $expectedFiles $retainedFiles -Property relative, hash).Count) { throw 'Source files changed after publication; retain the blocked original for reconciliation.' }
         Remove-Item -LiteralPath $retiredSource -Recurse -Force -ErrorAction Stop
     }
