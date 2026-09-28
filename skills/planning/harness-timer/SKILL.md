@@ -42,25 +42,16 @@ Keep PR and refresh as singleton targets and preserve named project instances. L
 `pr`, `refresh`, topic/duration inputs, and `/pr-review-timer` route to `set`; they are not
 separate actions or OS schedulers.
 
-## Heartbeat and Maintenance
+## Boundaries
 
-- The routine baseline defaults to `1d`. `list heartbeat` inspects it; `set heartbeat <duration>`
-  previews a user-wide change and applies only after approval. An omitted duration reuses the
-  saved value. The change creates no work and keeps job intervals, anchors, enabled states, and
-  maintenance unchanged.
-- Faster job intervals and earlier due times shorten the heartbeat automatically; outstanding
-  workers keep a 30-minute check cap. The heartbeat has no AI model; scheduled AI workers keep
-  their own runner settings.
-- The heartbeat dispatches only nonconflicting approved jobs. It never creates work from an
-  untouched backlog, expands permissions, or clears safety pauses.
-- Maintenance runs Saturday 08:30-09:00 in the saved local timezone only after it is explicitly
-  enabled, with no remote scans or catch-up outside that window. Machine wake and AI assistance
-  are allowed only when necessary under the
+- The heartbeat dispatches only nonconflicting approved jobs; it never creates work from an
+  untouched backlog, expands permissions, or clears safety pauses. Its `1d` baseline and preview/apply
+  rules are in [Heartbeat Baseline](./references/scheduler.md#heartbeat-baseline).
+- Maintenance is opt-in: Saturday 08:30-09:00 in the saved local timezone, with no remote scans or
+  catch-up outside that window. Wake and AI use follow the
   [conditional capability policy](./references/scheduler.md#conditional-capabilities); permission
   alone changes no live wake setting and starts no AI run.
-- History records, reports, and retention settings belong to `/harness clean`; weekly maintenance
-  delegates to it. Timer `clean` never prunes history; it owns only stale schedule definitions and
-  their scheduler receipts.
-
-Existing OS timers and installed copies need separately previewed migration. PACS and unrelated
-schedules stay unchanged.
+- History records and retention belong to `/harness clean`; timer `clean` owns only stale schedule
+  definitions and their scheduler receipts.
+- Existing OS timers and installed copies need separately previewed migration. PACS and unrelated
+  schedules stay unchanged.

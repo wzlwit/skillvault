@@ -14,42 +14,34 @@ argument-hint: "[list|upsert] [<arguments>...]"
 
 # Harness Reports
 
-The registered command is `/harness-report`. `/hn-report` is conversational
-shorthand for the same topic and subcommands, not a separate skill or folder.
+`/harness-report` coordinates dashboard, report, and query authoring. It owns artifact identity and
+validation, not publishing.
+`/hn-report` is conversational shorthand for the same topic and subcommands, not a separate skill or folder.
 
-Action matching applies only to the explicit action token. Exact canonical actions and documented
-aliases take precedence. Otherwise, accept exactly 3 or 4 leading letters only when they match one
-canonical action in this topic. Multiple matches: show choices and ask; no match: show help.
-Ambiguous or unknown tokens execute nothing. Do not prefix-match aliases, skill names, targets,
-paths, options, or other arguments. Preserve existing case handling and natural-language routing.
-Use the resolved action's existing procedure with arguments, permissions, and confirmations unchanged;
-no extra confirmation is required merely for abbreviation. Keep full names in menus and registrations
-and preserve the read-only bare default. This is conversational routing, not script argument parsing.
-
-No arguments or `list` shows known artifacts and available actions without creating
-one. Explicit `upsert`, an authoring request, or the old report-create command uses
-the [authoring procedure](./references/workflow.md). Unknown actions show help.
-`status` and `help` remain aliases for the read-only view; listing does not query remote platforms.
+Action matching applies only to the explicit action token: exact canonical actions and documented
+aliases take precedence; otherwise exactly 3 or 4 leading letters may select one canonical action
+in this topic. Multiple matches: show choices and ask; no match: show help. Ambiguous or unknown
+tokens execute nothing. Do not prefix-match aliases, skill names, targets, paths, options, or other
+arguments. Case handling, natural-language routing, full names in menus and registrations, the
+read-only bare default, and each procedure's arguments, permissions, and confirmations stay
+unchanged; abbreviation adds no confirmation. This is conversational routing, not script argument parsing.
 
 ```text
 list
 upsert <artifact-or-purpose> [--type <platform>] [--output <path>] [--design-only]
 ```
 
-`create` and `update` are compatibility aliases for `upsert`, not existence requirements.
-Resolve the stable artifact identity, update it when present, and create it when confirmed
-absent. An ambiguous or inaccessible target is not absent; do not create a duplicate.
-
-Platforms: `powerbi`, `grafana`, `jarvis`, `web`, or `query`. Infer a type only from an
-unambiguous request or existing artifact; otherwise ask before selecting a platform.
-Apply `/rules apply` and project instructions. Load only the selected platform specialist;
-preserve artifact IDs, source contracts, output destinations, validation, and publication approvals.
-Design, created, validated, and published are distinct outcomes. Monitoring remains optional.
-
-`ppt-master` is a reference to a separate presentation workflow, sharing artifact validation
-concerns; it adds no PPTX route or renderer here. Required editability is part of the artifact's
-acceptance contract, not a guarantee from its file extension.
-
-`office-documents` references separate PDF/Word/Excel guidance. Workbook-backed figures need
-formula/cache and expected-value checks; neither this reference nor those checks add an XLSX
-route or bundle the upstream tools.
+- Bare invocation, `list`, `status`, and `help` show known artifacts and actions without creating one
+  or querying remote platforms. Unknown actions show help.
+- `upsert`, an authoring request, or the old report-create command follows the
+  [authoring procedure](./references/workflow.md). `create` and `update` alias `upsert`: update the
+  resolved artifact when present and create it only when confirmed absent. An ambiguous or
+  inaccessible target is not absent; never create a duplicate.
+- Platforms: `powerbi`, `grafana`, `jarvis`, `web`, or `query`. Infer a type only from an unambiguous
+  request or existing artifact; otherwise ask.
+- Apply `/rules apply` and project instructions. Load only the selected platform specialist and
+  preserve artifact IDs, source contracts, output destinations, validation, and publication approvals.
+  Design, created, validated, and published are distinct outcomes; monitoring is optional.
+- `ppt-master` and `office-documents` reference separate presentation and PDF/Word/Excel guidance.
+  They add no PPTX or XLSX route or renderer; editability and workbook checks belong to the
+  artifact's acceptance contract, not its file extension.

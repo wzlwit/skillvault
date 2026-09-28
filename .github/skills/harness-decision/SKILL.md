@@ -12,27 +12,26 @@ argument-hint: "[list|record] [<arguments>...]"
 
 # Harness Decisions
 
-The registered command is `/harness-decision`. `/hn-decision` is conversational
-shorthand for the same topic and subcommands, not a separate skill or folder.
+`/harness-decision` owns the compact decision bulletin and register; full rationale belongs in ADRs.
+`/hn-decision` is conversational shorthand for the same topic and subcommands, not a separate skill or folder.
 
-Action matching applies only to the explicit action token. Exact canonical actions and documented
-aliases take precedence. Otherwise, accept exactly 3 or 4 leading letters only when they match one
-canonical action in this topic. Multiple matches: show choices and ask; no match: show help.
-Ambiguous or unknown tokens execute nothing. Do not prefix-match aliases, skill names, targets,
-paths, options, or other arguments. Preserve existing case handling and natural-language routing.
-Use the resolved action's existing procedure with arguments, permissions, and confirmations unchanged;
-no extra confirmation is required merely for abbreviation. Keep full names in menus and registrations
-and preserve the read-only bare default. This is conversational routing, not script argument parsing.
+Action matching applies only to the explicit action token: exact canonical actions and documented
+aliases take precedence; otherwise exactly 3 or 4 leading letters may select one canonical action
+in this topic. Multiple matches: show choices and ask; no match: show help. Ambiguous or unknown
+tokens execute nothing. Do not prefix-match aliases, skill names, targets, paths, options, or other
+arguments. Case handling, natural-language routing, full names in menus and registrations, the
+read-only bare default, and each procedure's arguments, permissions, and confirmations stay
+unchanged; abbreviation adds no confirmation. This is conversational routing, not script argument parsing.
 
-Bare invocation, `list`, or `list open` shows active open decisions plus a one-line
-**Configuration When Needed** summary and source link when optional setup is documented.
-Keep explicitly recorded Open/Proposed decisions visible; do not hide or reclassify them as
-optional configuration. Missing configuration is an open decision only when a requested or enabled
-workflow needs a human choice that saved settings, inheritance, or defaults cannot resolve.
-`list closed` shows recent resolved outcomes; `list all` includes open and recent decisions plus
-the detailed configuration checklist. Listing records or accepts nothing.
-`list <decision-id>` shows that record regardless of status. Resolved results default to five;
-`--recent <count>` changes that display limit. `record` follows the [decision procedure](./references/workflow.md).
-Unknown actions or `help` shows choices. Legacy decide commands retain their explicit operation.
-Apply `/rules apply` and project instructions. Grilling may resolve a human choice, but its
-proposal is not an accepted decision. Consequential rationale can use ADRs as authorized.
+- Bare invocation, `list`, or `list open` shows active open decisions plus a one-line
+  **Configuration When Needed** summary and source link when optional setup is documented.
+  `list closed` shows recent resolved outcomes (five by default; `--recent <count>` changes it),
+  `list all` adds the detailed configuration checklist, and `list <decision-id>` shows one record of
+  any status. Listing records or accepts nothing.
+- Keep explicitly recorded Open/Proposed decisions visible; never hide or reclassify them as optional
+  configuration. Missing configuration is an open decision only when requested or enabled work needs
+  a human choice that saved settings, inheritance, or defaults cannot resolve.
+- `record` follows the [decision procedure](./references/workflow.md). Unknown actions and `help` show
+  choices; legacy decide commands keep their explicit operation.
+- Apply `/rules apply` and project instructions. A grilling proposal is not an accepted decision;
+  consequential rationale may use ADRs as authorized.

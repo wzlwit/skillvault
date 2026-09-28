@@ -29,51 +29,49 @@ item. Designing, explaining, reviewing, and installing this guide do not authori
 
 ## Workflow
 
-1. Establish business purpose, intended audience, source schemas, freshness needs, and existing
-   metric definitions. Ask only for decisions or missing inputs that cannot be established from
-   authorized evidence. Reuse `kpi-dashboard` for metric meaning and dashboard requirements.
-2. Write the grain of every fact table in business terms. Identify dimensions, stable unique
-   keys, unknown-member handling, history requirements, and role-playing dates. Check the
-   [modeling guide](./references/modeling.md) before choosing relationships or formulas.
+1. Establish business purpose, audience, source schemas, freshness needs, and existing metric
+   definitions. Ask only for decisions or inputs that authorized evidence cannot establish.
+   Reuse `kpi-dashboard` for metric meaning and dashboard requirements.
+2. Write each fact table's grain in business terms, then identify dimensions, stable unique keys,
+   unknown members, history, and role-playing dates with the [modeling guide](./references/modeling.md).
 3. Choose Import, DirectQuery, or Direct Lake from source capability, freshness, scale, and
-   permission constraints. Explain the trade-off; do not infer a capacity, connector, refresh
-   schedule, or entitlement from a sample. Prefer the existing supported mode for scoped edits.
-4. Specify relationships with both endpoint tables, keys, cardinalities, active state, and
-   filter direction. Verify uniqueness on the one side. A star schema's dimension-to-fact
-   relationship is `1:*`; the reverse ordering is `*:1`.
-5. Define measures with their grain, population, filters, denominator, time basis, units, and
-   blank behavior. Preserve agreed business semantics. Line counts are not order counts;
-   filter rewrites are not equivalent merely because one expression looks faster.
-6. Design RLS from actual identity-to-key mappings, with default-deny behavior for unmapped
-   identities. Separate model filters from role membership and workspace permissions. Do not
-   weaken existing security or change access assignments as a modeling side effect.
+   permissions; explain the trade-off and prefer the existing supported mode for scoped edits.
+   Do not infer a capacity, connector, refresh schedule, or entitlement from a sample.
+4. Specify each relationship's endpoint tables, keys, cardinality, active state, and filter
+   direction, verifying uniqueness on the one side. Dimension-to-fact is `1:*`; the reverse
+   ordering is `*:1`.
+5. Define measures with grain, population, filters, denominator, time basis, units, and blank
+   behavior, preserving agreed semantics. Line counts are not order counts, and a filter rewrite
+   is not equivalent merely because one expression looks faster.
+6. Design RLS from actual identity-to-key mappings with default-deny for unmapped identities.
+   Keep model filters, role membership, and workspace permissions distinct. Never weaken existing
+   security or change access assignments as a modeling side effect.
 7. For authorized live work, inspect current MCP tool schemas and availability before calling
-   them. The Power BI modeling MCP supplies operations; Microsoft Learn tools are optional
-   research aids. Missing tools do not block design-only work or justify installing a runtime.
-   Use one identified source of truth: an active model may contain changes not yet serialized
-   into its PBIP/TMDL files. Reconcile rather than editing stale files in parallel.
-8. Before writes, present the proposed object changes and reuse approval that already covers
-   the exact scope. Preserve a recoverable model definition in an approved private location.
-   Definition recovery does not back up source data or service permissions. Use transactions
-   only when the actual tools support the required operations; report partial outcomes honestly.
-9. Run the [scoped validation checks](./references/validation.md). Inspect resulting metadata
-   and, when authorized, test measures, relationship propagation, security identities, and
+   them. The Power BI modeling MCP supplies operations; Microsoft Learn tools are optional research
+   aids. Missing tools do not block design-only work or justify installing a runtime. Use one
+   identified source of truth: an active model may hold changes not yet serialized to its PBIP/TMDL
+   files, so reconcile instead of editing stale files in parallel.
+8. Before writes, present the proposed object changes and reuse approval only when it covers the
+   exact scope. Preserve a recoverable model definition in an approved private location; this does
+   not back up source data or service permissions. Use transactions only when the actual tools
+   support the required operations, and report partial outcomes honestly.
+9. Run the [scoped validation checks](./references/validation.md): inspect resulting metadata and,
+   when authorized, test measures, relationship propagation, security identities, and
    representative performance. Report unexecuted checks as pending, not passed.
-10. Deliver the model design or change summary, assumptions, validation evidence, and open
-    choices. Save requested documentation at the project's established destination. Do not
-    create a second metric registry, deploy a model, or publish a report to finish a design task.
+10. Deliver the design or change summary, assumptions, validation evidence, and open choices.
+    Save requested documentation at the project's established destination. Do not create a second
+    metric registry, deploy a model, or publish a report to finish a design task.
 
 ## Boundaries and Reuse
 
-Live connections, queries, security changes, deletions, refreshes, deployment, publication, and
-access grants remain separately scoped operations. A write-capable MCP server is not permission
-to use all of them. Never delete same-named models to resolve ambiguity, infer credentials, or
-retry a failed operation without checking its actual effect. Keep sensitive row data, identities,
-connection secrets, and restricted metadata out of public prompts, examples, and documents.
-
-`kpi-dashboard` owns metric contracts and presentation; this skill owns Power BI model structure
-and validation. Keep both rather than replacing either. An optional implementation handoff can
-use the project's existing authoring workflow without a new runner or automatic integration.
+- Live connections, queries, security changes, deletions, refreshes, deployment, publication, and
+  access grants remain separately scoped; a write-capable MCP server does not permit all of them.
+- Never delete same-named models to resolve ambiguity, infer credentials, or retry a failed
+  operation without checking its actual effect. Keep sensitive rows, identities, connection
+  secrets, and restricted metadata out of public prompts, examples, and documents.
+- `kpi-dashboard` owns metric contracts and presentation; this skill owns Power BI model
+  structure and validation. Keep both. An optional implementation handoff can use the project's
+  existing authoring workflow without a new runner or automatic integration.
 
 ## Source and Adaptation
 

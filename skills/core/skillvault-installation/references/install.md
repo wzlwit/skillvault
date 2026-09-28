@@ -238,6 +238,17 @@ Fixtures set `SKILLVAULT_TRANSACTION_ROOT` to an isolated temporary directory an
 the retired recovery store. Recreating older versions is a separate explicit source/install
 operation; current-copy maintenance never rewrites Git history, runs workers, or changes schedules.
 
+## Topic Layout Migration
+
+For an explicitly requested topic-layout migration, `update --topics` uses the bundled
+[migration helper](../scripts/migrate-topics.ps1). Preview exact current-project/global targets,
+canonical mappings, same-scope dependencies, and retired names; apply with `-Apply -Force` only after
+approval. `-Name <canonical-names>` limits it to selected topics and required siblings, leaving
+identical copies unchanged. Former `sv-*` names map to full `skillvault-*` registrations, while their
+short spellings stay conversational. Former `skillvault-source` and `sv-source` bundles map to
+`skillvault-authoring` without refreshing unrelated topics. Successful migration discards temporary
+originals and changes no schedules or other projects.
+
 ## Notes on versioning
 
 - Local `latest` uses the resolved checkout's current files. For a requested tag, require an

@@ -5,7 +5,7 @@
   "status": "public",
   "visibility": "public",
   "kind": "agent",
-  "description": "List, enable, disable, or delete Windows scheduled tasks by index, list, range, or keyword. Triggers on \"/schedule-manager\", \"schedule-manager\", \"list schedules\", \"list scheduled tasks\", \"enable scheduled task\", \"disable scheduled task\", or \"delete scheduled task\". Overlaps with harness-timer and harness-timer on enabling/disabling tasks; covers general schedule administration.",
+  "description": "List, enable, disable, or delete Windows scheduled tasks by index, list, range, or keyword. Triggers on \"/schedule-manager\", \"schedule-manager\", \"list schedules\", \"list scheduled tasks\", \"enable scheduled task\", \"disable scheduled task\", or \"delete scheduled task\". Overlaps with harness-timer on enabling/disabling tasks; covers general schedule administration.",
   "tags": [
     "windows",
     "schedule",

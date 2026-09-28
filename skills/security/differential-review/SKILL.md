@@ -10,15 +10,16 @@ metadata:
 
 # Differential Security Review
 
-Assess what a change introduces or removes. Keep demonstrated security regressions,
-pre-existing issues, and uncertainty distinct.
-`harness-review` covers current-project correctness and `pr-review` owns verified remote PRs;
-this guide supplies the specialized security methodology, not a worker runtime.
-Use `/harness-review --security` to supply this installed guide to its general reviewer and bounded
-fresh pass on the same scope/snapshot. Keep this methodology here rather than maintaining a
-second copied checklist; general review does not itself establish security audit coverage.
-`/pr-review <PR-URL> --security` supplies the same installed methodology to its bounded shared
-reviewer without copying it, adding a scanner, or executing untrusted PR code.
+Assess what a change introduces or removes, keeping demonstrated security regressions,
+pre-existing issues, and uncertainty distinct. `harness-review` covers current-project
+correctness and `pr-review` owns verified remote PRs; this guide supplies their specialized
+security methodology, not a worker runtime.
+
+`/harness-review --security` supplies this installed guide to its general reviewer and bounded
+fresh pass on the same scope and snapshot. `/pr-review <PR-URL> --security` supplies it to the
+bounded shared PR reviewer without executing untrusted PR code. Neither route copies the guide or
+adds a scanner; keep the methodology here, not in a second checklist. General review alone does
+not establish security audit coverage.
 
 ## Workflow
 

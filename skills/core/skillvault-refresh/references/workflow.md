@@ -76,6 +76,15 @@ even if other targets later update successfully. After the third busy retry, sto
 report deferred targets; an enabled regular refresh schedule retains its normal cadence.
 This feature enables no live schedule and changes no agent-session or named-test retry policy.
 
+## Runtime Compatibility
+
+Runtime admission checks declared dependency interfaces before refresh work. Matching package
+versions are not proof of compatibility; report required companion updates without installing them
+implicitly. Replacements keep verified originals outside discovery only while an update is in
+progress; success or verified rollback discards them. Refresh keeps no installation archive or
+retention policy. A failed rollback is not temporary ownership contention and receives no timed
+retry. Existing stale-file deletion is a separately scoped action.
+
 ## Windows Implementation
 
 Use the bundled script:

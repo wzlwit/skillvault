@@ -41,25 +41,24 @@ Use the current discussion when no topic is supplied; ask if the intended topic 
 
 ## Document Location
 
-Use the user's explicit destination first, then the project's established design/plan location.
+Use the user's explicit destination first, then the project's established design or plan location.
 Otherwise discover its documentation root from instructions, documentation configuration, README
-links, and existing content. Reuse `doc/`, `docs/`, or a configured alternative; use
-`<project-root>/docs/` only when no root is established. Use the appropriate existing subfolder,
-or `designs/` for design documents and `plans/` for plans when those locations are unspecified.
+links, and existing content, reusing `doc/`, `docs/`, or a configured alternative; use
+`<project-root>/docs/` only when no root is established. Within it, use the appropriate existing
+subfolder, or `designs/` for design documents and `plans/` for plans when unspecified.
 
-If both `doc/` and `docs/` exist, follow the documented/used root and ask only if ambiguity remains.
-Resolve relative paths against the target project, not the skill installation. Create folders
-only when writing an authorized document; do not relocate existing drafts without a request.
+If both `doc/` and `docs/` exist, follow the documented or used root and ask only if ambiguity
+remains. Resolve relative paths against the target project, not the skill installation. Create
+folders only when writing an authorized document; do not relocate existing drafts without a request.
 
 ## Related Skills
 
-`grilling` shares requirement questions and trade-off analysis, but emphasizes challenging a
-plan through a decision-tree interview. This skill emphasizes generating and refining options.
-Use either according to the task; do not run both automatically through duplicate questions.
-
-`architecture-decision-records` can record a consequential accepted decision afterward.
-`planning-with-files` points to task tracking and recovery during execution. Neither is a
-required next step, and no implementation-planning skill is invoked automatically.
+- `grilling` shares requirement questions and trade-off analysis but challenges a plan through a
+  decision-tree interview; this skill generates and refines options. Choose one for the task
+  rather than running both automatically with duplicate questions.
+- `architecture-decision-records` can record a consequential accepted decision afterward, and
+  `planning-with-files` points to task tracking and recovery during execution. Neither is a
+  required next step, and no implementation-planning skill is invoked automatically.
 
 ## Boundaries
 

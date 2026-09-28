@@ -21,6 +21,27 @@ mandatory configuration schema. This is design guidance, not a runtime JSON cont
 Thresholds, sampling rules, and refresh budgets must be supplied or explicitly approved by the
 owner. Do not turn the following arithmetic examples into live defaults.
 
+## Calculation Guidance
+
+- Validate denominator populations, join multiplicity, duplicate events, zero/null values, and time
+  boundaries. Verify visual and filter behavior when implementation is in scope.
+- Cohort retention divides distinct returning cohort members in the period by the original eligible
+  cohort population, not only members active in that period. Use a full elapsed-period index rather
+  than a month-of-year component for multi-year cohorts.
+- Aggregate costs and acquisition counts at their intended grain before combining them. Joining a
+  monthly spend row to every customer must not multiply the cost or change the denominator.
+- Define whether MRR is a point-in-time subscription measure or another agreed business metric. Do
+  not treat invoice-month revenue as historical MRR without verifying the required semantics, and
+  retain agreed billing, cancellation, currency, and proration rules rather than impose a sample.
+- Ratios and period-over-period growth need explicit zero-denominator and missing-period handling.
+  Reconcile units and percentage versus percentage-point differences before comparisons.
+- Refresh frequency should match source availability and the decision, not a generic real-time
+  default. Inspect actual query cost and existing aggregation/cache facilities before proposing
+  infrastructure; never create schedules, summary tables, or dynamic thresholds from examples.
+- No data is not success. A dashboard or collector can work while a service is unhealthy; show those
+  separately when the report is used for monitoring. Account for metric direction, accessibility,
+  and mobile constraints when relevant, and never call an old value live.
+
 ## Small Known Cases
 
 These synthetic cases check the definition before an engine-specific query is implemented:

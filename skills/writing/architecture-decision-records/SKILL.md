@@ -14,23 +14,23 @@ does. Routine fixes and configuration edits do not need new decision records by 
 
 ## Save Location
 
-For a new ADR, choose the destination in this order:
+For a new ADR, use the first applicable destination:
 
-1. Use the file or directory explicitly supplied by the user for this request.
-2. Otherwise, follow the target project's established ADR location, checking its instructions,
-   ADR index, or existing decision records.
-3. If no ADR location is established, use `plans/decisions/` under the project's documentation
-   root. Discover that root from project instructions, documentation configuration, README links,
-   and existing content; reuse `doc/` or `docs/` rather than creating a competing root.
-4. If no documentation root is established, use `<project-root>/docs/plans/decisions/`.
-   Create the directory when writing the record if needed; do not require a location argument
-   or an extra prompt for this unambiguous fallback.
+1. The file or directory the user supplied for this request.
+2. The target project's established ADR location, from its instructions, ADR index, or existing
+   decision records.
+3. `plans/decisions/` under the project's documentation root, discovered from project instructions,
+   documentation configuration, README links, and existing content. Reuse `doc/` or `docs/` rather
+   than creating a competing root.
+4. `<project-root>/docs/plans/decisions/` when no documentation root is established. Create the
+   directory when writing the record; this unambiguous fallback needs no location argument or
+   extra prompt.
 
 Resolve relative destinations against the target project's root, not the skill's installation
-folder. Global installation changes availability, not where project records are saved.
-If both `doc/` and `docs/` exist, follow the documented/used root; ask only if the project or
-competing conventions remain ambiguous. When editing an existing ADR, keep its location unless
-the user requests a move. Do not relocate other projects' records as part of applying this fallback.
+folder; global installation changes availability, not where records are saved. If both `doc/` and
+`docs/` exist, follow the documented or used root and ask only if conventions remain ambiguous.
+Keep an existing ADR in place unless the user requests a move, and do not relocate other projects'
+records as part of this fallback.
 
 ## Workflow
 
@@ -55,13 +55,13 @@ the user requests a move. Do not relocate other projects' records as part of app
 
 ## Fit
 
-`grilling` helps resolve choices before documentation. This skill preserves the decision
-history; `humanizer` can improve prose afterward without changing its facts or status.
-`harness-decision` shows open/recent decision bulletins and maintains a compact CSV register; use
-this skill for the full architectural rationale and superseding ADRs.
-`harness-doc` turns verified rationale into feature guides, onboarding, and troubleshooting material
-for readers. It references accepted records without replacing decision history or changing statuses.
-No CLI, external service, template bundle, or automatic hook is required by this guide.
+- `grilling` resolves choices before documentation; `humanizer` can improve prose afterward
+  without changing facts or status.
+- `harness-decision` shows open/recent decision bulletins and keeps a compact CSV register; this
+  skill owns the full architectural rationale and superseding ADRs.
+- `harness-doc` turns verified rationale into feature guides, onboarding, and troubleshooting
+  material, referencing accepted records without replacing decision history or changing statuses.
+- No CLI, external service, template bundle, or automatic hook is required by this guide.
 
 ## Source and Curation
 

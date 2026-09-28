@@ -33,40 +33,20 @@ aliases `list catalog`. Unknown actions show choices without copying or deleting
 a catalog selector rather than an action, show the matches and the corrected `install <selector>`
 command, not only an invalid-action error. Read-only help never implies install permission.
 
-## Selection
+Selectors match name fragments before descriptions, so `install harness` selects `harness` and every
+`harness-*` topic; use `install --exact harness` for one skill. See [selector rules](./references/install.md#parameters).
 
-Selectors match case-insensitive name fragments first, then descriptions and catalog paths only when
-no names match. An exact name does not narrow a larger match set: `install harness` selects `harness`
-and every `harness-*` topic. Use `install --exact harness` for the base skill, or `install harness-`
-for suffixed topics; patterns such as `harness*` are optional. Preview all matches and required
-companions before copying, preserving replacement, pin, and scope approvals.
-
-## Source and Safety
+## Boundaries
 
 - Resolve the checkout with the bundled [source resolver](./scripts/resolve-source-repo.ps1) in
   Install mode; never use Upsert mode to bypass its known-or-explicit source rule.
-- Before an approved install, show exact catalog matches, sibling dependencies, source paths,
-  scopes, and target paths. Keep source and installation destinations separate.
+- Preview matches, sibling dependencies, source paths, scopes, and targets before copying. Keep
+  source and installation destinations separate.
+- Preserve unrelated, customized, and pinned copies. Deletion and forced replacement need explicit approval.
 - Compatibility-only bundles are excluded from default discovery and bulk installs; an ordinary
   refresh never replaces old installed copies with forwarders.
-- Keep installed copies at approved canonical names and current source contents. Explicit updates
-  may replace stale managed copies, or retire verified old names after their replacements validate.
-- Preserve unrelated, customized, and pinned copies. Deletion and forced replacement need explicit
-  approval; obsolete-file deletion stays explicitly scoped.
-- The [transactional update procedure](./references/install.md#transactional-updates) keeps
-  temporary originals only during work; successful updates retain no backup archive or recovery directory.
-
-## Legacy Routes and Topic Migration
+- Keep one current copy per canonical name through [transactional updates](./references/install.md#transactional-updates).
 
 Legacy `/sv-install`, `/sv-list`, `/sv-uninstall`, their full names, and `/skv-*` equivalents keep
-their operations: a bare old install request explores the catalog, and `update` stays an explicit
-installed-copy refresh.
-
-For an explicitly requested topic-layout migration, `update --topics` uses the bundled
-[migration helper](./scripts/migrate-topics.ps1). Preview exact current-project/global targets,
-canonical mappings, same-scope dependencies, and retired names; apply with `-Apply -Force` only after
-approval. `-Name <canonical-names>` limits it to selected topics and required siblings, leaving
-identical copies unchanged. Former `sv-*` names map to full `skillvault-*` registrations, while their
-short spellings stay conversational. Former `skillvault-source` and `sv-source` bundles map to
-`skillvault-authoring` without refreshing unrelated topics. Successful migration discards temporary
-originals and changes no schedules or other projects.
+their operations; a bare legacy install request explores the catalog. An explicitly requested
+`update --topics` follows [topic-layout migration](./references/install.md#topic-layout-migration).

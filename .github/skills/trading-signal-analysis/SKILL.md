@@ -26,15 +26,14 @@ research workflow, not a trading engine, market-data source, or portfolio-profit
    data availability must not determine event identity or peer selection. Keep explicit event
    keys and retain detected events even if their follow-up is incomplete. Do not invent a
    non-ready state across missing history or merge legitimate repeated events.
-4. Measure outcomes using [Metrics and Checks](./references/metrics-and-checks.md). For a
-   signal-close baseline, follow-up starts at the next exchange session. Report intraday
-   target-touch and final-session close separately, with numerators, evaluated denominators,
-   censored counts, distinct stocks/dates, and exclusion reasons. Empty samples have no rate.
+4. Measure outcomes using [Metrics and Checks](./references/metrics-and-checks.md). Report
+   intraday target-touch and final-session close separately, with numerators, evaluated
+   denominators, censored counts, distinct stocks/dates, and exclusion reasons. Empty samples
+   have no rate.
 5. Define the benchmark before inspecting outcomes. Match peers using only information
    available at signal time, exclude the signal stock, and explain the comparator's filters.
-   For a fixed-size paired design, keep only groups whose signal and all preselected peers
-   have complete follow-up. Never replace a peer because its future is missing or unfavorable.
-   Compare signal and peer rates on those same groups, with equal total weight per group.
+   Apply the reference's paired-group rules; never replace a peer because its future is missing
+   or unfavorable.
 6. For target-only changes, rescore verified saved outcomes without changing event identities,
    peers, horizons, or exclusions. For other sensitivity studies, state what changed and use
    a common sample where needed. Do not choose a validated winner from the best retrospective

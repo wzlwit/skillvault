@@ -9,31 +9,29 @@ metadata:
 
 # Jarvis Metrics and Dashboards
 
-Use this guide to turn an operational signal into a Jarvis metric, dashboard, and optional
-monitor. It is a planning and configuration guide, not a Jarvis client, telemetry emitter,
-Kusto executor, or alerting API.
+Turn an operational signal into a Jarvis metric, dashboard, and optional monitor. This is a
+planning and configuration guide, not a Jarvis client, telemetry emitter, Kusto executor, or
+alerting API.
 
-## Choose the metric source
+## Choose the Metric Source
 
-Define the signal and useful dimensions before opening Jarvis. Then choose the first available
-source in this order:
+Define the signal and useful dimensions before opening Jarvis, then use the first source that
+represents them cleanly:
 
-1. **Geneva / MDM metric**: reuse an existing application metric when the signal and dimensions
-   are already emitted.
-2. **Kusto-to-Metrics**: use this when the required information exists in Kusto and an existing
-   KQL query can calculate it, but no suitable direct metric exists.
-3. **Logs-to-Metrics**: use this when the signal exists primarily in application logs.
+1. **Geneva / MDM metric**: an existing application metric already emits the signal and dimensions.
+2. **Kusto-to-Metrics**: an existing KQL query can calculate the signal, but no suitable direct
+   metric exists.
+3. **Logs-to-Metrics**: the signal exists primarily in application logs.
 4. **New telemetry**: add or refactor application telemetry only when the preceding sources
-   cannot represent the signal cleanly.
+   cannot represent the signal.
 
-Do not rebuild a direct metric with Kusto or logs without checking the existing Geneva account,
-namespace, metric names, emitting code, and dimensions first.
+Check the existing Geneva account, namespace, metric names, emitting code, and dimensions before
+rebuilding a direct metric from Kusto or logs.
 
-## Define the signal
+## Define the Signal
 
-Write down the numerator, denominator, success state, failure state, time window, and expected
-units. For reliability reporting, keep success and failure as explicit measures so a rate can be
-checked as:
+Write down the numerator, denominator, success state, failure state, time window, and units. For
+reliability reporting, keep success and failure as explicit measures so rates reconcile:
 
 ```text
 total = success + failure
@@ -42,13 +40,13 @@ failure_rate = failure / total
 ```
 
 Use stable, bounded dimensions such as environment, geography, feature, version, status, and
-categorized failure reason. Do not put arbitrary request text, customer data, or full error
+categorized failure reason. Never put arbitrary request text, customer data, or full error
 messages into dimensions; normalize them into categories such as `InvalidPayload`,
 `InsufficientData`, `SystemFailure`, or `Other`.
 
-## Configure Kusto-to-Metrics
+## Convert Kusto or Logs
 
-When Kusto is the source:
+For Kusto-to-Metrics:
 
 1. Start from the existing KQL and verify that it produces the defined signal.
 2. Normalize or derive dimensions in KQL before conversion.
@@ -59,14 +57,12 @@ When Kusto is the source:
 Preserve the query's time semantics, filters, units, and null or missing-data behavior. Do not
 invent a threshold or silently substitute a different query.
 
-## Configure Logs-to-Metrics
+For Logs-to-Metrics, identify the structured fields and event categories that define the signal,
+convert them to bounded dimensions, and document sampling, parsing, missing or duplicate events,
+and aggregation. Prefer a direct Geneva metric or Kusto conversion when either gives a more
+stable contract.
 
-When logs are the source, first identify the structured fields and event categories that define
-the signal. Convert them to bounded metric dimensions and document sampling, parsing, missing
-events, duplicate events, and aggregation behavior. Prefer a direct Geneva metric or a Kusto
-conversion when either provides a more stable contract.
-
-## Build the Jarvis dashboard
+## Build the Dashboard
 
 The usual UI flow is:
 
@@ -76,32 +72,30 @@ Dashboard → … → + Dashboard
   → Display / Parameters → Save
 ```
 
-For each layer, configure the time range, data source, account, namespace, metric, sampling
-type, dimensions, missing-data behavior, and resolution reduction. Use Display for legends,
-tooltips, colors, and thresholds. Use dashboard Parameters for reusable filters.
+For each layer, configure the time range, data source, account, namespace, metric, sampling type,
+dimensions, missing-data behavior, and resolution reduction. Use Display for legends, tooltips,
+colors, and thresholds, and dashboard Parameters for reusable filters. Use multiple layers for
+multiple counters in one chart and Advanced → Subquery for calculated values, documenting the
+expression. Save or copy reusable widgets rather than recreating them. Chart types vary by product
+and deployment; inspect the `+ Widget` menu instead of assuming a fixed list.
 
-Use multiple layers for multiple counters in one chart. Use Advanced → Subquery for calculated
-values and document the expression. Save or copy reusable widgets rather than recreating them.
-The available chart types are product- and deployment-specific; inspect the `+ Widget` menu
-instead of assuming a complete fixed list.
+## Add Monitoring
 
-## Add monitoring
+Add monitoring only when Jarvis-native monitoring or alerting is explicitly requested. Creating a
+report, query, or dashboard does not authorize monitor activation or IcM routing. Harness
+monitoring uses `/harness-monitor`'s local JSON observation contract; a Jarvis-native monitor or
+dashboard link is not an interchangeable input.
 
-Use this section only when Jarvis-native monitoring or alert configuration is explicitly requested.
-Creating a report, query, or dashboard does not authorize monitor activation or IcM routing. If the
-request means harness monitoring instead, use `/harness-monitor`'s local JSON observation contract;
-a Jarvis-native monitor or dashboard link is not an interchangeable input.
+After validating dashboard values, add a monitor only when the service's operational requirements
+define the condition. Connect it to the appropriate alert or IcM flow and record the owner,
+evaluation window, threshold source, and missing-data behavior. Never derive production thresholds
+from an illustrative example.
 
-After validating the dashboard values, add a monitor only when the service's operational
-requirements define the condition. Connect the condition to the appropriate alert or IcM flow,
-and record the owner, evaluation window, threshold source, and missing-data behavior. Do not
-derive production thresholds from an illustrative example.
+## Validation Checklist
 
-## Validation checklist
-
-Apply checks to the requested deliverables. Mark unrun live checks as unverified and monitor
-items as not applicable when monitoring was not requested. A design-only specification or metric
-query is not evidence that a dashboard has been saved or is readable in Jarvis.
+Apply checks to the requested deliverables. Mark unrun live checks as unverified and monitor items
+as not applicable when monitoring was not requested. A design-only specification or metric query
+is not evidence that a dashboard has been saved or is readable in Jarvis.
 
 - [ ] The measured signal, numerator, denominator, units, and time window are explicit.
 - [ ] Existing Geneva/MDM metrics were checked before using a fallback source.
@@ -112,27 +106,22 @@ query is not evidence that a dashboard has been saved or is readable in Jarvis.
 - [ ] The dashboard is saved and readable by its intended audience.
 - [ ] Monitor thresholds and IcM behavior come from service requirements.
 
-## Boundaries
+## Boundaries and Reuse
 
-This guide does not provide access to Microsoft-internal Jarvis documentation, credentials,
-telemetry libraries, Kusto clusters, or dashboard APIs. Confirm UI labels and supported source
-types in the target Jarvis deployment. Keep internal identifiers, query results, and sensitive
-operational data out of public skill files and reports.
-
-## Reuse and Overlap
-
-`kpi-dashboard` supplies platform-agnostic KPI selection, metric-contract, and layout
-guidance for business dashboards. This skill is narrower and Jarvis-specific: it decides which
-Jarvis metric source to use (Geneva/MDM, Kusto-to-Metrics, or Logs-to-Metrics) and how to wire
-pre-aggregation, widgets, layers, and monitors in the Jarvis UI. Use `kpi-dashboard` for
-general metric/layout design and this skill for Jarvis's own metric-plumbing decisions.
-
-`harness-report` coordinates artifact identity, capability checks, and delivery validation
-across platforms. Its `--type jarvis` route selects this guide; a Jarvis-bound query-only request
-can use `--type query` with the relevant source guidance, without creating a dashboard or converted
-metric. Pass the agreed signal, stable artifact destination/ID, source bindings, checks, and any
-missing access or authoring capability back to that workflow. Only available authorized tools can
-create live artifacts; naming this skill does not install a client, execute KQL, or publish a report.
+- This guide does not provide access to Microsoft-internal Jarvis documentation, credentials,
+  telemetry libraries, Kusto clusters, or dashboard APIs. Confirm UI labels and supported source
+  types in the target deployment. Keep internal identifiers, query results, and sensitive
+  operational data out of public skill files and reports.
+- `kpi-dashboard` owns platform-agnostic KPI selection, metric contracts, and layout for business
+  dashboards. This skill owns Jarvis's metric-source choice (Geneva/MDM, Kusto-to-Metrics, or
+  Logs-to-Metrics) and its pre-aggregation, widgets, layers, and monitors.
+- `harness-report` coordinates artifact identity, capability checks, and delivery validation
+  across platforms. Its `--type jarvis` route selects this guide; a Jarvis-bound query-only request
+  can use `--type query` with the relevant source guidance, without creating a dashboard or
+  converted metric. Pass back the agreed signal, stable artifact destination/ID, source bindings,
+  checks, and any missing access or authoring capability.
+- Only available authorized tools can create live artifacts; naming this skill does not install a
+  client, execute KQL, or publish a report.
 
 ## Supporting Research
 

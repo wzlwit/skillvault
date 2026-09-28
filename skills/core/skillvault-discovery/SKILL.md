@@ -9,24 +9,18 @@ argument-hint: "[list|search|evaluate|explain] [<arguments>...]"
 
 # Skill Discovery
 
-The registered command is `/skillvault-discovery`. `/sv-discovery` is conversational
-shorthand for the same topic and subcommands, not a separate skill or folder.
+`/skillvault-discovery` finds, evaluates, and explains skills, tools, and products without installing,
+running, or editing them. Search and explanation are read-only; evaluation writes only its
+public-safe record.
+`/sv-discovery` is conversational shorthand for the same topic and subcommands, not a separate skill or folder.
 
-No arguments or `list` shows the actions and known catalog context without installing or
-searching remote sources. Unknown actions show help. Route explicit requests as follows:
-`help` and `status` are compatibility aliases for the same read-only list.
-The exact action aliases `eval` -> `evaluate` and `expl` -> `explain` use the same procedures
-and boundaries as their canonical actions. Keep aliases out of primary menus and registered
-skill names.
-
-Action matching applies only to the explicit action token. Exact canonical actions and documented
-aliases take precedence. Otherwise, accept exactly 3 or 4 leading letters only when they match one
-canonical action in this topic. Multiple matches: show choices and ask; no match: show help.
-Ambiguous or unknown tokens execute nothing. Do not prefix-match aliases, skill names, targets,
-paths, options, or other arguments. Preserve existing case handling and natural-language routing.
-Use the resolved action's existing procedure with arguments, permissions, and confirmations unchanged;
-no extra confirmation is required merely for abbreviation. Keep full names in menus and registrations
-and preserve the read-only bare default. This is conversational routing, not script argument parsing.
+Action matching applies only to the explicit action token: exact canonical actions and documented
+aliases take precedence; otherwise exactly 3 or 4 leading letters may select one canonical action
+in this topic. Multiple matches: show choices and ask; no match: show help. Ambiguous or unknown
+tokens execute nothing. Do not prefix-match aliases, skill names, targets, paths, options, or other
+arguments. Case handling, natural-language routing, full names in menus and registrations, the
+read-only bare default, and each procedure's arguments, permissions, and confirmations stay
+unchanged; abbreviation adds no confirmation. This is conversational routing, not script argument parsing.
 
 | Action | Procedure |
 | --- | --- |
@@ -35,16 +29,13 @@ and preserve the read-only bare default. This is conversational routing, not scr
 | `evaluate` | [Assess value, fit, overlap, and risk](./references/evaluate.md) |
 | `explain` | [Explain a skill, tool, or product](./references/explain.md) |
 
-`search` prepares task-specific queries and explains each candidate's fit, prerequisites, and
-evidence limits. Public directories remain in the external lookup stage. `evaluate` reuses a
-verified source/revision from that search and rechecks stale evidence instead of repeating lookup.
-An empty search first offers existing tools or direct help; new skill authoring is for a justified
-recurring gap. These refinements add no actions, automatic CLI execution, or installation approval.
-`evaluate` also [proposes worthwhile improvements to existing skills](./references/evaluate.md#improve-existing-skills),
-even when the candidate should be skipped or deferred. Record the target, evidence, change, and
-validation separately from adoption; implementation still requires the user's approval.
-
-Old full names and `/sv-*` or `/skv-*` equivalents select their matching action. Search,
-evaluation, and explanation do not run the target skill. Load only the selected procedure.
-Installation belongs to `/skillvault-installation`; authoring belongs to `/skillvault-authoring`. Preserve source
-verification, attribution, reference-only limitations, and explicit approval for either handoff.
+- Bare invocation, `list`, `help`, and `status` show actions and known catalog context without
+  searching remote sources. Unknown actions show help.
+- The exact aliases `eval` -> `evaluate` and `expl` -> `explain` use the canonical procedures and
+  stay out of menus and registered names. Old full names and `/sv-*` or `/skv-*` spellings select
+  their matching action.
+- Load only the selected procedure. `evaluate` reuses verified search evidence and also
+  [proposes improvements to existing skills](./references/evaluate.md#improve-existing-skills);
+  implementing them needs the user's approval.
+- Installation belongs to `/skillvault-installation` and authoring to `/skillvault-authoring`.
+  Preserve source verification, attribution, reference-only limits, and explicit approval for either handoff.

@@ -9,23 +9,17 @@ argument-hint: "[list|install|update|uninstall] [<arguments>...]"
 
 # Skill Installation
 
-The registered command is `/skillvault-installation`. `/sv-installation` is conversational
-shorthand for the same topic and subcommands, not a separate skill or folder.
+`/skillvault-installation` manages installed copies, not SkillVault sources or application code;
+`/skillvault-authoring` owns authoring. `/sv-installation` is conversational shorthand for the same
+topic and subcommands, not a separate skill or folder.
 
-Action matching applies only to the explicit action token. Exact canonical actions and documented
-aliases take precedence. Otherwise, accept exactly 3 or 4 leading letters only when they match one
-canonical action in this topic. Multiple matches: show choices and ask; no match: show help.
-Ambiguous or unknown tokens execute nothing. Do not prefix-match aliases, skill names, targets,
-paths, options, or other arguments. Preserve existing case handling and natural-language routing.
-Use the resolved action's existing procedure with arguments, permissions, and confirmations unchanged;
-no extra confirmation is required merely for abbreviation. Keep full names in menus and registrations
-and preserve the read-only bare default. This is conversational routing, not script argument parsing.
-
-Bare invocation or `list` shows the installed inventory. `help` or an unknown action shows
-choices without copying or deleting files. If a supplied token is a catalog selector rather than
-an action, show the matching skills and the corrected `install <selector>` command, not only
-an invalid-action error. Do not infer permission to install from this read-only help.
-Keep source and installation destinations separate.
+Action matching applies only to the explicit action token: exact canonical actions and documented
+aliases take precedence; otherwise exactly 3 or 4 leading letters may select one canonical action
+in this topic. Multiple matches: show choices and ask; no match: show help. Ambiguous or unknown
+tokens execute nothing. Do not prefix-match aliases, skill names, targets, paths, options, or other
+arguments. Case handling, natural-language routing, full names in menus and registrations, the
+read-only bare default, and each procedure's arguments, permissions, and confirmations stay
+unchanged; abbreviation adds no confirmation. This is conversational routing, not script argument parsing.
 
 | Action | Procedure |
 | --- | --- |
@@ -34,37 +28,25 @@ Keep source and installation destinations separate.
 | `install`, `update` | [Install or update copies](./references/install.md) |
 | `uninstall` | [Confirmed removal of installed copies](./references/uninstall.md) |
 
-Installation selectors support case-insensitive partial names and keywords. Match name fragments
-first; when no names match, search descriptions and catalog paths. An exact name does not truncate
-a larger name-match set: `install harness` selects `harness` and every `harness-*` topic.
-Use `install --exact harness` for just the base skill, or `install harness-` for the suffixed topics.
-Name patterns such as `harness*` are optional, not required. Preview all matches and required
-companions before copying; preserve existing replacement, pin, and scope approvals.
+Bare invocation, `list`, `status`, and `help` show the installed inventory and actions; `catalog`
+aliases `list catalog`. Unknown actions show choices without copying or deleting files. If a token is
+a catalog selector rather than an action, show the matches and the corrected `install <selector>`
+command, not only an invalid-action error. Read-only help never implies install permission.
 
-Legacy `/sv-install`, `/sv-list`, `/sv-uninstall`, their full names, and `/skv-*` equivalents
-retain their operation. A bare old install request explores the catalog; `update` remains an
-explicit installed-copy refresh. No operation edits application code or authors skill sources.
-`catalog` aliases `list catalog`; `status` and `help` retain the read-only inventory/actions view.
+Selectors match name fragments before descriptions, so `install harness` selects `harness` and every
+`harness-*` topic; use `install --exact harness` for one skill. See [selector rules](./references/install.md#parameters).
 
-Resolve a SkillVault checkout using the bundled [source resolver](./scripts/resolve-source-repo.ps1)
-in Install mode. Do not use Upsert mode to bypass its known-or-explicit source rule. Show exact
-catalog matches, required sibling skill dependencies, source paths, scopes, and target paths
-before an approved install. Compatibility-only bundles are not default discovery or bulk-install
-candidates; do not replace old installed copies with forwarders during an ordinary refresh.
-Preserve pins and customized copies; deletion and forced replacement require explicit approval.
+## Boundaries
 
-For an explicitly requested topic-layout migration, `update --topics` uses the bundled
-[migration helper](./scripts/migrate-topics.ps1). Preview the exact current-project/global targets,
-canonical mappings, same-scope dependencies, and retired names. Apply with `-Apply -Force` only
-after approval; verified successful migration discards temporary originals. It never changes schedules or other projects.
-Use `-Name <canonical-names>` to limit a migration to selected installed topics and their required
-siblings; already identical copies are left unchanged. Former `sv-*` installed names map to the
-full `skillvault-*` registrations, while their short spellings remain conversational routes.
-The former `skillvault-source` and `sv-source` bundles map to `skillvault-authoring`; selecting
-that canonical name previews their replacement without refreshing unrelated topics.
+- Resolve the checkout with the bundled [source resolver](./scripts/resolve-source-repo.ps1) in
+  Install mode; never use Upsert mode to bypass its known-or-explicit source rule.
+- Preview matches, sibling dependencies, source paths, scopes, and targets before copying. Keep
+  source and installation destinations separate.
+- Preserve unrelated, customized, and pinned copies. Deletion and forced replacement need explicit approval.
+- Compatibility-only bundles are excluded from default discovery and bulk installs; an ordinary
+  refresh never replaces old installed copies with forwarders.
+- Keep one current copy per canonical name through [transactional updates](./references/install.md#transactional-updates).
 
-Keep installed copies at their approved canonical names and current source contents. Explicit
-updates can replace stale managed copies or retire verified old names after their replacements
-validate; preserve unrelated, customized, and pinned copies. The [transactional update procedure](./references/install.md#transactional-updates)
-uses temporary originals only while work is in progress. Successful updates retain no backup
-archive or recovery directory. Existing obsolete-file deletion remains explicitly scoped.
+Legacy `/sv-install`, `/sv-list`, `/sv-uninstall`, their full names, and `/skv-*` equivalents keep
+their operations; a bare legacy install request explores the catalog. An explicitly requested
+`update --topics` follows [topic-layout migration](./references/install.md#topic-layout-migration).

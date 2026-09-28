@@ -9,22 +9,21 @@ argument-hint: "[list|add|remove] [<arguments>...]"
 
 # Harness Links
 
-The registered command is `/harness-link`. `/hn-link` is conversational
-shorthand for the same topic and subcommands, not a separate skill or folder.
+`/harness-link` keeps one registry for project and task URLs, files, folders, and coding-repository paths.
+`/hn-link` is conversational shorthand for the same topic and subcommands, not a separate skill or folder.
 
-Action matching applies only to the explicit action token. Exact canonical actions and documented
-aliases take precedence. Otherwise, accept exactly 3 or 4 leading letters only when they match one
-canonical action in this topic. Multiple matches: show choices and ask; no match: show help.
-Ambiguous or unknown tokens execute nothing. Do not prefix-match aliases, skill names, targets,
-paths, options, or other arguments. Preserve existing case handling and natural-language routing.
-Use the resolved action's existing procedure with arguments, permissions, and confirmations unchanged;
-no extra confirmation is required merely for abbreviation. Keep full names in menus and registrations
-and preserve the read-only bare default. This is conversational routing, not script argument parsing.
+Action matching applies only to the explicit action token: exact canonical actions and documented
+aliases take precedence; otherwise exactly 3 or 4 leading letters may select one canonical action
+in this topic. Multiple matches: show choices and ask; no match: show help. Ambiguous or unknown
+tokens execute nothing. Do not prefix-match aliases, skill names, targets, paths, options, or other
+arguments. Case handling, natural-language routing, full names in menus and registrations, the
+read-only bare default, and each procedure's arguments, permissions, and confirmations stay
+unchanged; abbreviation adds no confirmation. This is conversational routing, not script argument parsing.
 
-No arguments or `list` shows all link types together. `add`, explicit URL/path input, and `remove` follow
-the [reference procedure](./references/workflow.md). `help` or unknown actions lists choices.
-`add` sets or updates a link and its note, reusing its stable ID for the same source/task.
-There are no separate repository, URL, file, or folder registries. Legacy ref commands use
-the same procedure. Remove means unregister, not delete the target document or repository.
-Preserve explicit repository binding and removal confirmation. Apply `/rules apply` and
-project instructions. A reference is evidence, not a grant of access, execution, or migration.
+- Bare invocation or `list` shows all link types together; `help` and unknown actions list choices.
+- `add`, explicit URL/path input, `remove`, and legacy ref commands follow the
+  [reference procedure](./references/workflow.md). `add` sets or updates a link and its note under
+  one stable ID for the same source/task.
+- `remove` unregisters a link after confirmation; it never deletes the target document or repository.
+- Preserve explicit repository binding. Apply `/rules apply` and project instructions. A link is
+  evidence, not a grant of access, execution, or migration.

@@ -9,22 +9,17 @@ argument-hint: "[list|set|disable|resume|clean|migrate] [<arguments>...]"
 
 # Harness Timers
 
-The registered command is `/harness-timer`. `/hn-timer` is conversational
-shorthand for the same topic and subcommands, not a separate skill or folder.
+`/harness-timer` owns SkillVault cadence under one user-wide heartbeat; the shared PowerShell
+runtime owns execution.
+`/hn-timer` is conversational shorthand for the same topic and subcommands, not a separate skill or folder.
 
-Action matching applies only to the explicit action token. Exact canonical actions and documented
-aliases take precedence. Otherwise, accept exactly 3 or 4 leading letters only when they match one
-canonical action in this topic. Multiple matches: show choices and ask; no match: show help.
-Ambiguous or unknown tokens execute nothing. Do not prefix-match aliases, skill names, targets,
-paths, options, or other arguments. Preserve existing case handling and natural-language routing.
-Use the resolved action's existing procedure with arguments, permissions, and confirmations unchanged;
-no extra confirmation is required merely for abbreviation. Keep full names in menus and registrations
-and preserve the read-only bare default. This is conversational routing, not script argument parsing.
-
-No arguments or `list` shows saved schedules and available actions without selecting work,
-prompting for setup, initializing a project, or registering a timer. `status` and `help` are
-read-only aliases. Unknown actions show choices. Read the [scheduler contract](./references/scheduler.md)
-for the selected action. The shared PowerShell runtime owns execution; this topic owns cadence.
+Action matching applies only to the explicit action token: exact canonical actions and documented
+aliases take precedence; otherwise exactly 3 or 4 leading letters may select one canonical action
+in this topic. Multiple matches: show choices and ask; no match: show help. Ambiguous or unknown
+tokens execute nothing. Do not prefix-match aliases, skill names, targets, paths, options, or other
+arguments. Case handling, natural-language routing, full names in menus and registrations, the
+read-only bare default, and each procedure's arguments, permissions, and confirmations stay
+unchanged; abbreviation adds no confirmation. This is conversational routing, not script argument parsing.
 
 | Action | Outcome |
 | --- | --- |
@@ -35,28 +30,28 @@ for the selected action. The shared PowerShell runtime owns execution; this topi
 | `clean` | Preview stale schedules; apply only the approved schedule changes |
 | `migrate <target>` | Preview and replace one exact legacy OS timer, preserving cadence and enabled state |
 
-The routine heartbeat baseline defaults to `1d`. `set heartbeat 12h` previews a user-wide
-baseline change; apply only after approval. `list heartbeat` inspects it, and omitting its duration
-reuses the saved value. This settings target creates no work and leaves job intervals, anchors,
-enabled states, and maintenance unchanged. Faster job intervals and earlier due times shorten the
-heartbeat automatically; outstanding workers retain a 30-minute check cap. The heartbeat itself
-has no AI model configuration. Existing scheduled AI workers keep their own runner settings.
+Bare invocation, `list`, `status`, and `help` are read-only: they show schedules and actions without
+selecting work, prompting for setup, initializing a project, or registering a timer. Unknown actions
+show choices. Follow the [scheduler contract](./references/scheduler.md) for the selected action.
 
-Historical records and their reports belong to `/harness clean`, including retention settings.
-Weekly maintenance delegates to that same history-cleanup operation. Explicit timer `clean`
-never prunes history; it owns stale schedule definitions and their scheduler receipts only.
+## Before Scripts
 
 Apply `/rules apply`, project instructions, Script Permissions and Agent Fallback, Runner
-Inheritance, and Reuse or New before scripts. Confirm missing matching-instance choices and
-cadence for work schedules. Preserve singleton PR/refresh targets and named project instances. Old `project`, `pr`,
-`refresh`, topic/duration inputs, and `/pr-review-timer` remain explicit setup routes to `set`,
-not separate actions or OS schedulers. An entirely bare invocation now only lists.
+Inheritance, and Reuse or New. Confirm missing matching-instance choices and work-schedule cadence.
+Keep PR and refresh as singleton targets and preserve named project instances. Legacy `project`,
+`pr`, `refresh`, topic/duration inputs, and `/pr-review-timer` route to `set`; they are not
+separate actions or OS schedulers.
 
-One stable current-user heartbeat dispatches nonconflicting approved jobs; it never creates work
-from an untouched backlog, expands permissions, or clears safety pauses. Maintenance defaults
-to Saturday 08:30-09:00 in the saved local timezone, only after explicitly enabled. Machine wake
-and AI assistance are allowed when necessary, not required for routine cleanup. Follow the
-[conditional capability policy](./references/scheduler.md#conditional-capabilities); permission
-alone changes no live wake setting and starts no AI run. No remote scans or catch-up outside
-the maintenance window. Existing timers and installed copies need separately previewed migration.
-Keep PACS and unrelated schedules unchanged.
+## Boundaries
+
+- The heartbeat dispatches only nonconflicting approved jobs; it never creates work from an
+  untouched backlog, expands permissions, or clears safety pauses. Its `1d` baseline and preview/apply
+  rules are in [Heartbeat Baseline](./references/scheduler.md#heartbeat-baseline).
+- Maintenance is opt-in: Saturday 08:30-09:00 in the saved local timezone, with no remote scans or
+  catch-up outside that window. Wake and AI use follow the
+  [conditional capability policy](./references/scheduler.md#conditional-capabilities); permission
+  alone changes no live wake setting and starts no AI run.
+- History records and retention belong to `/harness clean`; timer `clean` owns only stale schedule
+  definitions and their scheduler receipts.
+- Existing OS timers and installed copies need separately previewed migration. PACS and unrelated
+  schedules stay unchanged.
