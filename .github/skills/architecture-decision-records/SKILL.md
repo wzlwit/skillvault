@@ -44,6 +44,8 @@ records as part of this fallback.
 4. Draft with `Proposed` status unless acceptance is explicitly established. Include the
    chosen option's real costs, compatibility concerns, and reversibility; do not invent
    measurements, approval, deployment dates, or benefits to make the decision sound stronger.
+   Keep the record short and easy to follow: state each point once and link supporting
+   material instead of copying it.
 5. Preserve accepted history. When a decision changes, write a new record and link the
    superseded one, updating its status and index as authorized. Do not silently rewrite the
    rationale of an accepted record to match today's preference.

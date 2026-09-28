@@ -34,7 +34,8 @@ Use the current discussion when no topic is supplied; ask if the intended topic 
 6. If the user asks to record the design, prefer their existing draft and repository format.
    For a new document, resolve its destination using Document Location below. Separate proposals
    from accepted decisions and preserve deferred questions. Do not create a competing spec or
-   rewrite accepted history merely to match a preferred template.
+   rewrite accepted history merely to match a preferred template. Keep the document short and
+   easy to follow: state each point once and link existing material instead of repeating it.
 7. Finish with the recommended direction, alternatives considered, confirmed decisions, open
    questions, and the next agreed step. Ask before implementation; design approval alone does
    not authorize coding, experiments, installations, schedules, branches, commits, pushes, or PRs.

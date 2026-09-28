@@ -14,8 +14,10 @@ documentation server, or publishing pipeline.
    without changing it or initializing a controller. A controller with several repository links is
    not permission to select the first one; resolve the requested documentation target.
 3. Inspect existing entrypoints, guides, design records, and navigation. Match the actual feature
-   and purpose before creating a set. Preserve unrelated text and stable paths. An inaccessible or
-   ambiguous location requires clarification, not a duplicate folder.
+   and purpose before creating a set. Preserve unrelated text and stable paths. Check related guides
+   for missing or conflicting guidance: add links from pages readers already use, and report
+   conflicts instead of rewriting other guides. An inaccessible or ambiguous location requires
+   clarification, not a duplicate folder.
 4. Choose internal, authorized partner, or public readers. Outside the owning team does not mean
    public. Reuse a clear established audience; otherwise ask. Include only details and links
    suitable for those readers. Keep any necessary restricted traceability in an approved private
@@ -25,9 +27,13 @@ documentation server, or publishing pipeline.
    links and configuration; ask only if still ambiguous. With no location convention, use
    `docs/guides/<feature>/`. Creating a guide does not authorize restructuring existing docs.
 6. For a full set, adapt the [page template](doc-set.md). For onboarding, a troubleshooting guide
-   (TSG), or another focused
-   request, change only the relevant pages and navigation. Outline pages, headings, comparison
-   tables, and diagrams before drafting. Resolve feedback items to explicit sections and evidence.
+   (TSG), or another focused request, change only the relevant pages and navigation. When revising
+   existing pages, measure first: page and section lengths, repeated content, and inbound links and
+   anchors. Outline pages, headings, owning pages, length budgets, comparison tables, and diagrams
+   before drafting, following the [page rules](doc-set.md#page-level-rules), and get the user's
+   agreement on the outline before a large rewrite. Renames and regrouping follow
+   [restructuring](#optional-restructuring-and-publication). Resolve feedback items to explicit
+   sections and evidence.
 
 ## Gather evidence
 
@@ -44,7 +50,9 @@ documentation server, or publishing pipeline.
   and PR metadata for verified change examples, with exact repository/revision context. Frame a
   multi-PR migration as an example of maintenance work, not a count presented as its own argument.
 - Treat people's statements as leads. Verify a reported fix against its owning implementation and
-  revision. Preserve unresolved contradictions as reviewer questions, with the affected claim and
+  revision. A vague reply covers only what it names; other items keep their status. Word status as
+  what the reader must do ("no action needed"), not as a broader technical claim the code may
+  contradict. Preserve unresolved contradictions as reviewer questions, with the affected claim and
   required evidence. Do not silently choose code, design, or a person as authority for every fact.
 - Build a compact working map of claim, source/revision, target section, and confidence. Reuse an
   existing review note if useful; a new durable evidence ledger is not required. Cite actual files,
@@ -77,8 +85,9 @@ this check does not authorize installing a parser, running source examples, or u
 ## Draft the set
 
 Write the overview and rationale first, then concepts, behavior, onboarding, deeper topics, and
-troubleshooting. For focused work, preserve the rest of the set. Start diagrams early to check the
-workflow, then explain them in plain text; diagrams do not replace actionable instructions.
+troubleshooting. For focused work, preserve the rest of the set. Apply the
+[page](doc-set.md#page-level-rules) and [diagram](doc-set.md#diagram-rules) rules while drafting;
+diagrams do not replace actionable instructions.
 
 Compare old and new only when there is a real change. Use a short overview comparison, a full
 rationale comparison, and per-lifecycle/onboarding comparisons where useful. An Improvement column
@@ -91,15 +100,9 @@ it is appropriate and use a verified example to explain its maintenance cost. Do
 legacy system has hard-coded IDs, hidden flags, branch proliferation, or release-per-change costs;
 include only costs established by this feature's evidence.
 
-For onboarding, name prerequisites, who owns each step, inputs/configuration, required steps,
-verified opt-outs, validation, and expected results. Distinguish preferred fixes from one-off
-repairs in the TSG. Repairs that change live state still require their normal approval; documenting
-a command does not authorize running it. Trim real examples to the relevant fields and remove secrets.
-
-Expand abbreviations on first use on every page, including tables and diagram labels. If an
-expansion is unknown, use an evidenced description and record the open question; do not make one up.
-Add Previous/Next navigation within the actual set, plus an overview link. First/last pages link
-only to pages that exist. Preserve discoverability from the established documentation index.
+Onboarding and TSG pages follow their rows in the [page template](doc-set.md). Repairs that change
+live state still require their normal approval; documenting a command does not authorize running
+it. Trim real examples to the relevant fields and remove secrets.
 
 ## Humanizer pass
 
@@ -132,11 +135,13 @@ an automatic part of authoring. State exactly which checks ran and which remain 
 | Check | Required evidence |
 | --- | --- |
 | Facts and feedback | Recheck implementation/design/revision claims, required steps, examples, old/new statements, gaps, and the requested feedback sections |
+| Independent review | Before a PR, have a reviewer who did not write the pages check their claims against the code; fix or mark each finding |
 | Links and anchors | Parse changed Markdown and affected inbound links with the target renderer's heading/anchor behavior; cover duplicate headings, explicit IDs, encoded paths, fragments, reference links, images, and folder trailing slashes |
-| Terminology | Check first use per page, including tables/diagrams; flag unresolved expansions instead of guessing them |
-| Diagrams | Render every Mermaid block in changed pages with a compatible renderer, then inspect legibility, labels, and flow against evidence; verify the intended viewer when its engine differs |
+| Terminology | Check first use per page, including tables/diagrams, with a script where possible; flag unresolved expansions instead of guessing them |
+| Diagrams | Render every Mermaid block in changed pages with a compatible renderer and look at the result: legibility, labels, crossings, and each decision's placement against evidence. Try layout variants when order or crossings look wrong; verify the intended viewer when its engine differs |
 | Paginated output | For requested PDF/DOCX deliverables, inspect final rendered pages for readable content, pagination, and required-language glyphs |
-| Prose and navigation | Scan changed prose for em dashes and filler, verify audience suitability and Previous/Next/overview links, and preserve fenced technical content |
+| Prose and navigation | Scan changed prose for em dashes, unintended curly quotes, trailing spaces, and filler, verify audience suitability and Previous/Next/overview links, and preserve fenced technical content |
+| Repeats and length | Search the whole set for tables, rules, examples, and procedures on more than one page; keep each on its owning page and link from the others. Report each page's length against its budget, including misses |
 | Diff hygiene | Review changed-file scope and run `git diff --check` and `git diff --cached --check` when Git is available |
 
 When PDF/DOCX is an agreed deliverable, inspect all final rendered pages after Humanizer and any
@@ -173,7 +178,8 @@ status register. Use these outcomes consistently:
 
 ## Optional restructuring and publication
 
-Only after an explicit move/restructure request, map old paths to new paths and preview the scope.
+Docs can be regrouped or refactored at any time, including after merge or publication, but only
+after an explicit move/restructure request. Map old paths to new paths and preview the scope.
 Reuse the documentation root; `guides/`, `design/`, and `plans/` are useful categories, not mandatory
 new folders. Inspect every path consumer before moving: scripts, CI, code comments, instruction
 files, indexes, links, and existing bookmarks/anchors. Preserve paths that automation depends on
@@ -182,8 +188,9 @@ reviewed mechanical tool for repetitive link changes, preserving folder trailing
 code only for necessary path comments in this approved scope, never application behavior.
 
 Rebase, commit, push, PR creation, remote review replies, and thread resolution are separate actions.
-Do not perform them merely because authoring or validation finished. When publication is requested,
-use the owning Git/PR workflow and repository template. After an authorized rebase or source update,
+Do not perform them merely because authoring or validation finished. Leave changes uncommitted for
+review by default; when commits are requested, commit one concern at a time. When publication is
+requested, use the owning Git/PR workflow and repository template. After an authorized rebase or source update,
 recheck affected facts, versions, package existence, links, and diagrams against the new revision.
 Test review suggestions before accepting them, especially markup/diagram changes. Missing credentials
 stay a blocker; never obtain or renew authentication implicitly.
