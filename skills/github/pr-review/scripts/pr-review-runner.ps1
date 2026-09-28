@@ -316,7 +316,7 @@ function Invoke-PrReviewTimer {
                 $runnerFile = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($RunnerPath)
                 foreach ($path in @($runnerFile, $Paths.Root)) { if ($path -match '["\r\n]') { throw 'Scheduler paths must not contain quotes or newlines.' } }
                 $powerShell = (Get-Command pwsh -ErrorAction Stop).Source
-                $arguments = "-NoProfile -NonInteractive -File `"$runnerFile`" -Action Review -DataRoot `"$($Paths.Root)`" -Scheduled"
+                $arguments = "-NoProfile -NonInteractive -WindowStyle Hidden -File `"$runnerFile`" -Action Review -DataRoot `"$($Paths.Root)`" -Scheduled"
                 $scheduledAction = New-ScheduledTaskAction -Execute $powerShell -Argument $arguments
                 $trigger = New-ScheduledTaskTrigger -Once -At ((Get-Date).Add($interval)) -RepetitionInterval $interval
                 $settings = New-ScheduledTaskSettingsSet -MultipleInstances IgnoreNew -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit ([timespan]::FromMinutes([double]$config.prReview.maxCycleMinutes + 2))

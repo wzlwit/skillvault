@@ -251,6 +251,7 @@ try {
     $updated = Invoke-PrReviewTimer $paths -IntervalDays 0.25 -RunnerPath $runnerPath -Apply
     $savedTimer = $script:timerFixture.Tasks | Where-Object TaskName -CEQ $created.taskName
     if ($created.taskName -cne $updated.taskName -or $script:timerFixture.Tasks.Count -ne 2 -or $savedTimer.Actions[0].Arguments -notmatch '-Action Review.*-Scheduled' -or $savedTimer.Actions[0].Arguments -match '-Url|-Selector' -or $savedTimer.Settings.Instances -cne 'IgnoreNew' -or $savedTimer.Principal.RunLevel -cne 'Limited') { throw 'Timer setup created per-target tasks or lost the whole-list non-elevated worker.' }
+    if ($savedTimer.Actions[0].Arguments -notmatch '-NonInteractive -WindowStyle Hidden -File') { throw 'PR timers must request hidden noninteractive PowerShell.' }
     $reused = Invoke-PrReviewTimer $paths -RunnerPath $runnerPath
     if ($reused.intervalDays -ne 0.25) { throw 'Bare timer setup did not reuse its one saved cadence.' }
     $triggerBefore = $savedTimer.Triggers[0].Repetition.Interval

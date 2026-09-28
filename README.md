@@ -23,6 +23,10 @@ The `writing` category groups documentation, prose-editing, and presentation ski
 `office-documents` references. Their workflows stay separate;
 manifest tags distinguish their focus. Skill categories do not change the project's `docs/` root.
 
+The `data` category also includes the [RAG implementation reference](skills/data/rag-implementation/SKILL.md)
+for document Q&A, chunking, retrieval, reranking, and grounded answers. It links to upstream guidance
+with explicit example limitations; it bundles no runtime and authorizes no ingestion or installation.
+
 ## Project Documentation
 
 `docs/` is the parent for project documentation subfolders. Plans live in `docs/plans/`, with
@@ -37,6 +41,7 @@ decision history in `docs/plans/decisions/`. Add other documentation subfolders 
 - [Current-copy-only installation and temporary rollback](docs/plans/decisions/2026-09-25-current-copy-only-installation-adr.md)
 - [Source-agnostic monitoring and evidence reconciliation](docs/plans/decisions/2026-09-25-source-agnostic-monitoring-adr.md)
 - [Feature documentation authoring](docs/plans/decisions/2026-09-26-harness-documentation-adr.md)
+- [Quiet script execution](docs/plans/decisions/2026-09-27-quiet-script-execution-adr.md)
 - [Harness decision record](docs/plans/decisions/2026-09-15-harness-command-and-record-contracts-adr.md)
 - [External harness reference draft](docs/plans/2026-09-15-project-agent-harness.md)
 - [Kusto query optimization session notes](docs/notes/kusto-query-optimization.md)

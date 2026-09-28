@@ -1,4 +1,4 @@
-param([switch]$LayoutOnly, [switch]$BoardNameOnly)
+param([switch]$LayoutOnly, [switch]$BoardNameOnly, [switch]$ProcessOnly)
 
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot '..\skills\planning\harness\scripts\harness-store.ps1')
@@ -18,8 +18,38 @@ function Assert-HarnessFailure {
     if (-not $failed) { throw "Expected failure: $Expected" }
 }
 
+function Test-HarnessProcessBehavior {
+    param([string]$Directory)
+    $windowOptions = @(${function:Invoke-HarnessProcess}.Ast.FindAll({
+        param($node)
+        $node -is [System.Management.Automation.Language.AssignmentStatementAst] -and $node.Left.Extent.Text -ceq '$start.CreateNoWindow'
+    }, $true))
+    if ($windowOptions.Count -ne 1 -or $windowOptions[0].Right.Extent.Text.Trim() -cne '$true') { throw 'Child processes must explicitly disable new console windows before running fixtures.' }
+    $processResult = Invoke-HarnessProcess -Executable 'pwsh' -Arguments @('-NoProfile', '-NonInteractive', '-Command', '[Console]::Out.Write("fixture out"); [Console]::Error.Write("fixture err"); exit 7') -Directory $Directory -MaxMinutes 1
+    if ($processResult.ExitCode -ne 7 -or $processResult.Output -cne 'fixture out' -or $processResult.Error -cne 'fixture err') { throw 'Actual subprocess handling lost exit code or output streams.' }
+    $nativeBudgetResult = Invoke-HarnessProcess -Executable pwsh -Arguments @('-NoProfile', '-NonInteractive', '-Command', '[Console]::Out.Write("native limit"); exit 0') -Directory $Directory
+    if ($nativeBudgetResult.ExitCode -ne 0 -or $nativeBudgetResult.Output -cne 'native limit') { throw 'An omitted process budget was converted to an invalid zero limit.' }
+    $savedApproval = $env:COPILOT_ALLOW_ALL
+    try {
+        $env:COPILOT_ALLOW_ALL = 'fixture-approval'
+        $permissionProbe = @('-NoProfile', '-NonInteractive', '-Command', '[Console]::Out.Write($env:COPILOT_ALLOW_ALL)')
+        $inheritedProcess = Invoke-HarnessProcess -Executable pwsh -Arguments $permissionProbe -Directory $Directory -MaxMinutes 1 -InheritPermissions
+        $isolatedProcess = Invoke-HarnessProcess -Executable pwsh -Arguments $permissionProbe -Directory $Directory -MaxMinutes 1
+        if ($inheritedProcess.Output -cne 'fixture-approval' -or $isolatedProcess.Output -or $inheritedProcess.ExitCode -ne 0 -or $isolatedProcess.ExitCode -ne 0) { throw 'Native permission inheritance or reviewer environment isolation was lost.' }
+    }
+    finally { $env:COPILOT_ALLOW_ALL = $savedApproval }
+    $largeInput = 'Fixture input ' * 8000
+    $inputResult = Invoke-HarnessProcess -Executable pwsh -Arguments @('-NoProfile', '-NonInteractive', '-Command', '[Console]::Out.Write([Console]::In.ReadToEnd().Length)') -Directory $Directory -MaxMinutes 1 -InputText $largeInput
+    if ($inputResult.ExitCode -ne 0 -or [int]$inputResult.Output -ne $largeInput.Length) { throw 'Large worker standard input was truncated or blocked.' }
+}
+
 try {
     New-Item -ItemType Directory -Path $fixtureRoot | Out-Null
+    if ($ProcessOnly) {
+        Test-HarnessProcessBehavior -Directory $fixtureRoot
+        Write-Output 'Process checks passed: no-window launch, output, errors, exit status, permission isolation, and standard input.'
+        return
+    }
     if ($BoardNameOnly) {
         $project = Join-Path $fixtureRoot 'DAS Platform'
         New-Item -ItemType Directory -Path $project | Out-Null
@@ -368,22 +398,7 @@ try {
     if ($sameKind.id -cne $sourceTask.id) { throw 'A known task-kind casing difference created new requirements.' }
     $sourceFollowUp = Add-HarnessTask -Paths $identityPaths -Title 'New requirement' -Description 'Explicit new requirement' -Scope 'source' -Source 'https://example.invalid/revised'
     if ($sourceFollowUp.followUpOf -cne $sourceTask.id -or $sourceFollowUp.acceptance -cne 'Original check') { throw 'Ad-hoc revised requirements did not use the shared follow-up intake.' }
-    $processResult = Invoke-HarnessProcess -Executable 'pwsh' -Arguments @('-NoProfile', '-NonInteractive', '-Command', '[Console]::Out.Write("fixture out"); [Console]::Error.Write("fixture err"); exit 7') -Directory $fixtureRoot -MaxMinutes 1
-    if ($processResult.ExitCode -ne 7 -or $processResult.Output -cne 'fixture out' -or $processResult.Error -cne 'fixture err') { throw 'Actual subprocess handling lost exit code or output streams.' }
-    $nativeBudgetResult = Invoke-HarnessProcess -Executable pwsh -Arguments @('-NoProfile', '-NonInteractive', '-Command', '[Console]::Out.Write("native limit"); exit 0') -Directory $fixtureRoot
-    if ($nativeBudgetResult.ExitCode -ne 0 -or $nativeBudgetResult.Output -cne 'native limit') { throw 'An omitted process budget was converted to an invalid zero limit.' }
-    $savedApproval = $env:COPILOT_ALLOW_ALL
-    try {
-        $env:COPILOT_ALLOW_ALL = 'fixture-approval'
-        $permissionProbe = @('-NoProfile', '-NonInteractive', '-Command', '[Console]::Out.Write($env:COPILOT_ALLOW_ALL)')
-        $inheritedProcess = Invoke-HarnessProcess -Executable pwsh -Arguments $permissionProbe -Directory $fixtureRoot -MaxMinutes 1 -InheritPermissions
-        $isolatedProcess = Invoke-HarnessProcess -Executable pwsh -Arguments $permissionProbe -Directory $fixtureRoot -MaxMinutes 1
-        if ($inheritedProcess.Output -cne 'fixture-approval' -or $isolatedProcess.Output -or $inheritedProcess.ExitCode -ne 0 -or $isolatedProcess.ExitCode -ne 0) { throw 'Native permission inheritance or reviewer environment isolation was lost.' }
-    }
-    finally { $env:COPILOT_ALLOW_ALL = $savedApproval }
-    $largeInput = 'Fixture input ' * 8000
-    $inputResult = Invoke-HarnessProcess -Executable pwsh -Arguments @('-NoProfile', '-NonInteractive', '-Command', '[Console]::Out.Write([Console]::In.ReadToEnd().Length)') -Directory $fixtureRoot -MaxMinutes 1 -InputText $largeInput
-    if ($inputResult.ExitCode -ne 0 -or [int]$inputResult.Output -ne $largeInput.Length) { throw 'Large worker standard input was truncated or blocked.' }
+    Test-HarnessProcessBehavior -Directory $fixtureRoot
 
     $gitProject = Join-Path $fixtureRoot 'git project'
     New-Item -ItemType Directory -Path $gitProject | Out-Null
@@ -936,6 +951,7 @@ try {
     if ($createPreview.operation -cne 'Create' -or $createPreview.taskPath -cne '\' -or $timerState.Calls.Count -ne 0) { throw 'Timer preview failed to identify a new schedule or changed a live task.' }
     $null = & $timerPath -ProjectPath $fixtureRoot -Action Set -IntervalDay 0.5 -Apply
     if ($timerState.Tasks[0].Trigger.Interval.TotalHours -ne 12 -or $timerState.Tasks[0].Settings.Instances -cne 'IgnoreNew' -or $timerState.Tasks[0].Action.Arguments -notmatch '-Action Cycle') { throw "Timer mismatch: hours=$($timerState.Tasks[0].Trigger.Interval.TotalHours); instances=$($timerState.Tasks[0].Settings.Instances); arguments=$($timerState.Tasks[0].Action.Arguments)" }
+    if ($timerState.Tasks[0].Action.Arguments -notmatch '-NonInteractive -WindowStyle Hidden -File') { throw 'Project timers must request hidden noninteractive PowerShell without changing their worker action.' }
     $null = & $timerPath -ProjectPath $fixtureRoot -Action Disable -Apply
     $null = & $timerPath -ProjectPath $fixtureRoot -Action Resume -Apply
     if (($timerState.Calls -join ',') -cne 'Set,Disable,Resume') { throw 'Timer operations changed the wrong actions.' }

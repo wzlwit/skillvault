@@ -13,6 +13,9 @@ Global installation makes the guide available; it does not enable always-on inje
 2. **Deliver simply and stay in scope.** Make the smallest complete change that solves the
    request and follows existing patterns. Avoid invented requirements, unrelated refactors,
    and abstractions unless they reduce real complexity or meaningful duplication.
+   Run routine scripts quietly, without extra windows or unexpected focus changes when supported.
+   Show interactive UI only when explicitly requested or required for user action. If quiet
+   execution is unavailable, use an approved non-GUI alternative or explain and wait for permission.
 3. **Do not overdefend.** Preserve explicit security requirements, user constraints, and
    permission boundaries. Add safeguards, restrictions, resource caps, or extra approval gates
    only for a concrete need. Address realistic, consequential, or contract-required risks,

@@ -62,7 +62,12 @@ function Sync-Repo {
         return $cached.Path
     }
 
+    $previousGitPrompt = $env:GIT_TERMINAL_PROMPT
+    $previousGcmInteractive = $env:GCM_INTERACTIVE
+    $authenticationGuidance = 'Interactive Git/GCM prompts are disabled; authenticate separately if required, then rerun.'
     try {
+        $env:GIT_TERMINAL_PROMPT = '0'
+        $env:GCM_INTERACTIVE = 'Never'
         if ([string]::IsNullOrWhiteSpace($RepoUrl)) {
             throw 'Source repository is empty.'
         }
@@ -87,10 +92,10 @@ function Sync-Repo {
             if ($status) { throw "Refusing to refresh from a modified source cache: $repoPath" }
 
             git -C $repoPath fetch --prune origin | Out-Null
-            if ($LASTEXITCODE -ne 0) { throw "Git fetch failed for $RepoUrl" }
+            if ($LASTEXITCODE -ne 0) { throw "Git fetch failed for $RepoUrl. $authenticationGuidance" }
 
             git -C $repoPath remote set-head origin --auto | Out-Null
-            if ($LASTEXITCODE -ne 0) { throw "Git remote set-head failed for $RepoUrl" }
+            if ($LASTEXITCODE -ne 0) { throw "Git remote set-head failed for $RepoUrl. $authenticationGuidance" }
 
             $defaultRef = [string](git -C $repoPath symbolic-ref --quiet --short refs/remotes/origin/HEAD | Select-Object -First 1)
             if ($LASTEXITCODE -ne 0) { throw "Git symbolic-ref failed for $RepoUrl" }
@@ -105,7 +110,7 @@ function Sync-Repo {
         else {
             New-Item -ItemType Directory -Path $cacheRoot -Force | Out-Null
             git clone -- $RepoUrl $repoPath | Out-Null
-            if ($LASTEXITCODE -ne 0) { throw "Git clone failed for $RepoUrl" }
+            if ($LASTEXITCODE -ne 0) { throw "Git clone failed for $RepoUrl. $authenticationGuidance" }
         }
 
         $repoCache[$RepoUrl] = [pscustomobject]@{ Path = $repoPath; Error = $null }
@@ -114,6 +119,10 @@ function Sync-Repo {
     catch {
         $repoCache[$RepoUrl] = [pscustomobject]@{ Path = $null; Error = $_.Exception.Message }
         throw
+    }
+    finally {
+        $env:GIT_TERMINAL_PROMPT = $previousGitPrompt
+        $env:GCM_INTERACTIVE = $previousGcmInteractive
     }
 }
 
@@ -305,7 +314,7 @@ $scriptPath = $PSCommandPath
 if (-not $scriptPath) { throw 'Cannot determine current script path for scheduled task.' }
 
 $powerShellPath = Get-PowerShellExecutable
-$scheduledArgument = "-NoProfile -ExecutionPolicy Bypass -File `"$scriptPath`" -RunOnce -GlobalSkillsPath `"$globalSkillsRoot`" -CachePath `"$cacheRoot`""
+$scheduledArgument = "-NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$scriptPath`" -RunOnce -GlobalSkillsPath `"$globalSkillsRoot`" -CachePath `"$cacheRoot`""
 $action = New-ScheduledTaskAction -Execute $powerShellPath -Argument $scheduledArgument
 $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) -RepetitionInterval (New-TimeSpan -Days $IntervalDay)
 $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable

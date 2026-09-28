@@ -529,6 +529,7 @@ function Convert-HarnessLegacySchedule {
     }
     foreach ($name in $parameters.Keys) {
         if ($name -eq 'ExecutionPolicy' -and $parameters[$name] -eq 'Bypass') { continue }
+        if ($name -eq 'WindowStyle' -and $parameters[$name] -eq 'Hidden') { continue }
         if (-not $expected.ContainsKey($name)) { throw "Legacy argument $name has no approved replacement." }
         if ($name -eq 'File') {
             if ((Split-Path -Leaf $parameters[$name]) -ine (Split-Path -Leaf $expected[$name])) { throw 'Legacy runner is not the expected adapter.' }

@@ -191,6 +191,12 @@ try {
     $migrateDefinition = [pscustomobject]@{ key = 'migration'; kind = 'project'; projectRoot = $project; projectId = $config.projectId; directory = $project; executable = 'pwsh.exe'; arguments = @('-NoProfile', '-NonInteractive', '-File', 'C:\new\harness.ps1', '-ProjectPath', $project, '-Action', 'Cycle', '-Scheduled'); legacyTaskName = 'SkillVault Harness fixture'; legacyDescription = 'Fixture owner' }
     $migration = Convert-HarnessLegacySchedule $paths $migrateDefinition -Now $now
     if (-not $migration.preview -or $script:legacyTask.State -ne 'Ready') { throw 'Migration preview changed the old task.' }
+    $legacyArguments = $script:legacyTask.Actions[0].Arguments
+    $script:legacyTask.Actions[0].Arguments = '-WindowStyle Normal ' + $legacyArguments
+    Assert-SchedulerFailure { Convert-HarnessLegacySchedule $paths $migrateDefinition -Now $now }
+    $script:legacyTask.Actions[0].Arguments = '-WindowStyle Hidden ' + $legacyArguments
+    $hiddenMigration = Convert-HarnessLegacySchedule $paths $migrateDefinition -Now $now
+    if (-not $hiddenMigration.preview -or $script:legacyTask.State -ne 'Ready' -or $hiddenMigration.legacy.arguments -cne $script:legacyTask.Actions[0].Arguments) { throw 'Hidden legacy arguments were rejected or changed by migration preview.' }
     $migrated = Convert-HarnessLegacySchedule $paths $migrateDefinition -Now $now -Apply
     if ($script:legacyTask.State -ne 'Disabled' -or (ConvertTo-HarnessDuration $migrated.job.interval).seconds -ne 2700 -or -not $migrated.job.enabled) { throw 'Migration lost cadence or enabled two schedulers.' }
     Assert-SchedulerFailure { Convert-HarnessLegacySchedule $paths $migrateDefinition -Apply }

@@ -326,6 +326,28 @@ viewer, fixed run count, new ledger, or upstream script dependency. When executi
 baseline is unavailable, retain focused checks and label a walkthrough as instruction review,
 not an executed benchmark or evidence of measured improvement.
 
+#### Retrieval-backed comparisons
+
+Only for a requested retrieval-backed skill comparison, hold the corpus revision, source
+permissions, questions, and relevance labels fixed across baseline and candidate. Record retrieval
+results separately from final-answer correctness and citation support. Retain source IDs, revisions,
+and passages so citation checks assess supporting evidence, not just citation formatting.
+
+State whether metrics count chunks or source documents, the identity and duplicate rules, and each
+numerator and denominator before scoring. Undefined denominators are not applicable, not zero or
+passing scores. Include these cases without silently dropping them:
+
+| Case | Retrieval outcome | Answer outcome |
+| --- | --- | --- |
+| Answerable question with empty retrieval | Fails the answerable-case retrieval criterion; report any undefined metric as not applicable. | Assess answer correctness and citation support separately; fluency cannot establish retrieval success. |
+| Verified unanswerable question | An explicitly empty relevance set makes recall not applicable; score other defined metrics normally. | Correct abstention can pass its answer criterion when verified against the fixed corpus. |
+| Missing labels or failed execution | Affected metrics are unavailable; failed or missing evaluation evidence stays Unverified. | Never count missing evidence as a pass or claim a complete comparable pair. |
+| Repeated chunks from one document | Deduplicate by source-document ID for document-level coverage; distinct chunks must not inflate it. | Check the cited passages independently for support. |
+
+Reuse existing test tooling, notes, and approvals. This adds no mandatory judge model, service,
+registry, or automatic evaluation run. Non-retrieval comparisons, such as a formatting skill,
+keep the existing procedure without a retrieval dataset or extra model calls.
+
 ### Trigger regression checks
 
 For a new trigger or material description change, review realistic requests that should select the

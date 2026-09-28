@@ -65,6 +65,12 @@ the OS task does not remain busy for the whole development run. It uses current-
 logon and Limited privilege: signed-out execution is not enabled and requires a separate approved
 credential/service design. No password, token extraction, auto-login, or elevation is attempted.
 
+The worker wrapper and shared child-process runner use `CreateNoWindow` while retaining output,
+errors, and exit status. New direct legacy task registrations request noninteractive PowerShell
+with `WindowStyle Hidden`; migration accepts that hidden option without relaxing other argument
+checks. Source or installed-copy updates do not rewrite existing OS task actions. Suppressing a
+console does not authorize or guarantee suppression of a third-party application's own UI.
+
 The baseline is a scheduling setting, not an agent profile. Routine ticks do not invoke a model.
 Scheduled harness AI workers retain their existing explicit/inherited runner configuration and
 verified-profile selection; their native fallback is `auto` with intelligence-oriented routing.

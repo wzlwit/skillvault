@@ -29,6 +29,11 @@ When the user invokes `/skillvault-refresh <intervalDay>`, `/skillvault-refresh 
    A missing repository defaults to `https://github.com/wzlwit/skillvault.git`; a missing path
    is skipped. Fetch each Git repository once per run and resolve its default branch, not a
    hardcoded `main`. Reject failed Git operations, mismatched cache remotes, and dirty caches.
+   Source access temporarily disables Git/GCM prompts with `GIT_TERMINAL_PROMPT=0` and
+   `GCM_INTERACTIVE=Never`, restoring the caller's settings on success or failure. Existing
+   credentials remain usable; no credentials or saved Git configuration are changed. If sign-in
+   is required, report the failure for attended authentication instead of opening UI or retrying
+   login automatically.
    If a recorded `skills/public/<category>/<name>` path is missing, use
    `skills/<category>/<name>` only when that same repository's catalog uniquely confirms the
    identical skill name and destination. Do not guess another category, name, or repository.

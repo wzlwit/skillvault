@@ -6,6 +6,8 @@ $savedFixtureOwnershipRoot = $env:SKILLVAULT_OWNERSHIP_ROOT
 $env:SKILLVAULT_OWNERSHIP_ROOT = Join-Path $fixtureRoot 'runtime-ownership'
 $savedFixtureTransactionRoot = $env:SKILLVAULT_TRANSACTION_ROOT
 $env:SKILLVAULT_TRANSACTION_ROOT = Join-Path $fixtureRoot 'updates'
+$savedGitPrompt = $env:GIT_TERMINAL_PROMPT
+$savedGcmInteractive = $env:GCM_INTERACTIVE
 . (Join-Path $PSScriptRoot '../skills/core/skillvault-installation/scripts/skill-ownership.ps1')
 $sourceRepoRoot = Join-Path $fixtureRoot 'source'
 $globalRoot = Join-Path $fixtureRoot 'global'
@@ -16,6 +18,7 @@ $stamp = '2000-01-01T00:00:00.0000000Z'
 $global:fakeGitSource = $sourceRepoRoot
 $global:fakeGitCalls = New-Object 'System.Collections.Generic.List[string]'
 $global:fakeGitFail = ''
+$global:fakeRefreshError = ''
 $global:fakeGitStatus = @()
 $global:fakeGitHead = 'origin/master'
 $global:fakeGitRemote = $repoUrl
@@ -31,6 +34,9 @@ function global:git {
     $offset = if ($arguments[0] -eq '-C') { 2 } else { 0 }
     $operation = $arguments[$offset]
     $global:fakeGitCalls.Add($operation)
+    if ($operation -in @('clone', 'fetch') -or ($operation -eq 'remote' -and $arguments[$offset + 1] -eq 'set-head')) {
+        Assert-True ($env:GIT_TERMINAL_PROMPT -ceq '0' -and $env:GCM_INTERACTIVE -ceq 'Never') 'source access disables Git and credential-manager interaction'
+    }
     if ($operation -eq $global:fakeGitFail) { $global:LASTEXITCODE = 1; return }
     $global:LASTEXITCODE = 0
 
@@ -93,8 +99,14 @@ function Get-FixtureBody {
 
 function Invoke-Refresh {
     $global:fakeGitCalls.Clear()
+    $global:fakeRefreshError = ''
+    $previousGitPrompt = $env:GIT_TERMINAL_PROMPT
+    $previousGcmInteractive = $env:GCM_INTERACTIVE
     try { & $refreshScript -RunOnce -GlobalSkillsPath $globalRoot -CachePath $cacheRoot | Out-Null; return $false }
-    catch { return $true }
+    catch { $global:fakeRefreshError = $_.Exception.Message; return $true }
+    finally {
+        Assert-True ($env:GIT_TERMINAL_PROMPT -ceq $previousGitPrompt -and $env:GCM_INTERACTIVE -ceq $previousGcmInteractive) 'successful and failed refreshes restore caller prompt settings'
+    }
 }
 
 function Get-GitCallCount {
@@ -103,6 +115,8 @@ function Get-GitCallCount {
 }
 
 try {
+    $env:GIT_TERMINAL_PROMPT = '1'
+    $env:GCM_INTERACTIVE = 'Always'
     New-Item -ItemType Directory -Path $sourceRepoRoot, $globalRoot -Force | Out-Null
     foreach ($fixtureName in @('alpha', 'pinned', 'foreign', 'scoped', 'ac-mismatch')) {
         New-FixtureSkill -Name $fixtureName -Version '1.0.0' | Out-Null
@@ -126,6 +140,12 @@ try {
     foreach ($skippedTarget in $skippedTargets) {
         Assert-True ((Get-FixtureMetadata $skippedTarget).installedAt -eq $stamp) "pinned, unmanaged and project installs are untouched: $skippedTarget"
     }
+
+    Remove-Item Env:GIT_TERMINAL_PROMPT, Env:GCM_INTERACTIVE
+    Assert-True (-not (Invoke-Refresh)) 'refresh also succeeds when caller prompt settings were absent'
+    Assert-True (-not (Test-Path Env:GIT_TERMINAL_PROMPT) -and -not (Test-Path Env:GCM_INTERACTIVE)) 'absent caller prompt settings remain absent'
+    $env:GIT_TERMINAL_PROMPT = '1'
+    $env:GCM_INTERACTIVE = 'Always'
 
     $compatibilitySource = New-FixtureSkill -Name 'legacy-runtime' -Version '1.0.0'
     $compatibilityTarget = Install-FixtureSkill -Name 'legacy-runtime' -Version '1.0.0'
@@ -236,6 +256,7 @@ try {
     foreach ($operation in @('fetch', 'symbolic-ref', 'checkout')) {
         $global:fakeGitFail = $operation
         Assert-True (Invoke-Refresh) "a failed git $operation fails the run"
+        if ($operation -eq 'fetch') { Assert-True ($global:fakeRefreshError -like '*authenticate separately if required*') 'blocked source access reports the attended authentication action without claiming every failure is authentication' }
         Assert-True ((Get-FixtureBody $alphaTarget) -eq $alphaBody) "a failed git $operation leaves the install untouched"
         Assert-True ((Get-FixtureMetadata $alphaTarget).installedAt -eq $alphaStamp) "a failed git $operation does not restamp the install"
     }
@@ -261,6 +282,7 @@ try {
 
     $global:fakeGitFail = 'clone'
     Assert-True (Invoke-Refresh) 'a failed git clone fails the run'
+    Assert-True ($global:fakeRefreshError -like '*authenticate separately if required*') 'failed clone reports how to resolve authentication without prompting'
     Assert-True ((Get-FixtureBody $alphaTarget) -eq $alphaBody) 'a failed git clone leaves the install untouched'
     $global:fakeGitFail = ''
 
@@ -282,13 +304,29 @@ try {
     Assert-True (@(Get-ChildItem -LiteralPath $traversalTarget -Force).Count -eq 1) 'a traversal source path copies nothing'
     Assert-True (@(Get-ChildItem -LiteralPath $globalRoot -Force | Where-Object { $_.Name -like '.skillvault-stage-*' -or $_.Name -like '.skillvault-backup-*' }).Count -eq 0) 'a run leaves no staging residue'
 
+    $refreshTimerState = [pscustomobject]@{ Task = $null }
+    function New-ScheduledTaskAction { param($Execute, $Argument); [pscustomobject]@{ Execute = $Execute; Arguments = $Argument } }
+    function New-ScheduledTaskTrigger { param([switch]$Once, $At, $RepetitionInterval); [pscustomobject]@{ At = $At; Interval = $RepetitionInterval } }
+    function New-ScheduledTaskSettingsSet { param([switch]$AllowStartIfOnBatteries, [switch]$DontStopIfGoingOnBatteries, [switch]$StartWhenAvailable); [pscustomobject]@{ StartWhenAvailable = [bool]$StartWhenAvailable } }
+    function Register-ScheduledTask {
+        param($TaskName, $Action, $Trigger, $Settings, $Description, [switch]$Force)
+        $refreshTimerState.Task = [pscustomobject]@{ Name = $TaskName; Action = $Action; Trigger = $Trigger; Settings = $Settings }
+    }
+    $gitCallsBeforeTimer = $global:fakeGitCalls.Count
+    & $refreshScript -IntervalDay 1 -GlobalSkillsPath $globalRoot -CachePath $cacheRoot | Out-Null
+    Assert-True ($refreshTimerState.Task.Action.Arguments -match '-NonInteractive -WindowStyle Hidden .* -RunOnce') 'legacy refresh timers request hidden noninteractive PowerShell'
+    Assert-True ($refreshTimerState.Task.Name -ceq 'SkillVault Source Refresh' -and $refreshTimerState.Task.Trigger.Interval.TotalHours -eq 24) 'hidden refresh setup preserves task identity and existing one-day cadence'
+    Assert-True ($global:fakeGitCalls.Count -eq $gitCallsBeforeTimer) 'timer registration does not run a refresh'
+
     Write-Output 'Refresh checks passed using fake Git and temporary fixtures only.'
 }
 finally {
     $env:SKILLVAULT_OWNERSHIP_ROOT = $savedFixtureOwnershipRoot
     $env:SKILLVAULT_TRANSACTION_ROOT = $savedFixtureTransactionRoot
+    $env:GIT_TERMINAL_PROMPT = $savedGitPrompt
+    $env:GCM_INTERACTIVE = $savedGcmInteractive
     Remove-Item -LiteralPath 'Function:\git' -Force -ErrorAction SilentlyContinue
-    Remove-Variable -Name fakeGitSource, fakeGitCalls, fakeGitFail, fakeGitStatus, fakeGitHead, fakeGitRemote, fakeGitRevision -Scope Global -ErrorAction SilentlyContinue
+    Remove-Variable -Name fakeGitSource, fakeGitCalls, fakeGitFail, fakeRefreshError, fakeGitStatus, fakeGitHead, fakeGitRemote, fakeGitRevision -Scope Global -ErrorAction SilentlyContinue
     Remove-Item -LiteralPath $fixtureRoot -Recurse -Force -ErrorAction SilentlyContinue
     $global:LASTEXITCODE = 0
 }

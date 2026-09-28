@@ -334,16 +334,20 @@ New specialists map to their own canonical names without implying a previous ins
 | harness-test | harness-test |
 | harness-timer | harness-timer set project |
 | humanizer | humanizer |
+| humanizer-ch | humanizer-ch |
 | jarvis-metrics-create | jarvis-metrics |
 | kpi-dashboard-design | kpi-dashboard |
+| office-documents | office-documents |
 | openapi-spec-generation | openapi-spec |
 | planning-with-files | planning-with-files |
 | powerbi-modeling | powerbi-modeling |
+| ppt-master | ppt-master |
 | pr-review | pr-review run |
 | pr-review-add | pr-watch add |
 | pr-review-list | pr-watch list |
 | pr-review-remove | pr-watch remove |
 | pr-review-timer | harness-timer set pr |
+| rag-implementation | rag-implementation |
 | rules | rules list, add, update, remove |
 | rules-core | rules apply |
 | schedule-manager | schedule-manager |

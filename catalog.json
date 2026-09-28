@@ -186,6 +186,12 @@
     "version": "1.0.0"
   },
   {
+    "name": "rag-implementation",
+    "description": "Reference guide to wshobson/agents RAG implementation. Use for document Q&A, chunking, retrieval, reranking, and grounded answers. Upstream examples need dependency and behavior checks; no runtime or data access is bundled.",
+    "path": "skills/data/rag-implementation",
+    "version": null
+  },
+  {
     "name": "rules",
     "description": "Apply or manage AI working rules. Use /rules list, apply, add, update, or remove. The apply action replaces /rules-core and supplies compact coding guidance without editing files; persistent rule changes require confirmation.",
     "path": "skills/core/rules",

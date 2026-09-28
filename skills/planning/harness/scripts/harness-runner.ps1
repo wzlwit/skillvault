@@ -207,6 +207,7 @@ function Invoke-HarnessProcess {
     $start.FileName = $command.Source
     $start.WorkingDirectory = $Directory
     $start.UseShellExecute = $false
+    $start.CreateNoWindow = $true
     $start.RedirectStandardOutput = $true
     $start.RedirectStandardError = $true
     $start.RedirectStandardInput = $PSBoundParameters.ContainsKey('InputText')

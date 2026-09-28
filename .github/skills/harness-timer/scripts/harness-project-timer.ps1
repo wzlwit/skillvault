@@ -188,7 +188,7 @@ switch ($Action) {
     'Set' {
         $powerShell = (Get-Command pwsh -ErrorAction Stop).Source
         $runnerFile = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($RunnerPath)
-        $arguments = "-NoProfile -NonInteractive -File `"$runnerFile`" -ProjectPath `"$($paths.Project)`""
+        $arguments = "-NoProfile -NonInteractive -WindowStyle Hidden -File `"$runnerFile`" -ProjectPath `"$($paths.Project)`""
         if ($MonitorName) { $arguments += " -Action Monitor -MonitorName `"$MonitorName`" -Scheduled" }
         elseif ($TestFlow) { $arguments += " -Action Test -Flow `"$TestFlow`" -TestEnvironment `"$TestEnvironment`" -Scheduled" }
         else { $arguments += " -Action $runnerAction -Scheduled" }

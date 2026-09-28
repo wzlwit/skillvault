@@ -1,0 +1,33 @@
+{
+  "name": "rag-implementation",
+  "title": "RAG Implementation Reference",
+  "version": null,
+  "status": "public",
+  "visibility": "public",
+  "kind": "reference",
+  "description": "Reference guide to wshobson/agents RAG implementation. Use for document Q&A, chunking, retrieval, reranking, and grounded answers. Upstream examples need dependency and behavior checks; no runtime or data access is bundled.",
+  "tags": ["data", "rag", "retrieval", "chunking", "embeddings", "reranking", "reference"],
+  "author": "Seth Hobson",
+  "maintainer": "wzlwit",
+  "license": "MIT",
+  "homepage": "https://github.com/wshobson/agents",
+  "source": {
+    "repo": "skillvault",
+    "path": "skills/data/rag-implementation"
+  },
+  "upstream": {
+    "repo": "https://github.com/wshobson/agents",
+    "path": "plugins/llm-application-dev/skills/rag-implementation",
+    "revision": "9b15b34b0bfc13a815cbfc2366e14ea549e09422",
+    "version": null,
+    "license": "MIT"
+  },
+  "install": {
+    "global": true,
+    "project": true,
+    "session": true,
+    "defaultScope": "global",
+    "strategy": "copy"
+  },
+  "readme": "SKILL.md"
+}

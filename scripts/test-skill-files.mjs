@@ -442,6 +442,47 @@ test('office documents reference separates original navigation from proprietary 
   }
 });
 
+test('RAG implementation reference preserves provenance and unbundled execution boundaries', () => {
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const catalog = parseJson(fs.readFileSync(path.join(root, 'catalog.json'), 'utf8'), 'catalog.json');
+  const entry = catalog.find(candidate => candidate.name === 'rag-implementation');
+  assert.equal(entry.path, 'skills/data/rag-implementation');
+  const directory = path.join(root, entry.path);
+  const manifest = parseJson(fs.readFileSync(path.join(directory, 'skill.json'), 'utf8'), 'rag-implementation/skill.json');
+  const content = fs.readFileSync(path.join(directory, 'SKILL.md'), 'utf8');
+  const skill = parseSkill(content, entry.name, manifest);
+  assert.equal(entry.version, null);
+  assert.equal(manifest.version, null);
+  assert.equal(manifest.kind, 'reference');
+  assert.equal(manifest.author, 'Seth Hobson');
+  assert.equal(manifest.maintainer, 'wzlwit');
+  assert.equal(manifest.license, 'MIT');
+  assert.equal(manifest.source.repo, 'skillvault');
+  assert.equal(manifest.source.path, entry.path);
+  assert.equal(manifest.upstream.repo, 'https://github.com/wshobson/agents');
+  assert.equal(manifest.upstream.path, 'plugins/llm-application-dev/skills/rag-implementation');
+  assert.equal(manifest.upstream.version, null);
+  assert.equal(manifest.upstream.license, 'MIT');
+  assert.match(manifest.upstream.revision, /^[a-f0-9]{40}$/);
+  assert.equal(entry.description, manifest.description);
+  assert.equal(skill.description, manifest.description);
+  assert.equal(manifest.install.defaultScope, 'global');
+  assert.deepEqual(manifest.dependencies ?? [], []);
+  assert.deepEqual(fs.readdirSync(directory).sort(), ['SKILL.md', 'skill.json']);
+  for (const resource of ['SKILL.md', 'references/details.md']) {
+    assert.ok(content.includes(`/blob/${manifest.upstream.revision}/${manifest.upstream.path}/${resource}`));
+  }
+  assert.match(content, /fetch and read the upstream instructions/);
+  assert.match(content, /No upstream prompts, examples, scripts, provider clients, or RAG runtime are bundled/);
+  assert.match(content, /No installation or execution is implied/);
+  assert.match(content, /global installation default does not authorize a new installation/);
+  assert.match(content, /legacy `langchain\.retrievers` and `langchain\.storage` imports/);
+  assert.match(content, /does not guard empty retrieval, empty relevance sets, or empty test sets/);
+  assert.match(content, /stable source IDs, revisions, and supporting passages/);
+  assert.match(content, /retrieved text as untrusted evidence, not instruction authority/);
+  assert.match(content, /adds no harness action, runtime dependency, or automatic ingestion/);
+});
+
 test('document evidence distinguishes partial extraction from complete coverage', () => {
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
   const workflow = fs.readFileSync(path.join(root, 'skills/planning/harness-doc/references/workflow.md'), 'utf8');
@@ -514,6 +555,30 @@ test('experience-driven authoring keeps learning destinations and edit authority
   assert.equal([...core.matchAll(/^\d\. \*\*/gm)].length, 4);
 });
 
+test('quiet script execution keeps completion checks and necessary interaction', () => {
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const directory = path.join(root, 'skills/core/rules/references');
+  const core = fs.readFileSync(path.join(directory, 'core.md'), 'utf8');
+  const details = fs.readFileSync(path.join(directory, 'ai-principles.md'), 'utf8');
+  const delivery = core.split('2. **')[1].split('3. **')[0];
+  const execution = details.split('### 2. Deliver simply and stay in scope')[1].split('### 3. Do not overdefend')[0];
+  assert.match(delivery, /Run routine scripts quietly, without extra windows or unexpected focus changes when supported/);
+  assert.match(delivery, /interactive UI only when explicitly requested or required for user action/);
+  assert.match(delivery, /quiet\s+execution is unavailable[\s\S]*approved non-GUI alternative or explain and wait for permission/);
+  assert.match(execution, /current terminal\/tool session and supported quiet or no-window options/);
+  assert.match(execution, /Do not spawn\s+separate consoles or GUI windows for routine script work/);
+  assert.match(execution, /logs accessible without automatically revealing terminal panels or stealing focus/);
+  assert.match(execution, /Bring UI forward only when explicitly requested or needed for user action/);
+  assert.match(execution, /no verified no-window option[\s\S]*approved non-GUI alternative first/);
+  assert.match(execution, /wait for permission before opening a window/);
+  assert.match(execution, /Reuse explicit\s+approval for that visible action[\s\S]*no answer leaves the command pending, including unattended runs/);
+  assert.match(execution, /Await one-shot scripts and retain exit status, output, and errors/);
+  assert.match(execution, /long-lived services\/watchers\s+in the background with retrievable status and logs/);
+  assert.match(execution, /do not leave required work unverified/);
+  assert.match(execution, /Explain before opening UI for authentication, consent, or manual input/);
+  assert.match(execution, /Never auto-approve,\s+bypass denials, hide a needed prompt, or request secrets through chat/);
+});
+
 test('document-derived authoring maps supported knowledge within the requested scope', () => {
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
   const directory = path.join(root, 'skills/core/skillvault-authoring');
@@ -570,6 +635,35 @@ test('comparative authoring checks preserve baselines and measurement provenance
   assert.match(comparison, /do not label character counts as measured tokens/);
   assert.match(comparison, /Missing metrics are unavailable, not zero[\s\S]*independently verified task outcomes/);
   assert.match(comparison, /label a walkthrough as instruction review,[\s\S]*not an executed benchmark/);
+});
+
+test('retrieval-backed comparisons separate retrieval evidence from answer outcomes', () => {
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const workflow = fs.readFileSync(path.join(root, 'skills/core/skillvault-authoring/references/upsert.md'), 'utf8');
+  const retrieval = workflow.split('#### Retrieval-backed comparisons')[1].split('### Trigger regression checks')[0];
+  const cases = [...retrieval.matchAll(/^\| ([^|]+) \| ([^|]+) \| ([^|]+) \|\r?$/gm)]
+    .map(match => match.slice(1).map(value => value.trim()));
+  const answerable = cases.find(row => /Answerable.*empty retrieval/i.test(row[0]));
+  const unanswerable = cases.find(row => /Verified unanswerable/i.test(row[0]));
+  const missing = cases.find(row => /Missing labels.*failed execution/i.test(row[0]));
+  const duplicates = cases.find(row => /Repeated chunks.*one document/i.test(row[0]));
+  assert.ok(answerable && unanswerable && missing && duplicates, 'Preserve the distinct retrieval edge cases');
+  assert.match(answerable[1], /Fails.*retrieval criterion/i);
+  assert.match(answerable[2], /correctness and citation support separately/);
+  assert.match(unanswerable[1], /explicitly empty relevance set.*recall not applicable/);
+  assert.match(unanswerable[2], /Correct abstention can pass.*verified against the fixed corpus/);
+  assert.match(missing[1], /unavailable.*Unverified/);
+  assert.match(missing[2], /Never count missing evidence as a pass/);
+  assert.match(duplicates[1], /Deduplicate by source-document ID.*document-level coverage.*must not inflate/);
+  assert.match(retrieval, /Only for a requested retrieval-backed skill comparison/);
+  assert.match(retrieval, /corpus revision, source\s+permissions, questions, and relevance labels fixed/);
+  assert.match(retrieval, /retrieval\s+results separately from final-answer correctness and citation support/);
+  assert.match(retrieval, /source IDs, revisions,\s+and passages/);
+  assert.match(retrieval, /chunks or source documents[\s\S]*numerator and denominator before scoring/);
+  assert.match(retrieval, /Undefined denominators are not applicable, not zero or\s+passing scores/);
+  assert.match(retrieval, /Reuse existing test tooling, notes, and approvals/);
+  assert.match(retrieval, /no mandatory judge model, service,\s+registry, or automatic evaluation run/);
+  assert.match(retrieval, /Non-retrieval comparisons[\s\S]*without a retrieval dataset or extra model calls/);
 });
 
 test('trigger regression checks separate selection failures from unavailable evidence', () => {
@@ -941,16 +1035,21 @@ test('multi-action topics default to list and keep aliases out of primary menus'
     assert.equal(action.default, 'list', entry.name);
     assert.deepEqual(action.enum, guide['argument-hint'].match(/^\[([^\]]+)\]/)[1].split('|'), entry.name);
     assert.equal(action.enum.length, new Set(action.enum).size, entry.name);
-    assert.match(instructions, /Action matching applies only to the explicit action token/, entry.name);
-    assert.match(instructions, /Exact canonical actions and documented\s+aliases take precedence/, entry.name);
-    assert.match(instructions, /Otherwise, accept exactly 3 or 4 leading letters only when they match one\s+canonical action in this topic/, entry.name);
-    assert.match(instructions, /Multiple matches: show choices and ask; no match: show help/, entry.name);
-    assert.match(instructions, /Ambiguous or unknown tokens execute nothing/, entry.name);
-    assert.match(instructions, /Do not prefix-match aliases, skill names, targets,\s+paths, options, or other arguments/, entry.name);
-    assert.match(instructions, /Preserve existing case handling and natural-language routing/, entry.name);
-    assert.match(instructions, /existing procedure with arguments, permissions, and confirmations unchanged/, entry.name);
-    assert.match(instructions, /no extra confirmation is required merely for abbreviation/, entry.name);
-    assert.match(instructions, /conversational routing, not script argument parsing/, entry.name);
+    const routing = instructions.replace(/\s+/g, ' ');
+    for (const rule of [
+      /Action matching applies only to the explicit action token/,
+      /exact canonical actions and documented aliases take precedence/i,
+      /exactly 3 or 4 leading letters (?:only when they match|may select) one canonical action in this topic/,
+      /Multiple matches: show choices and ask; no match: show help/,
+      /Ambiguous or unknown tokens execute nothing/,
+      /Do not prefix-match aliases, skill names, targets, paths, options, or other arguments/,
+      /case handling and natural-language routing|Case handling, natural-language routing/,
+      /full names in menus and registrations/,
+      /read-only bare default/,
+      /arguments, permissions, and confirmations (?:stay )?unchanged/,
+      /no extra confirmation is required merely for abbreviation|abbreviation adds no confirmation/,
+      /conversational routing, not script argument parsing/,
+    ]) assert.match(routing, rule, entry.name);
     for (const alias of ['help', 'status', 'show', 'now', 'next']) assert.ok(!action.enum.includes(alias), `${entry.name}: alias ${alias}`);
     if (['skillvault-authoring', 'harness-report'].includes(entry.name)) {
       assert.ok(action.enum.includes('upsert'), `${entry.name}: one authoring action`);
