@@ -25,7 +25,8 @@ requiring confirmation. It reuses the indexed inventory behavior from `/skillvau
    - Keywords and skill names match name, source path, or target path case-insensitively.
 3. Show the selected skill folders before deletion.
 4. Ask for confirmation before deleting unless the user already explicitly confirmed deletion
-   in the same request.
+   in the same request. Confirmation covers the exact displayed names, paths, and scopes, not a
+   remembered index; if the matched set changes, list and confirm again.
 5. Delete only selected folders under allowed skill roots:
    - `~/.copilot/skills`
    - discovered `.github/skills` folders
@@ -55,7 +56,8 @@ and does not delete unrelated historical data.
 
 ## Safety
 
-- Always list or show selected matches before deletion.
+- Always list or show selected matches before deletion, and list first when a selector is ambiguous.
 - Never delete by keyword without showing matched indexes first.
-- Never delete outside the allowed skill roots.
+- Never delete outside the allowed skill roots. Linked skill directories and reserved session,
+  staging, or backup containers are never global uninstall targets.
 - Do not commit or push after uninstalling unless the user explicitly asks.
