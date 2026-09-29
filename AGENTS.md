@@ -116,9 +116,12 @@ not a substitute for an unknown version.
 - Preserve verified original authorship for imports and disclose adaptations. Do not infer a redistribution license from repository access.
 - `install.defaultScope` must be `global`, `project`, or `session`; missing defaults are treated as `project` by `/skillvault-installation install`.
 - Prefer global installation for reusable catalog skills; use an explicit project installation
-  for a repository-pinned or customized copy. Installation scope is availability, not execution
-  scope or approval. Keep sibling runtime dependencies in the same selected scope. Changing a
-  default never migrates existing copies, project state, or schedules, and never expands bootstrap.
+  for a repository-pinned or customized copy. Keep one installed copy per skill: before installing,
+  check both global and the current project, and if the skill exists in the other scope, ask
+  whether to move it instead of adding a second copy. Installation scope is availability,
+  not execution scope or approval. Keep sibling runtime dependencies in the same selected scope.
+  Changing a default never migrates existing copies, project state, or schedules, and never
+  expands bootstrap.
 - Keep `SKILL.md` concise, direct, and specific about trigger phrases and safety rules.
 - Use command synopsis notation in `argument-hint`: literal action/option names, `<value>`
   placeholders, `[optional]` groups, `a|b` alternatives, and `...` for repeated arguments.

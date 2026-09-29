@@ -138,6 +138,11 @@ and operation first, then re-resolve the explicit path. Never overwrite another 
      `.github/skills` folder if missing)
    - `session`: no target path; read the resolved skill instructions and apply them only to
      the current request/session.
+   - For `global` or `project`, check both `~/.copilot/skills/<skillName>` and the current
+     project's `.github/skills/<skillName>`. If the skill is installed in the other scope, show that
+     copy and ask whether to move it to the requested scope: install there, then remove the old copy
+     through [uninstall](uninstall.md). Otherwise keep the existing copy and skip that skill. Keep
+     both copies only when the user confirms a reason, such as a pinned or customized project copy.
 4. For `global` or `project`, use `scripts/install-skills.ps1` from the SkillVault checkout
   with `-Name`, `-Scope`, explicit `-RepoRoot <resolved-root>`, and the original project's `-ProjectPath`.
   Omitted scope resolves per manifest. Show existing target differences and use `-Force`

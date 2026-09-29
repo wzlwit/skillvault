@@ -43,6 +43,8 @@ Selectors match name fragments before descriptions, so `install harness` selects
 - Preview matches, sibling dependencies, source paths, scopes, and targets before copying. Keep
   source and installation destinations separate.
 - Preserve unrelated, customized, and pinned copies. Deletion and forced replacement need explicit approval.
+- Keep one installed copy per skill: before installing, check global and the current project, and
+  ask whether to move a copy found in the other scope (see [target scope](./references/install.md#skillname-foldername-or-keyword-given-installupdate-mode)).
 - Compatibility-only bundles are excluded from default discovery and bulk installs; an ordinary
   refresh never replaces old installed copies with forwarders.
 - Keep one current copy per canonical name through [transactional updates](./references/install.md#transactional-updates).
