@@ -29,8 +29,10 @@ unchanged; abbreviation adds no confirmation. This is conversational routing, no
 
 - The old `/rules-core` command selects `apply`. The four core rules are maintained once in the
   bundled reference; load the [detailed reference](./references/ai-principles.md) only for clarification.
-- Installation makes this skill available, not always-on instruction injection. Harness coordinators
-  pass core guidance and project instructions to workers, not the rule-editing workflow.
+- Installation makes this skill available, not always-on instruction injection; for always-on rules,
+  use the host's global or project instructions without duplicating conflicting rule documents.
+  Harness coordinators pass core guidance and project instructions to workers, not the rule-editing
+  workflow.
 - Applying rules grants no tools, permissions, or new work.
 - Grilling may propose a reusable rule, but never edits the authoritative rule document, overrides a
   security requirement, or substitutes for tests and independent review. Persistent changes use the
