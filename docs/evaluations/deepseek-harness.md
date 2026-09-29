@@ -41,10 +41,10 @@ the existing task, validation, review, and scheduling procedures.
 
 ## Overlap and Integration
 
-The installed [development guide](../../.github/skills/harness-dev/SKILL.md),
-[review guide](../../.github/skills/harness-review/SKILL.md),
-[policy guide](../../.github/skills/harness-policy/SKILL.md), and
-[timer guide](../../.github/skills/harness-timer/SKILL.md) were inspected before this recommendation.
+The installed [development guide](../../skills/planning/harness-dev/SKILL.md),
+[review guide](../../skills/planning/harness-review/SKILL.md),
+[policy guide](../../skills/planning/harness-policy/SKILL.md), and
+[timer guide](../../skills/planning/harness-timer/SKILL.md) were inspected before this recommendation.
 They already coordinate tasks, workspaces, independent checks, explicit permissions, durable
 pauses, and schedules. Dsh overlaps in agent execution, delegation, tool policy, and session
 management, but this assessment does not establish equivalent coordinator guarantees.

@@ -113,8 +113,8 @@ of those integration behaviors. This observation does not cover hidden, deleted,
 Value is medium as an introductory walkthrough and personal workflow example, but low as evidence
 for a general speed/reliability ranking. Its best fit is supporting research, not a new standalone
 SkillVault skill. Keep the distinction between documented capabilities and the presenter's experience.
-The installed [development](../../.github/skills/harness-dev/SKILL.md) and
-[review](../../.github/skills/harness-review/SKILL.md) guides already own tracked execution,
+The installed [development](../../skills/planning/harness-dev/SKILL.md) and
+[review](../../skills/planning/harness-review/SKILL.md) guides already own tracked execution,
 validation, and independent review. Keep them. This assessment does not change the separate
 [DSH evaluation](deepseek-harness.md), which recommends a focused reference guide and defers
 runtime integration.

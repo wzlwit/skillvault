@@ -65,11 +65,11 @@ A future guide could cover terminology, supported setup paths, workspace and per
 configuration, memory, diagnostics, and integration boundaries. Copying its scheduler or
 turn loop into a skill would not turn it into a drop-in SkillVault component.
 
-The installed [harness](../../.github/skills/harness/SKILL.md) already owns project selection
-and controller state; [harness-dev](../../.github/skills/harness-dev/SKILL.md) owns tracked
+The installed [harness](../../skills/planning/harness/SKILL.md) already owns project selection
+and controller state; [harness-dev](../../skills/planning/harness-dev/SKILL.md) owns tracked
 execution with required checks and independent review;
-[harness-review](../../.github/skills/harness-review/SKILL.md) owns the review workflow; and
-[harness-timer](../../.github/skills/harness-timer/SKILL.md) owns approved schedule dispatch.
+[harness-review](../../skills/planning/harness-review/SKILL.md) owns the review workflow; and
+[harness-timer](../../skills/planning/harness-timer/SKILL.md) owns approved schedule dispatch.
 AgentOS overlaps execution, persistent state, skills, approvals, and scheduling, but its
 documented generic agent operations do not establish equivalent project and review contracts.
 Keep these installed owners rather than transferring their responsibilities implicitly.

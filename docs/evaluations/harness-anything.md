@@ -69,7 +69,7 @@ surfaces, project-versus-native-document distinctions, output verification, and 
 lifecycle handling. Link to the runtime rather than copying its code or its entire collection
 of academic instructions and presentation-specific layout rules.
 
-The installed [harness-dev](../../.github/skills/harness-dev/SKILL.md) owns tracked execution,
+The installed [harness-dev](../../skills/planning/harness-dev/SKILL.md) owns tracked execution,
 validation, and independent review. This project supplies application operations that a task
 might use; it does not replace that controller. The installed
 [webapp-testing](../../.github/skills/webapp-testing/SKILL.md) operates web pages with Playwright,
