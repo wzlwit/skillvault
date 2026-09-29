@@ -1,113 +1,82 @@
 # Local Harness Runtime
 
-The runtime uses PowerShell 7, Git, and the Copilot CLI. Read-only board commands, standalone
-test flows, and numeric health checks do not need the CLI or model settings. Discovery status
-verification uses the CLI's model `auto` mode. Scheduled operation uses Windows Task Scheduler.
-Installing skills does not initialize a project, start an agent, or register a schedule.
+The runtime uses PowerShell 7, Git, and the Copilot CLI; scheduled operation uses Windows Task
+Scheduler. Read-only board commands, standalone test flows, and numeric health checks need no CLI or
+model settings, and discovery status verification uses the CLI's model `auto` mode. Installing
+skills does not initialize a project, start an agent, or register a schedule.
 
-Harness bundles default to global availability. Explicit project installations remain supported
-for pinned or customized copies. Keep sibling runtime dependencies in the selected scope. The
-installation directory does not determine the target project: `-ProjectPath` still controls
-configuration, state, boards, and execution policy. A task can explicitly select a different
-coding repository through a reference. No existing installation or runtime data is moved
-when a default changes.
+Harness bundles default to global availability; explicit project installations remain supported for
+pinned or customized copies, with sibling runtime dependencies in the same scope. The installation
+directory never selects the target: `-ProjectPath` controls configuration, state, boards, and
+execution policy, and a task can select another coding repository through a reference. Changing a
+default moves no installation or runtime data.
 
-The top-level topic is `harness`; specialized names, folders, and dependencies use `harness-*`.
-`/hn` and `/hn-*` are conversational shorthand for the same topics, not separate registrations.
-Old commands route to the corresponding operation. Bare multi-action topics use read-only `list`,
-including harness-timer. Explicit dev/review work uses `run`. PowerShell
-action names, stored state, and existing scheduler behavior are unchanged.
+The top-level topic is `harness`; specialized topics use `harness-*`, and `/hn` and `/hn-*` are
+conversational shorthand, not separate registrations. Old commands route to the matching operation.
+Bare multi-action topics use read-only `list`; explicit dev/review work uses `run`. PowerShell action
+names, stored state, and scheduler behavior are unchanged.
 
 ## Root Inheritance
 
-`/harness root` shows the selected root without changing it. `/harness root <path>` selects the
-existing parent directory for `.harness_sv/`. First selection or a required missing selection
-prompts after displaying the absolute current project folder. `/hn-root <path>` uses the same
-workflow without adding a second location prompt when Root is already selected.
-No answer or an unavailable question tool/user selects that displayed `./` in session context
-only; an explicit rejection or invalid path does not trigger fallback. The read-only
-`Root` action reports the selected project, control/config, and board paths and initialized state.
-Pass the selected absolute `-ProjectPath` so later terminal-directory changes cannot retarget it.
-Only `Root` allows an omitted path, resolving the command's current directory without writes.
+`/harness root` shows the selected root; `/harness root <path>` selects the existing parent directory
+for `.harness_sv/`. Prompts, the displayed `./` fallback, and moving an initialized harness to a new
+root follow [Harness Root](./loc.md); `/hn-root <path>` uses the same workflow. The read-only `Root`
+action reports the selected project, control/config, and board paths and initialized state. Only
+`Root` may omit `-ProjectPath`, resolving the current directory without writes.
 
 Every harness action reuses the selected Root without another location confirmation, including
-`/harness init` and reconnects. The displayed `./` fallback is a selected Root too. The session derives
-the absolute path and supplies `-ProjectPath` automatically; the user need not repeat it. Child
-scripts do not discover editor context or store a second root registry. If no Root or explicit
-target is available, run `/harness root ./` once before the action. Invalid targets and explicit rejection
-block the action, not permission to fall back to an incidental terminal or installation directory.
+`/harness init`, reconnects, and the displayed `./` fallback. The session supplies the absolute
+`-ProjectPath`, so later terminal-directory changes cannot retarget it; child scripts neither read
+editor context nor keep a second root registry. If no Root or explicit target exists, run
+`/harness root ./` once first. Invalid targets and explicit rejection block the action; they never
+fall back to an incidental terminal or installation directory. An explicit action path overrides that
+invocation only, resolved against Root. Scheduled ticks reuse their saved explicit target.
+`/harness loc --board <board-path>` keeps its separate empty-board placement meaning.
 
-An explicit action path overrides that invocation only; resolve relative paths against Root.
-`/harness root <path>` validates and selects the requested new root, saving the previous root
-separately. If that previous harness was initialized and the path changes, ask whether to move
-its data with Yes: Move as the displayed default. Yes or no answer previews and applies relocation
-from the saved previous root. An explicit answer or applicable user instruction overrides the
-default; No, cancel, or an instruction not to move leaves the old controller and schedules in
-place. The new Root remains selected in either case. A blocked
-or failed move is reported separately and does not undo selection or imply a successful migration.
-An invalid target leaves Root unchanged. The first-selection fallback never answers the move question.
-An unchanged path or uninitialized source needs no move prompt. Selection never initializes a
-controller. Scheduled ticks reuse their saved explicit target, not another session's Root.
-`/harness loc --board <board-path>` retains its separate empty-board placement meaning.
-
-No user-facing move flag is required. The session follows [Harness Root](./loc.md#explicit-relocation)
-and uses the dispatcher with the saved previous root as `-ProjectPath`, `-Move`, and `-DestinationPath`
-for a Yes answer, explicit move instruction, or the displayed unanswered-prompt Move default;
-application adds `-Apply` after preview. Do not require a second Yes-only confirmation.
-The destination must exist and be free of a controller. Identity, queues, pauses, external code,
-board overrides, dirty registered worktrees, and schedule cadence are preserved. Existing policy
-and host restrictions still apply. The PowerShell Root inspection action remains read-only;
-the session owns the prompt and maps its answer to the existing helper controls.
-
-The public `Init` action keeps `-ProjectPath <selected-root> -ConfirmLocation` and rejects
-`-Scheduled`. The session supplies both automatically from the selected Root when Init is
-requested, including after fallback; the flag acknowledges resolved location, not another user
-prompt. Root inheritance is location selection, not blanket permission: operation-specific
-approval, host permissions, policy denials, and safety pauses still apply. Selecting Root alone
-does not request initialization, execution, installation, destructive changes, or a schedule.
+The public `Init` action takes `-ProjectPath <selected-root> -ConfirmLocation` and rejects
+`-Scheduled`; the session supplies both from the selected Root without another prompt. Root
+inheritance is location selection, not blanket permission: operation-specific approval, host
+permissions, policy denials, and safety pauses still apply. Selecting Root alone requests no
+initialization, execution, installation, destructive change, or schedule.
 
 ## Configuration and State
 
 New `/harness init` controllers use layout version 2. `config/project.json` owns identity and runner
-settings; `config/monitors.json`, `config/tests.json`, and `config/policy.json` own their domains.
-These declarations are the single editable source of truth. Commands update those same files;
-direct edits need no import. The runtime validates a stable set and combines it only in memory.
-Missing, malformed, or conflicting declarations block the next operation; no old active copy is used.
-An in-flight operation keeps its validated configuration and can record its outcome; the next
-operation loads current declarations. Pause/stop stays live even with an invalid declaration.
+settings; `config/monitors.json`, `config/tests.json`, and `config/policy.json` own their domains, and
+`config/schedules.json` holds project schedules when configured. These declarations are the single
+editable source of truth: commands update the same files, direct edits need no import, and the runtime
+combines a validated set only in memory. Missing, malformed, or conflicting declarations block the
+next operation; no old copy is used. An in-flight operation keeps its validated configuration and can
+record its outcome; the next operation loads the current declarations. Pause/stop stays live even with
+an invalid declaration.
 
-`runtime/state.json` owns tasks, references, queue order, active phase, run history, and safety state.
-The configured current-work CSV, `history.csv`, and `references.csv` are generated views in the board root, which
-defaults to `<project-root>/.harness_sv/board`.
-An existing standalone decision register retains its original board location on first initialization.
-The existing decision register remains owned by `/harness-decision`. Do not edit generated views as
-competing task queues. Existing unrelated CSV files are never adopted or overwritten.
+`runtime/state.json` owns tasks, references, queue order, active phase, run history, and the `safety`
+object (counters, pauses, and audit events); `runtime/schedules.json` holds schedule progress. The
+configured current-work CSV, `history.csv`, and `references.csv` are generated views in the board
+root, `<project-root>/.harness_sv/board` by default; do not edit them as competing task queues.
+`/harness-decision` owns the decision register, and an existing standalone register keeps its board
+location on first initialization. Unrelated CSV files are never adopted or overwritten. A README links
+to board, history, and configuration without copying task rows.
 
-New controllers save `currentFileName: "current-<project-slug>.csv"` in project configuration;
-the name remains stable across Root relocation. Existing configurations without the field retain
-`current.csv`. `Get-HarnessCurrentPath` and command results' `current` property expose the resolved
-path. A filename change is an explicit filesystem transition: use Board -CurrentFileName with
-preview and approved Apply, not a monitor-only rename or an implicit reconnect migration. The
-[current-view procedure](loc.md#current-view-names) also defines opt-in topic snapshots under artifacts.
+New controllers save `currentFileName: "current-<project-slug>.csv"`, stable across Root relocation;
+configurations without it keep `current.csv`. `Get-HarnessCurrentPath` and the `current` result
+property expose the resolved path. Renames and opt-in topic snapshots follow the
+[current-view procedure](loc.md#current-view-names), never an implicit reconnect migration.
 
-Explicit `/harness-policy limits` and `/harness-policy fallback` declarations add `restrictions` and `fallback` sections
-to `config/policy.json`. Safety counters, pauses, and audit events use the state file's
-`safety` object; there is no second controller or policy database. Bare policy commands are
-read-only, including before initialization. Installing either guide applies no example policy.
+`/harness-policy` declarations add `restrictions` and `fallback` to `config/policy.json`; there is no
+second policy database. Bare policy commands are read-only, even before initialization, and
+installing a guide applies no example policy.
 
-Every action except read-only `Root` requires an explicit controller `-ProjectPath`. Resolve reference, configuration, and
-policy paths against that project, never the installed skill directory. Task scopes and relative
-test working directories apply to the selected coding workspace. Read-only status/context calls do not initialize missing state.
-Use the existing project plan/ADR convention; ordinary actions move no documentation files.
-Explicit Root relocation includes authored files already inside the control directory, not
-external project documents. A moved controller saves `executionRoot` for its former implicit
-coding/test target and original instruction lookup; absent means the current `projectRoot`.
+Resolve reference, configuration, and policy paths against the controller, never the installed skill
+directory. Task scopes and relative test directories apply to the selected coding workspace.
+Read-only status/context calls do not initialize missing state. Follow the project's plan/ADR
+convention; ordinary actions move no documentation. Explicit Root relocation moves authored files
+inside the control directory, not external documents, and saves `executionRoot` for the former
+implicit coding/test target and instruction lookup (absent means the current `projectRoot`).
 
-Legacy flat controllers remain readable and runnable in place until explicit migration. `init`
-only reconnects. Project schedule declarations use `config/schedules.json` when configured;
-progress and active invocation snapshots use `runtime/schedules.json`. A README links to board,
-history, and configuration without copying task rows. Transaction originals exist only in OS
-temporary storage until success or verified rollback; interrupted updates retain a pending marker.
+Legacy flat controllers remain readable and runnable in place until explicit migration; `init` only
+reconnects. Transaction originals exist only in OS temporary storage until success or verified
+rollback; interrupted updates keep a pending marker.
 
 ## Layout Migration
 
@@ -117,15 +86,15 @@ temporary storage until success or verified rollback; interrupted updates retain
 & <harness-folder>/scripts/harness.ps1 -ProjectPath <root> -Action Migrate -Apply
 ```
 
-Preview exact source/destination paths before approval. This differs from Root relocation to a
-different parent and from timer migration of OS tasks. No scheduled migration or implicit Init
-migration is allowed. Refuse active/unrecovered work, conflicting destinations, actual filesystem
-links, ambiguous schedule ownership, or conflicting old declarations. Preserve identities, task
-statuses, queues, pauses, report bytes, explicit external boards, schedule anchors and cadence.
-Existing owned reports move to monthly names and stored links update together. Custom adapters,
-snapshots, unrelated files, and external documents stay in place; inspect adapter path assumptions
-before applying. They are not automatically rewritten or deleted. A failed update restores originals;
-if restoration fails, preserve `migrate.pending.json` and its temporary originals for attended recovery.
+Preview exact source/destination paths before approval. This is not Root relocation to another parent
+or timer migration of OS tasks, and it never runs on a schedule or implicitly during Init. Refuse
+active/unrecovered work, conflicting destinations, actual filesystem links, ambiguous schedule
+ownership, or conflicting old declarations. Preserve identities, task statuses, queues, pauses, report
+bytes, explicit external boards, and schedule anchors and cadence; owned reports move to monthly names
+with their stored links. Custom adapters, snapshots, unrelated files, and external documents stay in
+place and are never rewritten or deleted automatically; inspect adapter path assumptions before
+applying. A failed update restores originals; if restoration fails, keep `migrate.pending.json` and
+its temporary originals for attended recovery.
 
 ## Artifact Storage
 
@@ -149,62 +118,57 @@ not the whole controller. Keep one authoritative copy; do not mirror records int
 | Store, runner, schedule, and decision lock files | `.harness_sv/runtime/locks/`, `<board>/decisions.lock` |
 | Detached task worktrees when worktree mode is selected | `.harness_sv/worktrees/<task-id>/` |
 
-Create only the files required by an authorized action, not this entire hierarchy on inspection
-or installation. Runtime run reports already contain the available execution evidence; do not
-invent a separate logs database or duplicate them. Any separately requested logs stay under
-`.harness_sv/history/` unless the user specified another path. Worker output must still meet its
-JSON contract; a worker must not edit controller state or generated views directly.
+Create only the files an authorized action needs, not this whole hierarchy. Run reports already hold
+the execution evidence; do not add a logs database or duplicate them, and keep separately requested
+logs under `.harness_sv/history/` unless the user chose another path. Workers return their JSON
+result and never edit controller state or generated views directly.
 
-Pass the resolved output path to any delegated ADR, handoff, diagram, report, or other specialist
-so its standalone documentation default cannot send harness output elsewhere. Its permissions,
-validation, and authoring requirements still apply. This guidance does not install a specialist
-or authorize a new artifact. If a tool cannot honor the selected path, report it before writing.
+Pass the resolved output path to any delegated ADR, handoff, diagram, report, or other specialist so
+its own documentation default cannot send harness output elsewhere. Its permissions and validation
+still apply; this installs no specialist and authorizes no new artifact. If a tool cannot honor the
+path, report that before writing.
 
-Preserve existing configured board paths and user-selected artifacts, including legacy layouts;
-show them as overrides and do not move populated data or retarget a timer automatically. New
-controllers use `.harness_sv`, and standalone decisions do too. Moving existing material is a
-separate reviewed operation. Selecting another Root affects session context, not saved records.
-When no `.harness_sv` directory exists, the runtime recognizes an existing SkillVault `.harness`
-controller by its valid identity, schema, root, and runner configuration and reuses it in place.
-Use its resolved Control for generated artifacts, not a newly invented parallel directory.
+Existing configured board paths and user-selected artifacts, including legacy layouts, are shown as
+overrides; populated data and timers are never moved or retargeted automatically. Moving existing
+material is a separate reviewed operation, and selecting another Root changes session context, not
+saved records. Without a `.harness_sv` directory, a valid existing SkillVault `.harness` controller
+(identity, schema, root, and runner configuration) is reused in place, and its Control holds
+generated artifacts.
 
-Application source stays in the task's selected coding repository/workspace. Linked documents,
-repositories, and imported evidence remain at their original locations. Skill installation
-bundles and the host's existing project instruction entrypoints are not generated harness
-artifacts; an authorized navigation update adds pointers there, not another copy of the records.
-The separate user-wide PR and skill-refresh controllers retain their explicitly configured
-storage and scopes; selecting a project Root does not relocate them.
+Application source stays in the task's selected coding workspace, and linked documents, repositories,
+and evidence stay where they are. Skill bundles and the host's project instruction files are not
+harness artifacts; an authorized navigation update adds pointers there, not record copies. The
+user-wide PR and skill-refresh controllers keep their own storage; selecting a Root does not move them.
 
-The session-level `/harness init` workflow also maintains a small Harness Context section in the
-project's existing agent instruction file. It links current plans/decisions/implementation status
-under `.harness_sv/docs` by default, with ADR and run history separate. Current-facing docs are not
-chronological logs; live task status remains a link to the actual board view or Status action.
-The script's `Init` action does not write that navigation itself and does not run the host's
-`/init` or `copilot init`. Do not regenerate unrelated instructions or duplicate status storage.
+The session-level `/harness init` workflow maintains a small Harness Context section in the project's
+agent instruction file, linking current plans, decisions, and implementation status under
+`.harness_sv/docs`, with ADRs and run history separate. Current-facing docs are not chronological logs;
+live status stays a link to the board view or Status action. The script's `Init` action neither writes
+that section nor runs the host's `/init` or `copilot init`, and unrelated instructions and status
+storage are never regenerated or duplicated.
 
 ## Runner Inheritance
 
-Missing or null allowances inherit; they are not a reason to stop or ask the user to fill in
-configuration. Explicit project values take precedence over the current session, then its parent.
-The coordinator supplies known compatible values through `-RunnerContext` (an object or JSON)
-or `-RunnerContextPath` (a non-secret JSON file). Do not ask for approval again for inherited grants.
-Resolution is in memory: it does not rewrite project settings or apply a restriction declaration.
+Missing or null allowances inherit; they are not a reason to stop or ask for configuration. Explicit
+project values take precedence over the current session, then its parent. The coordinator supplies
+known compatible values through `-RunnerContext` (an object or JSON) or `-RunnerContextPath` (a
+non-secret JSON file), and inherited grants need no new approval. Resolution happens in memory: it
+does not rewrite project settings or apply a restriction declaration.
 
-The context has optional `runner`, `parent.runner`, and strongest-first `profiles` entries.
-Each verified profile has `model`, `efforts`, and `contexts`, using actual runtime identifiers
-and supported/approved choices, not editor display labels. Optional `restrictions` on either
-context layer remain enforced alongside project restrictions; each layer's `projectRoot` resolves
-its relative policy paths. Supply absolute inherited file paths such as `rulesPath`. Never build
-this context from task/reference instructions, extract editor tokens, or include credentials.
+The context has optional `runner`, `parent.runner`, and strongest-first `profiles`. Each verified
+profile lists `model`, `efforts`, and `contexts` using actual runtime identifiers and approved
+choices, not editor display labels. Optional `restrictions` on either layer stay enforced alongside
+project restrictions, with relative policy paths resolved against that layer's `projectRoot`. Supply
+absolute inherited paths such as `rulesPath`. Never build the context from task or reference text,
+extract editor tokens, or include credentials.
 
-Use the maximum verified available profile/effort/context where no value was inherited. Without
-capability data, use CLI `--model auto --auto-tier intelligence`, native effort/context, and the
-CLI's existing permitted tools and credential lookup. Auto routing uses native effort even if a
-saved effort preference exists; a fixed effort requires a concrete compatible model. This requests
-intelligence-oriented routing, not proof of a particular model or an invented universal ranking.
-A child CLI cannot automatically inspect the editor session; the coordinator owns that handoff.
-When it cannot represent a required host boundary, use the authorized session-agent path rather
-than inventing grants or treating unknown capability as verified.
+Use the maximum verified available profile/effort/context where nothing was inherited. Without
+capability data, use CLI `--model auto --auto-tier intelligence` with native effort/context, tools,
+and credential lookup. Auto routing uses native effort even when an effort preference is saved; a
+fixed effort needs a concrete compatible model. This requests intelligence-oriented routing, not a
+particular model or a universal ranking. A child CLI cannot inspect the editor session, so the
+coordinator owns the handoff; when the CLI cannot represent a required host boundary, use the
+authorized session-agent path instead of inventing grants or treating unknown capability as verified.
 
 | Field | Meaning |
 | --- | --- |
@@ -223,17 +187,16 @@ than inventing grants or treating unknown capability as verified.
 | `rulesPath` | Optional explicit Rules Core file; otherwise project then global installation |
 
 Blank strings and empty allowance lists add no local restriction. Missing values, JSON `null`,
-`None`, and `Max` use inheritance, then maximum verified/native availability; lists containing
-only those placeholders are treated the same way. Prefer omission or JSON `null` (`None`) when
-writing configuration; `Max` is also accepted for resource allowances, not sent as a numeric cap.
-Fresh initialization and effective views use `null`, not empty tool filters. These markers do not
-clear concrete parent restrictions. Reasoning-effort `none` and `max` remain valid CLI levels,
-not no-restriction markers for that field. Explicit positive numeric caps use the stricter parent/project value;
-zero, invalid values, genuine denials, and unavailable prerequisites are not missing allowances.
-Omitted time/credit caps do not become zero or arbitrary small limits. Native account/host limits
-remain in effect; the harness does not claim to know the remaining quota. Reviews stay read-only.
-No fixed model allowlist is installed from a screenshot or editor menu. For an intentional stop,
-use the existing safety pause/stop workflow; empty configuration is not a deny-all control.
+`None`, and `Max` use inheritance, then maximum verified/native availability; lists holding only
+those placeholders count the same. Prefer omission or `null` when writing configuration; `Max` is
+accepted for resource allowances and never sent as a numeric cap. Fresh initialization and effective
+views use `null`, not empty tool filters. These markers do not clear concrete parent restrictions,
+and reasoning-effort `none` and `max` remain ordinary CLI levels. Explicit positive numeric caps use
+the stricter parent/project value; zero, invalid values, denials, and unavailable prerequisites are
+not missing allowances. Omitted caps never become zero or small arbitrary limits, native account and
+host limits still apply, and the harness does not claim to know remaining quota. Reviews stay
+read-only. No model allowlist comes from a screenshot or editor menu, and empty configuration is not
+a deny-all control; use the safety pause/stop workflow to stop work.
 
 ```powershell
 & <harness-folder>/scripts/harness.ps1 -ProjectPath <root> -Action Context -RunnerContext $sessionContext
@@ -241,23 +204,20 @@ use the existing safety pause/stop workflow; empty configuration is not a deny-a
 & <harness-folder>/scripts/harness.ps1 -ProjectPath <root> -Action Review -RunnerContextPath <session-context-file>
 ```
 
-`Context` and `Restrict` inspection show effective allowances without saving them. The same
-handoff applies to dev, review, tests, and monitoring. If checks are unset, validation first
-looks for `scripts/test-all.ps1`, then a declared `package.json` test script (`npm test`). These
-are actual executable checks, not a passing default; inherited restrictions still apply. With
-no executable check available, continue validation through an authorized agent/tool path and
-report it unverified until it runs. Missing allowance configuration must not create a false pass.
+`Context` and `Restrict` inspection show effective allowances without saving them, and the same
+handoff applies to dev, review, tests, and monitoring. With no configured checks, validation looks for
+`scripts/test-all.ps1`, then a declared `package.json` test script (`npm test`); inherited restrictions
+still apply. With no executable check, continue through an authorized agent/tool path and report
+validation unverified until it runs; missing configuration never yields a false pass.
 
 ## Folder Controllers and Coding Repositories
 
-The controller may be an ordinary folder without Git. Confirm it through `/harness init` as usual;
-keep its `.harness_sv` configuration/state, board, queues, pauses, and reports there. Register an
-existing local Git root using `Ref -Source <repository-path>`, then select its stable `R-*` ID
-with `Task`, `UpdateTask`, or `Dev -RepositoryRef <id>` (alias `-RepoRef`). Requirements `-Source`
-and coding `-RepositoryRef` are distinct. Task intake matches source/scope/reference tuples after
-trimming outer whitespace, canonicalizing reference IDs and HTTP(S) URI syntax, and normalizing
-absolute source-path dot segments. Preserve URL path/query, opaque source, path, and free-form
-scope case and internal whitespace; a scope can contain code identifiers. No fuzzy matching.
+The controller may be an ordinary folder without Git; initialize it through `/harness init` and keep
+its `.harness_sv` configuration, state, board, queues, pauses, and reports there. Register an existing
+local Git root with `Ref -Source <repository-path>`, then select its stable `R-*` ID through `Task`,
+`UpdateTask`, or `Dev -RepositoryRef <id>` (alias `-RepoRef`). Requirement `-Source` and coding
+`-RepositoryRef` are distinct; task matching follows `harness-task` (exact after meaning-preserving
+normalization, never fuzzy).
 
 ```powershell
 & <harness-folder>/scripts/harness.ps1 -ProjectPath <controller-folder> -Action Ref -Source <local-git-root>
@@ -265,71 +225,65 @@ scope case and internal whitespace; a scope can contain code identifiers. No fuz
 & <harness-folder>/scripts/harness.ps1 -ProjectPath <controller-folder> -Action Dev -Id <task-id>
 ```
 
-These examples do not approve risk, tools, budgets, or worker startup. Execute only after the
-usual gates. A missing/inactive, URL-only, non-directory, non-Git-root, or another task's reference
-blocks repository selection; there is no cloning, Git initialization, or first-reference fallback.
-A task-scoped reference can be assigned to that task through UpdateTask after registration.
-Without an explicit reference, development uses `executionRoot` after an explicit move, or the
-controller-at-Git-root workflow otherwise. Relocation does not silently retarget queued tasks.
-Use separate task records for different repositories, not an implicit multi-repository write.
+These examples approve no risk, tools, budgets, or worker start; the usual gates still apply. A
+missing, inactive, URL-only, non-directory, non-Git-root, or another task's reference blocks
+repository selection; there is no cloning, Git initialization, or first-reference fallback. A
+task-scoped reference can be assigned to its task through UpdateTask. Without an explicit reference,
+development and untargeted tests use `executionRoot` after a move, otherwise the controller (a Git root
+for development), and relocation never silently retargets queued tasks. Use separate tasks for
+different repositories. Standalone `Review -RepoRef <id>` reviews that reference's checkout, not a
+task's worktree, and task-linked `Test -Id` uses the task's saved workspace or selected repository.
 
-Current mode operates in the selected checkout. Worktree mode uses that repository's HEAD to
-create `<controller>/.harness_sv/worktrees/<task-id>`. Saved tasks retain `repositoryRef`, resolved
-`repositoryRoot`, and workspace; a selected workspace cannot be retargeted. Resume checks that
-a referenced worktree belongs to the recorded repository. Timed development uses each task's
-saved selection. No live settings or schedules are created by reference registration.
+Current mode works in the selected checkout; worktree mode creates
+`<controller>/.harness_sv/worktrees/<task-id>` from that repository's HEAD. Saved tasks keep
+`repositoryRef`, `repositoryRoot`, and a workspace that cannot be retargeted, and resume checks that
+the worktree belongs to the recorded repository. Timed development uses each task's saved selection,
+and registering a reference creates no settings or schedules.
 
-Workers receive controller and coding-repository/workspace instructions. Validation and reviews
-follow the same workspace; snapshots exclude only this controller's records, not unrelated code
-paths with matching names. CSV views and reports carry repository identity. Controller-relative
-`workingRoots` still apply to both source and workspace; a reference never extends permissions.
-Controller locks remain local. Shared checkout ownership also excludes competing harness-managed
-writers across controllers, for manual and scheduled execution. Separate worktrees remain separate
-checkout resources; this does not serialize every worktree of one Git repository.
+Workers receive controller and coding-repository instructions; validation and reviews use the same
+workspace, and snapshots exclude only this controller's records, not code paths with similar names.
+CSV views and reports carry repository identity. Controller-relative `workingRoots` apply to source
+and workspace, and a reference never extends permissions. Controller locks stay local, while shared
+checkout ownership also excludes competing harness-managed writers across controllers, manual or
+scheduled. Separate worktrees are separate checkout resources, so one repository's worktrees are not
+serialized together.
 
 ### Shared Ownership
 
-The bundled ownership adapter uses the same-scope `skillvault-installation` helper. Participating
+The bundled ownership adapter uses the same-scope `skillvault-installation` helper, and participating
 runtime manifests declare `ownershipProtocol: 1`. The user-wide registry defaults to
-`~/.copilot/skillvault/ownership`; `SKILLVAULT_OWNERSHIP_ROOT` selects an explicit common root for
-isolated environments and fixtures. All cooperating entrypoints must use the same registry.
-This is coordination between participating processes, not an OS sandbox or protection from
-arbitrary editors, other users, or older runtimes that do not report ownership.
+`~/.copilot/skillvault/ownership`; `SKILLVAULT_OWNERSHIP_ROOT` selects a common root for isolated
+environments and fixtures, and all cooperating entrypoints must share it. This coordinates
+participating processes only; it is not an OS sandbox or protection from arbitrary editors, other
+users, or older runtimes that do not report ownership.
 
-Development holds exclusive checkout ownership through validation and both review phases until
-the active cycle returns, including a cooperative checkpoint. Standalone tests reserve their
-selected checkout and configured execution directory, resolving nested directories to their
-checkout root. Independent reviews share only an identical snapshot fingerprint and exclude writers.
-Snapshot validation and restart limits still apply to external edits. Read-only status and context
-remain available without checkout reservations.
+Development holds exclusive checkout ownership through validation and both review phases until the
+active cycle returns, including a cooperative checkpoint. Standalone tests reserve their checkout and
+execution directory, resolving nested directories to the checkout root. Independent reviews share
+only an identical snapshot fingerprint and exclude writers; snapshot validation and restart limits
+still apply. Read-only status and context need no reservation.
 
-Execution also holds read claims on its runtime bundle and declared colocated dependencies.
-Install, migration, uninstall, and refresh use conflicting write claims before changing those
-targets. A conflict returns `Busy` with owner details or reports a deferred update; it never stops
-workers, changes schedules, or clears a pause. No versioned runtime snapshots or second scheduler
-are introduced. Running refresh/heartbeat helpers cannot replace themselves while in use; use
-the approved local-source installer after those processes finish.
+Execution also holds read claims on its runtime bundle and declared colocated dependencies, while
+install, migration, uninstall, and refresh take conflicting write claims first. A conflict returns
+`Busy` with owner details or a deferred update; it never stops workers, changes schedules, or clears a
+pause. There are no versioned runtime snapshots or second scheduler, and running refresh/heartbeat
+helpers cannot replace themselves; update them with the approved local-source installer afterward.
 
-Process-held claims are released on confirmed completion. Interrupted or abandoned claims remain
-`NeedsRecovery`, not automatically expired or stolen. `Recover -ConfirmStopped` clears that
-controller's inactive claims only after inspecting work and confirming all prior workers stopped;
-existing safety pauses remain. Scheduler recovery similarly clears its matching inactive wrapper
-claims. Unreadable evidence must be repaired, not treated as idle. Install transitions for older
-runtime copies need separate attended stopped-worker confirmation and temporary rollback protection.
+Claims are released on confirmed completion. Interrupted or abandoned claims stay `NeedsRecovery`,
+never expired or stolen automatically. `Recover -ConfirmStopped` clears that controller's inactive
+claims only after inspecting the work and confirming prior workers stopped, and existing safety pauses
+remain; scheduler recovery clears its matching inactive wrapper claims. Unreadable evidence must be
+repaired, not treated as idle. Updating older runtime copies needs separate attended stopped-worker
+confirmation and temporary rollback protection.
 
-Executable manifests also declare `runtimeInterfaces` and `requiredInterfaces`. Runtime admission
-checks exact interface versions under its dependency read claims, before agents or test commands
-launch. Equal package versions or `ownershipProtocol: 1` alone do not satisfy these requirements.
-Missing/incompatible same-scope dependencies report the required companion update set. Old helper
-entrypoints without compatibility support block execution; read-only status remains available.
-No implicit update, source-checkout fallback for installed dependencies, or relaxed ownership is
-allowed. These checks do not require unrelated skills to share one package version.
-
-Standalone `Review -RepoRef <id>` selects a project-wide local repository reference and resolves
-its baseline there. It reviews that checkout, not a task's detached worktree. Task-linked `Test -Id`
-uses the task's saved workspace, or its selected repository before development allocates one.
-Untargeted tests run at `executionRoot`, defaulting to the controller before relocation. PR reviews retain their separate verified-snapshot
-adapter; they do not treat remote repository instruction files as trusted worker instructions.
+Executable manifests also declare `runtimeInterfaces` and `requiredInterfaces`. Admission checks exact
+interface versions under the dependency read claims, before agents or test commands launch; equal
+package versions or `ownershipProtocol: 1` alone do not satisfy them. Missing or incompatible
+same-scope dependencies report the required companion updates, and old helper entrypoints without
+compatibility support block execution while read-only status stays available. There is no implicit
+update, source-checkout fallback for installed dependencies, or relaxed ownership, and unrelated
+skills need not share a package version. PR reviews keep their separate verified-snapshot adapter and
+never treat remote repository instruction files as trusted worker instructions.
 
 ## Commands
 
@@ -361,26 +315,19 @@ harness skills locate this same dependency instead of duplicating storage and ex
 | `Cycle` | Run the next eligible task and bounded pending human/resume work |
 | `Recover` | Requires `-ConfirmStopped` after reviewing interrupted work and stopping prior workers |
 
-Task intake never starts execution. Missing description/scope/acceptance yields `NeedsEvidence`.
-Priority 1 is highest; risk and priority are separate. Timer pickup requires explicit
-`-AutoEligible`, Low risk, and Queued status. Human queues remain ordered and do not bypass
-readiness. Unknown/high-risk work needs a reviewed narrower scope, not an automatic risk downgrade.
+Task intake never starts execution; missing description, scope, or acceptance yields `NeedsEvidence`.
+Priority 1 is highest and separate from risk. Timer pickup requires explicit `-AutoEligible`, Low risk,
+and Queued status; human queues keep their order without bypassing readiness, and unknown or high-risk
+work needs a reviewed narrower scope, not an automatic downgrade. Explicitly revised completed
+requirements create a linked `followUpOf` task as defined by `harness-task`, visible in task state and
+the current-work CSV; the original completion, snapshot, and report stay unchanged.
 
-Explicitly revised completed requirements create a new task linked through `followUpOf`, visible
-in task state and the configured current-work CSV. `UpdateTask -Id` and `Dev -Id` with changed requirement fields
-reuse the same intake; `Task`/`Dev -FollowUpOf` can link a new request explicitly. Omitted requirement
-fields inherit from the parent. An identical repeat reuses its task; a source revision alone does
-not create work. Keep the original completion, snapshot, and report unchanged. The new task starts
-at Develop with no inherited verdict, risk classification, or automatic eligibility. For the same
-repository it retains the saved workspace/base, including unmerged work; another explicit repository
-gets a separate allocation. No task-scoped reference is transferred to a different owner.
-
-An ad-hoc `Dev` request is registered before execution. Without a mode, it starts when idle or
-queues as `next` when busy. Explicit `next` only queues. `now` requests a checkpoint at the end of
-the current agent or validation phase; it never kills that phase. Worktree mode can then pause
-and switch. Current-checkout mode defers switching until the task finishes to avoid mixing edits.
-Selection order is human now, interrupted work, human next, then eligible automatic work.
-When a cycle budget is exhausted, remaining work stays queued for another explicit or scheduled run.
+An ad-hoc `Dev` request is registered before execution. Without a mode it starts when idle or queues
+as `next` when busy; explicit `next` only queues. `now` requests a checkpoint at the end of the current
+agent or validation phase and never kills it; worktree mode can then pause and switch, while
+current-checkout mode waits for the task to finish so edits do not mix. Selection order is human now,
+interrupted work, human next, then eligible automatic work. When a cycle budget runs out, remaining
+work stays queued for another explicit or scheduled run.
 
 ## History Cleanup
 
@@ -391,19 +338,16 @@ When a cycle budget is exhausted, remaining work stays queued for another explic
 & <harness-folder>/scripts/harness.ps1 -ProjectPath <selected-root> -Action Clean -Apply
 ```
 
-Use `/harness clean --policy <file>` to preview a retention declaration; add `--apply` only for
-the approved settings. Map the file to `-DefinitionPath`; relative paths resolve against Root.
-Declaring policy does not run cleanup or enable maintenance. History cleanup selects one
-controller, not every project in the scheduler's registry.
+`/harness clean --policy <file>` previews a retention declaration (mapped to `-DefinitionPath`; relative
+paths resolve against Root); add `--apply` only for approved settings. Declaring policy runs no
+cleanup and enables no maintenance, and cleanup selects one controller, not every registered project.
+Weekly maintenance calls the same `harness-maintenance.ps1` implementation; the timer chooses only
+when. `/harness-timer clean` handles stale schedules only.
 
-The shared `harness-maintenance.ps1` implementation is also used by weekly maintenance. The timer
-selects when to invoke it, not a different deletion algorithm. `/harness-timer clean` handles
-stale schedules only. Historical skill/source-folder cleanup is never a retention target.
-
-Default limits are **90d and 5,000 completed entries per harness**, across topics. Completion time
-determines age, not file mtime. Prune oldest eligible entries beyond either bound. For count-only
-set `maxAge` to null; for age-only set both count fields to null. Optional per-topic mode uses
-1,000 per topic, for example:
+Defaults are **90d and 5,000 completed entries per harness**, across topics. Completion time, not file
+mtime, determines age, and the oldest eligible entries beyond either bound are pruned. For count-only,
+set `maxAge` to null; for age-only, set both count fields to null. Optional per-topic mode uses 1,000
+per topic:
 
 ```json
 {
@@ -414,462 +358,247 @@ set `maxAge` to null; for age-only set both count fields to null. Optional per-t
 }
 ```
 
-Topics group development with its validation/review phases, standalone review, tests, monitors,
-and PR review; each named flow does not gain another allowance. Preserve active/incomplete runs,
-open-task evidence including completed ancestors of open follow-ups, pinned or linked reports,
-current monitor readings, unresolved incidents,
-policy/recovery evidence, and the latest comparable review. Report protected overages rather
-than deleting required context to meet a count. Project `maintenance.enabled: false` opts out
-of automatic history cleanup; explicit attended Clean remains separately available.
+Topics group development with its validation and review phases, standalone review, tests, monitors,
+and PR review; named flows get no extra allowance. Preserve active or incomplete runs, open-task
+evidence including completed ancestors of open follow-ups, pinned or linked reports, current monitor
+readings, unresolved incidents, policy and recovery evidence, and the latest comparable review. Report
+protected overages instead of deleting required context. Project `maintenance.enabled: false` opts out
+of automatic cleanup; attended Clean stays available.
 
-Clean authoritative run/PR state and corresponding owned report files as one logical operation,
-then regenerate CSV views. Runtime locks and path checks protect active work and outside files.
-Pending file removals survive interruption and are rechecked before retry; report `Partial`
-until they finish. Clear expired pointers rather than leaving broken live references. Authored
-plans, ADRs, decisions, evaluations, declarations, application code, linked sources, skill bundles,
-and worktrees are excluded. A preview or policy declaration never deletes history.
-
-Installation updates keep only the current copy after success. Their temporary originals protect
-an in-progress transaction and are removed after success or verified rollback; unresolved failed
-restoration must be reported, not discarded. There is no installation-archive retention policy or
-weekly backup cleanup. This does not change harness run-history retention or interrupted-worker
-recovery; `harness clean` continues to own only its recorded history and reports.
+Clean run/PR state and its owned report files as one operation, then regenerate CSV views. Locks and
+path checks protect active work and outside files. Pending removals survive interruption, are rechecked
+before retry, and report `Partial` until done; expired pointers are cleared, not left broken. Authored
+plans, ADRs, decisions, evaluations, declarations, application code, linked sources, skill bundles, and
+worktrees are never cleaned, and a preview or policy declaration never deletes history. Installation
+backups are not history: installers keep temporary originals only until success or verified rollback,
+and there is no backup retention policy or weekly backup cleanup.
 
 ## Restrictions and Fallback
 
-The `harness-policy` and `harness-policy` SKILL.md files own the field schemas, situation/response
-tables, and usage examples. Policy changes preview unless given `-Apply`, a human `-Actor`, and
-`-Reason`. They replace only the selected policy object, not runner/test configuration. Changes
-require an idle runner and no unresolved active marker. They never clear an existing pause.
-
-Restrictions validate the selected model, exact tool approvals/availability, development workspace
-mode including saved workspaces, normalized working roots, test environments, and direct launchers.
-Explicit CLI deny patterns are appended without removing review denials. Numeric caps take the
-stricter limit for processes/shared flow budgets, per-agent CLI credits, and tasks per invocation.
-Working roots and launcher allowlists are not filesystem, network, or subcommand sandboxes.
-The CLI credit limit remains per session, not aggregate task spend or reliable billing accounting.
-
-Fallback defaults to one additional attempt after five seconds for explicitly repeatable named test
-steps with approved transient exit codes. There are no default transient codes and no numeric failure
-threshold, so unclassified failures do not retry. A retry declaration may supply just `exitCodes`;
-omitted count/delay use these defaults. Explicit values, including `maxRetries: 0`, are preserved.
-Defaults resolve in memory without changing saved declarations. An optional declared
-threshold counts consecutive failed attempts per `development`, `review`, `monitor:<name>`, or `test:<flow>:<environment>`
-target, never log lines. Named flows share their target count across manual, scheduled, and post-dev
-execution. Eligible retries use the existing step loop without repeated confirmation; attempts and
-delays consume the original flow/validation budget. Earlier successful steps are not rerun. Agents
-and legacy commands do not retry, and failed development tasks are not automatically requeued.
-
-Actual timeouts pause the affected target. Detected restriction mismatches persist a project
-stop/pause. An interrupted run requires reconciliation and recovery, with a durable pause on its
-known target or the project when it cannot be identified. These are execution responses, not side
-effects of installing or displaying a policy. The text adapter cannot reliably distinguish CLI
-credit exhaustion from other CLI failures or detect every individual denied-tool event.
-
-`Fallback -PolicyAction Pause -Target <target>` blocks subsequent execution boundaries while the
-current process finishes. `Stop` also requests termination of the current runner's owned process
-tree; it does not discover escaped/orphaned workers or roll back writes. `Resume` requires
-`-ConfirmStopped` plus owner/reason/approval and clears only the selected pause. It starts no work,
-enables no timer, and does not requeue failed tasks; already queued work may run on a later timer tick.
-Project pauses cover every target, and clearing one does not clear narrower pauses. Safety pauses
-are distinct from cooperative task checkpoints. Read-only context/status/decision views stay available.
+`harness-policy` owns the limits and fallback schemas, defaults, situation/response tables, and
+examples. Policy changes preview until `-Apply` with a human `-Actor` and `-Reason`, replace only the
+selected policy object, require an idle runner with no unresolved active marker, and never clear an
+existing pause. During execution, actual timeouts pause the affected target, restriction mismatches
+persist a project stop/pause, and an interrupted run needs reconciliation and recovery with a durable
+pause on its known target, or on the project when the target cannot be identified. These responses
+come from execution, not from installing or displaying a policy. Safety pauses are distinct from
+cooperative task checkpoints, and read-only context, status, and decision views stay available.
 
 ## Reuse or New
 
-One logical development/review task may involve multiple agents or schedules. Before launching
-an additional instance or updating a matching one, inspect existing instances for the same
-controller, task, repository/workspace, role, and purpose. Show their identity and status, then
-ask **Reuse (singleton) or New?** unless the user already selected that choice for this request.
-Recommend reuse for the same purpose; do not silently create duplicates or merge distinct roles.
-If the choice is unanswered, leave existing instances unchanged and create no additional one.
-This instance choice is separate from allowance inheritance and is not another permission prompt.
+One logical development/review task may involve several agents or schedules. Before launching an
+additional instance or updating a matching one, inspect existing instances for the same controller,
+task, repository/workspace, role, and purpose. Show their identity and status, then ask
+**Reuse (singleton) or New?** unless the user already chose for this request. Recommend reuse for the
+same purpose; never silently duplicate or merge distinct roles. If the choice is unanswered, leave
+existing instances unchanged and create no additional one. This instance choice is separate from
+allowance inheritance and is not another permission prompt.
 
-- **Reuse (singleton):** select the exact compatible owned instance. An active development task
-	remains `AlreadyRunning`; do not launch a second writer or attach to an unknown process. Reuse
-	an agent definition/profile where supported, not its old conclusions. Required independent
-	Review/Critical/Fresh passes still use fresh reviewer context. A reused schedule keeps its
-	stable identity; changing cadence or context is an update to that selected schedule.
-- **New:** confirm its role, target/workspace, and distinct identity. Keep the same logical task
-	association and separate agent/run/report identifiers rather than duplicating requirements.
-	Use the selected host's supported agent-instance mechanism. Multiple read-only reviewers can
-	share a fixed snapshot; simultaneous development writers require separate workspaces and an
-	explicit integration plan. Preserve inherited limits, pauses, ownership, and required validation.
+- **Reuse (singleton):** select the exact compatible owned instance. An active development task stays
+  `AlreadyRunning`; never launch a second writer or attach to an unknown process. Reuse an agent
+  definition or profile where supported, not its old conclusions: required Review, Critical, and
+  Fresh passes still use a fresh reviewer context. A reused schedule keeps its identity; changing
+  cadence or context updates that schedule.
+- **New:** confirm its role, target/workspace, and distinct identity through the host's supported
+  agent-instance mechanism. Keep the same logical task with separate agent, run, and report
+  identifiers. Several read-only reviewers can share a fixed snapshot; simultaneous development
+  writers need separate workspaces and an explicit integration plan. Keep inherited limits, pauses,
+  ownership, and required validation.
 
-The choice does not remove the shared runtime's project run lock or singleton active-task record.
-That script remains serialized; New does not make a second direct invocation concurrent. Use an
-approved capable agent host for additional instances, or report the unsupported instance action
-instead of bypassing the lock. Required pipeline review passes do not need this question again;
-they are already part of the requested workflow, not accidental duplicate workers.
+The choice does not remove the project run lock or the singleton active-task record: the shared
+script remains serialized, so New never makes a second direct invocation concurrent. Use an approved
+agent host for additional instances, or report the unsupported action instead of bypassing the lock.
+Required pipeline review passes are part of the requested workflow and need no instance prompt.
 
-For schedules, compare purpose as well as identity and confirm reuse versus a distinct instance
-before registration. Repeated ticks use their saved choice without prompting or creating another
-timer. The dedicated user-wide PR-review timer remains a singleton for its entire watchlist;
-this project-harness choice does not authorize duplicating that separate controller's timer.
-
-The project timer helper implements `-InstanceMode Reuse` for the selected singleton or named
-schedule, and `-InstanceMode New -InstanceName <name>` for create-only named schedules. The
-unnamed singleton keeps its existing task identity; named copies append ` Instance <name>`.
-Matching Set requests without a mode return `NeedsInstanceChoice` in preview and reject Apply.
-Status lists matching instances and ownership. Select `-InstanceName` for named status/disable/
-resume; cadence and context reuse come only from that exact instance. The initial unnamed
-singleton can still be created when none exists. No schedule is created by editing these skills.
+Schedules compare purpose as well as identity before registration, and repeated ticks reuse the saved
+choice without prompting or creating another timer. The user-wide PR-review timer remains a singleton
+for its whole watchlist, and this choice never duplicates it. The project timer implements the choice
+through `-InstanceMode`, as described in `harness-timer`; editing these skills creates no schedule.
 
 ## Script Permissions and Agent Fallback
 
 Before running scripts, the session/coordinator checks the exact executable, arguments, target
 directory, side effects, applicable policy, and required tool approvals. Reuse existing approvals
 without asking again. If a necessary approval is missing, use the host's supported permission
-request before execution and limit it to that command and scope. A task request is not permission
-to grant administrator access, change execution policy, clear a safety pause, or enable all tools.
+request before execution, limited to that command and scope. A task request is not permission to
+grant administrator access, change execution policy, clear a safety pause, or enable all tools.
 Do not run a command known to need approval merely to rediscover the denial.
 
 Separate missing authentication from denied tool/path access and incompatible launch settings.
-Inspect available non-secret status and supported credential lookup, and correct invocation
-mistakes within existing approvals. Do not copy tokens from editor storage or request secrets in
-chat. Initiate a supported login flow when needed for the authorized task; ask the user only for
-required browser sign-in, MFA, consent, or secret entry directly in the terminal. Do not silently
-persist new permissions, budgets, models, or credentials. Actual worker execution, not Idle or a
-successful login command alone, is needed to verify the worker path.
+Inspect non-secret status and supported credential lookup, and fix invocation mistakes within
+existing approvals. Never copy tokens from editor storage or request secrets in chat. Start a
+supported login flow when the authorized task needs it, asking the user only for browser sign-in,
+MFA, consent, or secret entry directly in the terminal. Never silently persist new permissions,
+budgets, models, or credentials. Only actual worker execution, not Idle or a successful login alone,
+verifies the worker path.
 
-If scripts are unavailable or unsuitable, an attended session may use an agent fallback with
-already authorized editor/agent tools for the same requested work. The current session may do
-the work directly; delegate only when delegation is authorized. This is an alternative execution
-method, not permission to repeat an explicit denial through another tool or agent. Preserve the
-selected repository/workspace, task readiness and risk, model/effort and budget limits, read-only
-review boundaries, validation requirements, and applicable restrictions and safety pauses.
+If scripts are unavailable or unsuitable, an attended session may use an agent fallback with already
+authorized editor/agent tools for the same work, doing it directly or delegating only when delegation
+is authorized. This is an alternative execution method, not permission to repeat an explicit denial
+through another tool or agent. Preserve the selected repository/workspace, task readiness and risk,
+model/effort and budget limits, read-only review boundaries, validation, restrictions, and safety
+pauses.
 
 Before fallback writes, confirm exclusive workspace ownership and that no active, scheduled, or
-uncertain worker can compete. Preserve runtime lock/recovery rules; if ownership or a required
-execution boundary cannot be established, limit fallback to permitted read-only investigation.
-Do not restart a failed or timed-out worker through this route, reset its budget, or silently
-retarget its task. Reconcile partial effects before any separately authorized continuation.
+uncertain worker can compete. Preserve runtime lock and recovery rules; if ownership or a required
+execution boundary cannot be established, limit fallback to permitted read-only investigation. Never
+restart a failed or timed-out worker this way, reset its budget, or silently retarget its task;
+reconcile partial effects before any separately authorized continuation.
 
-Report the agent fallback explicitly, what it changed, actual checks, and remaining blockers.
-Run required checks through another approved test tool when available; code inspection is not
-a substitute for execution. If validation or independent review cannot run, leave them unverified
-and do not mark the task Completed. Use existing state/report helpers when available; otherwise
-leave runtime state and generated CSV views unchanged and report that recording is pending.
-Never invent a successful run, approval status, or report to make the fallback look script-run.
+Report the fallback explicitly: what it changed, actual checks, and remaining blockers. Run required
+checks through another approved test tool when available; code inspection is not execution. If
+validation or independent review cannot run, leave them unverified and do not mark the task Completed.
+Use existing state/report helpers when available; otherwise leave runtime state and CSV views
+unchanged and report recording as pending. Never invent a run, approval, or report to make fallback
+look script-run.
 
-This recovery procedure is session-level guidance, not a new runtime action. Unattended timer
-ticks never request interactive permissions/login, relax restrictions, or launch an unconfigured
-fallback agent. They retain the existing failure/pause behavior until attended setup resolves
-the prerequisite. This workflow does not itself implement automatic CLI authentication recovery.
+This is session-level guidance, not a runtime action or automatic CLI authentication recovery.
+Unattended timer ticks never request interactive permissions or login, relax restrictions, or launch
+an unconfigured fallback agent; they keep the existing failure/pause behavior until attended setup
+resolves the prerequisite.
 
 ## Worker Output
 
-CLI transport and the agent's final result are separate contracts. The runner launches the CLI
-with `--silent --output-format text --stream off`: response-only text with streaming disabled.
-The prompt requires that final response to contain exactly one JSON object, with no prose or
-Markdown fences. Text transport does not forbid JSON content or guarantee the model follows it.
-The CLI's help defines `--output-format json` as JSONL, one JSON object per line; it is not an
-instruction to produce the harness schema. Supporting that mode would require a separate,
-tested transport/event parser rather than passing its stdout directly to the envelope parser.
+CLI transport and the agent's final result are separate contracts. The runner launches the CLI with
+`--silent --output-format text --stream off` (response-only text, no streaming), and the prompt
+requires exactly one JSON object with no prose or Markdown fences. Text transport neither forbids JSON
+nor guarantees the model complies. The CLI's `--output-format json` means JSONL events, one object per
+line, not the harness schema; supporting it would need a separate tested event parser.
 
-Development returns an `outcome` (`ready`, `unsupported`, `already-fixed`, `stale`,
-`needs-decision`, or `blocked`) and a non-empty string `summary`. Review, Critical, and Fresh
-return a `verdict` (`clean`, `findings`, or `blocked`), a non-empty string `summary`, and a
-`findings` array. A clean verdict requires an empty array; a findings verdict requires supported
-findings with file, positive line number, and message. `ready` permits validation, not completion.
+Development returns `outcome` (`ready`, `unsupported`, `already-fixed`, `stale`, `needs-decision`, or
+`blocked`) and a non-empty string `summary`. Review, Critical, and Fresh return `verdict` (`clean`,
+`findings`, or `blocked`), a non-empty string `summary`, and a `findings` array: empty for clean, and
+supported findings with file, positive line number, and message for findings. `ready` permits
+validation, not completion.
 
-Nonzero exits are checked before parsing. Zero exit alone is insufficient: empty output,
-arrays/scalars/null, malformed JSON, wrapped transport events, and invalid phase envelopes fail.
-Preserve the outer JSON shape instead of unwrapping a single-item array. Do not extract apparent
-JSON from arbitrary prose or treat CLI statistics as the worker result. Investigate missing
-stdout together with launcher exit propagation and stderr, not by changing output format alone.
+Check nonzero exits before parsing; exit zero alone is not success. Empty output, arrays, scalars,
+null, malformed JSON, wrapped transport events, and invalid envelopes fail. Keep the outer JSON shape
+instead of unwrapping a one-item array, never extract apparent JSON from prose, and never treat CLI
+statistics as the result. Investigate missing stdout with launcher exit propagation and stderr, not by
+changing the output format alone.
 
-`Idle` returns before workspace selection and agent invocation because no eligible task was
-selected. It is not evidence of successful CLI startup, authentication, model access, output
-parsing, code validation, or review. A transport/parser fix needs a direct process/parser fixture
-or an explicitly approved worker run that reaches that path. Report mocked versus live evidence,
-actual exits, and parsed results separately. Never launch work or weaken readiness to replace an
-Idle result with a success claim.
+`Idle` returns before workspace selection and agent invocation because no eligible task was selected;
+it proves nothing about CLI startup, authentication, model access, parsing, validation, or review. A
+transport or parser fix needs a direct fixture or an explicitly approved worker run that reaches that
+path. Report mocked and live evidence, actual exits, and parsed results separately, and never launch
+work or weaken readiness to turn Idle into a success claim.
 
 ## Evidence and Recovery
 
-Each task has development, validation, independent review, and optionally one critical-review
-phase. The agent cannot mark the task Completed directly. Validation executes the configured
-commands plus declared `testing.afterDev` flows, checking their real exit codes. Reviews are fresh
-read-only sessions with writing, shell execution, and URL access denied and only `view`, `glob`,
-and `grep` exposed. They return
-structured findings bound to the captured code snapshot. Source changes invalidate clean verdicts.
+Each task has development, validation, independent review, and optionally one critical-review phase;
+the agent cannot mark it Completed directly. Validation runs the configured commands and declared
+`testing.afterDev` flows and checks their real exit codes. Reviews are fresh read-only sessions:
+writing, shell execution, and URL access are denied, and only `view`, `glob`, and `grep` are exposed.
+Their structured findings are bound to the captured code snapshot, so source changes invalidate a
+clean verdict.
 
-The Git snapshot includes base/head, tracked diff, and Git blob identities for untracked inputs.
-Harness-owned state/views are excluded. Each phase writes a local Markdown report. Worker result
-JSON must match its contract; malformed output, missing evidence, CLI errors, or timeouts do not
-count as success. Findings become `NeedsDecision`, not an unlimited automatic repair loop.
+The Git snapshot holds base/head, the tracked diff, and blob identities for untracked inputs, and
+excludes harness-owned state and views. Each phase writes a local Markdown report. Malformed worker
+JSON, missing evidence, CLI errors, and timeouts never count as success, and findings become
+`NeedsDecision`, not an unlimited automatic repair loop.
 
-Completed means validation and required independent reviews passed in the assigned workspace,
-with a report. It does not mean committed, integrated, merged, pushed, deployed, or operationally
-verified. Linked follow-up development receives the parent's last report as evidence, never a
-reusable clean verdict; the new task must complete its own validation and required reviews.
+Completed means validation and required independent reviews passed in the assigned workspace, with a
+report; it does not mean committed, integrated, merged, pushed, deployed, or operationally verified.
+A linked follow-up receives the parent's last report as evidence, never a reusable clean verdict, and
+must pass its own validation and required reviews.
 
-Standalone Review defaults to current ahead commits plus working changes. An explicit BaseRef
-wins; otherwise use the merge-base with local `origin/develop` or the configured upstream.
-Without either ref, the reported WorkingChangesOnly fallback uses HEAD; it does not claim ahead
-coverage. No refs are fetched implicitly. Pin the resolved commit for the entire run and keep
-PR reviews tied to verified PR base/head and explicitly scoped working changes.
+`harness-review` owns the standalone review contract: baseline selection (explicit BaseRef, then the
+merge-base with local `origin/develop` or the configured upstream, otherwise a reported
+WorkingChangesOnly fallback, never an implicit fetch), the whole-repository Fresh pass when no new
+findings appear, the attended Changes -> Full continuation after fixes, bounded snapshot restarts,
+result fields, and optional `-SecurityReview` guidance from the installed `differential-review` skill.
+The runtime pins the resolved commit for the run, never extends outer budgets or retries failed
+workers, and leaves development's separate `runner.criticalReview` gate unchanged.
 
-The separate `pr-review` workflow owns remote PR selection and one user-wide watchlist/timer.
-`/harness-review <PR-URL>` delegates there; its dispatcher calls `Invoke-HarnessReview` with an explicit
-workspace, comparison commit, expected head, collected evidence, and approved runner profile.
-Local defaults are unchanged. The dedicated user-wide controller owns state and safety gates;
-target repositories are not initialized. Untrusted PR workers launch from that controller with
-custom instructions disabled, stream their task/evidence through stdin, and read only the
-isolated PR checkout. Complete PR snapshots do not exclude source paths named like harness
-records. No source scripts, hooks, builds, tests, or remote publication are authorized.
+`pr-review` owns remote PR selection and its one user-wide watchlist and timer, and
+`/harness-review <PR-URL>` delegates there. Its dispatcher calls `Invoke-HarnessReview` from its own
+controller with an explicit workspace, comparison commit, expected head, collected evidence, and
+approved runner profile; target repositories are not initialized. Isolated PR reviews stay pinned and
+fail on snapshot changes, and complete PR snapshots do not exclude source paths named like harness
+records. No PR scripts, hooks, builds, tests, or remote publication are authorized.
 
-A completed standalone pass with no new findings triggers one fresh independent whole-repository
-pass, even when earlier findings are repeated. Newness compares exact file/line/message keys with
-the last completed review of the same repository reference/root, scope, baseline, and security mode. Wording/line changes
-count as new. Prior reports are comparison evidence, not accepted current findings or an issue
-resolution register. Keep the union of findings from both passes on the same stable snapshot;
-never erase them merely because the second pass is clean. Fresh covers the whole selected
-repository, including unchanged source, configuration, and tests. Ordinary Review and development
-Critical remain change-scoped. Preserve explicit restrictions and existing budgets; insufficient
-repository coverage is blocked, not clean. No other repository or implicit fetch is authorized.
-Pass outputs identify each requested scope without claiming unperformed coverage.
+Worktree mode uses a detached workspace at `<controller>/.harness_sv/worktrees/<task-id>` and leaves
+changes there for review and handoff; it never commits, merges, or deletes the workspace. New worktrees
+use committed input, while same-repository linked follow-ups reuse the saved workspace. Current mode
+includes unrelated uncommitted input only with explicit `-UseWorkingChanges`. Preserve user edits and
+report the resulting workspace and evidence.
 
-The attended coordinator repeats Changes -> Full around the existing dev/proposal workflow.
-Findings from either pass are published as a checkpoint; the script returns and releases its run
-lock so dev can fix and validate. Resume the same review request from Changes after fixes, without
-requiring another user invocation or introducing a second fixer, notifier, or scheduler. Recheck
-earlier unresolved findings against current code, including those outside the diff. A clean Full
-pass cannot erase a supported issue from Changes. No new findings triggers Full, not completion.
-The result and run's review metadata set `complete` only for a stable clean two-pass round with
-zero supported findings; unresolved findings return `complete: false` and `nextPhase: Review`.
-Do not spin reviewers on unchanged code while waiting. Missing fixes or validation remain pending;
-unavailable coverage, failures, explicit budgets, and stop/pause requests still block continuation.
+Exclusive process locks serialize state updates and all development, review, test, and monitor runs.
+A process exit without a recorded phase outcome blocks execution until explicit recovery; never assume
+its child worker stopped. Inspect the report and workspace and confirm prior processes stopped before
+`Recover -ConfirmStopped`, then explicitly resume the safety pause and separately requeue a failed task
+when appropriate. Recovery preserves pauses and reports, and no hidden retry erases failure history.
 
-Local snapshot changes during Review or Fresh automatically restart at Review with the updated
-snapshot and a new context, retaining the original pinned base, repository, scope, and restrictions.
-Superseded attempts are archived in the same report and excluded from current findings. Allow two
-restarts within a script round, at most six attempted sessions; further changes return `Partial` with no current verdict,
-not a failure-counter increment or automatic safety pause. Actual worker errors, timeouts, stable
-blocked results, and pauses do not restart. Isolated PR/ExpectedHead reviews remain pinned and fail
-on snapshot changes. The `passes` and `restarts` result fields report attempted sessions and actual
-restarts. Each session retains its configured limits; outer budgets are not extended. Development's
-separate `runner.criticalReview` gate is unchanged.
-These per-round churn limits do not cap rounds resumed after completed fixes. A scheduled or
-one-shot script returns a checkpoint to its existing coordinator; it does not start a waiting daemon.
+After blocked development, review, testing, or monitoring, the session may offer `/handoff` to record
+the outcome, evidence, blocker, observed process and pause state, and first next action. Only an
+explicit request authorizes writing the note; required safety actions come first, and the note clears
+no markers or pauses and starts no worker. This is optional session guidance, not a runtime action,
+worker-context injection, or timer behavior.
 
-Optional `Review -SecurityReview` loads project/global installed `differential-review` guidance
-and explicitly supplies it to both reviewers without copying it into the harness bundle. Missing
-requested guidance blocks; installation is separate. The specialized guide adds security reasoning,
-not tools, scanner integration, remote access, or a third worker. Reports identify the guidance
-source and include findings, baseline, pass outputs, and comparison details. Compact comparison
-data stays in existing run rows; reports and earlier findings are not overwritten.
-
-Worktree mode uses a detached workspace at `<controller>/.harness_sv/worktrees/<task-id>` and leaves changes there
-for review and handoff; it does not commit, merge, or delete the workspace. Fresh worktree allocations
-use committed input; same-repository linked follow-ups reuse the saved workspace instead. Current
-mode can include unrelated uncommitted input only through explicit
-`-UseWorkingChanges`. Preserve user edits and report the resulting workspace and evidence.
-
-Exclusive process locks serialize state updates and all development, independent review, test, and monitor runs. A process exit without a
-recorded phase outcome blocks further execution until explicit recovery; do not assume its child
-worker stopped. Inspect the report/workspace and confirm prior processes have stopped before
-`Recover -ConfirmStopped`, then explicitly resume the safety pause and separately requeue a failed
-task when appropriate. Recovery preserves pauses and reports. No hidden retry erases failure history.
-
-For a session transfer after blocked development, review, testing, or monitoring, the session agent
-may offer `/handoff` to preserve the existing outcome, evidence, blocker, observed process/pause
-state, and first next action. Only an explicit request authorizes writing the note. Required safety
-actions come first; the note does not clear markers/pauses or start another worker. This is optional
-session guidance, not a runtime action, worker-context injection, or new behavior on timer ticks.
-
-These are coordination controls, not a security sandbox. Workers and validation commands run as
-the configured OS user. A Git worktree is not process or credential isolation. Use an appropriately
-restricted account/environment for unattended work, review tool permissions, and do not place
-production credentials in the worker environment. Shell permissions must be scoped deliberately.
+These are coordination controls, not a security sandbox. Workers and validation commands run as the
+configured OS user, and a Git worktree is not process or credential isolation. Use a restricted account
+and environment for unattended work, scope tool and shell permissions deliberately, and keep production
+credentials out of the worker environment.
 
 ## Timers
 
-The `harness-timer` bundle calls the shared runner. Keep it alongside `harness` in the same install
-scope. Bare `/harness-timer` uses read-only `list`. Its Set/Disable/Resume/Clean/Migrate operations
-preview unless given `-Apply` for the approved selection/policy. One current-user heartbeat owns OS
-timer changes. Layout-2 project declarations live in `config/schedules.json`; progress and active
-claims live in `runtime/schedules.json`, protected by `runtime/locks/schedules.lock`. Legacy flat
-files stay in place until migration. The central registry and latest job receipts use `~/.copilot/skillvault/scheduler`.
-Allowance inheritance and all worker gates remain unchanged. Installation/editing creates no live timer.
+`harness-timer` owns schedule commands, cadence, instances, maintenance, and schedule migration; keep
+it beside `harness` in the same install scope. Bare `/harness-timer` lists only, and changes preview
+until `-Apply`. One current-user heartbeat owns OS timer changes. Layout-2 project declarations live in
+`config/schedules.json`; progress and active claims live in `runtime/schedules.json` under
+`runtime/locks/schedules.lock`; the central registry and latest job receipts live in
+`~/.copilot/skillvault/scheduler`. Legacy flat files stay in place until migration, and installing or
+editing skills creates no live timer.
 
-Timer setup accepts `-RunnerContextPath`, records the absolute non-secret path in its scheduled
-command, and reuses it on later Set/Resume when omitted. Use Set to change the path. Each tick
-loads that context; it does not assume an editor session exists. With no context file, use project
-values and native CLI settings. Keep the file available and update verified capabilities through
-the owning session, never through task text. Setup/resume still honor explicit policy and pauses.
-Known inherited/native worker caps still apply. The heartbeat only dispatches and returns; its
-short OS execution limit does not cut off a separately running approved worker. The user must be
-signed in; no elevation, saved password, or machine wake is enabled.
-
-`e2e` and `dev` select `Cycle` and share the original development task identity. This composes rules,
-context/policy checks, eligible task selection, development/fix/verification, declared validation
-and tests, independent review, and report/board updates. It does not invoke every slash command
-on each tick: setup, task intake, policy changes, Graphify installation, interviews, and human
-decisions remain attended/explicit workflows. No eligible task means Idle, not invented work.
-
-`-Topic review` creates an independent review timer for ahead commits and working changes using
-the default comparison selection and one fresh pass when nothing new is found. Local snapshot
-restarts follow the bounded rule above, independently of the development critical-review setting.
-Existing legacy OS time limits are retained and can bound restart time; they are not increased implicitly.
-`-MonitorName <name>` selects a declared monitor with its own scheduled approval, budget, pause
-target, and `Monitor -Scheduled` action. It is separate from legacy monitor command-flow schedules,
-which are not migrated or replaced automatically. Discovery verification uses model auto; health
-checks need no AI. Neither mode permits automatic task intake.
-`-Topic test`, legacy `monitor` flow mode, or another safe topic name uses `-TestFlow` and optional
-`-TestEnvironment` (aliases `-Flow`/`-Environment`).
-These use the existing declared Test executor, scheduled-environment approval, evidence, and
-flow/environment safety target; a topic label does not install a monitoring service or grant
-access. Topic timers have distinct names. Legacy `-TestFlow` without a topic still means `test`.
-
-New durations require `m/h/d/n/y`: decimal fixed units or whole calendar units, anchored start-to-start.
-Legacy IntervalDay still means fixed days. An explicit interval wins; otherwise Set reuses the exact
-saved cadence. Missing cadence requires a user choice. First execution is one interval later;
-migration preserves the old next run. Missed ticks coalesce and same/conflicting workspace jobs do
-not overlap. Disable stops future ticks, not workers; resume retains cadence and required recovery.
-Only owned selected jobs and approved legacy definitions are managed; unrelated tasks are unchanged.
-Status includes any safety pause. Set/resume preflight rejects a paused target; externally enabling
-a Windows task does not clear the runtime pause, and subsequent ticks still skip execution.
-
-Maintenance is opt-in and runs once during Saturday 08:30-09:00 in its saved local timezone.
-It checks stale schedules and delegates history work to [History Cleanup](#history-cleanup),
-honoring each project's automatic-cleanup opt-out and active-work locks. Routine cleanup is
-scripted; wake and AI are conditionally permitted for concrete needs, without activating either
-by permission alone. No remote scan or catch-up occurs outside the window. The installed
-harness-timer scheduler guide owns cadence, duration, and schedule-migration details.
+Each tick reuses the saved `-RunnerContextPath`, or project and native settings when there is none,
+never an assumed editor session; update verified capabilities through the owning session, never
+through task text. Allowance inheritance, worker gates, and known caps still apply. The heartbeat only
+dispatches and returns; signed-in execution uses no elevation, saved password, or machine wake. `e2e`
+and `dev` select `Cycle` with the original development task identity. Setup, intake, policy changes,
+and human decisions stay attended, and no eligible task means Idle. Review, named-monitor, and
+test-flow timers are separate targets, and legacy `-TestFlow` without a topic still means `test`.
+Status shows any safety pause; set and resume reject a paused target, and enabling the Windows task
+externally never clears it. Opt-in maintenance runs in the Saturday 08:30-09:00 window and delegates
+history work to [History Cleanup](#history-cleanup).
 
 ## Test Flows
 
-`harness-test` owns user guidance for `testing.environments`, `testing.flows`, and `testing.afterDev`.
-The shared `harness-tests.ps1` implementation stays in this bundle so standalone tests, timers,
-and post-development validation use the same executor. Existing config without `testing` keeps
-working with legacy validation commands; initialization starts with empty test definitions.
-
-Declarations upsert environment/flow names and replace `afterDev` only when supplied. No tests
-execute during declaration. Runs preflight directories, required variable names, commands, and
-positive flow budgets. Child-process variables do not mutate the runner's environment. Unrecovered
-failures stop the flow; optional `repeatable: true` permits only the explicitly declared fallback
-retry policy. Unavailable prerequisites are Blocked and paused targets report PolicyPaused. A declared environment is not automatically
-provisioned or a guarantee that a separately running service matches the current source snapshot.
-
-Task-linked tests resolve their repository reference and reuse the saved workspace when present;
-they do not allocate worktrees or complete development. Declarations/reports stay in the controller.
-All post-dev flows must pass before review, for development, fix, and verify tasks. The existing
-validation-phase budget, when supplied or inherited, bounds legacy commands and named flows together. Scheduled development
-passes `-Scheduled` and requires the target environments' explicit `allowScheduled` permission.
-
-A test timer selects `-TestFlow <flow> -TestEnvironment <environment>`. This creates a separate
-project/flow/environment task that calls `Test -Scheduled`, with the flow's own timeout and no AI
-worker. Resume revalidates current configuration; disable can target removed definitions by both
-saved names. Test timers and ad-hoc tests share the development run lock. A busy run is reported,
-not forcibly interrupted or silently queued. Reports and history rows carry flow/environment data;
-no second test-state store or automatic task creation is involved.
+`harness-test` owns `testing.environments`, `testing.flows`, and `testing.afterDev`. The shared
+`harness-tests.ps1` executor stays in this bundle so manual tests, timers, and post-development
+validation behave the same. Configurations without `testing` keep their legacy validation commands,
+and initialization starts with empty test definitions. Declaring runs nothing. Runs preflight
+directories, variable names, commands, and positive budgets, and environment overrides reach only the
+child process. All post-dev flows must pass before review. Test timers run `Test -Scheduled` with no
+AI worker or task creation and share the development run lock, so a busy run is reported, not
+interrupted or silently queued. Task-linked tests reuse the saved workspace, allocate no worktree, and
+never complete development.
 
 ## Monitoring
 
-The `harness-monitor` guide owns declarations and observation format. The shared `harness-monitor.ps1`
-uses `config.monitoring.monitors` for definitions and `state.monitoring` for latest checks and
-incident episodes plus discovery candidates. Older configs without monitoring read as an empty set; no live monitors or
-thresholds are initialized by installation or read-only display. MonitorConfig previews then
-upserts by name on explicit approval. Existing test/runner configuration is unchanged.
+`harness-monitor` owns declarations, observation and discovery contracts, classifications, and
+acceptance rules. The shared `harness-monitor.ps1` and `harness-source-reader.ps1` scripts stay in this
+bundle. Layout-2 definitions live in `config/monitors.json`; latest checks, incident episodes, and
+discovery candidates live in the `monitoring` object of `runtime/state.json`. Configurations without
+monitoring read as an empty set, installation or read-only display creates no monitor or threshold,
+and `MonitorConfig` previews before an approved upsert by name. Collection uses the common run lock,
+restrictions, and pause/stop controls. Health checks read numeric JSON without AI; discovery
+verification uses the read-only model `auto` worker, not development's Max settings.
 
-The health collector reads a local JSON file through a bounded `pwsh` process using the common
-run lock, restrictions, and pause/stop controls. One object supplies resource/environment/metric,
-finite numeric value, explicit-zone timestamps, and the declared window. Compare the metric to
-the explicit breach condition only after checking identity, window duration, data age, and
-previously accepted window order. Structured exports from online queries/dashboard measures need
-separately reviewed producers; health collection does not scrape dashboards or provision credentials.
-
-Discovery declarations use `kind: discovery` and the `monitor-discovery: 5` interface. The bounded
-`harness-source-reader.ps1` supports `folder`, `ado` backlog/saved-query, and `json-feed` sources.
-Other approved readers normalize their evidence through the feed contract. The native ADO reader
-needs an existing Entra bearer token supplied through the declared worker environment, not stored
-in configuration, logs, or arguments. No sign-in, refresh, source writes, or credential provisioning
-is implicit. Folder reads permit ordinary OneDrive placeholders, refuse symbolic links/junctions,
-and enforce working-root restrictions on each read. Topic terms are a literal prefilter, not a
-semantic claim that a source concern remains unfixed. ADO requires a declared service scope, with
-service-specific terms and/or verified area paths. Broad BI labels alone are not a platform boundary.
-After collection, the read-only Verify worker uses AI model `auto`, without forcing development's
-model, Max effort, or intelligence tier. It assesses service relevance, verifies current status,
-and ranks remaining work. MonitorAssess also accepts reviewed revision-bound assessments. Only
-current Relevant, verified-open candidates become proposals; inaccessible or uncertain work stays
-Unverified. Explicit `verification.enabled: false` retains collection/assessment-only behavior.
-An optional `verification.repositoryRef` selects an already registered coding repository; it never
-clones or initializes one. Linked tasks keep their repository and workspace.
-
-Complete, fresh discovery results update `state.monitoring.candidates`, with stable C- IDs and
-source identity/revision and optional source priority. Unknown, Deferred, Blocked, Resolved,
-Superseded, and Missing remain distinct.
-`Monitor -AllMonitors` checks all declarations under one run lock and records complete or Partial
-batch evidence. Named checks stay scoped. The canonical configured current-work CSV contains task rows and
-unaccepted candidate rows, identified by `recordType`, with `sourceType`, source/owner timestamps,
-uncertainty, and `checkStatus`, sorted by priority then stable ID. Candidate visibility creates no
-task or execution approval. ADO hierarchy expansion, explicit Markdown-section granularity, and
-per-source diagnostics make coverage auditable. Generic holds are reassessment backlog; concrete
-dependency blocks remain. The monitor guide owns classifications, project category policy, and
-optional isolated authoritative-branch evidence. Pending rollout/PPE/sign-off prevents completion.
-Durable completion is bound to requirements, task contract, scope/authority and report evidence;
-material changes propose explicit follow-ups instead of reopening completed tasks.
-Adapters also supply an optional `sourceOwner` display name from authoritative assignment or leading
-document Owner metadata. It appears on candidates, tasks, and the current-work CSV, separately from execution
-ownership. Fresh successful collections update or clear that metadata; failed/partial/stale reads
-preserve the last captured evidence without claiming a current live assignment.
-Failed/partial/stale/older results preserve prior candidates; disappearance is not completion.
-Explicit MonitorTask acceptance previews source evidence and reuses normal task/reference intake.
-New tasks remain verify/Unknown/manual-only. Previously Deferred work enters the normal queue at
-its source priority; only a current Blocked source creates a Blocked task. Existing readiness and
-pickup approvals still apply before the development selector handles eligible work by priority.
-Verified already-fixed/stale evidence reconciles local nonterminal task statuses and removes those
-tasks from pending queues. Quoted source lines, current code snapshots, collection revisions, and
-unchanged task contracts are checked before applying. Completion needs implementation plus separate
-test/authority evidence; stale needs explicit authoritative supersession, not age, absence, or source
-Closed alone. Read-only verification does not execute tests or prove deployment. It preserves task
-contracts, auto-eligibility, existing terminal outcomes, and concurrent human edits. Development still
-double-checks with its strongest permitted configuration. External ADO/document writes are separate,
-source-specific approvals and are not implemented by this verifier.
-Required candidate reports survive retention and their owned paths follow controller relocation.
-These policies apply to all approved source adapters. `config.monitoring.correlations` holds explicit
-same-requirement relationships and exact fact authorities, not another task store. Candidate/source
-provenance remains separate; aliases share task intake and a canonical board row. Contradictory
-substantive claims or incompatible repository evidence remain Unverified unless the exact disputed
-fact has a declared authority. Owner/status differences alone do not establish a conflict.
-All-source checks collect first, retain verification read leases/snapshots, then reconcile against
-all available group results. Partial checks expose `verifiedSubset` without claiming complete coverage
-or granting automatic pickup. Candidate checkpoints and `state.monitoring.coverage` let the next
-approved check resume within existing budgets. Fresh proofs are reused only after checking current
-inputs; ordinary capacity deferral is distinct from a process timeout or safety pause. Changed
-implementation evidence triggers revalidation, and verified regressions produce explicit follow-ups
-without changing completed history. Checkpoint reports are protected alongside completion evidence.
-
-Collection status and health are separate: a valid breach is Succeeded/Unhealthy. It opens or
-reuses one episode without counting as a monitor failure. Fresh healthy data records recovery;
-Unknown from stale/missing/invalid inputs or failed collection cannot close an episode. Actual
-collection failures use fallback counters and timeouts pause `monitor:<name>`. No automatic
-monitor retry is added. Monitoring should not pause because its observed service stays unhealthy.
-
-Default response proposes an investigation; report-only suppresses the proposal. Explicit
-MonitorTask acceptance requires fresh latest Unhealthy evidence, reuses task/reference helpers,
-and deduplicates by the incident source identity. New tasks are verify/Unknown/manual-only. An
-accepted task is neither executed nor completed by monitoring, and recovery does not prove a fix.
-Checks update incident evidence and its reference note rather than changing a task's contract.
-Reports use the layout-aware history directory, with monitor/health columns in history.csv.
-Full telemetry stays at its source; saved report data excludes arbitrary extra JSON fields.
-
-Report/query/dashboard authoring belongs to the session-level `harness-report` workflow
-below, not this observation evaluator. Automatic task intake and live source/cadence/condition
-choices still require separate approval.
+Only current Relevant, verified-open candidates become proposals; uncertain work stays Unverified, and
+checks never create tasks. Explicit `MonitorTask` acceptance reuses normal task and reference intake
+and creates verify tasks with Unknown risk and manual pickup only. Failed, partial, stale, or older
+results preserve prior candidates and owner data; disappearance, source closure, or age alone never
+means completion. A valid breach is Succeeded/Unhealthy and reuses one incident rather than counting
+as a monitor failure; actual collection failures use fallback counters, and timeouts pause
+`monitor:<name>`. Required candidate reports survive retention and relocation. External ADO or
+document writes need separate per-source approval. Report authoring belongs to `harness-report`, and
+automatic intake or live source, cadence, and condition choices still need separate approval.
 
 ## Report Authoring
 
-`harness-report` coordinates report, dashboard, and query creation with the reusable
-`kpi-dashboard` companion and one selected platform workflow. It adds no ReportCreate
-PowerShell action, renderer, connector installation, task store, or timer. Missing requirements
-are clarified before authoring; design-only work does not initialize the runtime.
-
-Tracked local implementation reuses Dev intake, approved runner settings, workspace/permission
-boundaries, validation, and review. Relevant specialist guidance must be supplied to the worker
-explicitly. The CLI does not inherit the editor's live platform tools; unsupported routes remain
-blocked or need separately authorized attended work, not an implicit second writer or wider access.
-Report artifacts retain their stable destination/ID, and delivery distinguishes design-only,
-created, validated, published, and partial/blocked outcomes with real evidence. Publishing and
-optional JSON-export handoff to Monitor retain separate approvals; no existing timer changes.
+`harness-report` coordinates report, dashboard, and query authoring with `kpi-dashboard` and one
+selected platform workflow. It adds no ReportCreate action, renderer, connector installation, task
+store, or timer, and design-only work does not initialize the runtime. Tracked local implementation
+reuses Dev intake, runner settings, workspace and permission boundaries, validation, and review.
+Specialist guidance must be supplied to the worker explicitly, because the CLI does not inherit the
+editor's platform tools. Publishing and optional JSON-export handoff to Monitor keep separate approvals.

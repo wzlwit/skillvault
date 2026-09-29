@@ -49,7 +49,7 @@ flat config until explicit migration; invalid declarations never prevent a pause
 
 | Field | Contract |
 | --- | --- |
-| `failureThreshold` | Positive integer consecutive-failure threshold per execution target; omitted or `null` disables this threshold |
+| `failureThreshold` | Positive integer consecutive-failure threshold per execution target, counting failed attempts, not log lines; omitted or `null` disables this threshold |
 | `transientRetry.maxRetries` | Optional integer 0 through 5 additional tries per eligible test step; defaults to 1, explicit 0 disables retries |
 | `transientRetry.delaySeconds` | Optional delay from 0 through 300 seconds; defaults to 5, charged to the same flow time budget |
 | `transientRetry.exitCodes` | Explicit transient exit codes; required and nonempty when a supplied retry policy enables retries; success 0 and timeout 124 are rejected |

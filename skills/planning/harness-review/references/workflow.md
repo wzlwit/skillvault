@@ -163,7 +163,7 @@ CC-BY-SA-4.0 license; it is loaded, not copied into this bundle. `/dif-review` i
 ```
 
 Show findings first, ordered by evidenced severity with current file/line anchors, then each pass's requested scope,
-controller, coding repository, baseline, attempted pass count, restart count, coverage gaps, and report path. Keep pre-existing issues separate from
+controller, coding repository, baseline, security guidance source when used, attempted pass count, restart count, coverage gaps, and report path. Keep pre-existing issues separate from
 introduced regressions. The shared state retains compact review comparison data in its existing
 run rows, with full evidence in board reports; there is no new issue tracker or status dashboard.
 Only the last stable attempt supplies current findings. Superseded attempts remain historical
