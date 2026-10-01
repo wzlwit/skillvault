@@ -174,6 +174,12 @@
     "version": null
   },
   {
+    "name": "pr-publish",
+    "description": "Create or update your own pull request: a description that follows the repository template, a current vs. to-be scenario table, tests named for each scenario, and draft or ready state. Use /pr-publish list, preview, or upsert. Opens PRs through the VS Code create-pull-request tool when available, otherwise through gh; pr-review reviews PRs instead. Never pushes or writes to a PR without an explicit ask.",
+    "path": "skills/github/pr-publish",
+    "version": "1.0.0"
+  },
+  {
     "name": "pr-review",
     "description": "Review a PR URL, repository, or user-wide watchlist. Use /pr-review list, run, configure, or explicit PR input. Overlaps with harness-review on general review and differential-review on security; owns remote selection and isolated evidence, while pr-watch manages targets.",
     "path": "skills/github/pr-review",

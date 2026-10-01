@@ -1,0 +1,48 @@
+{
+  "name": "pr-publish",
+  "title": "PR Publish",
+  "version": "1.0.0",
+  "kind": "agent",
+  "description": "Create or update your own pull request: a description that follows the repository template, a current vs. to-be scenario table, tests named for each scenario, and draft or ready state. Use /pr-publish list, preview, or upsert. Opens PRs through the VS Code create-pull-request tool when available, otherwise through gh; pr-review reviews PRs instead. Never pushes or writes to a PR without an explicit ask.",
+  "tags": [
+    "github",
+    "pull-request",
+    "publishing"
+  ],
+  "author": "wzlwit",
+  "source": {
+    "repo": "skillvault",
+    "path": "skills/github/pr-publish"
+  },
+  "install": {
+    "global": true,
+    "project": true,
+    "session": true,
+    "defaultScope": "global",
+    "strategy": "copy"
+  },
+  "dependencies": [
+    "git",
+    "gh"
+  ],
+  "examples": [
+    "/pr-publish",
+    "/pr-publish preview",
+    "/pr-publish upsert --ready"
+  ],
+  "readme": "SKILL.md",
+  "inputs": [
+    {
+      "name": "action",
+      "required": false,
+      "type": "string",
+      "default": "list",
+      "enum": [
+        "list",
+        "preview",
+        "upsert"
+      ],
+      "description": "Primary action; omitted means read-only list. Operation-specific approvals still apply."
+    }
+  ]
+}

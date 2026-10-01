@@ -113,6 +113,7 @@ skills/
 |   `-- skillvault-refresh/
 |-- github/
 |   |-- github-issues/
+|   |-- pr-publish/
 |   |-- pr-review/
 |   `-- pr-watch/
 `-- planning/
@@ -342,6 +343,7 @@ New specialists map to their own canonical names without implying a previous ins
 | planning-with-files | planning-with-files |
 | powerbi-modeling | powerbi-modeling |
 | ppt-master | ppt-master |
+| pr-publish | pr-publish |
 | pr-review | pr-review run |
 | pr-review-add | pr-watch add |
 | pr-review-list | pr-watch list |

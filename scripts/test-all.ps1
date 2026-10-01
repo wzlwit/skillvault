@@ -44,7 +44,7 @@ try {
             if ($LASTEXITCODE -ne 0) { throw "PowerShell 7 monitor $mode checks failed." }
         }
     }
-    foreach ($test in @('test-harness.ps1', 'test-harness-tests.ps1', 'test-harness-policy.ps1', 'test-harness-monitor.ps1', 'test-harness-retention.ps1', 'test-harness-scheduler.ps1', 'test-harness-move.ps1', 'test-pr-review.ps1')) {
+    foreach ($test in @('test-harness.ps1', 'test-harness-tests.ps1', 'test-harness-policy.ps1', 'test-harness-monitor.ps1', 'test-harness-retention.ps1', 'test-harness-scheduler.ps1', 'test-harness-move.ps1', 'test-pr-review.ps1', 'test-pr-publish.ps1')) {
         if ($PSVersionTable.PSVersion.Major -ge 7) { & (Join-Path $PSScriptRoot $test) }
         else {
             & pwsh -NoProfile -NonInteractive -File (Join-Path $PSScriptRoot $test)

@@ -1026,7 +1026,7 @@ test('topic map covers canonical skills and rules apply stays separate from auth
 test('multi-action topics default to list and keep aliases out of primary menus', () => {
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
   const catalog = parseJson(fs.readFileSync(path.join(root, 'catalog.json'), 'utf8'), 'catalog.json');
-  for (const entry of catalog.filter(entry => /^(harness(?:-|$)|skillvault-|pr-review$|pr-watch$|rules$|schedule-manager$)/.test(entry.name))) {
+  for (const entry of catalog.filter(entry => /^(harness(?:-|$)|skillvault-|pr-review$|pr-watch$|pr-publish$|rules$|schedule-manager$)/.test(entry.name))) {
     const directory = path.join(root, entry.path);
     const manifest = parseJson(fs.readFileSync(path.join(directory, 'skill.json'), 'utf8'), `${entry.name}/skill.json`);
     const instructions = fs.readFileSync(path.join(directory, 'SKILL.md'), 'utf8');
@@ -1223,7 +1223,7 @@ test('discovery explains the requested tool or product without substituting or r
 test('topic operation guides keep local resource links inside their bundles', () => {
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
   const catalog = parseJson(fs.readFileSync(path.join(root, 'catalog.json'), 'utf8'), 'catalog.json');
-  for (const entry of catalog.filter(entry => /^(harness(?:-|$)|skillvault-|rules$|pr-watch$)/.test(entry.name))) {
+  for (const entry of catalog.filter(entry => /^(harness(?:-|$)|skillvault-|rules$|pr-watch$|pr-publish$)/.test(entry.name))) {
     const directory = path.join(root, entry.path);
     const pending = [directory];
     while (pending.length) {

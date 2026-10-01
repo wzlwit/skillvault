@@ -226,6 +226,13 @@ review implementation with verified isolated checkouts, complete paginated comme
 evidence, and a fresh second pass only when the first finds nothing new. It never switches the
 user's current branch or runs untrusted PR code, hooks, builds, or tests.
 
+[PR publish](skills/github/pr-publish/SKILL.md) handles your own PRs from the current branch.
+`/pr-publish list` shows the branch, its PR, and gaps in the description; `preview` drafts the
+title and description into a local file and checks them against the repository's PR template;
+`upsert` creates the PR or updates its title, description, or draft state, then reads it back and
+ends with the PR link. It opens PRs through the VS Code create-pull-request tool when available,
+otherwise through `gh`, and never comments, requests reviewers, or merges.
+
 Setup requires a strongest-first approved model list, verified per-model effort/context choices,
 and explicit time/credit/count bounds. The helper requests the maximum supported permitted
 combination, including long context when approved; it does not invent model access or exact
