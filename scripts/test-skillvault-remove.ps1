@@ -25,10 +25,17 @@ try {
         $relativePath = "skills/testing/$skillName"
         $sourcePath = Join-Path $repositoryRoot $relativePath
         New-Item -ItemType Directory -Path $sourcePath -Force | Out-Null
-        [ordered]@{ name = $skillName; version = $null; dependencies = @() } |
-            ConvertTo-Json | Set-Content -LiteralPath (Join-Path $sourcePath 'skill.json') -Encoding utf8
-        "---`nname: $skillName`ndescription: Test fixture`n---`n# $skillName" |
-            Set-Content -LiteralPath (Join-Path $sourcePath 'SKILL.md') -Encoding utf8
+        if ($skillName -ceq 'beta') {
+            [ordered]@{ name = 'beta'; version = $null; kind = 'reference'; install = [ordered]@{ strategy = 'upstream' }
+                upstream = [ordered]@{ repo = 'https://example.invalid/beta.git'; path = 'skills/beta'; version = 'latest' } } |
+                ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $sourcePath 'skill.json') -Encoding utf8
+        }
+        else {
+            [ordered]@{ name = $skillName; version = $null; dependencies = @() } |
+                ConvertTo-Json | Set-Content -LiteralPath (Join-Path $sourcePath 'skill.json') -Encoding utf8
+            "---`nname: $skillName`ndescription: Test fixture`n---`n# $skillName" |
+                Set-Content -LiteralPath (Join-Path $sourcePath 'SKILL.md') -Encoding utf8
+        }
         [ordered]@{ name = $skillName; description = "Fixture $skillName"; path = $relativePath; version = $null }
     })
     ConvertTo-Json -InputObject $catalog -Depth 5 | Set-Content -LiteralPath $catalogPath -Encoding utf8
@@ -136,7 +143,7 @@ try {
     $emptyCatalog = ConvertFrom-Json -InputObject $emptyCatalogText
     Assert-True ($emptyCatalogText.TrimStart().StartsWith('[') -and $emptyCatalog.Count -eq 0) 'removing the last skill leaves an empty JSON array'
     Assert-True (@(Get-ChildItem -LiteralPath $repositoryRoot -Directory -Filter '.skillvault-remove-*').Count -eq 0) 'successful removal leaves no recovery directories'
-    Write-Output 'Source removal checks passed: preview, exact selection, containment, dependency checks, rollback, and installed-copy preservation.'
+    Write-Output 'Source removal checks passed: preview, exact selection, containment, dependency checks, upstream references, rollback, and installed-copy preservation.'
 }
 finally {
     Remove-Item -LiteralPath Function:\Move-Item -Force -ErrorAction SilentlyContinue

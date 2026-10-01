@@ -23,9 +23,14 @@ The `writing` category groups documentation, prose-editing, and presentation ski
 `office-documents` references. Their workflows stay separate;
 manifest tags distinguish their focus. Skill categories do not change the project's `docs/` root.
 
-The `data` category also includes the [RAG implementation reference](skills/data/rag-implementation/SKILL.md)
-for document Q&A, chunking, retrieval, reranking, and grounded answers. It links to upstream guidance
-with explicit example limitations; it bundles no runtime and authorizes no ingestion or installation.
+The `data` category also includes the [RAG implementation skill](skills/data/rag-implementation/SKILL.md)
+for document Q&A, chunking, retrieval, reranking, and grounded answers. It is adapted from
+wshobson/agents and includes the original's examples with explicit limits; it bundles no runtime
+and authorizes no ingestion or installation.
+
+The `gamedev` category contains the [Awesome Gamedev Agent Skills reference](skills/gamedev/awesome-gamedev-agent-skills/SKILL.md)
+for game development with Godot, Unity, Unreal, web, and other engines. It points to the upstream
+router and skills; it bundles none of them and authorizes no installation.
 
 ## Project Documentation
 
@@ -41,6 +46,7 @@ decision history in `docs/plans/decisions/`. Add other documentation subfolders 
 - [Current-copy-only installation and temporary rollback](docs/plans/decisions/2026-09-25-current-copy-only-installation-adr.md)
 - [Source-agnostic monitoring and evidence reconciliation](docs/plans/decisions/2026-09-25-source-agnostic-monitoring-adr.md)
 - [Feature documentation authoring](docs/plans/decisions/2026-09-26-harness-documentation-adr.md)
+- [Stakeholder communications drafting](docs/plans/decisions/2026-09-29-harness-communications-adr.md)
 - [Quiet script execution](docs/plans/decisions/2026-09-27-quiet-script-execution-adr.md)
 - [Harness decision record](docs/plans/decisions/2026-09-15-harness-command-and-record-contracts-adr.md)
 - [External harness reference draft](docs/plans/2026-09-15-project-agent-harness.md)
@@ -128,30 +134,31 @@ An optional follow-up step alone is not material overlap; describe it directly, 
 | Skill | Overlap | Distinct purpose |
 | --- | --- | --- |
 | `brainstorming` | Questions and trade-offs with `grilling`. | Develop alternative designs collaboratively; preserve existing drafts and seek approval before implementation. |
-| `grilling` | Trade-offs with `architecture-decision-records`; planning with `planning-with-files`. | Interview to test a plan and resolve choices. |
+| `grilling` | Trade-offs with `architecture-decision-records`; planning with `planning-with-files`. | Interview to test a plan and resolve choices. Adapted from Matt Pocock's grilling; `install grilling origin` installs the original. |
 | `architecture-decision-records` | Trade-offs with `grilling`; decision notes with `planning-with-files`; decision history with `harness-decision`; reader-facing rationale with `harness-doc`. | Preserve architectural rationale, status, and superseded history. |
-| `harness-decision` | Decision history with `architecture-decision-records`. | Show open decisions by default, request closed/all views explicitly, and record human choices. |
+| `harness-decision` | Decision history with `architecture-decision-records`. | Show open decisions by default, request closed/all views explicitly, explain one decision, and record human choices. |
 | `handoff`, `harness` | Summarizing selected work and its context. | Handoff writes an explicitly requested continuation note; context provides a read-only project/task view. Neither controls execution. |
 | `harness-task`, `harness-dev` | Both accept task input. | Task is add-only; dev adds bounded execution, validation, and independent review. |
 | `harness-test`, `harness-dev` | Executable validation. | Test owns reusable flows/environments and test-only runs; dev invokes declared gates as part of task completion. |
-| `harness-monitor` | Checks with `harness-test`; intake with `harness-task`; metric contracts with `kpi-dashboard`. | Discover work across approved source adapters or evaluate health measurements, preserving source evidence and approval boundaries. |
+| `harness-monitor` | Checks with `harness-test`; intake with `harness-task`; metric contracts with `kpi-dashboard`; status and owner evidence with `harness-comms`. | Discover work across approved source adapters or evaluate health measurements, preserving source evidence and approval boundaries. |
 | `harness-report` | Implementation with `harness-dev`; design with `kpi-dashboard`; Jarvis authoring with `jarvis-metrics`; artifact validation with the `ppt-master` and `office-documents` references. | Select one report-authoring route, reuse artifact identity, and coordinate validation without a new rendering engine. |
-| `harness-doc` | Design rationale with `architecture-decision-records`; document output with the `office-documents` reference. | Author feature guides, onboarding, and troubleshooting from evidence, with Humanizer followed by validation; reference decision history without rewriting it. |
-| `humanizer`, `humanizer-ch` | Prose editing through upstream references. | Humanizer covers general prose; Humanizer CH points to Chinese critical-essay guidance. Neither bundles upstream rules/scripts or automatically replaces the documentation workflow. |
+| `harness-doc` | Design rationale with `architecture-decision-records`; stakeholder-facing prose with `harness-comms`; document output with the `office-documents` reference. | Author feature guides, onboarding, and troubleshooting from evidence, with Humanizer followed by validation; reference decision history without rewriting it. |
+| `harness-comms` | Reader-facing prose with `harness-doc`; status and owner evidence with `harness-monitor`. | Draft time-bound trackers, meeting invites, and email updates or thread replies; rank meeting slots offline; never send, invite, or share without explicit approval. |
+| `humanizer`, `humanizer-ch` | Prose editing. | Humanizer installs blader's original for general prose; Humanizer CH is a guide to Chinese critical-essay rules and bundles none of them. Neither automatically replaces the documentation workflow. |
 | `office-documents` | Document output with `harness-doc`; workbook/report validation with `harness-report`. | Reference Anthropic's PDF/DOCX/XLSX skills without copying their proprietary prompts, scripts, or assets; no runtime or new report route. |
 | `jarvis-metrics` | Design with `kpi-dashboard`; authoring with `harness-report`. | Guide Jarvis metric-source selection and widget configuration without bundling a client, query executor, or alerting API. |
 | `kpi-dashboard` | Design with `harness-report`, `jarvis-metrics`, and the `ppt-master` reference; metric contracts with `harness-monitor`. | Define formulas, populations, units, freshness, and layouts independently of execution or incident intake. |
-| `ppt-master` | Artifact validation with `harness-report`; presentation design with `kpi-dashboard`. | Reference the upstream editable PowerPoint and brand/template workflows; no converter, assets, or PPTX report route is bundled. |
+| `ppt-master` | Artifact validation with `harness-report`; presentation design with `kpi-dashboard`. | Installs Hugo He's original for editable PowerPoint decks and brand/template workflows; it adds no PPTX route to `harness-report`. |
 | `harness-policy` | Limits and failure handling within one topic. | `limits` defines boundaries; `fallback` handles bounded test retries, failed-run thresholds, and durable pause/stop/resume. |
 | `harness-review`, `pr-review`, `differential-review` | Code review against a baseline. | Harness review stays project-first; PR review selects remote snapshots and the user-wide list. Both share bounded review passes and can load the differential security methodology. |
 | `harness-timer`, `skillvault-refresh`, `schedule-manager` | Schedule setup and controls. | Timer dispatches to existing project, PR, and refresh owners; refresh performs one-way copying; schedule-manager administers Windows tasks broadly. |
 | `skillvault-discovery` | Search, evaluation, and explanation within one topic. | `explain` describes use; `evaluate` judges adoption value; `search` finds candidates. |
-| `planning-with-files` | Planning with `grilling`; decision notes with `architecture-decision-records`. | Reference to upstream task tracking and recovery; this entry bundles no upstream workflow, hooks, scripts, or templates. |
+| `planning-with-files` | Planning with `grilling`; decision notes with `architecture-decision-records`. | Installs OthmanAdi's original for task tracking and recovery; its hooks run local scripts in hosts that support skill hooks. |
 
-The [brainstorming guide](skills/planning/brainstorming/SKILL.md) adapts the Superpowers
-workflow for the selected discussion or project, with global availability by default.
-It does not install the full plugin, invoke follow-on skills,
-or commit design documents automatically.
+The [brainstorming skill](skills/planning/brainstorming/SKILL.md) adapts the Superpowers
+workflow, including its visual companion, for the selected discussion or project, with global
+availability by default. It does not install the full plugin, invoke follow-on skills, commit
+design documents, or start the companion without your agreement.
 
 `/skillvault-authoring upsert` checks relevant counterpart instructions before recording overlap for either a
 name or URL, preserves or corrects existing overlap notes on updates, and updates relevant
@@ -173,6 +180,16 @@ evidence gaps or missing checks leave a clearly labeled Draft. Publication and r
 separately approved. The [accepted decision](docs/plans/decisions/2026-09-26-harness-documentation-adr.md)
 describes the scope and boundaries.
 
+## Stakeholder Communications
+
+Use `/hn-comms upsert tracker|meeting|email` to draft a status tracker, a sync-up invite, or an email
+update or thread reply, and `/hn-comms slots` to compare meeting times across attendees' time zones,
+lunch hours, and holidays. The [communications skill](skills/planning/harness-comms/SKILL.md) needs no
+initialized harness. It saves drafts only: sending, inviting, and sharing stay with the user or need
+an explicit request. Its bundled `rank-slots.ps1` ranks saved getSchedule data without calling a
+service. The [accepted decision](docs/plans/decisions/2026-09-29-harness-communications-adr.md)
+describes the scope and boundaries.
+
 ## Project Decisions
 
 The [harness-decision skill](skills/planning/harness-decision/references/workflow.md) defaults to global availability.
@@ -182,7 +199,9 @@ raise a missing setting only when requested or enabled work needs a human choice
 settings, inheritance, or defaults cannot resolve. Recorded Open/Proposed decisions stay visible.
 `list closed` shows up to five recent resolved decisions; `list all` includes open/recent decisions
 and the detailed configuration checklist. `--recent <count>` changes only the resolved-result limit.
-Use `/harness-decision list <decision-id>` for any status, or `record` with an explicit human choice.
+Use `/harness-decision list <decision-id>` for any status, `explain <decision-id|question>` for a
+read-only, plain-language explanation with options, reasons, and an example, or `record` with an
+explicit human choice.
 Closed and exact-ID views omit the configuration checklist. See the
 [project setup topics](docs/plans/2026-09-15-harness-command-and-record-contracts.md#configuration-when-needed).
 It can read existing plans and ADRs without initializing a harness; its bundled PowerShell helper
@@ -214,9 +233,10 @@ They support GitHub and explicitly configured GitHub Enterprise hosts through au
 | Command | Purpose |
 | --- | --- |
 | `/pr-review run [PR-or-repository-URL]` | Review an exact PR, a repository's latest open PRs, or the saved list; bare invocation reads saved status |
+| `/pr-review list` | Show the latest result for every reviewed PR, watched or ad hoc, including `Running` and `Interrupted` reviews, without remote calls |
 | `/pr-watch add <URL>` | Add a PR/repository; no immediate execution |
 | `/pr-watch remove <URL-or-W-ID>` | Remove a watch entry while preserving reports and remote PRs |
-| `/pr-watch list` | Show entries, filters, recorded revisions, outcomes, and blockers without remote calls |
+| `/pr-watch list` | Show watched PRs and repositories with their filters, without remote calls |
 | `/harness-timer set pr <duration>` | Configure one whole-watchlist logical schedule under the shared heartbeat |
 
 The [shared setup reference](skills/github/pr-review/references/runtime.md) defines the
@@ -269,9 +289,10 @@ For example, install `harness-dev` through
 | `/harness-monitor [list\|declare\|check\|accept] [<arguments>...]` | Observations and incident proposals |
 | `/harness-report [list\|upsert] [<arguments>...]` | Report and query authoring |
 | `/harness-doc [list\|upsert] [<arguments>...]` | Feature doc sets and focused onboarding/troubleshooting authoring |
+| `/harness-comms [list\|slots\|upsert] [<arguments>...]` | Stakeholder trackers, meeting slots and invites, and email drafts |
 | `/harness-timer [list\|set\|disable\|resume\|clean\|migrate] [<arguments>...]` | Cadence and schedule lifecycle, not historical-data cleanup |
 | `/harness-link [list\|add\|remove] [<arguments>...]` | Supporting URLs, files, and coding-repository links |
-| `/harness-decision [list\|record] [<arguments>...]` | Human decisions and their register |
+| `/harness-decision [list\|explain\|record] [<arguments>...]` | Human decisions, explanations, and their register |
 
 One folder registers one topic; actions are routed inside it. There are no separate
 `harness-management`, `harness-init`, or `hn-*` skill registrations.
@@ -413,12 +434,12 @@ remain aliases, not separate existence requirements;
 different outcomes, not interchangeable success claims. The dispatcher is a session workflow,
 not a new PowerShell action or report renderer; the selected platform's writer must be available.
 No platform skills/tools are installed automatically, and publishing/monitoring remain separate.
-The KPI companion is a curated MIT adaptation with explicit unknown version and no bundled
-untested upstream SQL or Streamlit generator. Both skills default to global availability;
+The KPI companion is an MIT adaptation; it includes the original's SQL and Streamlit examples as
+untested examples, not a report generator. Both skills default to global availability;
 artifact destinations and access approvals remain specific to the requested project/platform.
 
-The [PPT Master reference](skills/writing/ppt-master/SKILL.md) points to separate upstream deck,
-template, and native-editing workflows. It installs no tools and adds no report route. Editable
+The `ppt-master` reference installs [Hugo He's PPT Master](https://github.com/hugohe3/ppt-master)
+for deck, template, and native-editing workflows. It adds no report route. Editable
 artifact requests must identify required object types/actions and verify representative edits;
 branded outputs retain the supplied palette, fonts, and template authority in their existing specs.
 
@@ -565,10 +586,10 @@ with `--chat-only` to skip it; explanation stays read-only.
 - `/skillvault-installation install <skill-or-folder-or-keyword> [scope] [version] [--repo path]` installs existing catalog
   skills or updates their installed copies. It does not author source skills. Omit the
   target to browse the catalog; `/skillvault-installation update` refreshes approved managed copies.
-- `/skillvault-authoring upsert <name-or-url> [<scope>] [--repo <path>]` edits an existing repository skill or creates one from
+- `/skillvault-authoring upsert <name-or-url> [--repo <path>]` edits an existing repository skill or creates one from
   scratch or a URL, updating its source files and catalog entry. A name does not automatically
-  import an installed copy. It can install the result afterward; use scope `none` for source-only
-  work. Publishing is separate and requires explicit approval.
+  import an installed copy. It never installs; install the result separately with
+  `/skillvault-installation install`. Publishing is separate and requires explicit approval.
 
 Install uses its [read-only source resolver](skills/core/skillvault-installation/scripts/resolve-source-repo.ps1):
 an explicit `--repo` or the verified Windows checkout `C:\repos\skillvault`. It does not automatically
@@ -581,14 +602,13 @@ Harness initialization follows this same rule when installing missing dependenci
 Upsert uses a [read-only source resolver](skills/core/skillvault-authoring/scripts/resolve-source-repo.ps1):
 explicit `--repo`, verified SkillVault working project, known Windows checkout `C:\repos\skillvault`,
 then the existing source cache. The Git root, catalog/public layout, and official origin must match;
-an invalid explicit or preferred source blocks edits. It displays the resolved source and any
-separate installation destination before writing. No source found means ask for a checkout or
-approval to clone/open a remote PR, never create source files in an unrelated working project.
-Optional project installs still target the original working project's `.github/skills`.
+an invalid explicit or preferred source blocks edits. It displays the resolved source before
+writing. No source found means ask for a checkout or approval to clone/open a remote PR, never
+create source files in an unrelated working project.
 
 Use **install** to update copies in your environment and **upsert** to change repository sources.
-Installation after upsert is an optional follow-up. For example, `/skillvault-installation install planning-with-files project`
-installs or updates that project copy; `/skillvault-authoring upsert my-custom-skill none` authors a source skill.
+Installing after an upsert is a separate install request. For example, `/skillvault-installation install planning-with-files project`
+installs or updates that project copy; `/skillvault-authoring upsert my-custom-skill` authors a source skill.
 Its `create` and `update` aliases also upsert; the user need not check existence first.
 The canonical authoring topic is `/skillvault-authoring [list|upsert|remove] [<arguments>...]`;
 `/sv-authoring` is shorthand. Former `/skillvault-source` and `/sv-source` commands retain their
@@ -664,13 +684,20 @@ cd skillvault
 Or ask an AI coding agent (install `skillvault-authoring` explicitly before using the optional
 source-authoring command mentioned below):
 
-> Install the SkillVault bootstrap skills globally using https://github.com/wzlwit/skillvault/blob/main/scripts/install-global.ps1. Clone or update its repository first, then run the installer from the local checkout. Do not install every catalog skill; after bootstrap I will use `/skillvault-installation install <skill-or-folder-or-keyword> <scope> <version>` to install or update specific skills, with omitted scope resolved from each skill's `install.defaultScope` and omitted version defaulting to `latest`. Use `/skillvault-discovery evaluate <url-or-skillName> [location]` to assess purpose and value before deciding to upsert; without `location`, it checks installed skills, local catalogs, the official SkillVault repository, then external sources. Use `/skillvault-authoring upsert <name-or-url> <scope>` to create or update local SkillVault source skills, not just install an existing one; if no local SkillVault checkout exists, it asks whether to clone one locally or create a remote pull request. Use `/rules <add|modify|remove> <rule> [location]` to propose and, after confirmation, update an authoritative AI-rules document; `/rules apply` is the compact four-rule guidance set. Use `/skillvault-refresh <intervalDay>` or `/skillvault-refresh <intervalDay>` to schedule one-way latest refreshes from recorded source repositories. Use `/skillvault-installation list` to list installed skills and `/skillvault-installation uninstall <selector>` to uninstall by index, range, list, or keyword after confirmation. Use `/schedule-manager` to list Windows scheduled tasks and enable, disable, or delete selected tasks by index, range, list, or keyword after confirmation.
+> Install the SkillVault bootstrap skills globally using https://github.com/wzlwit/skillvault/blob/main/scripts/install-global.ps1. Clone or update its repository first, then run the installer from the local checkout. Do not install every catalog skill; after bootstrap I will use `/skillvault-installation install <skill-or-folder-or-keyword> <scope> <version>` to install or update specific skills, with omitted scope resolved from each skill's `install.defaultScope` and omitted version defaulting to `latest`. Use `/skillvault-discovery evaluate <url-or-skillName> [location]` to assess purpose and value before deciding to upsert; without `location`, it checks installed skills, local catalogs, the official SkillVault repository, then external sources. Use `/skillvault-authoring upsert <name-or-url>` to create or update local SkillVault source skills, not just install an existing one; if no local SkillVault checkout exists, it asks whether to clone one locally or create a remote pull request. Use `/rules <add|modify|remove> <rule> [location]` to propose and, after confirmation, update an authoritative AI-rules document; `/rules apply` is the compact four-rule guidance set. Use `/skillvault-refresh <intervalDay>` or `/skillvault-refresh <intervalDay>` to schedule latest refreshes: upstream changes are merged into adapted skills when push is permitted, then new commits reach the local checkout and installed copies. Use `/skillvault-installation list` to list installed skills and `/skillvault-installation uninstall <selector>` to uninstall by index, range, list, or keyword after confirmation. Use `/schedule-manager` to list Windows scheduled tasks and enable, disable, or delete selected tasks by index, range, list, or keyword after confirmation.
 
 ## Local Scripts
 
 Install selected skills from a local checkout with
 [install-skills.ps1](scripts/install-skills.ps1). It resolves the suggested scope per manifest,
 copies complete skill bundles, and records the actual catalog source, not an upstream link.
+A skill from another repository is either a reference, which keeps only its source, or an
+adapted skill, which keeps SkillVault's adaptation under the original's name. An adaptation may
+take a new name when it turns the original into a different workflow. A reference installs
+by fetching the original. An adapted skill installs the adaptation unless `-Variant origin`
+requests the original; a renamed adaptation has no `origin` variant and must not be installed
+alongside the original. When the source is a Git checkout root, the installer also records the
+checkout and the committed version of the skill folder, which refresh uses to merge updates.
 
 ```powershell
 .\scripts\install-skills.ps1 -Name webapp-testing -Scope project -ProjectPath C:\repos\my-project
@@ -689,11 +716,19 @@ manifest dependencies and the shared bootstrap selection, stages source folders 
 the catalog, and preserves recoverable files on failure. Installed copies, other checkouts,
 schedules, and remotes are unchanged. Use `/skillvault-installation uninstall` separately for installed copies.
 
-`/skillvault-refresh` follows recorded Git sources for managed global `latest` installs only. It checks
-versions and file contents, so unchanged copies keep their install timestamp and same-version
-edits still refresh. Failed or dirty caches cannot overwrite installations. It does not
-refresh project installs, choose between local and remote changes, download arbitrary URLs,
-or update the external runtimes named by reference-only skills.
+`/skillvault-refresh` has two steps for managed global `latest` installs:
+
+1. It merges upstream changes into each adapted skill, at the declared `latest`, tag, or commit,
+   commits the merge in its own clone, and pushes it to this repository. It does this only when
+   the current credentials may push; otherwise it skips this step. Conflicts are not committed.
+2. It brings new commits to the recorded local checkout, then to the installed copies. Changes
+   made in an installed copy, such as installed uncommitted work, are merged. Installed originals
+   follow their upstream repository.
+
+It never pushes your own commits, never commits in your checkout, and leaves conflicts for your
+decision. Unchanged copies keep their install timestamp, and failed or dirty caches cannot
+overwrite installations. It does not refresh project installs, download arbitrary URLs, or update
+the external runtimes named by reference-only skills.
 
 ## Validation
 
@@ -717,5 +752,5 @@ After an approved installation or refresh, verify the copies against the selecte
 ```
 
 Parity checking is explicit: a customized or pinned install may legitimately differ from the
-current checkout. Runtime dependencies and automated trigger behavior of upstream plugins
-are not established by catalog validation.
+current checkout. Runtime dependencies and automated trigger behavior of upstream plugins are
+not established by catalog validation.

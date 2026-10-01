@@ -3,7 +3,7 @@
   "title": "Harness Monitor",
   "version": "1.0.0",
   "kind": "agent",
-  "description": "Monitor work across approved source adapters, including ADO and documents; assess relevance, Auto-verify status, correlate explicit requirements, reconcile evidence, and expose verified subsets, or check health observations. Use /harness-monitor or /hn-monitor with list, declare, check, or accept. Overlaps with harness-test on checks, harness-task on intake, and kpi-dashboard on metric contracts; preserves deferred work and never launches development.",
+  "description": "Monitor work across approved source adapters, including ADO and documents; assess relevance, Auto-verify status, correlate explicit requirements, reconcile evidence, and expose verified subsets, or check health observations. Use /harness-monitor or /hn-monitor with list, declare, check, or accept. Overlaps with harness-test on checks, harness-task on intake, kpi-dashboard on metric contracts, and harness-comms on status and owner evidence; preserves deferred work and never launches development.",
   "requiredInterfaces": {
     "harness": {
       "harness-runtime": 4,

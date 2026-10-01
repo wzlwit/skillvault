@@ -1,5 +1,7 @@
 # Test Declarations
 
+Contents: Shape; Meaning; Updates; Invocation.
+
 Layout-2 declarations are authoritative in `.harness_sv/config/tests.json`, combined as `testing`
 only in memory. Direct edits and `/harness-test declare <file>` update that same configuration;
 no separate editable active copy exists. Legacy controllers keep their flat config until explicit

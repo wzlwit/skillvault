@@ -1,9 +1,9 @@
 {
   "name": "pr-watch",
   "title": "PR Watchlist",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "kind": "agent",
-  "description": "Manage the single user-wide PR review watchlist. Use /pr-watch list, add, or remove; replaces /pr-review-add, /pr-review-list, and /pr-review-remove. Watchlist changes do not run reviews or change schedules; pr-review owns execution and harness-timer owns its logical schedule.",
+  "description": "Manage the single user-wide PR review watchlist. Use /pr-watch list, add, or remove; replaces /pr-review-add, /pr-review-list, and /pr-review-remove. Watchlist changes do not run reviews or change schedules; pr-review owns execution and review results, and harness-timer owns its logical schedule.",
   "tags": [
     "github",
     "pull-request",

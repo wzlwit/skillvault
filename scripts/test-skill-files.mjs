@@ -197,7 +197,7 @@ test('Power BI modeling preserves scope and grain-aware validation cases', () =>
   assert.equal(manifest.install.defaultScope, 'global');
   assert.equal(manifest.author, null);
   assert.equal(manifest.upstream.license, 'MIT');
-  assert.match(manifest.upstream.revision, /^[a-f0-9]{40}$/);
+  assert.match(manifest.upstream.commit, /^[a-f0-9]{40}$/);
   assert.equal(skill.description, manifest.description);
   assert.equal(entry.description, manifest.description);
   assert.ok(skill.description.includes('kpi-dashboard'));
@@ -231,7 +231,7 @@ test('Power BI modeling preserves scope and grain-aware validation cases', () =>
 test('harness topics use canonical names and conversational hn shortcuts', () => {
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
   const catalog = parseJson(fs.readFileSync(path.join(root, 'catalog.json'), 'utf8'), 'catalog.json');
-  const topics = ['harness', ...['policy', 'decision', 'dev', 'doc', 'review', 'task', 'link', 'test', 'monitor', 'report', 'timer'].map(suffix => `harness-${suffix}`)];
+  const topics = ['harness', ...['policy', 'decision', 'dev', 'doc', 'comms', 'review', 'task', 'link', 'test', 'monitor', 'report', 'timer'].map(suffix => `harness-${suffix}`)];
   assert.deepEqual(catalog.filter(entry => entry.name === 'harness' || entry.name.startsWith('harness-')).map(entry => entry.name).sort(), topics.slice().sort());
   for (const name of topics) {
     const entries = catalog.filter(entry => entry.name === name);
@@ -268,6 +268,48 @@ test('harness topics use canonical names and conversational hn shortcuts', () =>
   }
 });
 
+test('harness communications stay draft-only with bundled slot ranking', () => {
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const catalog = parseJson(fs.readFileSync(path.join(root, 'catalog.json'), 'utf8'), 'catalog.json');
+  const entry = catalog.find(candidate => candidate.name === 'harness-comms');
+  const directory = path.join(root, entry.path);
+  const manifest = parseJson(fs.readFileSync(path.join(directory, 'skill.json'), 'utf8'), 'harness-comms/skill.json');
+  const content = fs.readFileSync(path.join(directory, 'SKILL.md'), 'utf8');
+  const skill = parseSkill(content, entry.name, manifest);
+  assert.equal(entry.path, 'skills/planning/harness-comms');
+  assert.equal(entry.description, manifest.description);
+  assert.equal(skill.description, manifest.description);
+  assert.deepEqual(manifest.inputs.find(input => input.name === 'action').enum, ['list', 'slots', 'upsert']);
+  assert.deepEqual(manifest.inputs.find(input => input.name === 'artifact').enum, ['tracker', 'meeting', 'email']);
+  assert.deepEqual(manifest.dependencies, ['rules']);
+  assert.match(content, /without requiring an initialized harness/);
+  assert.match(content, /\*\*Drafts only\.\*\*/);
+  assert.match(skill.description, /never sends, invites, or shares without explicit approval/);
+  for (const reference of ['workflow', 'meeting', 'email', 'tracker']) {
+    assert.ok(fs.existsSync(path.join(directory, `references/${reference}.md`)), `Missing ${reference} guide`);
+  }
+  assert.ok(fs.existsSync(path.join(directory, 'scripts/rank-slots.ps1')));
+  const workflow = fs.readFileSync(path.join(directory, 'references/workflow.md'), 'utf8');
+  assert.match(workflow, /Commit authors, managers, and\s+directory titles only suggest candidates/);
+  assert.match(workflow, /Re-read before every write/);
+  const meeting = fs.readFileSync(path.join(directory, 'references/meeting.md'), 'utf8');
+  assert.match(meeting, /\*\*Save as draft\*\*\. Never choose \*\*Send\*\*/);
+  const rootGuide = fs.readFileSync(path.join(root, 'skills/planning/harness/SKILL.md'), 'utf8');
+  assert.ok(rootGuide.includes('/harness-comms list|slots|upsert'));
+  for (const name of ['harness-doc', 'harness-monitor']) {
+    const counterpart = catalog.find(candidate => candidate.name === name);
+    const counterpartManifest = parseJson(fs.readFileSync(path.join(root, counterpart.path, 'skill.json'), 'utf8'), `${name}/skill.json`);
+    const counterpartSkill = parseSkill(fs.readFileSync(path.join(root, counterpart.path, 'SKILL.md'), 'utf8'), name, counterpartManifest);
+    assert.ok(skill.description.includes(name));
+    for (const description of [counterpart.description, counterpartManifest.description, counterpartSkill.description]) {
+      assert.ok(description.includes('harness-comms'), `Declare the communications overlap for ${name}`);
+    }
+  }
+  const bundleText = ['SKILL.md', 'references/workflow.md', 'references/meeting.md', 'references/email.md', 'references/tracker.md']
+    .map(file => fs.readFileSync(path.join(directory, file), 'utf8')).join('\n');
+  assert.doesNotMatch(bundleText, /@(?!example\.com)[a-z0-9-]+\.(?:com|net|org)\b/i, 'Use example.com addresses in the public bundle');
+});
+
 test('harness documentation declares standalone authoring and post-Humanizer validation', () => {
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
   const catalog = parseJson(fs.readFileSync(path.join(root, 'catalog.json'), 'utf8'), 'catalog.json');
@@ -290,7 +332,7 @@ test('harness documentation declares standalone authoring and post-Humanizer val
   const phases = ['## Resolve the request', '## Gather evidence', '## Draft the set', '## Humanizer pass', '## Validate and deliver'];
   const positions = phases.map(phase => workflow.indexOf(phase));
   assert.ok(positions.every((position, index) => position >= 0 && (index === 0 || position > positions[index - 1])));
-  assert.match(workflow, /reference-only; fetch and\s+read its authoritative upstream guidance/);
+  assert.match(workflow, /If it is not\s+installed, fetch and read its authoritative upstream guidance/);
   assert.match(workflow, /Freeze headings and explicit anchors/);
   assert.match(workflow, /Draft \| Files exist, but essential evidence, Humanizer, or required validation is incomplete/);
   const template = fs.readFileSync(path.join(directory, 'references/doc-set.md'), 'utf8');
@@ -319,74 +361,65 @@ test('paginated document acceptance checks final pages without widening Markdown
   assert.match(validation, /Markdown-only output requires no Word\/PDF conversion/);
 });
 
-test('Humanizer references preserve Chinese specialization and unknown upstream rights', () => {
+test('Humanizer installs its original while humanizer-ch keeps its Chinese guide', () => {
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
   const catalog = parseJson(fs.readFileSync(path.join(root, 'catalog.json'), 'utf8'), 'catalog.json');
-  for (const [name, counterpart] of [['humanizer', 'humanizer-ch'], ['humanizer-ch', 'humanizer']]) {
-    const entry = catalog.find(candidate => candidate.name === name);
-    const directory = path.join(root, entry.path);
-    const manifest = parseJson(fs.readFileSync(path.join(directory, 'skill.json'), 'utf8'), `${name}/skill.json`);
-    const content = fs.readFileSync(path.join(directory, 'SKILL.md'), 'utf8');
-    const skill = parseSkill(content, name, manifest);
-    assert.equal(entry.version, null);
-    assert.equal(manifest.kind, 'reference');
-    assert.equal(manifest.install.defaultScope, 'global');
-    assert.equal(entry.description, manifest.description);
-    assert.equal(skill.description, manifest.description);
-    assert.ok(skill.description.includes(counterpart));
-    assert.match(content, /fetch and read the (?:authoritative )?upstream (?:guidance|instructions)/);
-    assert.equal(fs.existsSync(path.join(directory, 'scripts')), false);
-    assert.equal(fs.existsSync(path.join(directory, 'agents/openai.yaml')), false);
-    if (name === 'humanizer-ch') {
-      assert.equal(entry.path, 'skills/writing/humanizer-ch');
-      assert.equal(manifest.author, null);
-      assert.equal(manifest.license, null);
-      assert.equal(manifest.upstream.license, null);
-      assert.equal(manifest.upstream.repo, 'https://github.com/zjqc/humanizer-ch');
-      assert.match(manifest.upstream.revision, /^[a-f0-9]{40}$/);
-      assert.match(content, /No upstream rewriting rules, examples, scripts, or Codex UI files are bundled/);
-      assert.match(content, /not a general Chinese-language\s+replacement/);
-      assert.match(content, /not an upstream example or a validated Chinese editing result/);
-      assert.match(content, /\/humanizer-ch [\u4e00-\u9fff]/);
-      assert.deepEqual(manifest.dependencies ?? [], []);
-    }
-  }
+  const original = catalog.find(candidate => candidate.name === 'humanizer');
+  const originalManifest = parseJson(fs.readFileSync(path.join(root, original.path, 'skill.json'), 'utf8'), 'humanizer/skill.json');
+  assert.equal(originalManifest.install.strategy, 'upstream');
+  assert.equal(originalManifest.upstream.repo, 'https://github.com/blader/humanizer');
+  assert.equal(originalManifest.upstream.version, 'latest');
+  assert.equal(original.description, originalManifest.description);
+  assert.ok(original.description.includes('humanizer-ch'));
+
+  const entry = catalog.find(candidate => candidate.name === 'humanizer-ch');
+  const directory = path.join(root, entry.path);
+  const manifest = parseJson(fs.readFileSync(path.join(directory, 'skill.json'), 'utf8'), 'humanizer-ch/skill.json');
+  const content = fs.readFileSync(path.join(directory, 'SKILL.md'), 'utf8');
+  const skill = parseSkill(content, 'humanizer-ch', manifest);
+  assert.equal(entry.version, null);
+  assert.equal(manifest.kind, 'reference');
+  assert.equal(manifest.install.defaultScope, 'global');
+  assert.equal(entry.description, manifest.description);
+  assert.equal(skill.description, manifest.description);
+  assert.ok(skill.description.includes('humanizer'));
+  assert.match(content, /fetch and read the (?:authoritative )?upstream (?:guidance|instructions)/);
+  assert.equal(fs.existsSync(path.join(directory, 'scripts')), false);
+  assert.equal(fs.existsSync(path.join(directory, 'agents/openai.yaml')), false);
+  assert.equal(entry.path, 'skills/writing/humanizer-ch');
+  assert.equal(manifest.author, null);
+  assert.equal(manifest.license, null);
+  assert.equal(manifest.upstream.license, null);
+  assert.equal(manifest.upstream.repo, 'https://github.com/zjqc/humanizer-ch');
+  assert.match(manifest.upstream.revision, /^[a-f0-9]{40}$/);
+  assert.match(content, /No upstream rewriting rules, examples, scripts, or Codex UI files are bundled/);
+  assert.match(content, /not a general Chinese-language\s+replacement/);
+  assert.match(content, /not an upstream example or a validated Chinese editing result/);
+  assert.match(content, /\/humanizer-ch [\u4e00-\u9fff]/);
+  assert.deepEqual(manifest.dependencies ?? [], []);
 });
 
-test('PPT Master reference preserves provenance and unbundled execution boundaries', () => {
+test('PPT Master installs its original and keeps counterpart overlap notes', () => {
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
   const catalog = parseJson(fs.readFileSync(path.join(root, 'catalog.json'), 'utf8'), 'catalog.json');
   const entry = catalog.find(candidate => candidate.name === 'ppt-master');
   assert.equal(entry.path, 'skills/writing/ppt-master');
   const directory = path.join(root, entry.path);
   const manifest = parseJson(fs.readFileSync(path.join(directory, 'skill.json'), 'utf8'), 'ppt-master/skill.json');
-  const content = fs.readFileSync(path.join(directory, 'SKILL.md'), 'utf8');
-  const skill = parseSkill(content, entry.name, manifest);
   assert.equal(entry.version, null);
   assert.equal(manifest.kind, 'reference');
   assert.equal(manifest.author, 'Hugo He');
   assert.equal(manifest.license, 'MIT');
+  assert.equal(manifest.install.strategy, 'upstream');
   assert.equal(manifest.upstream.repo, 'https://github.com/hugohe3/ppt-master');
   assert.equal(manifest.upstream.path, 'skills/ppt-master');
-  assert.equal(manifest.upstream.version, '6.6.0');
+  assert.equal(manifest.upstream.version, 'latest');
   assert.equal(manifest.upstream.license, 'MIT');
-  assert.match(manifest.upstream.revision, /^[a-f0-9]{40}$/);
-  assert.ok(content.includes(manifest.upstream.revision));
   assert.equal(entry.description, manifest.description);
-  assert.equal(skill.description, manifest.description);
+  assert.deepEqual(fs.readdirSync(directory), ['skill.json']);
   assert.deepEqual(manifest.dependencies ?? [], []);
-  assert.equal(fs.existsSync(path.join(directory, 'scripts')), false);
-  assert.equal(fs.existsSync(path.join(directory, 'assets')), false);
-  assert.match(content, /No upstream scripts,\s+assets, converter, or full workflow are bundled/);
-  assert.match(content, /fetch and read the upstream instructions/);
-  assert.match(content, /No installation or execution is implied/);
-  assert.match(content, /Default charts\/tables are editable shapes/);
-  assert.match(content, /eligible metadata and `--native-charts-and-tables`/);
-  assert.match(content, /Brand\/Style[\s\S]*remains flat; Layout\/Deck/);
-  assert.match(content, /Edit Native PPTX[\s\S]*inherited Master\/Layout objects/);
-  assert.match(content, /Source inspection does not certify PowerPoint editing/);
   for (const name of ['harness-report', 'kpi-dashboard']) {
-    assert.ok(skill.description.includes(name));
+    assert.ok(manifest.description.includes(name));
     const counterpart = catalog.find(candidate => candidate.name === name);
     const counterpartManifest = parseJson(fs.readFileSync(path.join(root, counterpart.path, 'skill.json'), 'utf8'), `${name}/skill.json`);
     const counterpartSkill = parseSkill(fs.readFileSync(path.join(root, counterpart.path, 'SKILL.md'), 'utf8'), name, counterpartManifest);
@@ -442,7 +475,7 @@ test('office documents reference separates original navigation from proprietary 
   }
 });
 
-test('RAG implementation reference preserves provenance and unbundled execution boundaries', () => {
+test('RAG implementation adapts the original with explicit example limits', () => {
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
   const catalog = parseJson(fs.readFileSync(path.join(root, 'catalog.json'), 'utf8'), 'catalog.json');
   const entry = catalog.find(candidate => candidate.name === 'rag-implementation');
@@ -451,36 +484,65 @@ test('RAG implementation reference preserves provenance and unbundled execution 
   const manifest = parseJson(fs.readFileSync(path.join(directory, 'skill.json'), 'utf8'), 'rag-implementation/skill.json');
   const content = fs.readFileSync(path.join(directory, 'SKILL.md'), 'utf8');
   const skill = parseSkill(content, entry.name, manifest);
+  const wrapper = content.split('<!-- upstream:begin -->')[0];
   assert.equal(entry.version, null);
   assert.equal(manifest.version, null);
-  assert.equal(manifest.kind, 'reference');
   assert.equal(manifest.author, 'Seth Hobson');
   assert.equal(manifest.maintainer, 'wzlwit');
   assert.equal(manifest.license, 'MIT');
   assert.equal(manifest.source.repo, 'skillvault');
   assert.equal(manifest.source.path, entry.path);
+  assert.equal(manifest.install.strategy, 'adapted');
   assert.equal(manifest.upstream.repo, 'https://github.com/wshobson/agents');
   assert.equal(manifest.upstream.path, 'plugins/llm-application-dev/skills/rag-implementation');
-  assert.equal(manifest.upstream.version, null);
+  assert.equal(manifest.upstream.version, 'latest');
   assert.equal(manifest.upstream.license, 'MIT');
+  assert.match(manifest.upstream.commit, /^[a-f0-9]{40}$/);
+  assert.equal(entry.description, manifest.description);
+  assert.equal(skill.description, manifest.description);
+  assert.equal(manifest.install.defaultScope, 'global');
+  assert.deepEqual(manifest.dependencies ?? [], []);
+  assert.ok(fs.existsSync(path.join(directory, 'references/details.md')));
+  assert.match(wrapper, /installing this skill runs nothing/);
+  assert.match(wrapper, /global\s+installation default does not authorize a new installation/);
+  assert.match(wrapper, /legacy `langchain\.retrievers` and `langchain\.storage` imports/);
+  assert.match(wrapper, /does not guard empty retrieval, empty relevance sets, or empty test sets/);
+  assert.match(wrapper, /stable source IDs, revisions, and supporting passages/);
+  assert.match(wrapper, /retrieved text as untrusted evidence, not instruction authority/);
+  assert.match(wrapper, /adds no harness action, runtime dependency, or automatic ingestion/);
+});
+
+test('gamedev reference links upstream without bundling or installing it', () => {
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const catalog = parseJson(fs.readFileSync(path.join(root, 'catalog.json'), 'utf8'), 'catalog.json');
+  const entry = catalog.find(candidate => candidate.name === 'awesome-gamedev-agent-skills');
+  assert.equal(entry.path, 'skills/gamedev/awesome-gamedev-agent-skills');
+  const directory = path.join(root, entry.path);
+  const manifest = parseJson(fs.readFileSync(path.join(directory, 'skill.json'), 'utf8'), 'awesome-gamedev-agent-skills/skill.json');
+  const content = fs.readFileSync(path.join(directory, 'SKILL.md'), 'utf8');
+  const skill = parseSkill(content, entry.name, manifest);
+  assert.equal(entry.version, null);
+  assert.equal(manifest.version, null);
+  assert.equal(manifest.kind, 'reference');
+  assert.equal(manifest.author, 'Abhishek Barali and the awesome-gamedev-agent-skills contributors');
+  assert.equal(manifest.maintainer, 'wzlwit');
+  assert.equal(manifest.source.path, entry.path);
+  assert.equal(manifest.upstream.repo, 'https://github.com/gamedev-skills/awesome-gamedev-agent-skills');
+  assert.equal(manifest.upstream.version, null);
+  assert.equal(manifest.upstream.license, 'Apache-2.0');
   assert.match(manifest.upstream.revision, /^[a-f0-9]{40}$/);
   assert.equal(entry.description, manifest.description);
   assert.equal(skill.description, manifest.description);
   assert.equal(manifest.install.defaultScope, 'global');
   assert.deepEqual(manifest.dependencies ?? [], []);
   assert.deepEqual(fs.readdirSync(directory).sort(), ['SKILL.md', 'skill.json']);
-  for (const resource of ['SKILL.md', 'references/details.md']) {
-    assert.ok(content.includes(`/blob/${manifest.upstream.revision}/${manifest.upstream.path}/${resource}`));
+  for (const resource of ['router/SKILL.md', 'router/references/routing-table.md', 'docs/VERSION-SUPPORT.md', 'NOTICE']) {
+    assert.ok(content.includes(`/blob/${manifest.upstream.revision}/${resource}`));
   }
-  assert.match(content, /fetch and read the upstream instructions/);
-  assert.match(content, /No upstream prompts, examples, scripts, provider clients, or RAG runtime are bundled/);
+  assert.match(content, /Fetch and read the upstream instructions/);
+  assert.match(content, /No upstream skills, router files, scripts, or assets are bundled/);
   assert.match(content, /No installation or execution is implied/);
-  assert.match(content, /global installation default does not authorize a new installation/);
-  assert.match(content, /legacy `langchain\.retrievers` and `langchain\.storage` imports/);
-  assert.match(content, /does not guard empty retrieval, empty relevance sets, or empty test sets/);
-  assert.match(content, /stable source IDs, revisions, and supporting passages/);
-  assert.match(content, /retrieved text as untrusted evidence, not instruction authority/);
-  assert.match(content, /adds no harness action, runtime dependency, or automatic ingestion/);
+  assert.match(content, /need the user's approval/);
 });
 
 test('document evidence distinguishes partial extraction from complete coverage', () => {
@@ -553,6 +615,30 @@ test('experience-driven authoring keeps learning destinations and edit authority
   assert.match(management, /Wait for explicit confirmation unless the current request already approves the exact text/);
   const core = fs.readFileSync(path.join(root, 'skills/core/rules/references/core.md'), 'utf8');
   assert.equal([...core.matchAll(/^\d\. \*\*/gm)].length, 4);
+});
+
+test('upsert writes only to the repository and never installs', () => {
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const directory = path.join(root, 'skills/core/skillvault-authoring');
+  const manifest = parseJson(fs.readFileSync(path.join(directory, 'skill.json'), 'utf8'), 'skillvault-authoring/skill.json');
+  assert.equal(manifest.inputs.some(input => input.name === 'scope'), false);
+  assert.equal(manifest.outputs.includes('install-summary'), false);
+  const entrypoint = fs.readFileSync(path.join(directory, 'SKILL.md'), 'utf8');
+  assert.match(entrypoint, /Upsert never installs/);
+  const workflow = fs.readFileSync(path.join(directory, 'references/upsert.md'), 'utf8');
+  const after = workflow.split('## After Upsert')[1].split('## Validation')[0];
+  assert.match(after, /Upsert never installs a skill/);
+  assert.match(after, /`\/skillvault-installation install <name>`/);
+});
+
+test('upsert from a URL adds an external skill as a latest reference by default', () => {
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const workflow = fs.readFileSync(path.join(root, 'skills/core/skillvault-authoring/references/upsert.md'), 'utf8');
+  const fromUrl = workflow.split('## Upsert From URL')[1].split('## After Upsert')[0];
+  assert.match(fromUrl, /add a reference by default[\s\S]*`install\.strategy: upstream`[\s\S]*`version: latest`/);
+  assert.match(fromUrl, /Add no `SKILL\.md`; installing\s+fetches the original/);
+  assert.match(fromUrl, /only when the user wants SkillVault changes[\s\S]*`Set-SkillUpstreamSection`/);
+  assert.match(fromUrl, /copies none of its files/);
 });
 
 test('quiet script execution keeps completion checks and necessary interaction', () => {
@@ -908,7 +994,7 @@ test('handoff preserves explicit invocation, global default, and upstream attrib
   assert.equal(skill.metadata.author, manifest.author);
   assert.equal(manifest.upstream.path, 'skills/productivity/handoff');
   assert.equal(manifest.license, 'MIT');
-  assert.match(fs.readFileSync(path.join(directory, 'LICENSE'), 'utf8'), /Copyright \(c\) 2026 Matt Pocock/);
+  assert.match(fs.readFileSync(path.join(directory, 'UPSTREAM-LICENSE'), 'utf8'), /Copyright \(c\) 2026 Matt Pocock/);
 });
 
 test('handoff follow-ups stay optional at selected transfer points', () => {
@@ -1074,7 +1160,7 @@ test('decision bulletin separates optional configuration without hiding recorded
   const workflow = fs.readFileSync(path.join(directory, 'references/workflow.md'), 'utf8');
   const manifest = parseJson(fs.readFileSync(path.join(directory, 'skill.json'), 'utf8'), 'harness-decision/skill.json');
   const action = manifest.inputs.find(input => input.name === 'action');
-  assert.deepEqual(action.enum, ['list', 'record']);
+  assert.deepEqual(action.enum, ['list', 'explain', 'record']);
   assert.equal(action.default, 'list');
   const rows = [...workflow.matchAll(/^\| (.+) \| (.+) \| (.+) \|\r?$/gm)]
     .map(([, request, mapping, display]) => ({ request, mapping, display }));
@@ -1101,6 +1187,19 @@ test('decision bulletin separates optional configuration without hiding recorded
   assert.match(setup, /^\d+\. /m);
   assert.match(plan, /^## Open Decisions\r?$/m);
   assert.match(plan, /\[Configuration When Needed\]\(#configuration-when-needed\)/);
+});
+
+test('decision explanations keep every part and stay read-only', () => {
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const directory = path.join(root, 'skills/planning/harness-decision');
+  const skill = fs.readFileSync(path.join(directory, 'SKILL.md'), 'utf8');
+  assert.ok(skill.includes('./references/workflow.md#explain-a-decision-or-question'));
+  const workflow = fs.readFileSync(path.join(directory, 'references/workflow.md'), 'utf8');
+  const explain = workflow.split(/^## Explain a Decision or Question\r?$/m)[1]?.split(/^## /m)[0];
+  assert.ok(explain, 'Keep the explanation procedure separately addressable');
+  const parts = [...explain.matchAll(/^\d+\. \*\*([^*]+):\*\*/gm)].map(([, part]) => part);
+  assert.deepEqual(parts, ['Question', 'Options', 'Reasons', 'Example', 'Trade-off', 'Status']);
+  assert.match(explain.replace(/\s+/g, ' '), /Explaining never records, accepts, or changes a decision/);
 });
 
 test('topic action-prefix ADR examples match canonical action menus', () => {
@@ -1274,6 +1373,63 @@ test('repository validation catches broken resources and catalog traversal', () 
     assert.throws(() => validateRepository(root), /expected skills\/<category>\/<name>/);
     fs.writeFileSync(path.join(root, 'catalog.json'), JSON.stringify([{ name: 'fixture', path: '../escape' }]));
     assert.throws(() => validateRepository(root), /expected skills\/<category>\/<name>/);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('references keep only their source, and adaptations record the upstream commit they include', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'skillvault-upstream-'));
+  try {
+    const directory = path.join(root, 'skills/testing/fixture');
+    fs.mkdirSync(directory, { recursive: true });
+    fs.writeFileSync(path.join(root, 'catalog.json'), JSON.stringify([{ name: 'fixture', path: 'skills/testing/fixture' }]));
+    const write = (upstream, extra = {}, strategy = 'upstream') => fs.writeFileSync(path.join(directory, 'skill.json'), JSON.stringify({
+      name: 'fixture', version: '1.0.0', kind: 'reference', upstream, install: { defaultScope: 'global', global: true, strategy }, ...extra,
+    }));
+    const skillFile = path.join(directory, 'SKILL.md');
+    const valid = { repo: 'https://github.com/owner/repo', path: 'skills/fixture', version: 'latest' };
+    write(valid);
+    assert.equal(validateRepository(root).publicCount, 1, 'a reference needs no SKILL.md');
+    for (const version of ['v1.2.0', 'a'.repeat(40)]) {
+      write({ ...valid, version });
+      assert.equal(validateRepository(root).publicCount, 1, `pinned version ${version}`);
+    }
+    for (const [field, value, message] of [
+      ['repo', 'http://github.com/owner/repo', /HTTPS URL/],
+      ['repo', 'https://user:token@github.com/owner/repo', /HTTPS URL/],
+      ['path', '../escape', /canonical relative path/],
+      ['path', '/rooted', /canonical relative path/],
+      ['version', null, /latest, a tag, or a full commit/],
+      ['version', '../main', /latest, a tag, or a full commit/],
+    ]) {
+      write({ ...valid, [field]: value });
+      assert.throws(() => validateRepository(root), message, `${field}: ${value}`);
+    }
+    write(valid, { kind: 'agent' });
+    assert.throws(() => validateRepository(root), /kind reference/);
+    write(valid);
+    fs.writeFileSync(skillFile, validSkill);
+    assert.throws(() => validateRepository(root), /keeps no SKILL\.md/, 'a reference with its own SKILL.md must become an adapted skill');
+
+    const adapted = { ...valid, commit: 'b'.repeat(40) };
+    const section = '<!-- upstream:begin -->\noriginal\n<!-- upstream:end -->\n';
+    write(adapted, { kind: 'agent' }, 'adapted');
+    assert.throws(() => validateRepository(root), /upstream:begin/, 'an adapted skill keeps the original in a marked section');
+    fs.writeFileSync(skillFile, `${validSkill}## Changes\n\n${section}`);
+    assert.equal(validateRepository(root).publicCount, 1, 'an adapted skill keeps its adaptation');
+    fs.writeFileSync(skillFile, `${validSkill}${section}${section}`);
+    assert.throws(() => validateRepository(root), /exactly one/, 'an adapted skill has one original section');
+    fs.writeFileSync(skillFile, `${validSkill}${section}`);
+    write(valid, { kind: 'agent' }, 'adapted');
+    assert.throws(() => validateRepository(root), /upstream\.commit/, 'an adapted skill records its merge base');
+    write({ ...adapted, commit: 'main' }, { kind: 'agent' }, 'adapted');
+    assert.throws(() => validateRepository(root), /upstream\.commit/, 'the merge base is a full commit');
+    write({ ...adapted, repo: 'http://github.com/owner/repo' }, { kind: 'agent' }, 'adapted');
+    assert.throws(() => validateRepository(root), /HTTPS URL/, 'an adapted source follows the reference rules');
+    write(adapted, { kind: 'agent' }, 'adapted');
+    fs.rmSync(skillFile);
+    assert.throws(() => validateRepository(root), /SKILL\.md/, 'an adapted skill needs its SKILL.md');
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }

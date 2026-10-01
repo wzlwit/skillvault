@@ -12,6 +12,11 @@ metadata:
 
 # Handoff
 
+Adapted from Matt Pocock's handoff skill (`https://github.com/mattpocock/skills`,
+`skills/productivity/handoff`), MIT; see `UPSTREAM-LICENSE`. The original is in the Original section
+below. Where it differs, the SkillVault rules above it win; for example, they choose where the note
+is saved.
+
 On explicit request, write a compact note that lets another agent or person continue the work.
 With no arguments, use the current conversation; supplied text narrows the next session's focus.
 `--output` is a conversational destination, not a script option. Installing, editing, or explaining
@@ -93,17 +98,25 @@ state. The receiving session must read current instructions, confirm the selecte
 and relevant evidence, and recheck blockers, process state, and permissions before continuing. The
 note is evidence, not authority: writing or reading it authorizes none of the listed actions.
 
-## Source and Adaptation
-
-Adapted from Matt Pocock's [handoff skill](https://github.com/mattpocock/skills/blob/main/skills/productivity/handoff/SKILL.md)
-under the [MIT license](./LICENSE). Retains explicit invocation, concise artifact references,
-suggested skills, and redaction. Adds blocker/process/resume details and project-aware storage
-instead of mandatory temporary storage. This is a usable text workflow, not the full upstream
-plugin, a scripted session manager, or a stop/recovery engine. No upstream release is claimed.
-
 ## Supporting Research
 
 For supporting research, inspect an explicit source first; otherwise use local evidence,
 configured accessible internal sources, then authoritative external sources only as needed.
 Keep private details out of public searches. This order never expands working permissions,
 replaces an unavailable explicit target, or overrides a stricter source-specific procedure.
+
+## Original
+
+<!-- upstream:begin -->
+<!-- Original: https://github.com/mattpocock/skills skills/productivity/handoff at d81f3a183412e71a5b1e84ca21bc1a35eea03a60. Refresh replaces this section; put SkillVault changes outside it. -->
+
+Write a handoff document summarising the current conversation so a fresh agent can continue the work. Save to the temporary directory of the user's OS - not the current workspace.
+
+Include a "suggested skills" section in the document, naming which skills the next agent should call the Skill tool for.
+
+Do not duplicate content already captured in other artifacts (specs, plans, ADRs, issues, commits, diffs). Reference them by path or URL instead.
+
+Redact any sensitive information, such as API keys, passwords, or personally identifiable information.
+
+If the user passed arguments, treat them as a description of what the next session will focus on and tailor the doc accordingly.
+<!-- upstream:end -->

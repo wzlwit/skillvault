@@ -111,17 +111,56 @@ function Remove-PrReviewWatch {
 
 function Get-PrReviewList {
     param($Paths)
-    $list = Read-PrReviewWatchlist $Paths
-    $state = if (Test-Path -LiteralPath $Paths.Config) { Read-HarnessState (Get-HarnessPaths $Paths.Root) } else { $null }
-    $latest = @($state.prReviews | Group-Object key | ForEach-Object { $_.Group | Select-Object -Last 1 })
     [pscustomobject]@{
         dataRoot = $Paths.Root
-        configured = (Test-Path -LiteralPath $Paths.Config -PathType Leaf)
-        entries = @(foreach ($entry in $list.entries) {
-            [pscustomobject]@{ id = $entry.id; url = $entry.url; kind = $entry.kind; limit = $entry.limit; includeDrafts = $entry.includeDrafts
-                reviews = @($latest | Where-Object { $_.key -ceq $entry.key -or $entry.kind -ceq 'repository' -and $_.repositoryUrl -ceq $entry.repositoryUrl }) }
+        entries = @(foreach ($entry in (Read-PrReviewWatchlist $Paths).entries) {
+            [pscustomobject]@{ id = $entry.id; url = $entry.url; kind = $entry.kind; limit = $entry.limit; includeDrafts = $entry.includeDrafts; addedAt = $entry.addedAt }
         })
     }
+}
+
+function ConvertTo-PrReviewTime {
+    param($Value)
+    # ConvertFrom-Json can already have turned saved ISO strings into DateTime values.
+    if ($Value -is [datetime]) { return [datetimeoffset]$Value }
+    $time = [datetimeoffset]::MinValue
+    if ([datetimeoffset]::TryParse([string]$Value, [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::None, [ref]$time)) { $time } else { [datetimeoffset]::MinValue }
+}
+
+function Test-PrReviewOwnerRunning {
+    param($Current)
+    try {
+        $process = Get-Process -Id ([int]$Current.ownerProcessId) -ErrorAction Stop
+        # A process that started after the marker reused the PID of an ended review.
+        ([datetimeoffset]$process.StartTime) -le (ConvertTo-PrReviewTime $Current.startedAt)
+    }
+    catch { $false }
+}
+
+function Get-PrReviewResults {
+    param($Paths)
+    $entries = @((Read-PrReviewWatchlist $Paths).entries)
+    $configured = Test-Path -LiteralPath $Paths.Config -PathType Leaf
+    $state = if ($configured) { Read-HarnessState (Get-HarnessPaths $Paths.Root) } else { $null }
+    $latest = [ordered]@{}
+    foreach ($record in @($state.prReviews | Where-Object { $null -ne $_ })) { $latest[$record.key] = $record }
+    $current = $state.prReviewCurrent
+    if ($current -and -not $latest.Contains($current.key)) { $latest[$current.key] = $null }
+    $reviews = foreach ($key in @($latest.Keys)) {
+        $record = $latest[$key]
+        $repositoryUrl = if ($record) { $record.repositoryUrl } else { $current.repositoryUrl }
+        $watchedBy = @($entries | Where-Object { $_.key -ceq $key -or ($_.kind -ceq 'repository' -and $_.repositoryUrl -ceq $repositoryUrl) } | ForEach-Object id)
+        if ($current -and $current.key -ceq $key) {
+            [pscustomobject]@{ key = $key; repositoryUrl = $repositoryUrl; status = $(if (Test-PrReviewOwnerRunning $current) { 'Running' } else { 'Interrupted' })
+                at = $current.startedAt; base = $current.base; head = $current.head; ownerProcessId = $current.ownerProcessId; watchedBy = $watchedBy; lastCompleted = $record }
+        }
+        else {
+            $item = $record | Select-Object *
+            $item | Add-Member -NotePropertyName watchedBy -NotePropertyValue $watchedBy -Force
+            $item
+        }
+    }
+    [pscustomobject]@{ dataRoot = $Paths.Root; configured = $configured; reviews = @($reviews | Sort-Object { ConvertTo-PrReviewTime $_.at } -Descending) }
 }
 
 function Assert-PrReviewSettings {

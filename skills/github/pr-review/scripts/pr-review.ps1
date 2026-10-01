@@ -1,5 +1,5 @@
 param(
-    [ValidateSet('Review', 'Add', 'Remove', 'List', 'Configure', 'Timer')][string]$Action = 'Review',
+    [ValidateSet('Review', 'Add', 'Remove', 'List', 'Results', 'Configure', 'Timer')][string]$Action = 'Review',
     [string]$Url,
     [string]$Selector,
     [ValidateRange(1, 100)][int]$Limit = 5,
@@ -20,6 +20,7 @@ $paths = Get-PrReviewPaths $DataRoot
 if ($Scheduled -and $Action -cne 'Review') { throw 'A recurring tick can only review the saved list.' }
 switch ($Action) {
     'List' { Get-PrReviewList $paths | ConvertTo-Json -Depth 20 }
+    'Results' { Get-PrReviewResults $paths | ConvertTo-Json -Depth 20 }
     'Add' {
         $options = @{}
         foreach ($name in @('Limit', 'IncludeDrafts')) { if ($PSBoundParameters.ContainsKey($name)) { $options[$name] = $PSBoundParameters[$name] } }

@@ -1,5 +1,8 @@
 # Work Discovery Sources
 
+Contents: Source Requests; Built-In Readers; Other Sources; Source Ownership; Relevance and
+Priority Assessment; Auto Status Verification; Related Sources and Conflicts; Checks and Task Intake.
+
 `/harness-monitor` (`/hn-monitor`) can watch a source for relevant work, not only health metrics. A
 check collects candidates, assesses relevance and priority, verifies current status with the Auto
 model, reconciles evidence-backed local outcomes, and then ranks unfinished work. Discovery feeds the

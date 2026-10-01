@@ -16,6 +16,8 @@
   "upstream": {
     "repo": "https://github.com/supabase/agent-skills",
     "path": "skills/supabase-postgres-best-practices",
+    "version": "latest",
+    "commit": "544bfc56c89afe2b87b20017a59b2c6e9502a1fb",
     "license": "MIT"
   },
   "install": {
@@ -23,7 +25,7 @@
     "project": true,
     "session": true,
     "defaultScope": "global",
-    "strategy": "copy"
+    "strategy": "adapted"
   },
   "readme": "SKILL.md"
 }

@@ -12,9 +12,9 @@ skill does not automatically edit a design,
 implement code, create a schedule, or commit anything. Request document changes explicitly;
 an existing draft takes precedence over creating another spec.
 
-This is a self-contained, rephrased guide based on Jesse Vincent's
-[Superpowers brainstorming skill](https://github.com/obra/superpowers/tree/main/skills/brainstorming).
-The upstream is [MIT licensed](https://github.com/obra/superpowers/blob/main/LICENSE).
-Jesse Vincent is the upstream author and wzlwit maintains this adaptation. Its version is
-undeclared (`null`), not an upstream release number. Plugin hooks, automatic spec commits,
-the visual companion, and mandatory follow-on skills are not bundled.
+Adapted from Jesse Vincent's
+[Superpowers brainstorming skill](https://github.com/obra/superpowers/tree/main/skills/brainstorming),
+MIT; see [UPSTREAM-LICENSE](./UPSTREAM-LICENSE). Jesse Vincent is the upstream author and wzlwit
+maintains this adaptation. The original process and its visual companion are included. The
+SkillVault rules decide where documents go; nothing is committed or started automatically, and
+the companion starts only after you agree.

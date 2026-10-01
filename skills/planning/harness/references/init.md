@@ -1,6 +1,8 @@
 
 # Harness Initialization
 
+Contents: Reuse the Selected Root; Workflow; Worker Output Contract; Boundaries.
+
 ## Reuse the Selected Root
 
 Derive the project path from the session's selected Root, including the displayed `./` fallback.

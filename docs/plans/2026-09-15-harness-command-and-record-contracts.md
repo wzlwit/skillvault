@@ -156,9 +156,10 @@ The top-level `/harness` remains the agreed root/setup/context/history entry; th
 | `/harness-monitor [list\|declare\|check\|accept] [<arguments>...]` | Inspect source candidates/health observations, declare monitors, check a source, or accept a candidate/incident-linked manual task. |
 | `/harness-report [list\|upsert] [<arguments>...]` | Resolve an existing or missing artifact and author it; create/update remain aliases. Platform, output, validation, and publication boundaries stay separate. |
 | `/harness-doc [list\|upsert] [<arguments>...]` | List reader doc sets, or author a full set/focused update in the coding repository. Humanizer precedes final validation; no controller initialization, runtime action, or publication is implied. |
+| `/harness-comms [list\|slots\|upsert] [<arguments>...]` | List known communication artifacts, rank meeting slots from saved free/busy data, or draft a tracker, meeting, or email. Drafts only; sending, inviting, and sharing need explicit requests. No controller initialization or runtime action is implied. |
 | `/harness-policy [list\|set\|pause\|stop\|resume] [<arguments>...]` | Own runtime limits and failure handling. `limits` and `fallback` qualify list/set; policy changes start nothing. |
 | `/harness-timer [list\|set\|disable\|resume\|clean\|migrate] [<arguments>...]` | Own cadence and schedule lifecycle. `clean` handles stale schedules only; weekly maintenance delegates history to harness. |
-| `/harness-decision [list\|record] [<arguments>...]` | Read-only [decision bulletin](#decision-bulletin): open decisions plus a brief configuration summary by default; `list all` adds recent decisions and the detailed setup checklist. Closed/exact-ID views omit setup. Record only an explicit human choice, linked to affected tasks. |
+| `/harness-decision [list\|explain\|record] [<arguments>...]` | Read-only [decision bulletin](#decision-bulletin): open decisions plus a brief configuration summary by default; `list all` adds recent decisions and the detailed setup checklist. Closed/exact-ID views omit setup. `explain` is read-only: options, evidence-backed reasons, an example, the trade-off, and status. Record only an explicit human choice, linked to affected tasks. |
 | `/harness-link [list\|add\|remove] [<arguments>...]` | One registry for supporting URLs, files, folders, and coding Git roots. Removal unregisters the link, never its target. |
 | `/harness context [<task-id>]` | Read the selected project's/task's rules, plans, decisions, and relevant references without creating another context store. |
 
@@ -590,6 +591,16 @@ code, diagrams, and link targets, then check evidence, terminology, links, inten
 diff hygiene. Missing guidance, critical evidence, or required checks leaves a Draft with explicit
 outstanding work. Moves, installations, rebases, and publication need their own approvals. The
 [accepted documentation ADR](decisions/2026-09-26-harness-documentation-adr.md) records these decisions.
+
+## Communications Drafting
+
+The [communications skill](../../skills/planning/harness-comms/SKILL.md), `/hn-comms`, drafts
+stakeholder trackers, sync-up invites, and email updates or thread replies, and ranks meeting slots
+from saved free/busy data with a bundled offline script. It runs in the session without a controller
+or runner action. Drafts are the only default output: sending, inviting, sharing, permission changes,
+and deletion need explicit requests. Evidence rules match the rest of the harness: owners come from
+authoritative records or the user, statuses cite a snapshot, and every write is read back. The
+[accepted communications ADR](decisions/2026-09-29-harness-communications-adr.md) records these decisions.
 
 ## Report Authoring
 

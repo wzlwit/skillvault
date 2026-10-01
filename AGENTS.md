@@ -114,6 +114,43 @@ not a substitute for an unknown version.
 - Each skill folder has `skill.json` and usually `SKILL.md`; add `README.md` when useful for humans.
 - `skill.json` owns richer metadata such as `title`, `tags`, `source`, and `install.defaultScope`.
 - Preserve verified original authorship for imports and disclose adaptations. Do not infer a redistribution license from repository access.
+- Skill sources (owner decisions, 2026-09-30 and 2026-10-01):
+  - Native: write your own skill from a description, session, approach, knowledge, or task.
+  - External, not adapted: keep only a reference: `skill.json` with the upstream repository, path,
+    and version, `install.strategy: upstream`, and no `SKILL.md`. Installing fetches the original.
+    Use version `latest`, so refresh keeps copies current; pin a tag or commit only when the author
+    sets one on purpose.
+  - External, adapted: keep the adaptation under the original's name, with no `-sv` or other
+    renamed copy of the same workflow. An adaptation may take a new name when it turns the original
+    into a different workflow. A renamed adaptation has no `origin` variant and must not be
+    installed alongside the original. It uses `install.strategy: adapted`, names the original in `skill.json`
+    (`upstream`, including the merged `commit`) and in `SKILL.md`. Like a wrapper, its `SKILL.md`
+    keeps SkillVault's changes outside one `<!-- upstream:begin -->` ... `<!-- upstream:end -->`
+    section that holds the original text unchanged. Refresh replaces that section and merges the
+    original's other files automatically, then pushes when it has permission.
+  - Guide: when the original cannot be installed as one skill (a collection, a tool that installs
+    its own skill, or a license that forbids copies or grants none), keep a SkillVault-written
+    guide that links to it and copies none of its files. It installs like a native skill.
+  - Install picks the adaptation by default; `install <skill> origin` installs the original, except
+    for a renamed adaptation.
+  `architecture-decision-records`, `brainstorming`, `differential-review`, `github-issues`,
+  `grilling`, `handoff`, `kpi-dashboard` (renamed from `kpi-dashboard-design`), `openapi-spec`
+  (renamed from `openapi-spec-generation`), `powerbi-modeling`, `rag-implementation`,
+  `supabase-postgres-best-practices`, and `webapp-testing` are adapted; `archify`, `humanizer`,
+  `planning-with-files`, and `ppt-master` are references; `awesome-gamedev-agent-skills`,
+  `graphify`, `humanizer-ch`, and `office-documents` are guides.
+- Do not modify an external-source skill: one whose metadata or source notes name an upstream author
+  or source, or that the owner has called external, such as `grilling`. This covers its files and
+  catalog entry. Change it only when the owner explicitly asks, for example by adapting it.
+  Otherwise report the needed change, and
+  put overlap notes in the native counterpart and repository docs. Unchanged copies keep upstream
+  updates easy to apply.
+- Edit an adapted skill only on its wrapper side: `SKILL.md` outside the marked section, and files
+  SkillVault added, such as `skill.json`. Never put SkillVault changes in the section or in a file
+  from the original: refresh replaces the section, so a change there is lost, and a changed
+  original file can stop the automatic merge. If refresh defers the skill for a conflict, undo
+  SkillVault's change to that file, moving what it needs to the wrapper side; the next refresh
+  merges.
 - `install.defaultScope` must be `global`, `project`, or `session`; missing defaults are treated as `project` by `/skillvault-installation install`.
 - Prefer global installation for reusable catalog skills; use an explicit project installation
   for a repository-pinned or customized copy. Keep one installed copy per skill: before installing,
@@ -122,7 +159,11 @@ not a substitute for an unknown version.
   not execution scope or approval. Keep sibling runtime dependencies in the same selected scope.
   Changing a default never migrates existing copies, project state, or schedules, and never
   expands bootstrap.
-- Keep `SKILL.md` concise, direct, and specific about trigger phrases and safety rules.
+- Keep skills concise and direct. `SKILL.md` holds everything needed on every use: purpose, trigger
+  phrases, actions, defaults, approvals, prohibitions, and rules that change the result. Put only
+  detail for one action or case in `references/`.
+- Link every reference directly from `SKILL.md` and say when to read it ("Before `record`, read
+  ..."), not just "see ...". Start any reference file over 100 lines with a short contents list.
 - Use command synopsis notation in `argument-hint`: literal action/option names, `<value>`
   placeholders, `[optional]` groups, `a|b` alternatives, and `...` for repeated arguments.
   For multi-action topics, keep the hint compact, such as `[list|run] [<arguments>...]`, and
@@ -170,14 +211,18 @@ do not rename canonical topics to abbreviations or create duplicate alias bundle
   not absent. The session resolves existence without making the user choose an operation first.
   Use its read-only source resolver before authoring: explicit `--repo`, verified working project,
   known Windows checkout `C:\repos\skillvault`, then cache. Verify Git root and origin, block invalid
-  preferred sources, and show source paths separately from the original project's installation target.
+  preferred sources, and show source paths separately from the original working project. Upsert never
+  installs; installing is a separate `/skillvault-installation install` request.
 - `/skillvault-authoring remove` removes exact SkillVault source bundles and catalog entries after confirmation.
   Installed copies stay unchanged; use `/skillvault-installation uninstall` for those.
 - `/rules` shows guidance/actions. `/rules apply` supplies the compact four rules without edits;
   `add`, `update`, and `remove` retain confirmed changes to the authoritative document; `modify` is an alias.
-- `/skillvault-refresh` inspects only. `run` refreshes managed global latest copies one way; scheduling
-  delegates to `/harness-timer set refresh`. Legacy `schedule` keeps its explicit day semantics,
-  including a one-day default for that compatibility request and `0` for one run. No push occurs.
+- `/skillvault-refresh` inspects only. `run` has two steps: merge upstream changes into adapted
+  skills and push them to the SkillVault repository when permitted, then bring new commits to
+  the recorded checkout and managed global latest copies, merging local changes; conflicts wait
+  for the owner. Installed originals follow their upstream. Scheduling delegates to `/harness-timer set refresh`. Legacy `schedule` keeps its
+  explicit day semantics, including a one-day default for that compatibility request and `0` for
+  one run. Refresh never pushes the owner's own commits or commits in the owner's checkout.
 - `/skillvault-installation uninstall` removes exact displayed installed copies by index, range, keyword,
   or name after confirmation. Compatibility-only bundles are not bulk-install/refresh candidates.
 - `/schedule-manager` lists Windows scheduled tasks and enables, disables, or deletes selected tasks by index, range, list, or keyword after confirmation.
@@ -200,7 +245,7 @@ Validation below. They do not authorize publication.
 
 Canonical names are `harness`, `harness-policy`, `harness-task`, `harness-dev`,
 `harness-review`, `harness-test`, `harness-monitor`, `harness-timer`, `harness-link`,
-`harness-report`, `harness-doc`, and `harness-decision`. Names, folders, and dependencies use `harness` or `harness-*`.
+`harness-report`, `harness-doc`, `harness-comms`, and `harness-decision`. Names, folders, and dependencies use `harness` or `harness-*`.
 `/hn` and `/hn-*` are conversational shorthand only; the first parameter selects a subcommand. See the
 [topic structure and diagram](docs/plans/2026-09-16-topic-skill-refactor.md).
 Use `/harness-<topic> [action1|action2|...] [<arguments>...]` command synopsis notation, not
@@ -224,6 +269,16 @@ Use Humanizer for the final prose pass, then validate facts, terminology, links,
 Preserve technical content and stable headings; missing evidence or required checks leaves a Draft.
 Document moves, tool installations, and publication retain separate approval. The
 [documentation ADR](docs/plans/decisions/2026-09-26-harness-documentation-adr.md) records these choices.
+
+`harness-comms` drafts stakeholder trackers, meeting invites, and email updates or thread replies
+through read-only `list`, read-only `slots`, and explicit `upsert <tracker|meeting|email>`. Like
+`harness-doc`, it works in the session without a controller or runtime action. It saves drafts only:
+sending, inviting, sharing, link-permission changes, and deletion each need an explicit request.
+It re-reads before overwriting a draft the user may be editing and verifies every write by reading
+it back. Owners come from authoritative records or the user, never authorship alone. The bundled
+`rank-slots.ps1` ranks saved getSchedule data offline and is covered by `test-harness-comms.ps1`.
+Keep its public examples generic. The
+[communications ADR](docs/plans/decisions/2026-09-29-harness-communications-adr.md) records these choices.
 
 New controllers use layout 2: authoritative `config/project.json`, `monitors.json`, `tests.json`,
 `policy.json`, and schedules when configured; generated `board/` views; `runtime/` state/locks;
@@ -469,3 +524,6 @@ catalog. Changed or pinned installs require review and explicit `-Force` (`--for
 ## Git Safety
 
 Do not commit, push, force-push, or open a PR unless the user explicitly asks. This repo may intentionally keep all work uncommitted while the design is still moving.
+The one standing exception (owner decision, 2026-09-30) is `/skillvault-refresh`: it commits
+merged adaptation updates in its own clone and pushes them when it has permission.
+It never force-pushes, and it never commits or pushes anything from the owner's checkout.

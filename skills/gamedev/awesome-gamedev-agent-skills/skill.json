@@ -1,0 +1,33 @@
+{
+  "name": "awesome-gamedev-agent-skills",
+  "title": "Awesome Gamedev Agent Skills Reference",
+  "version": null,
+  "status": "public",
+  "visibility": "public",
+  "kind": "reference",
+  "description": "Reference guide to gamedev-skills/awesome-gamedev-agent-skills for game development with Godot, Unity, Unreal, web, and other engines: gameplay, assets, UI, audio, genres, and publishing. Use /awesome-gamedev-agent-skills to find and read the matching upstream skill. Upstream skills and scripts are not bundled or installed.",
+  "tags": ["gamedev", "game-development", "godot", "unity", "unreal", "reference"],
+  "author": "Abhishek Barali and the awesome-gamedev-agent-skills contributors",
+  "maintainer": "wzlwit",
+  "license": "MIT",
+  "homepage": "https://github.com/gamedev-skills/awesome-gamedev-agent-skills",
+  "source": {
+    "repo": "skillvault",
+    "path": "skills/gamedev/awesome-gamedev-agent-skills"
+  },
+  "upstream": {
+    "repo": "https://github.com/gamedev-skills/awesome-gamedev-agent-skills",
+    "path": ".",
+    "revision": "d4b0e35550c55ae70bdfcab4ef5a0e94610438a9",
+    "version": null,
+    "license": "Apache-2.0"
+  },
+  "install": {
+    "global": true,
+    "project": true,
+    "session": true,
+    "defaultScope": "global",
+    "strategy": "copy"
+  },
+  "readme": "SKILL.md"
+}

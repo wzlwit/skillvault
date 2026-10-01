@@ -42,6 +42,10 @@ Selectors match name fragments before descriptions, so `install harness` selects
   Install mode; never use Upsert mode to bypass its known-or-explicit source rule.
 - Preview matches, sibling dependencies, source paths, scopes, and targets before copying. Keep
   source and installation destinations separate.
+- An adapted skill installs SkillVault's adaptation by default; `install <skill> origin` fetches
+  the original instead. A renamed adaptation has no `origin` variant and must not be installed
+  alongside its original. A reference fetches its original. See
+  [upstream references](./references/install.md#upstream-references).
 - Preserve unrelated, customized, and pinned copies. Deletion and forced replacement need explicit approval.
 - Keep one installed copy per skill: before installing, check global and the current project, and
   ask whether to move a copy found in the other scope (see [target scope](./references/install.md#skillname-foldername-or-keyword-given-installupdate-mode)).

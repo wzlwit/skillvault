@@ -1,6 +1,6 @@
 ---
 name: harness-monitor
-description: "Monitor work across approved source adapters, including ADO and documents; assess relevance, Auto-verify status, correlate explicit requirements, reconcile evidence, and expose verified subsets, or check health observations. Use /harness-monitor or /hn-monitor with list, declare, check, or accept. Overlaps with harness-test on checks, harness-task on intake, and kpi-dashboard on metric contracts; preserves deferred work and never launches development."
+description: "Monitor work across approved source adapters, including ADO and documents; assess relevance, Auto-verify status, correlate explicit requirements, reconcile evidence, and expose verified subsets, or check health observations. Use /harness-monitor or /hn-monitor with list, declare, check, or accept. Overlaps with harness-test on checks, harness-task on intake, kpi-dashboard on metric contracts, and harness-comms on status and owner evidence; preserves deferred work and never launches development."
 metadata:
   author: wzlwit
   version: "1.0.0"
@@ -54,4 +54,4 @@ unchanged; abbreviation adds no confirmation. This is conversational routing, no
   completion follow-ups are defined in [work discovery](./references/discovery.md).
 
 Offer grilling only when an attended owner must resolve a consequential metric, threshold, or
-response-policy choice, never during scheduled checks.
+response-policy choice, never during scheduled checks or on every incident.

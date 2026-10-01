@@ -9,13 +9,14 @@
   "requiredInterfaces": {
     "skillvault-installation": {
       "compatibility": 1,
-      "installation-transactions": 1
+      "installation-transactions": 1,
+      "upstream-references": 3
     }
   },
   "status": "public",
   "visibility": "public",
   "kind": "agent",
-  "description": "Refresh managed global latest skill copies one way from recorded Git sources. Use /skillvault-refresh or /sv-refresh list or run; accepts skillvault-fresh, /sv-fresh, /skv-fresh, /skillvault-sync and /sv-sync. Scheduling delegates to harness-timer set refresh. Does not push upstream or update project copies.",
+  "description": "Merge upstream changes into adapted skills in the SkillVault repository when push is permitted, then bring new commits to the local checkout and managed global latest copies, merging local changes. Use /skillvault-refresh or /sv-refresh list or run; accepts skillvault-fresh, /sv-fresh, /skv-fresh, /skillvault-sync and /sv-sync. Scheduling delegates to harness-timer set refresh. Never pushes your own commits or updates project copies.",
   "tags": [
     "bootstrap",
     "sync",

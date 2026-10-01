@@ -47,8 +47,9 @@ unchanged; abbreviation adds no confirmation. This is conversational routing, no
   [Artifact Storage](./references/runtime.md#artifact-storage). Selecting a location creates nothing,
   never silently moves data, and grants no permission to initialize, install, clone, or schedule.
   Keep controller, coding repository, board, and SkillVault source locations distinct.
-- Use `/harness-link list|add|remove` for URLs, files, folders, and repository paths, and
-  `/harness-doc list|upsert` for reader-facing guides; it works without initialization.
+- Use `/harness-link list|add|remove` for URLs, files, folders, and repository paths,
+  `/harness-doc list|upsert` for reader-facing guides, and `/harness-comms list|slots|upsert` for
+  stakeholder trackers, meetings, and email drafts; the last two work without initialization.
 - Legacy root/init/loc/context/management commands are text routes, not separate skills;
   `/hn-root <path>` and `/harness-root <path>` share the same move prompt.
 

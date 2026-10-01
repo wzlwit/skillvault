@@ -1,5 +1,7 @@
 # Monitor Declarations
 
+Contents: Observation Format; Episode and Task Contract; Helper Examples.
+
 This is the numeric health-monitor contract. For work candidates from ADO, local folders, or
 other source adapters, use [discovery declarations](discovery.md) with `kind: discovery` instead.
 

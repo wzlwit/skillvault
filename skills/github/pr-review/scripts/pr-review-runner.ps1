@@ -118,6 +118,15 @@ function Test-PrReviewUnchanged {
         $previous.model -ceq $Profile.model -and $previous.effort -ceq $Profile.effort -and $previous.context -ceq $Profile.context -and $previous.securityReview -eq $SecurityReview)
 }
 
+function Set-PrReviewCurrent {
+    param($Runtime, $Target, $Pull)
+    $current = [pscustomobject]@{ key = $Target.key; repositoryUrl = $Target.repositoryUrl; base = $Pull.base.sha; head = $Pull.head.sha; startedAt = [datetimeoffset]::UtcNow.ToString('o'); ownerProcessId = $PID }
+    $null = Update-HarnessState $Runtime {
+        param($state)
+        $state | Add-Member -NotePropertyName prReviewCurrent -NotePropertyValue $current -Force
+    }
+}
+
 function Save-PrReviewResult {
     param($Runtime, $Config, $Target, $Pull, $Profile, $Result, [string]$Comparison)
     $identifier = [guid]::NewGuid().ToString('N')
@@ -137,6 +146,7 @@ function Save-PrReviewResult {
         param($state)
         $records = @(@($state.prReviews) + @($record) | Where-Object { $null -ne $_ })
         $state | Add-Member -NotePropertyName prReviews -NotePropertyValue $records -Force
+        if ($state.prReviewCurrent.key -ceq $record.key) { $state.PSObject.Properties.Remove('prReviewCurrent') }
     }
     $record
 }
@@ -220,6 +230,7 @@ function Invoke-PrReviewRun {
                     continue
                 }
                 $attempts++
+                Set-PrReviewCurrent $runtime $target $pull
                 $evidence = Get-PrReviewEvidence $runtime $config $clock $target $pull
                 $snapshot = New-PrReviewWorkspace $Paths $runtime $config $clock $target $pull
                 $before = Get-PrReviewPull $runtime $config $clock $target

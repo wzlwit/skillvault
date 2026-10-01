@@ -6,7 +6,6 @@ the user.
 
 ## Provenance
 
-This skill was curated from a prior local install. Its original authorship, version, and
-license could not be verified, so `author`, `version`, and `license` are recorded as `null`
-rather than guessed, and no source URL is claimed. `maintainer` is `wzlwit`, who maintains
-this copy; rewording the text here does not make it original SkillVault work.
+Adapted from Matt Pocock's grilling skill (`https://github.com/mattpocock/skills`,
+`skills/productivity/grilling`), MIT; see `UPSTREAM-LICENSE`. `maintainer` is `wzlwit`, who
+maintains this adaptation; rewording the text here does not make it original SkillVault work.

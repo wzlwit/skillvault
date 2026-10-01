@@ -1,6 +1,9 @@
 
 # SkillVault Search
 
+Contents: Prepare the Query; Search Order; External Sources; Check Candidates; Results; Continue
+into Evaluation; When Nothing Fits; Blocked Search Continuation; Safety.
+
 Find candidate skills for a described capability or workflow. Search is read-only; it does
 not install, upsert, modify, or publish a skill.
 

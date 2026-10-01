@@ -1,6 +1,9 @@
 
 # Harness Timer
 
+Contents: Resolve and Schedule; Upsert Identity; Topics; Default End-to-End Flow; Helper and
+Examples; Boundaries.
+
 This is the retained project preflight and legacy OS-timer reference. The current public
 [scheduler contract](scheduler.md) owns command defaults and new schedules. Bare invocation is
 read-only `list`. The shared scheduler calls the helper with `-Prepare -Action Set -IntervalDay 1`

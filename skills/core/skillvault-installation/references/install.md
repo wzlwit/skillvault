@@ -1,12 +1,15 @@
 
 # SkillVault Install
 
+Contents: Parameters; Source Checkout; Behavior; Runtime Coordination; Transactional Updates; Topic
+Layout Migration; Notes on versioning; Safety.
+
 This skill installs, updates, and explores existing skills from the `skillvault` catalog at
 `https://github.com/wzlwit/skillvault`.
 
 Use `/skillvault-installation install` to install a missing skill or update an installed copy from the catalog.
 It does not create or edit source skills. Use `/skillvault-authoring upsert` to create or change a skill's source
-in SkillVault; that workflow can optionally install the result afterward.
+in SkillVault; that workflow never installs, so install the result here afterward.
 
 ## Parameters
 
@@ -36,6 +39,10 @@ Parse these from the user's invocation text as positional arguments:
     them for the current request.
 - `version` — optional third positional argument: `latest` (default) or a tag in `v#.#.#`
   format, such as `v1.2.0`.
+- `adapt` or `origin` — optional, after the selector, for skills from another repository (see
+  [upstream references](#upstream-references)). Without it, install the adaptation when one
+  exists, otherwise the original. `origin` fetches the original even when an adaptation exists;
+  `adapt` stops for a skill that has no adaptation.
 - `--repo <path>` - optional explicit source checkout, separate from installation scope. Resolve
   relative paths against the original working project. Use this to approve a different checkout;
   never infer that another session's clone is the intended source because its origin matches.
@@ -58,8 +65,10 @@ Examples of invocations to recognize:
   the current project, preserving pins unless explicitly changed.
 - `/skillvault-installation install harness-review project latest --repo C:\repos\skillvault` selects an exact source
   while keeping the current project as the installation target.
-- `/skillvault-authoring upsert my-skill` → create or update a local SkillVault source skill, then
-  install it using its default scope.
+- `/skillvault-installation install grilling` → install SkillVault's adaptation of grilling.
+- `/skillvault-installation install grilling origin` → install Matt Pocock's original instead.
+- `/skillvault-authoring upsert my-skill` → create or update a local SkillVault source skill only;
+  install it with this topic afterward.
 
 ## Source Checkout
 
@@ -150,8 +159,10 @@ and operation first, then re-resolve the explicit path. Never overwrite another 
   restores the prior install on swap failure, and excludes Git internals. Do not use symlinks.
   The script's existing `-Name` array remains exact for approved batch execution. To resolve or
   preview user selectors directly, use `-Select <selectors> -Preview`; add `-Exact` for `--exact`.
+  Pass `adapt` or `origin` as `-Variant adapt|origin`.
   Preview validates the source and returns names/scopes/paths without creating target folders or
-  ownership state. Recheck the preview before execution; a selector matching nothing blocks the
+  ownership state. For an original it fetches the upstream repository and shows the repository,
+  path, version, commit, and files. Recheck the preview before execution; a selector matching nothing blocks the
   entire batch. For example:
 
   ```powershell
@@ -160,19 +171,54 @@ and operation first, then re-resolve the explicit path. Never overwrite another 
 
 5. The installer writes `.skillvault-install.json` into each target skill folder:
    - `installedBy`: `skillvault`
-   - `sourceRepo`: repository that actually supplies the copied folder; for this catalog use
-     `https://github.com/wzlwit/skillvault.git`, not a reference guide's upstream URL
-   - `sourcePath`: the copied folder's catalog path within that repository
+   - `sourceRepo`: the SkillVault repository that supplies the copied folder
+     (`https://github.com/wzlwit/skillvault.git`)
+   - `sourcePath`: the copied folder's path within that repository
    - `scope`: resolved scope, either `global` or `project`
    - `requestedVersion`: `latest` or the requested `v#.#.#` tag
   - `installedVersion`: version from the copied skill's `skill.json`, including explicit null
    - `installedAt`: UTC timestamp
+   - `sourceCheckout` and `sourceRevision`, when the source is the root of a Git checkout: the
+     checkout path and the committed Git tree of the skill folder. Refresh merges new commits into
+     the installed copy from that base, so installed uncommitted work is kept, not overwritten.
+   - An original records the upstream instead: `sourceType: upstream`, the upstream `sourceRepo`
+     and `sourcePath`, its `version` as `requestedVersion`, and the fetched Git tree as
+     `sourceRevision`.
     `/skillvault-refresh` uses this metadata for managed global `latest` installs only.
-    Upstream provenance does not authorize replacing a curated guide with an upstream plugin.
+    Upstream links in other skills or guides describe provenance only; they do not authorize
+    replacing that skill with upstream content.
 6. For `session`, read the resolved skill's `SKILL.md` or `README.md`, follow it for the current
   request, and confirm that no persistent install was written.
 7. Confirm to the user: what was installed or used, the version from its `skill.json`, the
   requested source version (`latest` or tag), and the exact target path when files were copied.
+
+### Upstream references
+
+A skill from another repository is either a reference or an adapted skill. Both declare an
+`upstream` block: an HTTPS `repo` without credentials, the skill folder `path` in that repository,
+and `version`: `latest` (the default branch), a tag, or a full commit.
+
+- A reference (`kind: reference`, `install.strategy: upstream`) keeps only `skill.json`, with no
+  `SKILL.md`. Installing it fetches the original into `~/.copilot/skillvault-install-src/`
+  (`-UpstreamCachePath` overrides it) and copies the upstream folder as-is, adding only install
+  metadata. Its `SKILL.md` frontmatter `name` must equal the catalog name.
+- An adapted skill (`install.strategy: adapted`) keeps SkillVault's adaptation under the original's
+  name, or under a new name when it turns the original into a different workflow. It names the
+  original in its `SKILL.md` and records in `upstream.commit` the upstream commit
+  it includes. Like a wrapper, its `SKILL.md` keeps SkillVault's changes outside one
+  `<!-- upstream:begin -->` ... `<!-- upstream:end -->` section that holds the original text
+  unchanged, and the folder keeps the original's other files. It installs the adaptation by
+  default and the original with `origin`. A renamed adaptation has no `origin` variant; the
+  installer refuses it because the original's name differs. It must not be installed alongside the
+  original, so before installing either, check for the other under its own name and ask which to
+  keep. `/skillvault-refresh` merges later upstream changes into
+  the adaptation automatically. Upstream content is never copied into the repository without a
+  license file from the upstream repository.
+
+Fetching disables Git and credential prompts, so sign in separately when a repository needs it. A
+modified cache, or one tracking another repository, blocks the batch. Replacing an existing copy
+still needs `-Force`. Refresh keeps `latest` originals current from upstream; a pinned original
+stays at its pin until it is installed again.
 
 ### `/skillvault-installation update` (explicit installed-copy refresh)
 
@@ -252,7 +298,8 @@ approval. `-Name <canonical-names>` limits it to selected topics and required si
 identical copies unchanged. Former `sv-*` names map to full `skillvault-*` registrations, while their
 short spellings stay conversational. Former `skillvault-source` and `sv-source` bundles map to
 `skillvault-authoring` without refreshing unrelated topics. Successful migration discards temporary
-originals and changes no schedules or other projects.
+originals and changes no schedules or other projects. It never copies a reference or replaces an
+installed original (`UpstreamOriginal`); install those with `install`.
 
 ## Notes on versioning
 

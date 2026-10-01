@@ -1,0 +1,74 @@
+{
+  "name": "harness-comms",
+  "title": "Harness Communications",
+  "version": "1.0.0",
+  "kind": "agent",
+  "description": "Draft stakeholder communications for tracked work: status trackers, meeting-slot comparisons and sync-up invites, and email updates or thread replies. Use /harness-comms or /hn-comms with list, slots, or upsert. Overlaps with harness-doc on reader-facing prose and harness-monitor on status and owner evidence; owns time-bound coordination artifacts and can register their links afterward through harness-link. Drafts only: never sends, invites, or shares without explicit approval.",
+  "tags": [
+    "harness",
+    "communications",
+    "meetings",
+    "email",
+    "status-tracker",
+    "loop"
+  ],
+  "author": "wzlwit",
+  "source": {
+    "repo": "skillvault",
+    "path": "skills/planning/harness-comms"
+  },
+  "install": {
+    "global": true,
+    "project": true,
+    "session": true,
+    "defaultScope": "global",
+    "strategy": "copy"
+  },
+  "dependencies": [
+    "rules"
+  ],
+  "readme": "SKILL.md",
+  "inputs": [
+    {
+      "name": "action",
+      "required": false,
+      "type": "string",
+      "default": "list",
+      "enum": ["list", "slots", "upsert"],
+      "description": "Omitted means read-only listing. Create and update are aliases for upsert."
+    },
+    {
+      "name": "artifact",
+      "required": false,
+      "type": "string",
+      "enum": ["tracker", "meeting", "email"],
+      "description": "Draft to create or update; required for upsert unless clear from the conversation."
+    },
+    {
+      "name": "thread",
+      "required": false,
+      "type": "string",
+      "description": "Exact subject of an existing mail thread: the reply-all target for email, and an attendee source for slots or meeting."
+    },
+    {
+      "name": "required",
+      "required": false,
+      "type": "string",
+      "description": "Required attendees for slots or meeting; defaults to thread participants who own open items, confirmed with the user."
+    },
+    {
+      "name": "optional",
+      "required": false,
+      "type": "string",
+      "description": "Optional attendees whose availability is reported but does not drive the ranking."
+    }
+  ],
+  "examples": [
+    "/harness-comms",
+    "/hn-comms list",
+    "/hn-comms slots \"Release readiness follow-up\" --days tue,wed --duration 30m",
+    "/hn-comms upsert tracker release-readiness --workspace \"Team workspace\"",
+    "/hn-comms upsert meeting release-readiness --at \"Fri 13:30\" --thread \"Release readiness follow-up\"",
+    "/hn-comms upsert email status-update --thread \"Release readiness follow-up\""
+  ]
+}

@@ -1,6 +1,8 @@
 
 # Harness Review
 
+Contents: Scope and Baseline; Review and Fresh Pass; Differential Security Review; Usage and Results.
+
 General code review starts with the selected changes and uses a whole-repository Fresh pass when
 the first pass has no new findings. A request to discuss or edit this skill does not launch a reviewer.
 

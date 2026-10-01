@@ -3,7 +3,7 @@
   "title": "Harness Decision",
   "version": "1.0.0",
   "kind": "agent",
-  "description": "List open harness decisions separately from optional configuration, filter closed/all decisions, or record a choice. Use /harness-decision or /hn-decision with list or record; also accepts legacy /harness-decide and /hn-decide. Overlaps with architecture-decision-records on history; owns the compact bulletin and decision register.",
+  "description": "List open harness decisions separately from optional configuration, filter closed/all decisions, explain one decision or question, or record a choice. Use /harness-decision or /hn-decision with list, explain, or record; also accepts legacy /harness-decide and /hn-decide. Overlaps with architecture-decision-records on history; owns the compact bulletin, decision register, and read-only explanations.",
   "tags": [
     "planning",
     "decisions",
@@ -30,6 +30,7 @@
     "/harness-decision",
     "/harness-decision list",
     "/harness-decision list all",
+    "/harness-decision explain D-001",
     "/harness-decision record"
   ],
   "readme": "SKILL.md",
@@ -41,6 +42,7 @@
       "default": "list",
       "enum": [
         "list",
+        "explain",
         "record"
       ],
       "description": "Primary action; omitted means read-only list. Compatibility aliases remain in SKILL.md. Operation-specific approvals still apply."

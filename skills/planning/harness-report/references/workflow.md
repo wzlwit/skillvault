@@ -1,6 +1,9 @@
 
 # Harness Report Authoring
 
+Contents: Inputs; Resolve the Contract; Dispatch and Upsert; Requirement-Preserving Fallback;
+Validate and Deliver; Optional Monitoring Handoff; Boundaries.
+
 Coordinate report authoring through existing skills and platform tools. This is a session-level
 dispatcher, not a renderer, connector installation, scheduler, or a new PowerShell runner action.
 It creates authoring artifacts, distinct from the harness's execution and incident evidence reports.

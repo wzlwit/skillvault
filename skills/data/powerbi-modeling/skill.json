@@ -23,7 +23,8 @@
   "upstream": {
     "repo": "https://github.com/github/awesome-copilot",
     "path": "skills/powerbi-modeling",
-    "revision": "1f5644080a525d26a2e24f61a7609fb9b261c21a",
+    "version": "latest",
+    "commit": "d6131471b85fbb4799e64175ebc42c9309ecc28a",
     "license": "MIT"
   },
   "install": {
@@ -31,7 +32,7 @@
     "project": true,
     "session": true,
     "defaultScope": "global",
-    "strategy": "copy"
+    "strategy": "adapted"
   },
   "examples": [
     "/powerbi-modeling design a sales model from these schemas without connecting",

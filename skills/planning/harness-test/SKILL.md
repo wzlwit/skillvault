@@ -26,7 +26,8 @@ unchanged; abbreviation adds no confirmation. This is conversational routing, no
 - Bare invocation, `list`, `status`, and `help` show declarations, latest results, and actions
   without running tests. Unknown actions show help.
 - `declare`, `run`, and legacy `/harness-test` arguments follow the
-  [test procedure](./references/workflow.md).
+  [test procedure](./references/workflow.md). Before declaring or changing a flow or environment,
+  read [test declarations](./references/test-flows.md).
 - Apply `/rules apply`, project instructions, and the runtime's Script Permissions and Agent Fallback
   procedure. Keep environments, approvals, and post-development gates unchanged.
 - Test-only runs need no AI worker; failures are never relabeled as passing.

@@ -1,6 +1,9 @@
 
 # SkillVault Evaluate
 
+Contents: Parameters; Reuse Inspected Evidence; Behavior; Improve Existing Skills; Output Shape;
+Safety; Evaluation Record.
+
 This skill reviews a URL or existing SkillVault skill before creating or updating any skill
 bundle files. It helps the user decide whether an upsert is worthwhile and saves a compact
 public-safe evaluation record by default. `--chat-only` disables that record write.
@@ -144,7 +147,7 @@ Standalone use: ... (when relevant)
 Skill recommendation: upsert/defer/skip
 Harness integration: ... (when relevant)
 Existing-skill improvements: ... (or None justified / Unverified)
-Suggested upsert: /skillvault-authoring upsert <name|url> <scope>
+Suggested upsert: /skillvault-authoring upsert <name|url>
 ```
 
 Omit standalone-use and harness-integration fields when inapplicable. For example, a tool

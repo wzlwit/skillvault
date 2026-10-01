@@ -22,6 +22,8 @@
   "upstream": {
     "repo": "https://github.com/wshobson/agents",
     "path": "plugins/business-analytics/skills/kpi-dashboard-design",
+    "version": "latest",
+    "commit": "156b7a5e7a8b93642628a339ee4039c925b34c7f",
     "license": "MIT"
   },
   "install": {
@@ -29,7 +31,7 @@
     "project": true,
     "session": true,
     "defaultScope": "global",
-    "strategy": "copy"
+    "strategy": "adapted"
   },
   "examples": [
     "/kpi-dashboard-design service-health",

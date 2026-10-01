@@ -1,6 +1,6 @@
 ---
 name: skillvault-authoring
-description: "Author and maintain skill bundles and catalog entries in the SkillVault repository, not application source or installed copies. Use /skillvault-authoring or /sv-authoring list, upsert, or remove; create/update are upsert aliases. Accepts legacy /skillvault-source, /sv-source, skillvault-upsert, skillvault-remove and their shortcuts. Can install afterward through skillvault-installation with separate target and approval."
+description: "Author and maintain skill bundles and catalog entries in the SkillVault repository, not application source or installed copies. Use /skillvault-authoring or /sv-authoring list, upsert, or remove; create/update are upsert aliases. Accepts legacy /skillvault-source, /sv-source, skillvault-upsert, skillvault-remove and their shortcuts. Never installs; use skillvault-installation to install the result."
 metadata:
   author: wzlwit
   version: "1.0.0"
@@ -36,11 +36,12 @@ unchanged; abbreviation adds no confirmation. This is conversational routing, no
   `/skillvault-installation uninstall`.
 - Run the [read-only resolver](./scripts/resolve-source-repo.ps1) before writing and keep its verified
   selection order; never silently choose another checkout or change a Git remote.
-- Show the **SkillVault repository**, **working project**, and any **installation target** separately;
-  `--repo` selects only the first.
+- Show the **SkillVault repository** and **working project** separately; `--repo` selects only the
+  first. Upsert has no installation target.
 - Preserve public authorship, versions, dependencies, and overlap descriptions. Removal is previewed
   and confirmed. Authoring does not authorize commits, publishing, installation, or changes to
-  unrelated repositories.
+  unrelated repositories. Upsert never installs; afterward, give the
+  `/skillvault-installation install <name>` command for the user to run if wanted.
 
 `upsert` includes the [experience review](./references/upsert.md#improve-from-task-experience),
 [document-derived authoring](./references/upsert.md#author-from-documents), and

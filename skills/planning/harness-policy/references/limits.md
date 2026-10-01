@@ -1,6 +1,8 @@
 
 # Harness Restrictions
 
+Contents: Inspect; Declare; Supported Fields; Situations and Responses; Limits and Handoff.
+
 Define machine-checked boundaries in the existing harness configuration. `/rules` manages
 human-readable working guidance; it does not substitute for these runtime checks.
 

@@ -10,6 +10,8 @@ param(
     [string]$GlobalSkillsPath = (Join-Path $HOME '.copilot/skills'),
     [string]$RequestedVersion = 'latest',
     [string]$SourceRepo = 'https://github.com/wzlwit/skillvault.git',
+    [ValidateSet('default', 'adapt', 'origin')][string]$Variant = 'default',
+    [string]$UpstreamCachePath = (Join-Path $HOME '.copilot/skillvault-install-src'),
     [switch]$Force,
     [switch]$ConfirmStopped
 )
@@ -45,10 +47,14 @@ if ($PSCmdlet.ParameterSetName -eq 'Selection') {
 }
 $projectSkillsRoot = Join-Path $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($ProjectPath) '.github\skills'
 $globalSkillsRoot = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($GlobalSkillsPath)
+$checkoutRoot = if (Test-SkillGitTopLevel -Path $repositoryRoot) { [System.IO.Path]::GetFullPath($repositoryRoot).TrimEnd([char[]]'\/') }
+$upstreamCacheRoot = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($UpstreamCachePath)
+$snapshotRoot = Join-Path ([System.IO.Path]::GetTempPath()) ('skillvault-origin-' + [guid]::NewGuid().ToString('N'))
 
 $plannedInstalls = New-Object System.Collections.ArrayList
 $preflightErrors = New-Object System.Collections.ArrayList
 
+try {
 foreach ($skillName in @($Name | Select-Object -Unique)) {
     try {
         $catalogMatches = @($catalog | Where-Object { $_.name -ceq $skillName })
@@ -58,8 +64,12 @@ foreach ($skillName in @($Name | Select-Object -Unique)) {
 
         $catalogEntry = $catalogMatches[0]
         $sourcePath = Resolve-SkillSourcePath -RepositoryRoot $repositoryRoot -SourcePath ([string]$catalogEntry.path)
-        $manifest = Read-SkillManifest -SkillPath $sourcePath -ExpectedName $skillName
+        $manifest = Read-SkillManifest -SkillPath $sourcePath -ExpectedName $skillName -AllowReference
         if ($manifest.version -cne $catalogEntry.version) { throw "Catalog and manifest versions differ for $skillName" }
+        $strategy = if ($manifest.install) { [string]$manifest.install.strategy } else { '' }
+        if ($Variant -ceq 'origin' -and $strategy -cnotin @('upstream', 'adapted')) { throw "Skill '$skillName' has no upstream original; install it without 'origin'." }
+        if ($Variant -ceq 'adapt' -and $strategy -ceq 'upstream') { throw "Skill '$skillName' has no adaptation; install it without 'adapt' to get the original." }
+        $fromOrigin = $Variant -ceq 'origin' -or $strategy -ceq 'upstream'
 
         $resolvedScope = $Scope
         if ($resolvedScope -eq 'default') {
@@ -84,6 +94,7 @@ foreach ($skillName in @($Name | Select-Object -Unique)) {
         if ((Test-Path -LiteralPath $targetPath) -and -not $Force -and -not $Preview) {
             throw "Skill '$skillName' is already installed at $targetPath. Review the pending changes, then re-run with -Force to overwrite."
         }
+        $snapshot = if ($fromOrigin) { Get-SkillUpstreamSnapshot -Manifest $manifest -CacheRoot $upstreamCacheRoot -Destination (Join-Path $snapshotRoot $skillName) }
 
         [void]$plannedInstalls.Add([pscustomobject]@{
             Name = $skillName
@@ -92,6 +103,8 @@ foreach ($skillName in @($Name | Select-Object -Unique)) {
             Manifest = $manifest
             Scope = $resolvedScope
             TargetRoot = $targetRoot
+            Variant = $(if ($fromOrigin) { 'origin' } elseif ($strategy -ceq 'adapted') { 'adapt' })
+            Snapshot = $snapshot
         })
     }
     catch {
@@ -104,13 +117,40 @@ if ($preflightErrors.Count -gt 0) {
 }
 
 if ($Preview) {
-    ConvertTo-Json -Depth 5 -InputObject @($plannedInstalls | Select-Object Name, Scope, SourcePath, @{ Name = 'TargetPath'; Expression = { Join-Path $_.TargetRoot $_.Name } })
+    ConvertTo-Json -Depth 5 -InputObject @($plannedInstalls | ForEach-Object {
+        $item = [ordered]@{ Name = $_.Name; Scope = $_.Scope }
+        if ($_.Variant) { $item.Variant = $_.Variant }
+        if ($_.Snapshot) {
+            $item.SourceRepo = $_.Snapshot.Repo; $item.UpstreamPath = $_.Snapshot.Path; $item.RequestedVersion = $_.Snapshot.Version
+            $item.Commit = $_.Snapshot.Commit; $item.Files = $_.Snapshot.Files
+        }
+        else { $item.SourcePath = $_.SourcePath }
+        $item.TargetPath = Join-Path $_.TargetRoot $_.Name
+        [pscustomobject]$item
+    })
     return
 }
 
 $updateLease = Enter-SkillUpdateOwnership -Paths @($plannedInstalls | ForEach-Object { Join-Path $_.TargetRoot $_.Name }) -ConfirmStopped:$ConfirmStopped
 try {
 foreach ($plannedInstall in $plannedInstalls) {
+    if ($plannedInstall.Snapshot) {
+        $snapshot = $plannedInstall.Snapshot
+        $metadata = [ordered]@{
+            installedBy = 'skillvault'
+            sourceRepo = $snapshot.Repo
+            sourcePath = $snapshot.Path
+            scope = $plannedInstall.Scope
+            requestedVersion = $snapshot.Version
+            installedVersion = $plannedInstall.Manifest.version
+            installedAt = (Get-Date).ToUniversalTime().ToString('o')
+            sourceType = 'upstream'
+            sourceRevision = $snapshot.Revision
+        }
+        $installResult = Copy-SkillInstallation -Source $snapshot.Folder -TargetRoot $plannedInstall.TargetRoot -Name $plannedInstall.Name -Metadata $metadata -Force:$Force -OwnershipLease $updateLease -OriginManifest $plannedInstall.Manifest
+        Write-Output "Installed skill: $($installResult.Name) [$($plannedInstall.Scope)] -> $($installResult.Path) from $($snapshot.Repo) $($snapshot.Path) at $($snapshot.Commit)"
+        continue
+    }
     $metadata = [ordered]@{
         installedBy = 'skillvault'
         sourceRepo = $SourceRepo
@@ -120,6 +160,12 @@ foreach ($plannedInstall in $plannedInstalls) {
         installedVersion = $plannedInstall.Manifest.version
         installedAt = (Get-Date).ToUniversalTime().ToString('o')
     }
+    if ($checkoutRoot) {
+        # Refresh merges committed updates into this copy; the recorded base marks what was committed at install.
+        $metadata['sourceCheckout'] = $checkoutRoot
+        $baseRevision = Get-SkillSourceRevision -RepoPath $checkoutRoot -SourcePath $plannedInstall.CatalogPath
+        if ($baseRevision) { $metadata['sourceRevision'] = $baseRevision }
+    }
 
     $installResult = Copy-SkillInstallation -Source $plannedInstall.SourcePath -TargetRoot $plannedInstall.TargetRoot -Name $plannedInstall.Name -Metadata $metadata -Force:$Force -OwnershipLease $updateLease
     Write-Output "Installed skill: $($installResult.Name) [$($plannedInstall.Scope)] -> $($installResult.Path)"
@@ -127,3 +173,5 @@ foreach ($plannedInstall in $plannedInstalls) {
 }
 }
 finally { Exit-SkillOwnership $updateLease }
+}
+finally { Remove-Item -LiteralPath $snapshotRoot -Recurse -Force -ErrorAction SilentlyContinue }

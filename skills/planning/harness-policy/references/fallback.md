@@ -1,6 +1,9 @@
 
 # Harness Fallback
 
+Contents: Attended Agent Fallback; Inspect and Declare; Optional Policy; Situations and Responses;
+Pause, Stop, and Resume; Optional Recovery Handoff; Evidence and Limits.
+
 Control what the shared harness does after failure, and keep safety pauses durable across manual
 commands and timer ticks. This is not another task queue, rules document, or scheduler.
 

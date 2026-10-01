@@ -11,9 +11,16 @@ argument-hint: "[<model-or-requirements>] [<design-or-review-goal>]"
 
 # Power BI Modeling
 
+Adapted from the GitHub Awesome Copilot contributors' Power BI modeling skill
+(`https://github.com/github/awesome-copilot`, `skills/powerbi-modeling`), MIT; see
+`UPSTREAM-LICENSE`. The original is in the Original section below, with its reference files under
+`references/`. Where it differs, the SkillVault rules above it win. In particular, the original
+connects to a live model first; here, design and explanation need no live connection, and live
+work follows Choose the Scope.
+
 Turn business questions and source schemas into an explicit semantic-model design, or review
-an identified existing model. This curated guide supplies modeling judgment, not a server,
-connector, deployment pipeline, or guarantee that a target is accessible.
+an identified existing model. This skill supplies modeling judgment, not a server, connector,
+deployment pipeline, or guarantee that a target is accessible.
 
 ## Choose the Scope
 
@@ -73,19 +80,171 @@ item. Designing, explaining, reviewing, and installing this guide do not authori
   structure and validation. Keep both. An optional implementation handoff can use the project's
   existing authoring workflow without a new runner or automatic integration.
 
-## Source and Adaptation
+## Using the Original
 
-Curated from the GitHub Awesome Copilot contributors' [Power BI modeling skill](https://github.com/github/awesome-copilot/tree/1f5644080a525d26a2e24f61a7609fb9b261c21a/skills/powerbi-modeling),
-under the [MIT license](./LICENSE). Individual authorship is not declared by the upstream skill;
-`wzlwit` maintains this adaptation. Version is explicitly unknown (`null`), not an upstream release.
-
-This is rephrased guidance, not an unchanged import. It adds design-only use and explicit access
-boundaries; corrects cardinality orientation and grain-dependent counting; requires semantic
-checks for performance rewrites and identity mappings. No upstream reference files, scripts,
-MCP server, or model data are bundled. Worked cases are illustrative and not executed DAX tests.
+The SkillVault rules above add design-only use and explicit access limits; state cardinality
+orientation and grain-dependent counting explicitly; and require semantic checks for performance
+rewrites and identity mappings. Apply the original's reference files within those rules. The
+worked cases in the validation checks are illustrative, not executed DAX tests. No MCP server or
+model data is bundled.
 
 ## Supporting Research
 
 Honor an explicit source first; otherwise inspect local and configured accessible internal
 evidence before authoritative external sources. Keep private identifiers out of public searches.
 Research never expands model access or write approval; report unavailable evidence explicitly.
+
+## Original
+
+<!-- upstream:begin -->
+<!-- Original: https://github.com/github/awesome-copilot skills/powerbi-modeling at d6131471b85fbb4799e64175ebc42c9309ecc28a. Refresh replaces this section; put SkillVault changes outside it. -->
+
+# Power BI Semantic Modeling
+
+Guide users in building optimized, well-documented Power BI semantic models following Microsoft best practices.
+
+## When to Use This Skill
+
+Use this skill when users ask about:
+- Creating or optimizing Power BI semantic models
+- Designing star schemas (dimension/fact tables)
+- Writing DAX measures or calculated columns
+- Configuring table relationships (cardinality, cross-filter)
+- Implementing row-level security (RLS)
+- Naming conventions for tables, columns, measures
+- Adding descriptions and documentation to models
+- Performance tuning and optimization
+- Calculation groups and field parameters
+- Model validation and best practice checks
+
+**Trigger phrases:** "create a measure", "add relationship", "star schema", "optimize model", "DAX formula", "RLS", "naming convention", "model documentation", "cardinality", "cross-filter"
+
+## Prerequisites
+
+### Required Tools
+- **Power BI Modeling MCP Server**: Required for connecting to and modifying semantic models
+  - Enables: connection_operations, table_operations, measure_operations, relationship_operations, etc.
+  - Must be configured and running to interact with models
+
+### Optional Dependencies
+- **Microsoft Learn MCP Server**: Recommended for researching latest best practices
+  - Enables: microsoft_docs_search, microsoft_docs_fetch
+  - Use for complex scenarios, new features, and official documentation
+
+## Workflow
+
+### 1. Connect and Analyze First
+
+Before providing any modeling guidance, always examine the current model state:
+
+```
+1. List connections: connection_operations(operation: "ListConnections")
+2. If no connection, check for local instances: connection_operations(operation: "ListLocalInstances")
+3. Connect to the model (Desktop or Fabric)
+4. Get model overview: model_operations(operation: "Get")
+5. List tables: table_operations(operation: "List")
+6. List relationships: relationship_operations(operation: "List")
+7. List measures: measure_operations(operation: "List")
+```
+
+### 2. Evaluate Model Health
+
+After connecting, assess the model against best practices:
+
+- **Star Schema**: Are tables properly classified as dimension or fact?
+- **Relationships**: Correct cardinality? Minimal bidirectional filters?
+- **Naming**: Human-readable, consistent naming conventions?
+- **Documentation**: Do tables, columns, measures have descriptions?
+- **Measures**: Explicit measures for key calculations?
+- **Hidden Fields**: Are technical columns hidden from report view?
+
+### 3. Provide Targeted Guidance
+
+Based on analysis, guide improvements using references:
+- Star schema design: See [STAR-SCHEMA.md](references/STAR-SCHEMA.md)
+- Relationship configuration: See [RELATIONSHIPS.md](references/RELATIONSHIPS.md)
+- DAX measures and naming: See [MEASURES-DAX.md](references/MEASURES-DAX.md)
+- Performance optimization: See [PERFORMANCE.md](references/PERFORMANCE.md)
+- Row-level security: See [RLS.md](references/RLS.md)
+
+## Quick Reference: Model Quality Checklist
+
+| Area | Best Practice |
+|------|--------------|
+| Tables | Clear dimension vs fact classification |
+| Naming | Human-readable: `Customer Name` not `CUST_NM` |
+| Descriptions | All tables, columns, measures documented |
+| Measures | Explicit DAX measures for business metrics |
+| Relationships | One-to-many from dimension to fact |
+| Cross-filter | Single direction unless specifically needed |
+| Hidden fields | Hide technical keys, IDs from report view |
+| Date table | Dedicated marked date table |
+
+## MCP Tools Reference
+
+Use these Power BI Modeling MCP operations:
+
+| Operation Category | Key Operations |
+|-------------------|----------------|
+| `connection_operations` | Connect, ListConnections, ListLocalInstances, ConnectFabric |
+| `model_operations` | Get, GetStats, ExportTMDL |
+| `table_operations` | List, Get, Create, Update, GetSchema |
+| `column_operations` | List, Get, Create, Update (descriptions, hidden, format) |
+| `measure_operations` | List, Get, Create, Update, Move |
+| `relationship_operations` | List, Get, Create, Update, Activate, Deactivate |
+| `dax_query_operations` | Execute, Validate |
+| `calculation_group_operations` | List, Create, Update |
+| `security_role_operations` | List, Create, Update, GetEffectivePermissions |
+
+## Common Tasks
+
+### Add Measure with Description
+```
+measure_operations(
+  operation: "Create",
+  definitions: [{
+    name: "Total Sales",
+    tableName: "Sales",
+    expression: "SUM(Sales[Amount])",
+    formatString: "$#,##0",
+    description: "Sum of all sales amounts"
+  }]
+)
+```
+
+### Update Column Description
+```
+column_operations(
+  operation: "Update",
+  definitions: [{
+    tableName: "Customer",
+    name: "CustomerKey",
+    description: "Unique identifier for customer dimension",
+    isHidden: true
+  }]
+)
+```
+
+### Create Relationship
+```
+relationship_operations(
+  operation: "Create",
+  definitions: [{
+    fromTable: "Sales",
+    fromColumn: "CustomerKey",
+    toTable: "Customer",
+    toColumn: "CustomerKey",
+    crossFilteringBehavior: "OneDirection"
+  }]
+)
+```
+
+## When to Use Microsoft Learn MCP
+
+Research current best practices using `microsoft_docs_search` for:
+- Latest DAX function documentation
+- New Power BI features and capabilities
+- Complex modeling scenarios (SCD Type 2, many-to-many)
+- Performance optimization techniques
+- Security implementation patterns
+<!-- upstream:end -->

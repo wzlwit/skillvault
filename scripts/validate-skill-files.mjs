@@ -67,16 +67,47 @@ export function validateRuntimeInterfaces(manifest) {
   }
 }
 
+const canonicalRelative = (value) => value === '.' || (typeof value === 'string' && value.length > 0 &&
+  value.split('/').every((part) => part && part !== '.' && part !== '..' && !/[\\:*?<>|"]/.test(part)));
+const upstreamVersion = (value) => value === 'latest' || (typeof value === 'string' &&
+  /^[A-Za-z0-9][A-Za-z0-9._/-]{0,199}$/.test(value) && !/\.\.|\/\/|\/$|\.$|\.lock$/.test(value));
+
+export function checkUpstreamReference(directory, name, manifest) {
+  const strategy = manifest.install?.strategy;
+  if (strategy === 'upstream') assert.equal(manifest.kind, 'reference', `${name}: upstream references require kind reference`);
+  const upstream = manifest.upstream ?? {};
+  let url;
+  try { url = new URL(upstream.repo); } catch { url = undefined; }
+  assert.ok(url && url.protocol === 'https:' && !url.username && !url.password && !url.search && !url.hash && !/\s/.test(upstream.repo),
+    `${name}: upstream repo must be an HTTPS URL without credentials, query, or fragment`);
+  assert.ok(canonicalRelative(upstream.path), `${name}: upstream path must be a canonical relative path`);
+  assert.ok(upstreamVersion(upstream.version), `${name}: upstream version must be latest, a tag, or a full commit`);
+  if (strategy === 'adapted') {
+    assert.ok(/^[0-9a-f]{40}$/.test(upstream.commit ?? ''), `${name}: an adapted skill records the upstream commit it includes as upstream.commit`);
+    const markers = [...textFile(path.join(directory, 'SKILL.md')).matchAll(/<!-- upstream:(begin|end) -->/g)].map((match) => match[1]);
+    assert.deepEqual(markers, ['begin', 'end'], `${name}: an adapted SKILL.md keeps the original in exactly one <!-- upstream:begin --> ... <!-- upstream:end --> section`);
+  }
+}
+
 function checkBundle(directory, name, manifest) {
   assert.ok(namePattern.test(name) && name.length <= 64, `${name}: invalid skill name`);
   assert.ok(!fs.lstatSync(directory).isSymbolicLink(), `${name}: skill directory must not be a symlink`);
   const file = path.join(directory, 'SKILL.md');
+  if (manifest?.install?.strategy === 'upstream') {
+    assert.equal(manifest.name, name, `${name}: manifest name mismatch`);
+    validateRuntimeInterfaces(manifest);
+    checkUpstreamReference(directory, name, manifest);
+    assert.ok(!fs.existsSync(file), `${name}: a reference keeps no SKILL.md; make it an adapted skill instead`);
+    if (manifest.readme) assert.ok(fs.existsSync(resolveInside(directory, manifest.readme)), `${name}: missing declared readme`);
+    return;
+  }
   const content = textFile(file);
   parseSkill(content, name, manifest);
   if (manifest) {
     assert.equal(manifest.name, name, `${name}: manifest name mismatch`);
     validateRuntimeInterfaces(manifest);
     if (manifest.readme) assert.ok(fs.existsSync(resolveInside(directory, manifest.readme)), `${name}: missing declared readme`);
+    if (manifest.install?.strategy === 'adapted') checkUpstreamReference(directory, name, manifest);
   }
   const body = content.replace(/```[^\n]*\n[\s\S]*?```/g, '');
   for (const link of body.matchAll(/\]\((\.\.?\/[^)\s]+)\)/g)) {

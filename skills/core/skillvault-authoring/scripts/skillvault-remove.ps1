@@ -34,7 +34,7 @@ $removals = @(foreach ($skillName in $requestedNames) {
         throw "Unsafe catalog path for ${skillName}: $($entry.path)"
     }
     $sourcePath = Resolve-SkillSourcePath -RepositoryRoot $repositoryRoot -SourcePath $entry.path
-    $manifest = Read-SkillManifest -SkillPath $sourcePath -ExpectedName $skillName
+    $manifest = Read-SkillManifest -SkillPath $sourcePath -ExpectedName $skillName -AllowReference
     if ('version' -notin $entry.PSObject.Properties.Name -or $manifest.version -cne $entry.version) {
         throw "Catalog and manifest versions differ: $skillName"
     }
@@ -45,7 +45,7 @@ $removals = @(foreach ($skillName in $requestedNames) {
 $remaining = @($catalog | Where-Object { $_.name -cnotin $requestedNames } | Sort-Object name)
 foreach ($entry in $remaining) {
     $sourcePath = Resolve-SkillSourcePath -RepositoryRoot $repositoryRoot -SourcePath $entry.path
-    $manifest = Read-SkillManifest -SkillPath $sourcePath -ExpectedName $entry.name
+    $manifest = Read-SkillManifest -SkillPath $sourcePath -ExpectedName $entry.name -AllowReference
     foreach ($dependency in @($manifest.dependencies)) {
         if ($dependency -cin $requestedNames) {
             throw "Skill '$($entry.name)' still depends on '$dependency'. Resolve that dependency before removal."

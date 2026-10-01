@@ -11,7 +11,7 @@ try {
     Remove-Item Env:NODE_OPTIONS, Env:VSCODE_INSPECTOR_OPTIONS -ErrorAction SilentlyContinue
     node --test (Join-Path $PSScriptRoot 'test-skill-files.mjs')
     if ($LASTEXITCODE -ne 0) { throw 'Node skill validation tests failed.' }
-    foreach ($test in @('test-catalog-versions.ps1', 'test-install-skills.ps1', 'test-skillvault-upsert.ps1', 'test-skillvault-remove.ps1', 'test-skillvault-fresh.ps1', 'test-skill-inventory.ps1', 'test-harness-decide.ps1', 'test-schedule-manager.ps1', 'test-bootstrap.ps1')) {
+    foreach ($test in @('test-catalog-versions.ps1', 'test-install-skills.ps1', 'test-skillvault-upsert.ps1', 'test-skillvault-remove.ps1', 'test-skillvault-fresh.ps1', 'test-skillvault-sync.ps1', 'test-skill-inventory.ps1', 'test-harness-decide.ps1', 'test-harness-comms.ps1', 'test-schedule-manager.ps1', 'test-bootstrap.ps1')) {
         & (Join-Path $PSScriptRoot $test)
     }
     & (Join-Path $PSScriptRoot 'test-install-skills.ps1') -TransactionOnly

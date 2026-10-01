@@ -16,7 +16,8 @@ function Assert-PrFailure {
 try {
     $paths = Get-PrReviewPaths $fixtureRoot
     $empty = Get-PrReviewList $paths
-    if ($empty.entries.Count -ne 0 -or $empty.configured -or (Test-Path -LiteralPath $fixtureRoot)) { throw 'Read-only listing created user-wide state.' }
+    $emptyResults = Get-PrReviewResults $paths
+    if ($empty.entries.Count -ne 0 -or $emptyResults.reviews.Count -ne 0 -or $emptyResults.configured -or (Test-Path -LiteralPath $fixtureRoot)) { throw 'Read-only listing created user-wide state.' }
     $canonical = ConvertTo-PrReviewTarget 'https://GitHub.com/Owner/Repo/pull/12#discussion'
     if ($canonical.key -cne 'https://github.com/owner/repo/pull/12' -or $canonical.kind -cne 'pr') { throw 'PR identity was not normalized.' }
     foreach ($bad in @('https://user:secret@github.com/owner/repo', 'https://github.com/owner/repo?token=x', 'http://github.com/owner/repo', 'https://example.invalid/owner/repo', 'https://github.com/owner/repo/pull/0', 'https://github.com/owner/repo/issues/1', 'https://github.com/owner/a%2fb')) {
@@ -126,7 +127,7 @@ try {
     $null = Invoke-HarnessGit $sourceRepo ($commitOptions + @('head fixture'))
     $headCommit = [string](Invoke-HarnessGit $sourceRepo @('rev-parse', 'HEAD'))
     foreach ($number in @(1, 2)) { $null = Invoke-HarnessGit $sourceRepo @('update-ref', "refs/pull/$number/head", $headCommit) }
-    $script:providerFixture = [pscustomobject]@{ Commands = [Collections.Generic.List[object]]::new(); PullReads = 0; ChangeAfterReview = $false; FailEvidence = $false; Numbers = @(1); Workers = 0; Guidance = ''; LastWorkspace = '' }
+    $script:providerFixture = [pscustomobject]@{ Commands = [Collections.Generic.List[object]]::new(); PullReads = 0; ChangeAfterReview = $false; FailEvidence = $false; Numbers = @(1); Workers = 0; Guidance = ''; LastWorkspace = ''; Current = $null }
     $realCommand = ${function:Invoke-PrReviewCommand}
     function Invoke-PrReviewCommand {
         param($Runtime, $Config, $Clock, $Executable, $Arguments, $Directory, $EnvironmentVariables)
@@ -166,11 +167,12 @@ try {
         $script:providerFixture.Workers++
         $script:providerFixture.Guidance = $ReviewGuidance
         $script:providerFixture.LastWorkspace = $Workspace
+        $script:providerFixture.Current = (Read-HarnessState $Paths).prReviewCurrent
         if (-not $Task.untrustedInput -or $Workspace -ceq $sourceRepo -or ($Snapshot | ConvertFrom-Json).head -cne $headCommit) { throw 'Review lost snapshot isolation or exact head.' }
         [System.IO.File]::SetLastWriteTimeUtc((Join-Path $Workspace 'source.txt'), [datetime]::UtcNow.AddSeconds(2))
         [pscustomobject]@{ verdict = 'clean'; summary = 'Fixture review'; findings = @() }
     }
-    $null = Add-PrReviewWatch $paths 'https://github.com/owner/repo/pull/1'
+    $prEntry = Add-PrReviewWatch $paths 'https://github.com/owner/repo/pull/1'
     $filterMarker = Join-Path $fixtureRoot 'snapshot-filter-executed.txt'
     $filterConfig = Join-Path $fixtureRoot 'fixture-global.gitconfig'
     $filterCommand = "printf 'unexpected fixture filter' > '$($filterMarker.Replace('\', '/'))'; cat"
@@ -184,6 +186,13 @@ try {
     if (-not (Test-Path -LiteralPath (Join-Path $script:providerFixture.LastWorkspace '.git-empty-template/post-checkout') -PathType Leaf)) { throw 'Checkout preparation removed a PR source file that collided with a controller path.' }
     if ($script:providerFixture.Guidance -notmatch 'Last comment' -or $script:providerFixture.Guidance -notmatch 'thread-2' -or (Invoke-HarnessGit $sourceRepo @('rev-parse', 'HEAD')) -cne $headCommit) { throw 'Evidence pagination or original-checkout preservation failed.' }
     if (@(Invoke-HarnessGit $script:providerFixture.LastWorkspace @('status', '--porcelain')).Count) { throw 'Prepared PR checkout contained untracked controller input.' }
+    if ($script:providerFixture.Current.key -cne 'https://github.com/owner/repo/pull/1' -or $script:providerFixture.Current.ownerProcessId -ne $PID -or (Read-HarnessState $runtime).prReviewCurrent) { throw 'The review in progress was not recorded while running and cleared with its result.' }
+    $watchView = Get-PrReviewList $paths
+    $resultView = Get-PrReviewResults $paths
+    $firstResult = @($resultView.reviews | Where-Object key -CEQ 'https://github.com/owner/repo/pull/1')
+    $firstWatchers = @($firstResult.watchedBy | Sort-Object) -join ','
+    $expectedWatchers = @($readded.id, $prEntry.id | Sort-Object) -join ','
+    if ($watchView.entries.Count -ne 2 -or @($watchView.entries | Where-Object { $_.PSObject.Properties['reviews'] }).Count -or $resultView.reviews.Count -ne 1 -or $firstResult.Count -ne 1 -or $firstResult[0].status -cne 'clean' -or $firstWatchers -cne $expectedWatchers) { throw 'The watch view and review results were not separated.' }
     $again = Invoke-PrReviewRun $paths
     if ($again.results[0].status -cne 'Unchanged' -or $script:providerFixture.Workers -ne 2) { throw 'An unchanged completed snapshot was reviewed again.' }
     $script:providerFixture.PullReads = 0
@@ -195,6 +204,7 @@ try {
     $beforeFailure = $script:providerFixture.Workers
     $failed = Invoke-PrReviewRun $paths
     if ($failed.results[0].status -cne 'blocked' -or $script:providerFixture.Workers -ne $beforeFailure) { throw 'Missing evidence started an agent or was marked clean.' }
+    if ((Read-HarnessState $runtime).prReviewCurrent) { throw 'A failed review left its in-progress marker.' }
     $script:providerFixture.FailEvidence = $false
     $retry = Invoke-PrReviewRun $paths
     if ($retry.results[0].status -cne 'clean' -or $script:providerFixture.Workers -ne $beforeFailure + 2) { throw 'A failed snapshot did not remain pending for a later explicit run.' }
@@ -203,6 +213,15 @@ try {
     [System.IO.File]::WriteAllText((Join-Path $securityPath 'SKILL.md'), 'Fixture security methodology only.')
     $securityRun = Invoke-PrReviewRun $paths -SecurityReview
     if (-not $securityRun.results[0].securityReview -or $script:providerFixture.Guidance -notmatch 'Fixture security methodology' -or (Read-HarnessConfig $runtime).prReview.securityReview) { throw 'Ad-hoc security review did not load guidance or changed the saved timer mode.' }
+    $marker = [pscustomobject]@{ key = 'https://github.com/owner/repo/pull/1'; repositoryUrl = 'https://github.com/owner/repo'; base = $baseCommit; head = $headCommit; startedAt = [datetimeoffset]::UtcNow.ToString('o'); ownerProcessId = $PID }
+    $null = Update-HarnessState $runtime { param($state); $state | Add-Member -NotePropertyName prReviewCurrent -NotePropertyValue $marker -Force }
+    $inProgress = @((Get-PrReviewResults $paths).reviews | Where-Object key -CEQ $marker.key)
+    # Same PID but a marker older than this process: the recording process ended and its PID was reused.
+    $marker.startedAt = ([datetimeoffset](Get-Process -Id $PID).StartTime).AddMinutes(-1).ToString('o')
+    $null = Update-HarnessState $runtime { param($state); $state | Add-Member -NotePropertyName prReviewCurrent -NotePropertyValue $marker -Force }
+    $interrupted = @((Get-PrReviewResults $paths).reviews | Where-Object key -CEQ $marker.key)
+    $null = Update-HarnessState $runtime { param($state); $state.PSObject.Properties.Remove('prReviewCurrent') }
+    if ($inProgress.Count -ne 1 -or $inProgress[0].status -cne 'Running' -or $inProgress[0].lastCompleted.status -cne 'clean' -or $interrupted.Count -ne 1 -or $interrupted[0].status -cne 'Interrupted') { throw 'A live review was not shown as Running, or an ended one as Interrupted.' }
     $cycleLock = Enter-HarnessLock $paths.CycleLock
     try { if ((Invoke-PrReviewRun $paths).status -cne 'Busy') { throw 'Concurrent review bypassed the one-list cycle lock.' } }
     finally { $cycleLock.Dispose() }
@@ -224,6 +243,13 @@ try {
     $null = Remove-PrReviewWatch $paths $readded.id -Apply
     if (@((Read-HarnessState $runtime).prReviews).Count -ne $reportsBeforeRemove -or -not (Test-Path -LiteralPath $run.results[0].report)) { throw 'Removing a watch deleted review evidence.' }
     if ((Read-HarnessState $runtime).prReviews -isnot [array]) { throw 'PR history lost its array schema.' }
+    $adHocKey = 'https://github.com/owner/repo/pull/2'
+    $adHoc = Invoke-PrReviewRun $paths -Url $adHocKey -Again
+    if ($adHoc.results[0].status -cne 'clean' -or @((Get-PrReviewList $paths).entries | Where-Object url -CEQ $adHocKey).Count) { throw 'An ad-hoc review failed or added a watch entry.' }
+    $afterRemove = Get-PrReviewResults $paths
+    $adHocResult = @($afterRemove.reviews | Where-Object key -CEQ $adHocKey)
+    $watchedResult = @($afterRemove.reviews | Where-Object key -CEQ 'https://github.com/owner/repo/pull/1')
+    if ($adHocResult.Count -ne 1 -or $adHocResult[0].status -cne 'clean' -or @($adHocResult[0].watchedBy).Count -or (@($watchedResult[0].watchedBy) -join ',') -cne $prEntry.id -or $afterRemove.reviews[0].key -cne $adHocKey) { throw 'Review results lost an unwatched ad-hoc review, its watch marks, or newest-first order.' }
     $script:timerFixture = [pscustomobject]@{ Tasks = @([pscustomobject]@{ TaskName = 'Unrelated fixture task'; TaskPath = '\'; Description = 'Preserve'; State = 'Ready' }); Writes = 0 }
     function Get-ScheduledTask { param($TaskPath); $script:timerFixture.Tasks }
     function New-ScheduledTaskAction { param($Execute, $Argument); [pscustomobject]@{ Execute = $Execute; Arguments = $Argument } }
@@ -261,7 +287,7 @@ try {
     $savedTimer.Description = 'Foreign ownership'
     Assert-PrFailure { Invoke-PrReviewTimer $paths -IntervalDays 1 -RunnerPath $runnerPath -Apply } 'different ownership'
     Write-Output 'One-timer checks passed: whole-list worker, stable current-user identity, preview, fractional cadence/reuse, upsert, disable/resume, ownership verification, and unrelated-task preservation. All schedules were fake.'
-    Write-Output 'PR review checks passed: user-wide list, approved maximum profiles, complete pagination, deduplication, isolated Git snapshots, unchanged skipping, pending failures/stale heads, cycle bounds, and locks. All GitHub and AI calls were fake.'
+    Write-Output 'PR review checks passed: user-wide list, approved maximum profiles, complete pagination, deduplication, isolated Git snapshots, unchanged skipping, pending failures/stale heads, cycle bounds, locks, and separate watch/result views with Running/Interrupted status. All GitHub and AI calls were fake.'
 }
 finally {
     $env:SKILLVAULT_OWNERSHIP_ROOT = $savedFixtureOwnershipRoot

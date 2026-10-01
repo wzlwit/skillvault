@@ -1,11 +1,11 @@
 {
   "name": "ppt-master",
-  "title": "PPT Master Reference",
+  "title": "PPT Master",
   "version": null,
   "status": "public",
   "visibility": "public",
   "kind": "reference",
-  "description": "Reference guide to hugohe3/ppt-master for native editable PowerPoint/PPTX, reusable templates, brand colors, fonts, and slide layouts. Use /ppt-master to locate upstream guidance. Overlaps with harness-report on artifact validation and kpi-dashboard on presentation design; upstream tools are not bundled.",
+  "description": "Create native editable PowerPoint (PPTX) decks, reusable templates, brand colors, fonts, and slide layouts with Hugo He's PPT Master; overlaps with harness-report on artifact validation and kpi-dashboard on presentation design. Installs the original, about 13,000 files; its Python tools need their own dependencies.",
   "tags": ["writing", "presentations", "powerpoint", "pptx", "templates", "branding", "reference"],
   "author": "Hugo He",
   "maintainer": "wzlwit",
@@ -18,8 +18,7 @@
   "upstream": {
     "repo": "https://github.com/hugohe3/ppt-master",
     "path": "skills/ppt-master",
-    "revision": "680de11f1bef4628b68d5daad9dffec569fbd51f",
-    "version": "6.6.0",
+    "version": "latest",
     "license": "MIT"
   },
   "install": {
@@ -27,7 +26,6 @@
     "project": true,
     "session": true,
     "defaultScope": "global",
-    "strategy": "copy"
-  },
-  "readme": "SKILL.md"
+    "strategy": "upstream"
+  }
 }

@@ -1,5 +1,10 @@
 # Local Harness Runtime
 
+Contents: Root Inheritance; Configuration and State; Layout Migration; Artifact Storage; Runner
+Inheritance; Folder Controllers and Coding Repositories; Commands; History Cleanup; Restrictions and
+Fallback; Reuse or New; Script Permissions and Agent Fallback; Worker Output; Evidence and Recovery;
+Timers; Test Flows; Monitoring; Report Authoring.
+
 The runtime uses PowerShell 7, Git, and the Copilot CLI; scheduled operation uses Windows Task
 Scheduler. Read-only board commands, standalone test flows, and numeric health checks need no CLI or
 model settings, and discovery status verification uses the CLI's model `auto` mode. Installing

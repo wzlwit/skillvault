@@ -1,5 +1,8 @@
 # Scheduler
 
+Contents: Commands; Scope and Execution; Heartbeat Baseline; Refresh Contention Retries;
+Durations; Maintenance; Stale Schedules; Migration.
+
 Use the bundled [timer dispatcher](../scripts/harness-timer.ps1) for attended commands and
 [heartbeat](../scripts/harness-heartbeat.ps1) for the single user-wide Windows task. PowerShell 7
 is required. No install, bare command, preview, or source edit enables a live schedule.

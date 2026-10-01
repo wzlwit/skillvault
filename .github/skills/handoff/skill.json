@@ -20,6 +20,8 @@
   "upstream": {
     "repo": "https://github.com/mattpocock/skills",
     "path": "skills/productivity/handoff",
+    "version": "latest",
+    "commit": "d81f3a183412e71a5b1e84ca21bc1a35eea03a60",
     "license": "MIT"
   },
   "install": {
@@ -27,7 +29,7 @@
     "project": true,
     "session": true,
     "defaultScope": "global",
-    "strategy": "copy"
+    "strategy": "adapted"
   },
   "examples": [
     "/handoff",

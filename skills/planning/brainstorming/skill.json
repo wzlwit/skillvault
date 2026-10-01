@@ -18,6 +18,8 @@
   "upstream": {
     "repo": "https://github.com/obra/superpowers",
     "path": "skills/brainstorming",
+    "version": "latest",
+    "commit": "8ca22dba9a94f28898bbce59f2537ff4d87c747d",
     "license": "MIT"
   },
   "install": {
@@ -25,7 +27,7 @@
     "project": true,
     "session": true,
     "defaultScope": "global",
-    "strategy": "copy"
+    "strategy": "adapted"
   },
   "inputs": [
     {

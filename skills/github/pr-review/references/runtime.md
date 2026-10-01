@@ -1,5 +1,8 @@
 # User-Wide PR Review Runtime
 
+Contents: Storage and Dependencies; Approved Configuration; One Timer; Pauses, Recovery, and
+Results.
+
 ## Storage and Dependencies
 
 The default controller root is `~/.copilot/pr-review`, not the current repository and not an
@@ -9,12 +12,12 @@ installed skill folder. PR review, watchlist actions, and the PR timer route sha
 | --- | --- |
 | `watchlist.json` | Exact PR/repository entries, stable W- IDs, repository filters |
 | `.harness/config.json` | Explicit PR settings and shared runner/restriction/fallback settings |
-| `.harness/state.json` | Shared review runs, durable pauses, and PR result history |
+| `.harness/state.json` | Shared review runs, durable pauses, PR result history, and the review in progress |
 | `reports/pr/` | PR-level status, verified revisions, findings, and engine evidence links |
 | `reports/history/` | Shared review evidence and snapshots |
 | `workspaces/` | Isolated fetched PR checkouts retained for evidence |
 
-List and removal previews do not initialize storage. Add creates only the watchlist. Explicit
+List, results, and removal previews do not initialize storage. Add creates only the watchlist. Explicit
 configuration initializes the dedicated controller, never the source/target project's harness.
 Removal only unregisters the selected watch; it does not delete reports, checkouts, or remote PRs.
 There is no implicit retention cleanup. `-DataRoot` exists for isolated tests or an explicitly
@@ -31,6 +34,7 @@ The dispatcher is `scripts/pr-review.ps1` in the installed `pr-review` bundle. I
 
 ```powershell
 & $review -Action List
+& $review -Action Results
 & $review -Action Add -Url https://github.com/owner/repository -Limit 5
 & $review -Action Remove -Selector W-001
 & $review -Action Remove -Selector W-001 -Apply
@@ -161,6 +165,12 @@ snapshot. `Unchanged` reuses that completed snapshot; it does not resolve its fi
 `Bounded` reports deferred candidates; `Partial` reports blockers. Neither means all PRs are clean.
 Post-review remote revision failure leaves the target pending even if the engine's local snapshot
 was internally stable. Earlier reports remain evidence and are not automatically removed.
+
+`-Action List` returns watched targets and filters only. `-Action Results` returns the latest result
+for every reviewed PR or repository target, watched or ad hoc, with the W- IDs that watch it. Each
+attempt records its PR as the review in progress and clears it when that attempt's result is saved.
+Results show it as `Running` while the recording process is alive, otherwise `Interrupted`, with the
+last completed result kept beside it; an interrupted attempt stays pending.
 
 These controls are not an OS security sandbox. Host/account filesystem isolation and provider
 billing are external boundaries; do not infer them from a tool allowlist or reported CLI setting.

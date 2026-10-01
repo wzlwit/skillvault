@@ -49,6 +49,7 @@ function global:git {
         'symbolic-ref' { return $global:fakeGitHead }
         'rev-parse' { return $global:fakeGitRevision }
         'remote' { if ($arguments[$offset + 1] -eq 'get-url') { return $global:fakeGitRemote } }
+        'config' { if ($arguments[-1] -ceq 'remote.origin.url') { return $global:fakeGitRemote } }
         'checkout' {
             $repoPath = $arguments[1]
             Get-ChildItem -LiteralPath $repoPath -Force | Where-Object { $_.Name -cne '.git' } | Remove-Item -Recurse -Force
@@ -196,6 +197,15 @@ try {
     Assert-True ($alphaMetadata.sourceRevision -eq 'deadbeef') 'an update records the source revision'
     Assert-True ($null -eq (Get-FixtureMetadata $betaTarget).installedVersion) 'an unversioned manifest updates with a null version'
     Assert-True ((Get-FixtureBody $betaTarget) -like '*updated*') 'an unversioned skill updates its content'
+
+    $movedSource = New-FixtureSkill -Name 'moved-reference' -Version $null
+    $movedTarget = Install-FixtureSkill -Name 'moved-reference' -Version $null
+    Remove-Item -LiteralPath (Join-Path $movedSource 'SKILL.md')
+    '{"name":"moved-reference","version":null,"kind":"reference","install":{"strategy":"upstream"},"upstream":{"repo":"https://example.invalid/upstream.git","path":"skills/moved-reference","version":"latest"}}' |
+        Set-Content -LiteralPath (Join-Path $movedSource 'skill.json') -Encoding utf8
+    Assert-True (-not (Invoke-Refresh)) 'a copy whose source became a reference is skipped, not failed'
+    Assert-True ((Get-FixtureBody $movedTarget) -like '*original*' -and (Get-FixtureMetadata $movedTarget).installedAt -eq $stamp) 'the skipped copy stays untouched until it is reinstalled'
+    Remove-Item -LiteralPath $movedSource, $movedTarget -Recurse -Force
 
     New-FixtureSkill -Name 'retryable' -Version '1.0.0' | Out-Null
     $retryTarget = Install-FixtureSkill -Name 'retryable' -Version '1.0.0'

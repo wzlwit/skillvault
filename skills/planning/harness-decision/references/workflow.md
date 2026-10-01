@@ -1,6 +1,9 @@
 
 # Harness Decisions
 
+Contents: Start Here; No Arguments: Read Only; Explain a Decision or Question; Record an Explicit
+Choice; Register; Boundaries.
+
 Show active open decisions and a brief summary of optional configuration by default; include
 resolved outcomes only when requested. This skill works without `/harness init`, a timer, or a
 harness controller. It does not execute project tasks or require unused features to be configured.
@@ -100,6 +103,39 @@ must remain blocked. Keep recommendations distinct from accepted choices. A hand
 not a choice to record, approval to send a message, or permission to resume the affected task.
 Unless the user supplies another output path, pass `.harness_sv/docs/handoffs/` under the selected
 Root to the handoff skill. Do not create a note merely to populate that folder.
+
+## Explain a Decision or Question
+
+`explain <decision-id|path|question>` explains one decision so that someone who missed the
+discussion can follow it and act. It is read-only and answers in chat. Without a subject, use the
+one pending question in the current discussion; ask only when several are equally likely.
+
+1. Resolve the subject: a register ID through `-Action Show -Id <decision-id>`, an ADR or plan
+   section, or a pending question in the conversation, such as a grilling `Q2`. Read the owning
+   record or section and its linked sources; a search hit only locates them.
+2. Gather the evidence for every option before comparing them. Check environmental facts with
+   available tools, and mark anything you could not check as unverified. Do not invent options,
+   facts, owners, or dates.
+3. Keep a recorded choice or recommendation exactly as recorded, and say which one it is. Use
+   plain words, define terms on first use, and refer to options by name, not only by a letter.
+
+Answer in this order. Scale the length to the decision, but never drop a part:
+
+1. **Question:** one plain sentence, then the background a newcomer needs: what is being decided,
+   why a choice is needed now, and what goes wrong with a poor choice.
+2. **Options:** a table that rates every option on the same points: what happens, benefits,
+   costs and risks, and how hard it is to undo. Include the current behavior when it is an option.
+3. **Reasons:** numbered reasons for the chosen or recommended option. Tie each reason to its
+   evidence, such as a file and line, a document link, or a check result.
+4. **Example:** one concrete scenario walked through under each option, showing where the
+   outcomes differ.
+5. **Trade-off:** what the chosen or recommended option gives up, and how to reduce that cost.
+6. **Status:** the recorded status, or for an unrecorded question whether it is still open; the
+   owner and date when known; where it is recorded; what is still unverified; and what would
+   reopen it.
+
+Explaining never records, accepts, or changes a decision, creates IDs or files, starts an
+interview, or triggers work. Use `record` for an explicit human choice.
 
 ## Record an Explicit Choice
 

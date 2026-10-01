@@ -47,6 +47,11 @@ $mapping = @{
 $installs = [Collections.Generic.List[object]]::new()
 $retire = [Collections.Generic.List[object]]::new()
 $skipped = [Collections.Generic.List[object]]::new()
+$isOrigin = {
+    param($path)
+    $metadataPath = Join-Path $path '.skillvault-install.json'
+    (Test-Path -LiteralPath $metadataPath) -and [string](Get-Content -LiteralPath $metadataPath -Raw | ConvertFrom-Json).sourceType -ceq 'upstream'
+}
 foreach ($group in @($installed | Group-Object ScopeType)) {
     $targetRoot = if ($group.Name -eq 'global') { $globalRoot } else { $projectSkills }
     $wanted = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
@@ -55,6 +60,7 @@ foreach ($group in @($installed | Group-Object ScopeType)) {
         if ($SelectedNames -and $name -cnotin $SelectedNames) { continue }
         if ($entry.RequestedVersion -ne 'latest') { $skipped.Add($entry); continue }
         if ($name -cnotin $catalog.name) { $skipped.Add($entry); continue }
+        if (& $isOrigin $entry.Path) { $skipped.Add($entry); continue }
         $null = $wanted.Add($name)
         if ($name -cne $entry.Name) { $retire.Add([pscustomobject]@{ oldName = $entry.Name; name = $name; path = $entry.Path; scope = $group.Name }) }
     }
@@ -63,15 +69,19 @@ foreach ($group in @($installed | Group-Object ScopeType)) {
         foreach ($name in @($wanted)) {
             $item = $catalog | Where-Object name -CEQ $name
             $bundle = Resolve-SkillSourcePath -RepositoryRoot $repositoryRoot -SourcePath $item.path
-            $manifest = Read-SkillManifest $bundle $name
+            $manifest = Read-SkillManifest $bundle $name -AllowReference
             foreach ($dependency in @($manifest.dependencies | Where-Object { $_ -cin $catalog.name })) { if ($wanted.Add($dependency)) { $added = $true } }
         }
     } while ($added)
     foreach ($name in @($wanted | Sort-Object)) {
         $item = $catalog | Where-Object name -CEQ $name
         $bundle = Resolve-SkillSourcePath -RepositoryRoot $repositoryRoot -SourcePath $item.path
-        $manifest = Read-SkillManifest $bundle $name
+        $manifest = Read-SkillManifest $bundle $name -AllowReference
         $target = Join-Path $targetRoot $name
+        if ([string]$manifest.install.strategy -ceq 'upstream' -or ((Test-Path -LiteralPath $target) -and (& $isOrigin $target))) {
+            $skipped.Add([pscustomobject]@{ Name = $name; Path = $target; Reason = 'UpstreamOriginal' })
+            continue
+        }
         if (Test-Path -LiteralPath $target) {
             $known = @($installed | Where-Object { $_.Path -ieq $target })
             if ($known.Count -ne 1 -or $known[0].RequestedVersion -ne 'latest') { throw "Preserve the unmanaged or pinned target: $target" }

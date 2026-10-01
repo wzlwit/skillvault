@@ -1,7 +1,7 @@
 [
   {
     "name": "archify",
-    "description": "Reference guide to the upstream Archify diagram skill; its renderer and CLI are not bundled.",
+    "description": "Create validated architecture, workflow, sequence, data-flow, and lifecycle diagrams as standalone HTML with tt-a1i's Archify. Installs the original; its Node CLI runs from the skill folder.",
     "path": "skills/codeview/archify",
     "version": null
   },
@@ -9,6 +9,12 @@
     "name": "architecture-decision-records",
     "description": "Preserve architectural rationale and supersession; overlaps with grilling on trade-offs, planning-with-files on notes, harness-decision on decision history, and harness-doc on reader-facing rationale.",
     "path": "skills/writing/architecture-decision-records",
+    "version": null
+  },
+  {
+    "name": "awesome-gamedev-agent-skills",
+    "description": "Reference guide to gamedev-skills/awesome-gamedev-agent-skills for game development with Godot, Unity, Unreal, web, and other engines: gameplay, assets, UI, audio, genres, and publishing. Use /awesome-gamedev-agent-skills to find and read the matching upstream skill. Upstream skills and scripts are not bundled or installed.",
+    "path": "skills/gamedev/awesome-gamedev-agent-skills",
     "version": null
   },
   {
@@ -37,7 +43,7 @@
   },
   {
     "name": "grilling",
-    "description": "Stress-test plans through interviews; overlaps with architecture-decision-records on trade-offs and planning-with-files on planning.",
+    "description": "Stress-test plans through interviews; overlaps with architecture-decision-records on trade-offs and planning-with-files on planning. Adapted from Matt Pocock's grilling.",
     "path": "skills/planning/grilling",
     "version": null
   },
@@ -54,8 +60,14 @@
     "version": "1.0.0"
   },
   {
+    "name": "harness-comms",
+    "description": "Draft stakeholder communications for tracked work: status trackers, meeting-slot comparisons and sync-up invites, and email updates or thread replies. Use /harness-comms or /hn-comms with list, slots, or upsert. Overlaps with harness-doc on reader-facing prose and harness-monitor on status and owner evidence; owns time-bound coordination artifacts and can register their links afterward through harness-link. Drafts only: never sends, invites, or shares without explicit approval.",
+    "path": "skills/planning/harness-comms",
+    "version": "1.0.0"
+  },
+  {
     "name": "harness-decision",
-    "description": "List open harness decisions separately from optional configuration, filter closed/all decisions, or record a choice. Use /harness-decision or /hn-decision with list or record; also accepts legacy /harness-decide and /hn-decide. Overlaps with architecture-decision-records on history; owns the compact bulletin and decision register.",
+    "description": "List open harness decisions separately from optional configuration, filter closed/all decisions, explain one decision or question, or record a choice. Use /harness-decision or /hn-decision with list, explain, or record; also accepts legacy /harness-decide and /hn-decide. Overlaps with architecture-decision-records on history; owns the compact bulletin, decision register, and read-only explanations.",
     "path": "skills/planning/harness-decision",
     "version": "1.0.0"
   },
@@ -67,7 +79,7 @@
   },
   {
     "name": "harness-doc",
-    "description": "Create or update evidence-grounded feature doc sets, onboarding, and troubleshooting guides. Use /harness-doc or /hn-doc with list or upsert. Overlaps with architecture-decision-records on design rationale and the office-documents reference on document output; owns reader-oriented guides, with a final Humanizer pass followed by validation. No harness initialization or publication is implied.",
+    "description": "Create or update evidence-grounded feature doc sets, onboarding, and troubleshooting guides. Use /harness-doc or /hn-doc with list or upsert. Overlaps with architecture-decision-records on design rationale, harness-comms on stakeholder-facing prose, and the office-documents reference on document output; owns reader-oriented guides, with a final Humanizer pass followed by validation. No harness initialization or publication is implied.",
     "path": "skills/planning/harness-doc",
     "version": "1.0.0"
   },
@@ -79,7 +91,7 @@
   },
   {
     "name": "harness-monitor",
-    "description": "Monitor work across approved source adapters, including ADO and documents; assess relevance, Auto-verify status, correlate explicit requirements, reconcile evidence, and expose verified subsets, or check health observations. Use /harness-monitor or /hn-monitor with list, declare, check, or accept. Overlaps with harness-test on checks, harness-task on intake, and kpi-dashboard on metric contracts; preserves deferred work and never launches development.",
+    "description": "Monitor work across approved source adapters, including ADO and documents; assess relevance, Auto-verify status, correlate explicit requirements, reconcile evidence, and expose verified subsets, or check health observations. Use /harness-monitor or /hn-monitor with list, declare, check, or accept. Overlaps with harness-test on checks, harness-task on intake, kpi-dashboard on metric contracts, and harness-comms on status and owner evidence; preserves deferred work and never launches development.",
     "path": "skills/planning/harness-monitor",
     "version": "1.0.0"
   },
@@ -121,7 +133,7 @@
   },
   {
     "name": "humanizer",
-    "description": "Reference guide to general Humanizer prose editing; overlaps with humanizer-ch on rewriting, while retaining a general-prose scope. Use to locate authoritative guidance before rewriting. Upstream editing rules are not bundled.",
+    "description": "Rewrite AI-sounding prose without changing what it says, with blader's Humanizer; overlaps with humanizer-ch on rewriting, while keeping a general-prose scope. Installs the original.",
     "path": "skills/writing/humanizer",
     "version": null
   },
@@ -157,7 +169,7 @@
   },
   {
     "name": "planning-with-files",
-    "description": "Reference to upstream task planning and recovery; overlaps with grilling on planning and architecture-decision-records on notes. No hooks or scripts bundled.",
+    "description": "Keep task plans, findings, and progress on disk for long multi-step work with OthmanAdi's planning-with-files; overlaps with grilling on planning and architecture-decision-records on notes. Installs the original; its hooks run local scripts in hosts that support skill hooks.",
     "path": "skills/planning/planning-with-files",
     "version": null
   },
@@ -169,7 +181,7 @@
   },
   {
     "name": "ppt-master",
-    "description": "Reference guide to hugohe3/ppt-master for native editable PowerPoint/PPTX, reusable templates, brand colors, fonts, and slide layouts. Use /ppt-master to locate upstream guidance. Overlaps with harness-report on artifact validation and kpi-dashboard on presentation design; upstream tools are not bundled.",
+    "description": "Create native editable PowerPoint (PPTX) decks, reusable templates, brand colors, fonts, and slide layouts with Hugo He's PPT Master; overlaps with harness-report on artifact validation and kpi-dashboard on presentation design. Installs the original, about 13,000 files; its Python tools need their own dependencies.",
     "path": "skills/writing/ppt-master",
     "version": null
   },
@@ -183,17 +195,17 @@
     "name": "pr-review",
     "description": "Review a PR URL, repository, or user-wide watchlist. Use /pr-review list, run, configure, or explicit PR input. Overlaps with harness-review on general review and differential-review on security; owns remote selection and isolated evidence, while pr-watch manages targets.",
     "path": "skills/github/pr-review",
-    "version": "1.0.0"
+    "version": "1.1.0"
   },
   {
     "name": "pr-watch",
-    "description": "Manage the single user-wide PR review watchlist. Use /pr-watch list, add, or remove; replaces /pr-review-add, /pr-review-list, and /pr-review-remove. Watchlist changes do not run reviews or change schedules; pr-review owns execution and harness-timer owns its logical schedule.",
+    "description": "Manage the single user-wide PR review watchlist. Use /pr-watch list, add, or remove; replaces /pr-review-add, /pr-review-list, and /pr-review-remove. Watchlist changes do not run reviews or change schedules; pr-review owns execution and review results, and harness-timer owns its logical schedule.",
     "path": "skills/github/pr-watch",
-    "version": "1.0.0"
+    "version": "1.1.0"
   },
   {
     "name": "rag-implementation",
-    "description": "Reference guide to wshobson/agents RAG implementation. Use for document Q&A, chunking, retrieval, reranking, and grounded answers. Upstream examples need dependency and behavior checks; no runtime or data access is bundled.",
+    "description": "RAG implementation guidance adapted from wshobson/agents. Use for document Q&A, chunking, retrieval, reranking, and grounded answers. Its examples need dependency and behavior checks; no runtime or data access is bundled.",
     "path": "skills/data/rag-implementation",
     "version": null
   },
@@ -211,7 +223,7 @@
   },
   {
     "name": "skillvault-authoring",
-    "description": "Author and maintain skill bundles and catalog entries in the SkillVault repository, not application source or installed copies. Use /skillvault-authoring or /sv-authoring list, upsert, or remove; create/update are upsert aliases. Accepts legacy /skillvault-source, /sv-source, skillvault-upsert, skillvault-remove and their shortcuts. Can install afterward through skillvault-installation with separate target and approval.",
+    "description": "Author and maintain skill bundles and catalog entries in the SkillVault repository, not application source or installed copies. Use /skillvault-authoring or /sv-authoring list, upsert, or remove; create/update are upsert aliases. Accepts legacy /skillvault-source, /sv-source, skillvault-upsert, skillvault-remove and their shortcuts. Never installs; use skillvault-installation to install the result.",
     "path": "skills/core/skillvault-authoring",
     "version": "1.0.0"
   },
@@ -229,7 +241,7 @@
   },
   {
     "name": "skillvault-refresh",
-    "description": "Refresh managed global latest skill copies one way from recorded Git sources. Use /skillvault-refresh or /sv-refresh list or run; accepts skillvault-fresh, /sv-fresh, /skv-fresh, /skillvault-sync and /sv-sync. Scheduling delegates to harness-timer set refresh. Does not push upstream or update project copies.",
+    "description": "Merge upstream changes into adapted skills in the SkillVault repository when push is permitted, then bring new commits to the local checkout and managed global latest copies, merging local changes. Use /skillvault-refresh or /sv-refresh list or run; accepts skillvault-fresh, /sv-fresh, /skv-fresh, /skillvault-sync and /sv-sync. Scheduling delegates to harness-timer set refresh. Never pushes your own commits or updates project copies.",
     "path": "skills/core/skillvault-refresh",
     "version": "1.0.0"
   },

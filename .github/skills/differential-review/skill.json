@@ -21,6 +21,8 @@
   "upstream": {
     "repo": "https://github.com/trailofbits/skills",
     "path": "plugins/differential-review/skills/differential-review",
+    "version": "latest",
+    "commit": "82fe8226252622fa807643bdca1710901198553a",
     "license": "CC-BY-SA-4.0"
   },
   "install": {
@@ -28,7 +30,7 @@
     "project": true,
     "session": true,
     "defaultScope": "global",
-    "strategy": "copy"
+    "strategy": "adapted"
   },
   "readme": "SKILL.md"
 }

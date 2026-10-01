@@ -5,5 +5,7 @@
   "scope": "project",
   "requestedVersion": "latest",
   "installedVersion": null,
-  "installedAt": "2026-09-25T02:55:52.3578249Z"
+  "installedAt": "2026-10-01T18:43:11.7936440Z",
+  "sourceCheckout": "C:\\repos\\skillvault",
+  "sourceRevision": "48ad89db41aaa6191984e9ff9b4d705426c642a9"
 }

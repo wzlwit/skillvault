@@ -1,6 +1,8 @@
 
 # Harness Tests
 
+Contents: Start Here; Declare; Run; Scheduled and Post-Development Runs; Results and Boundaries.
+
 Declare once and run the same test flow manually, on a timer, or as a development/fix gate.
 Do not duplicate test frameworks: invoke the project's existing scripts, test runner, or test
 methods through explicit executable/argument steps. Test-only execution does not require Copilot.

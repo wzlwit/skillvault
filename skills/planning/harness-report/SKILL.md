@@ -38,7 +38,8 @@ upsert <artifact-or-purpose> [--type <platform>] [--output <path>] [--design-onl
   resolved artifact when present and create it only when confirmed absent. An ambiguous or
   inaccessible target is not absent; never create a duplicate.
 - Platforms: `powerbi`, `grafana`, `jarvis`, `web`, or `query`. Infer a type only from an unambiguous
-  request or existing artifact; otherwise ask.
+  request or existing artifact; otherwise ask. After choosing the platform, read its section of
+  [report routes](./references/report-routes.md).
 - Apply `/rules apply` and project instructions. Load only the selected platform specialist and
   preserve artifact IDs, source contracts, output destinations, validation, and publication approvals.
   Design, created, validated, and published are distinct outcomes; monitoring is optional.

@@ -1,5 +1,8 @@
 # Documentation authoring workflow
 
+Contents: Resolve the request; Gather evidence; Draft the set; Humanizer pass; Validate and
+deliver; Optional restructuring and publication.
+
 Create reader-facing documentation from verified source evidence. This procedure supports a
 complete feature set and a focused update. It does not add a runtime action, renderer, task store,
 documentation server, or publishing pipeline.
@@ -108,9 +111,9 @@ it. Trim real examples to the relevant fields and remove secrets.
 
 This is the final editing phase, not the final validation phase.
 
-1. Read the available `humanizer` skill. The curated SkillVault entry is reference-only; fetch and
-   read its authoritative upstream guidance before rewriting. Fetching guidance does not mean
-   sending private documents to that source. Do not install an upstream package implicitly.
+1. Read the available `humanizer` skill; installing it gets blader's original. If it is not
+   installed, fetch and read its authoritative upstream guidance before rewriting. Fetching guidance
+   does not mean sending private documents to that source. Do not install it implicitly.
 2. Apply its embedded/file workflow to the requested prose only. Keep a neutral technical voice
    suitable for the audience and preserve the user's supported writing preferences. Remove empty
    slogans, staged contrasts, decorative emphasis, repeated closers, and em-dash prose. Genuine

@@ -1,6 +1,9 @@
 
 # Harness Root
 
+Contents: Inspect Locations; Current View Names; Root Selection; Explicit Relocation; Legacy Board
+Placement; Legacy Routing.
+
 Read `/rules apply`, project instructions, and the installed `harness` runtime guide. Follow
 Script Permissions and Agent Fallback before helpers. `root` means the parent location for the
 `.harness_sv/` workspace, not the skill installation or a coding-repository link.

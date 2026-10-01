@@ -54,10 +54,65 @@ function Resolve-SkillSourcePath {
     return $resolvedPath
 }
 
-function Read-SkillManifest {
+function Test-SkillUpstreamVersion {
+    param([string]$Version)
+
+    return $Version -ceq 'latest' -or
+        ($Version -cmatch '^[A-Za-z0-9][A-Za-z0-9._/-]{0,199}\z' -and $Version -notmatch '\.\.|//|/\z|\.\z|\.lock\z')
+}
+
+function Assert-SkillUpstreamReference {
+    param(
+        [Parameter(Mandatory = $true)]$Manifest,
+        [Parameter(Mandatory = $true)][string]$Label
+    )
+
+    if ($null -eq $Manifest.upstream -or $Manifest.upstream -isnot [System.Management.Automation.PSCustomObject]) { throw "Missing upstream source: $Label" }
+    $upstream = $Manifest.upstream
+    $uri = $null
+    if ($upstream.repo -isnot [string] -or $upstream.repo -match '\s' -or
+        -not [uri]::TryCreate($upstream.repo, [UriKind]::Absolute, [ref]$uri) -or
+        $uri.Scheme -cne 'https' -or $uri.UserInfo -or $uri.Query -or $uri.Fragment) {
+        throw "Upstream repo must be an HTTPS URL without credentials, query, or fragment: $Label"
+    }
+    if ($upstream.path -isnot [string] -or [string]::IsNullOrWhiteSpace($upstream.path) -or [System.IO.Path]::IsPathRooted($upstream.path)) {
+        throw "Upstream path must be relative to the upstream repository: $Label"
+    }
+    if ($upstream.version -isnot [string] -or -not (Test-SkillUpstreamVersion $upstream.version)) {
+        throw "Upstream version must be 'latest', a tag, or a full commit: $Label"
+    }
+}
+
+function Assert-SkillUpstreamFolder {
     param(
         [Parameter(Mandatory = $true)][string]$SkillPath,
         [Parameter(Mandatory = $true)][string]$ExpectedName
+    )
+
+    $skillFile = Join-Path $SkillPath 'SKILL.md'
+    if (-not (Test-Path -LiteralPath $skillFile -PathType Leaf)) {
+        throw "Missing SKILL.md for upstream skill '$ExpectedName': $SkillPath"
+    }
+    $lines = [System.IO.File]::ReadAllLines($skillFile)
+    $frontmatterName = $null
+    if ($lines.Count -gt 0 -and $lines[0].Trim() -ceq '---') {
+        for ($index = 1; $index -lt $lines.Count -and $lines[$index].Trim() -cne '---'; $index++) {
+            if ($lines[$index] -cmatch '^name:\s*(.*?)\s*$') {
+                $frontmatterName = $Matches[1].Trim([char[]]@('"', "'"))
+                break
+            }
+        }
+    }
+    if ($frontmatterName -cne $ExpectedName) {
+        throw "Upstream SKILL.md name '$frontmatterName' does not match '$ExpectedName': $skillFile"
+    }
+}
+
+function Read-SkillManifest {
+    param(
+        [Parameter(Mandatory = $true)][string]$SkillPath,
+        [Parameter(Mandatory = $true)][string]$ExpectedName,
+        [switch]$AllowReference
     )
 
     $ErrorActionPreference = 'Stop'
@@ -85,7 +140,20 @@ function Read-SkillManifest {
         throw "Invalid skill manifest version in ${manifestPath}: expected a non-empty string or null"
     }
 
-    if (-not (Test-Path -LiteralPath (Join-Path $SkillPath 'SKILL.md') -PathType Leaf)) {
+    $strategy = if ($manifest.install) { [string]$manifest.install.strategy } else { '' }
+    $hasSkillFile = Test-Path -LiteralPath (Join-Path $SkillPath 'SKILL.md') -PathType Leaf
+    if ($strategy -cin @('upstream', 'adapted')) { Assert-SkillUpstreamReference -Manifest $manifest -Label $manifestPath }
+    if ($strategy -ceq 'upstream') {
+        if ($manifest.kind -cne 'reference') { throw "A reference requires kind 'reference': $manifestPath" }
+        if ($hasSkillFile) { throw "A reference keeps no SKILL.md; make it an adapted skill instead: $SkillPath" }
+        if (-not $AllowReference) { throw "Skill '$ExpectedName' is a reference; install fetches its original from $($manifest.upstream.repo)." }
+        return $manifest
+    }
+    if ($strategy -ceq 'adapted' -and [string]$manifest.upstream.commit -cnotmatch '^[0-9a-f]{40}\z') {
+        throw "An adapted skill records the upstream commit it includes as upstream.commit: $manifestPath"
+    }
+
+    if (-not $hasSkillFile) {
         throw "Missing SKILL.md for skill '$ExpectedName': $SkillPath"
     }
 
@@ -147,6 +215,333 @@ function Read-BootstrapSkillNames {
         if (-not $seen.Add($name)) { throw "Duplicate bootstrap skill '$name' in $selectionPath" }
     }
     return $names
+}
+
+function Sync-SkillSourceRepository {
+    param(
+        [Parameter(Mandatory = $true)][string]$RepoUrl,
+        [Parameter(Mandatory = $true)][string]$CacheRoot,
+        [string]$Version = 'latest'
+    )
+
+    $previousGitPrompt = $env:GIT_TERMINAL_PROMPT
+    $previousGcmInteractive = $env:GCM_INTERACTIVE
+    $authenticationGuidance = 'Interactive Git/GCM prompts are disabled; authenticate separately if required, then rerun.'
+    try {
+        $env:GIT_TERMINAL_PROMPT = '0'
+        $env:GCM_INTERACTIVE = 'Never'
+        if ([string]::IsNullOrWhiteSpace($RepoUrl)) {
+            throw 'Source repository is empty.'
+        }
+        if ($RepoUrl.StartsWith('-')) {
+            throw "Source repository must not start with '-': $RepoUrl"
+        }
+        if (-not (Test-SkillUpstreamVersion $Version)) {
+            throw "Invalid source version '$Version'. Use 'latest', a tag, or a full commit."
+        }
+
+        $repoPath = Join-Path $CacheRoot (($RepoUrl -replace '[^A-Za-z0-9._-]', '_').Trim('_'))
+        if (Test-Path -LiteralPath $repoPath) {
+            if (-not (Test-Path -LiteralPath (Join-Path $repoPath '.git'))) {
+                throw "Source cache is not a Git repository; inspect and remove it manually: $repoPath"
+            }
+
+            $remoteUrl = [string](git -C $repoPath config --get remote.origin.url | Select-Object -First 1)
+            if ($LASTEXITCODE -ne 0) { throw "Git remote lookup failed for $repoPath" }
+            if ($remoteUrl.Trim() -cne $RepoUrl) {
+                throw "Source cache $repoPath tracks '$($remoteUrl.Trim())', not '$RepoUrl'."
+            }
+
+            $status = git -C $repoPath status --porcelain
+            if ($LASTEXITCODE -ne 0) { throw "Git status failed for $repoPath" }
+            if ($status) { throw "Refusing to refresh from a modified source cache: $repoPath" }
+
+            if ($Version -ceq 'latest') { git -C $repoPath fetch --prune origin | Out-Null }
+            else { git -C $repoPath fetch --prune --tags origin | Out-Null }
+            if ($LASTEXITCODE -ne 0) { throw "Git fetch failed for $RepoUrl. $authenticationGuidance" }
+
+            if ($Version -ceq 'latest') {
+                git -C $repoPath remote set-head origin --auto | Out-Null
+                if ($LASTEXITCODE -ne 0) { throw "Git remote set-head failed for $RepoUrl. $authenticationGuidance" }
+
+                $defaultRef = [string](git -C $repoPath symbolic-ref --quiet --short refs/remotes/origin/HEAD | Select-Object -First 1)
+                if ($LASTEXITCODE -ne 0) { throw "Git symbolic-ref failed for $RepoUrl" }
+                $defaultRef = $defaultRef.Trim()
+                if ($defaultRef -cnotmatch '^origin/\S+$') {
+                    throw "Unexpected default branch ref for ${RepoUrl}: '$defaultRef'"
+                }
+
+                git -C $repoPath checkout --detach $defaultRef | Out-Null
+                if ($LASTEXITCODE -ne 0) { throw "Git checkout failed for $RepoUrl" }
+            }
+        }
+        else {
+            New-Item -ItemType Directory -Path $CacheRoot -Force | Out-Null
+            git clone -- $RepoUrl $repoPath | Out-Null
+            if ($LASTEXITCODE -ne 0) { throw "Git clone failed for $RepoUrl. $authenticationGuidance" }
+        }
+
+        if ($Version -cne 'latest') {
+            $versionSpec = if ($Version -cmatch '^[0-9a-f]{40}$') { "${Version}^{commit}" } else { "refs/tags/${Version}^{commit}" }
+            $commit = [string](git -C $repoPath rev-parse --verify --quiet $versionSpec | Select-Object -First 1)
+            if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($commit)) {
+                throw "Version '$Version' was not found as a tag or commit in $RepoUrl."
+            }
+            git -C $repoPath checkout --detach $commit.Trim() | Out-Null
+            if ($LASTEXITCODE -ne 0) { throw "Git checkout failed for $RepoUrl at $Version" }
+        }
+
+        return $repoPath
+    }
+    finally {
+        $env:GIT_TERMINAL_PROMPT = $previousGitPrompt
+        $env:GCM_INTERACTIVE = $previousGcmInteractive
+    }
+}
+
+function Get-SkillSourceRevision {
+    param(
+        [Parameter(Mandatory = $true)][string]$RepoPath,
+        [Parameter(Mandatory = $true)][string]$SourcePath
+    )
+
+    $revisionSpec = if ($SourcePath -ceq '.') { 'HEAD^{tree}' } else { "HEAD:$SourcePath" }
+    try {
+        $revision = [string](git -C $RepoPath rev-parse $revisionSpec 2>$null | Select-Object -First 1)
+    }
+    catch {
+        return $null
+    }
+
+    if ($LASTEXITCODE -ne 0) { return $null }
+    if ([string]::IsNullOrWhiteSpace($revision)) { return $null }
+    return $revision.Trim()
+}
+
+function ConvertTo-SkillRepoIdentity {
+    param([string]$Url)
+
+    $identity = ([string]$Url).Trim() -replace '^[A-Za-z][A-Za-z0-9+.-]*://', '' -replace '^[^@/]+@', ''
+    $identity = ($identity -replace '^([^/:]+):(?!\d)', '$1/') -replace '(\.git)?/*$', ''
+    return $identity.ToLowerInvariant()
+}
+
+function Test-SkillGitTopLevel {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    $ErrorActionPreference = 'Continue'
+    $output = @(git -C $Path rev-parse --is-inside-work-tree --show-prefix 2>$null | ForEach-Object { [string]$_ })
+    return $LASTEXITCODE -eq 0 -and $output.Count -ge 1 -and $output[0] -ceq 'true' -and ($output.Count -eq 1 -or [string]::IsNullOrEmpty($output[1]))
+}
+
+function Export-SkillGitTree {
+    param(
+        [Parameter(Mandatory = $true)][string]$RepoPath,
+        [Parameter(Mandatory = $true)][string]$TreeIsh,
+        [Parameter(Mandatory = $true)][string]$Destination
+    )
+
+    $ErrorActionPreference = 'Continue'
+    $indexPath = Join-Path ([System.IO.Path]::GetTempPath()) ('skillvault-index-' + [guid]::NewGuid().ToString('N'))
+    $previousIndex = $env:GIT_INDEX_FILE
+    try {
+        # A private index keeps the repository's own index and working tree untouched.
+        $env:GIT_INDEX_FILE = $indexPath
+        git -C $RepoPath read-tree $TreeIsh 2>$null | Out-Null
+        if ($LASTEXITCODE -ne 0) { return $false }
+        New-Item -ItemType Directory -Path $Destination -Force | Out-Null
+        git -C $RepoPath checkout-index --all --force ('--prefix=' + ($Destination -replace '\\', '/').TrimEnd('/') + '/') 2>$null | Out-Null
+        return $LASTEXITCODE -eq 0
+    }
+    finally {
+        $env:GIT_INDEX_FILE = $previousIndex
+        Remove-Item -LiteralPath $indexPath -Force -ErrorAction SilentlyContinue
+    }
+}
+
+function Merge-SkillFolder {
+    param(
+        [Parameter(Mandatory = $true)][string]$Base,
+        [Parameter(Mandatory = $true)][string]$Ours,
+        [Parameter(Mandatory = $true)][string]$Theirs,
+        [Parameter(Mandatory = $true)][string]$Destination
+    )
+
+    $ErrorActionPreference = 'Stop'
+    $sides = @{}
+    foreach ($side in @{ Name = 'Base'; Path = $Base }, @{ Name = 'Ours'; Path = $Ours }, @{ Name = 'Theirs'; Path = $Theirs }) {
+        $files = @{}
+        foreach ($file in @(Get-SkillFiles -SkillPath $side.Path)) { $files[$file.RelativePath] = $file.FullName }
+        $sides[$side.Name] = $files
+    }
+    # Latin-1 maps every byte to one character, so line endings can be compared and changed without decoding errors.
+    $latin1 = [System.Text.Encoding]::GetEncoding(28591)
+    $read = { param($file) $latin1.GetString([System.IO.File]::ReadAllBytes($file)) }
+    $same = {
+        param($left, $right)
+        if (-not $left -or -not $right) { return (-not $left) -and (-not $right) }
+        $leftText = & $read $left; $rightText = & $read $right
+        if ($leftText.Contains([char]0) -or $rightText.Contains([char]0)) { return $leftText -ceq $rightText }
+        return $leftText.Replace("`r`n", "`n") -ceq $rightText.Replace("`r`n", "`n")
+    }
+    $conflicts = [System.Collections.Generic.List[string]]::new()
+    New-Item -ItemType Directory -Path $Destination -Force | Out-Null
+    $paths = @($sides.Base.Keys) + @($sides.Ours.Keys) + @($sides.Theirs.Keys) | Sort-Object -Unique
+    foreach ($relativePath in $paths) {
+        $basePath = $sides.Base[$relativePath]; $oursPath = $sides.Ours[$relativePath]; $theirsPath = $sides.Theirs[$relativePath]
+        if (& $same $oursPath $theirsPath) { $chosen = $theirsPath }
+        elseif (& $same $oursPath $basePath) { $chosen = $theirsPath }
+        elseif (& $same $theirsPath $basePath) { $chosen = $oursPath }
+        elseif ($basePath -and $oursPath -and $theirsPath) { $chosen = '<merge>' }
+        else { $conflicts.Add($relativePath); continue }
+        if (-not $chosen) { continue }
+        $target = Join-Path $Destination $relativePath.Replace([char]'/', [System.IO.Path]::DirectorySeparatorChar)
+        New-Item -ItemType Directory -Path (Split-Path -Parent $target) -Force | Out-Null
+        if ($chosen -cne '<merge>') { Copy-Item -LiteralPath $chosen -Destination $target -Force; continue }
+        $texts = @((& $read $basePath), (& $read $oursPath), (& $read $theirsPath))
+        if (($texts -join '').Contains([char]0)) { $conflicts.Add($relativePath); continue }
+        $mergeFiles = @(foreach ($text in $texts) {
+            $file = Join-Path ([System.IO.Path]::GetTempPath()) ('skillvault-merge-' + [guid]::NewGuid().ToString('N'))
+            [System.IO.File]::WriteAllBytes($file, $latin1.GetBytes($text.Replace("`r`n", "`n")))
+            $file
+        })
+        try {
+            $ErrorActionPreference = 'Continue'
+            git merge-file --quiet $mergeFiles[1] $mergeFiles[0] $mergeFiles[2] 2>$null | Out-Null
+            $mergeExit = $LASTEXITCODE
+            $ErrorActionPreference = 'Stop'
+            if ($mergeExit -ne 0) { $conflicts.Add($relativePath); continue }
+            $merged = & $read $mergeFiles[1]
+            # Keep the committed file's line endings.
+            if ($texts[2].Contains("`r`n")) { $merged = $merged.Replace("`n", "`r`n") }
+            [System.IO.File]::WriteAllBytes($target, $latin1.GetBytes($merged))
+        }
+        finally { Remove-Item -LiteralPath $mergeFiles -Force -ErrorAction SilentlyContinue }
+    }
+    return , @($conflicts)
+}
+
+function Find-SkillLicenseFile {
+    param([string[]]$Folders)
+
+    foreach ($folder in @($Folders | Where-Object { $_ })) {
+        $match = @(Get-ChildItem -LiteralPath $folder -File -Force -ErrorAction SilentlyContinue |
+            Where-Object { $_.Name -match '^(LICEN[CS]E|COPYING)(\.(md|txt))?$' } | Sort-Object Name | Select-Object -First 1)
+        if ($match.Count) { return $match[0].FullName }
+    }
+    return $null
+}
+
+function Get-SkillUpstreamSnapshot {
+    param(
+        [Parameter(Mandatory = $true)]$Manifest,
+        [Parameter(Mandatory = $true)][string]$CacheRoot,
+        [Parameter(Mandatory = $true)][string]$Destination
+    )
+
+    $ErrorActionPreference = 'Stop'
+    $upstream = $Manifest.upstream
+    $repoPath = Sync-SkillSourceRepository -RepoUrl ([string]$upstream.repo) -CacheRoot $CacheRoot -Version ([string]$upstream.version)
+    $commit = ([string](git -C $repoPath rev-parse HEAD | Select-Object -First 1)).Trim()
+    $revision = Get-SkillSourceRevision -RepoPath $repoPath -SourcePath ([string]$upstream.path)
+    if (-not $revision) { throw "Path '$($upstream.path)' was not found in $($upstream.repo) at $commit." }
+    if (-not (Export-SkillGitTree -RepoPath $repoPath -TreeIsh $revision -Destination $Destination)) {
+        throw "Could not read '$($upstream.path)' from $($upstream.repo) at $commit."
+    }
+    Assert-SkillUpstreamFolder -SkillPath $Destination -ExpectedName ([string]$Manifest.name)
+    return [pscustomobject]@{
+        Repo = [string]$upstream.repo; Path = [string]$upstream.path; Version = [string]$upstream.version
+        Commit = $commit; Revision = $revision; Folder = $Destination
+        Files = @(Get-SkillFiles -SkillPath $Destination | ForEach-Object RelativePath)
+    }
+}
+
+function Set-SkillUpstreamSection {
+    param(
+        [Parameter(Mandatory = $true)][string]$SkillFile,
+        [Parameter(Mandatory = $true)][string]$UpstreamSkillFile,
+        [Parameter(Mandatory = $true)][string]$Source
+    )
+
+    $ErrorActionPreference = 'Stop'
+    $raw = [System.IO.File]::ReadAllText($SkillFile)
+    $text = $raw -replace "`r`n", "`n"
+    $sections = [regex]::Matches($text, '(?s)<!-- upstream:begin -->.*?<!-- upstream:end -->')
+    if ($sections.Count -ne 1 -or [regex]::Matches($text, '<!-- upstream:(begin|end) -->').Count -ne 2) {
+        throw "An adapted SKILL.md needs exactly one <!-- upstream:begin --> ... <!-- upstream:end --> section: $SkillFile"
+    }
+    $upstreamText = ([System.IO.File]::ReadAllText($UpstreamSkillFile) -replace "`r`n", "`n").TrimStart([char]0xFEFF)
+    $body = ($upstreamText -replace '(?s)\A---\n.*?\n---[^\n]*\n', '').Trim()
+    $section = "<!-- upstream:begin -->`n<!-- $Source. Refresh replaces this section; put SkillVault changes outside it. -->`n`n$body`n<!-- upstream:end -->"
+    $updated = $text.Substring(0, $sections[0].Index) + $section + $text.Substring($sections[0].Index + $sections[0].Length)
+    if ($raw.Contains("`r`n")) { $updated = $updated.Replace("`n", "`r`n") }
+    [System.IO.File]::WriteAllText($SkillFile, $updated, [System.Text.UTF8Encoding]::new($false))
+}
+
+function Merge-SkillAdaptation {
+    param(
+        [Parameter(Mandatory = $true)][string]$SkillPath,
+        [Parameter(Mandatory = $true)]$Manifest,
+        [Parameter(Mandatory = $true)][string]$UpstreamRoot,
+        [Parameter(Mandatory = $true)][string]$Commit
+    )
+
+    $ErrorActionPreference = 'Stop'
+    $name = [string]$Manifest.name
+    $path = [string]$Manifest.upstream.path
+    $baseCommit = [string]$Manifest.upstream.commit
+    $result = [pscustomobject]@{ Changed = $false; Conflicts = @() }
+    if ($baseCommit -ceq $Commit) { return $result }
+    $treeOf = {
+        param($commitId)
+        $spec = if ($path -ceq '.') { "$commitId^{tree}" } else { "${commitId}:$path" }
+        $ErrorActionPreference = 'Continue'
+        $tree = [string](git -C $UpstreamRoot rev-parse --verify --quiet $spec 2>$null | Select-Object -First 1)
+        if ($LASTEXITCODE -eq 0) { $tree.Trim() }
+    }
+    $baseTree = & $treeOf $baseCommit
+    if (-not $baseTree) { throw "The recorded upstream commit $baseCommit of '$name' is not in $($Manifest.upstream.repo); merge by hand and update upstream.commit." }
+    $newTree = & $treeOf $Commit
+    if (-not $newTree) { throw "Path '$path' is missing from $($Manifest.upstream.repo) at $Commit." }
+    if ($baseTree -ceq $newTree) { return $result }
+
+    $work = Join-Path ([System.IO.Path]::GetTempPath()) ('skillvault-adapt-' + [guid]::NewGuid().ToString('N'))
+    try {
+        $base = Join-Path $work 'base'; $theirs = Join-Path $work 'theirs'; $ours = Join-Path $work 'ours'; $merged = Join-Path $work 'merged'
+        if (-not (Export-SkillGitTree -RepoPath $UpstreamRoot -TreeIsh $baseTree -Destination $base) -or
+            -not (Export-SkillGitTree -RepoPath $UpstreamRoot -TreeIsh $newTree -Destination $theirs)) {
+            throw "Could not read '$path' from $($Manifest.upstream.repo)."
+        }
+        foreach ($reserved in @('skill.json', 'UPSTREAM-LICENSE')) {
+            if (Test-Path -LiteralPath (Join-Path $theirs $reserved)) { throw "Upstream file '$reserved' would replace SkillVault metadata for '$name'." }
+        }
+        $upstreamSkill = Join-Path $work 'upstream-SKILL.md'
+        if (-not (Test-Path -LiteralPath (Join-Path $theirs 'SKILL.md') -PathType Leaf)) { throw "Upstream has no SKILL.md for '$name' at $Commit." }
+        Move-Item -LiteralPath (Join-Path $theirs 'SKILL.md') -Destination $upstreamSkill
+        $ownLicense = Find-SkillLicenseFile -Folders @($theirs)
+        $license = if ($ownLicense) { $ownLicense } else { Find-SkillLicenseFile -Folders @($UpstreamRoot) }
+        if (-not $license) { throw "No license file was found for '$name' upstream; its changes are not copied without one." }
+
+        # SKILL.md takes the new original in its marked section, so only the other files are merged.
+        Copy-Item -LiteralPath $SkillPath -Destination $ours -Recurse
+        Remove-Item -LiteralPath (Join-Path $ours 'SKILL.md'), (Join-Path $base 'SKILL.md') -Force -ErrorAction SilentlyContinue
+        $conflicts = Merge-SkillFolder -Base $base -Ours $ours -Theirs $theirs -Destination $merged
+        $result.Conflicts = @($conflicts)
+        if ($result.Conflicts.Count) { return $result }
+        Copy-Item -LiteralPath (Join-Path $SkillPath 'SKILL.md') -Destination (Join-Path $merged 'SKILL.md')
+        Set-SkillUpstreamSection -SkillFile (Join-Path $merged 'SKILL.md') -UpstreamSkillFile $upstreamSkill -Source "Original: $($Manifest.upstream.repo) $path at $Commit"
+        if (-not $ownLicense) { Copy-Item -LiteralPath $license -Destination (Join-Path $merged 'UPSTREAM-LICENSE') -Force }
+        $manifestPath = Join-Path $merged 'skill.json'
+        $manifestText = [System.IO.File]::ReadAllText($manifestPath)
+        $updatedText = [regex]::Replace($manifestText, '("commit"\s*:\s*")' + $baseCommit + '"', '${1}' + $Commit + '"')
+        if ($updatedText -ceq $manifestText) { throw "Could not record the new upstream.commit for '$name'." }
+        [System.IO.File]::WriteAllText($manifestPath, $updatedText, [System.Text.UTF8Encoding]::new($false))
+        Get-ChildItem -LiteralPath $SkillPath -Force | Remove-Item -Recurse -Force
+        Get-ChildItem -LiteralPath $merged -Force | ForEach-Object { Copy-Item -LiteralPath $_.FullName -Destination $SkillPath -Recurse -Force }
+        $result.Changed = $true
+        return $result
+    }
+    finally { Remove-Item -LiteralPath $work -Recurse -Force -ErrorAction SilentlyContinue }
 }
 
 function Get-SkillFiles {
@@ -280,7 +675,8 @@ function Copy-SkillInstallation {
         [switch]$Force,
         $OwnershipLease,
         [switch]$ConfirmStopped,
-        $RecoveryBackup
+        $RecoveryBackup,
+        $OriginManifest
     )
 
     $ErrorActionPreference = 'Stop'
@@ -294,7 +690,9 @@ function Copy-SkillInstallation {
         throw "Skill source is not a directory: $Source"
     }
 
-    $manifest = Read-SkillManifest -SkillPath $sourceItem.FullName -ExpectedName $Name
+    # An original from upstream has no skill.json; the catalog manifest describes it instead.
+    $manifest = if ($OriginManifest) { Assert-SkillUpstreamFolder -SkillPath $sourceItem.FullName -ExpectedName $Name; $OriginManifest }
+        else { Read-SkillManifest -SkillPath $sourceItem.FullName -ExpectedName $Name }
     Assert-SkillInstallMetadata -Metadata $Metadata -Manifest $manifest
 
     $sourceFullPath = $sourceItem.FullName.TrimEnd([System.IO.Path]::DirectorySeparatorChar)
@@ -347,7 +745,8 @@ function Copy-SkillInstallation {
 
         $Metadata | ConvertTo-Json -Depth 5 |
             Set-Content -LiteralPath (Join-Path $stagingPath '.skillvault-install.json') -Encoding utf8
-        Read-SkillManifest -SkillPath $stagingPath -ExpectedName $Name | Out-Null
+        if ($OriginManifest) { Assert-SkillUpstreamFolder -SkillPath $stagingPath -ExpectedName $Name }
+        else { Read-SkillManifest -SkillPath $stagingPath -ExpectedName $Name | Out-Null }
 
         if ($targetExists) {
             $backup = if ($ownsBackup) { New-SkillUpdateTransaction -Targets @(@{ path = $targetPath; target = $targetPath; name = $Name }) } else { $RecoveryBackup }

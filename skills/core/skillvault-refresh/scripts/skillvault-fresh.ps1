@@ -47,12 +47,6 @@ function Get-PowerShellExecutable {
     throw 'No PowerShell executable found for scheduled refresh.'
 }
 
-function ConvertTo-CacheName {
-    param([Parameter(Mandatory = $true)][string]$RepoUrl)
-
-    return ($RepoUrl -replace '[^A-Za-z0-9._-]', '_').Trim('_')
-}
-
 function Sync-Repo {
     param([Parameter(Mandatory = $true)][string]$RepoUrl)
 
@@ -62,57 +56,8 @@ function Sync-Repo {
         return $cached.Path
     }
 
-    $previousGitPrompt = $env:GIT_TERMINAL_PROMPT
-    $previousGcmInteractive = $env:GCM_INTERACTIVE
-    $authenticationGuidance = 'Interactive Git/GCM prompts are disabled; authenticate separately if required, then rerun.'
     try {
-        $env:GIT_TERMINAL_PROMPT = '0'
-        $env:GCM_INTERACTIVE = 'Never'
-        if ([string]::IsNullOrWhiteSpace($RepoUrl)) {
-            throw 'Source repository is empty.'
-        }
-        if ($RepoUrl.StartsWith('-')) {
-            throw "Source repository must not start with '-': $RepoUrl"
-        }
-
-        $repoPath = Join-Path $cacheRoot (ConvertTo-CacheName $RepoUrl)
-        if (Test-Path -LiteralPath $repoPath) {
-            if (-not (Test-Path -LiteralPath (Join-Path $repoPath '.git'))) {
-                throw "Source cache is not a Git repository; inspect and remove it manually: $repoPath"
-            }
-
-            $remoteUrl = [string](git -C $repoPath remote get-url origin | Select-Object -First 1)
-            if ($LASTEXITCODE -ne 0) { throw "Git remote get-url failed for $repoPath" }
-            if ($remoteUrl.Trim() -cne $RepoUrl) {
-                throw "Source cache $repoPath tracks '$($remoteUrl.Trim())', not '$RepoUrl'."
-            }
-
-            $status = git -C $repoPath status --porcelain
-            if ($LASTEXITCODE -ne 0) { throw "Git status failed for $repoPath" }
-            if ($status) { throw "Refusing to refresh from a modified source cache: $repoPath" }
-
-            git -C $repoPath fetch --prune origin | Out-Null
-            if ($LASTEXITCODE -ne 0) { throw "Git fetch failed for $RepoUrl. $authenticationGuidance" }
-
-            git -C $repoPath remote set-head origin --auto | Out-Null
-            if ($LASTEXITCODE -ne 0) { throw "Git remote set-head failed for $RepoUrl. $authenticationGuidance" }
-
-            $defaultRef = [string](git -C $repoPath symbolic-ref --quiet --short refs/remotes/origin/HEAD | Select-Object -First 1)
-            if ($LASTEXITCODE -ne 0) { throw "Git symbolic-ref failed for $RepoUrl" }
-            $defaultRef = $defaultRef.Trim()
-            if ($defaultRef -cnotmatch '^origin/\S+$') {
-                throw "Unexpected default branch ref for ${RepoUrl}: '$defaultRef'"
-            }
-
-            git -C $repoPath checkout --detach $defaultRef | Out-Null
-            if ($LASTEXITCODE -ne 0) { throw "Git checkout failed for $RepoUrl" }
-        }
-        else {
-            New-Item -ItemType Directory -Path $cacheRoot -Force | Out-Null
-            git clone -- $RepoUrl $repoPath | Out-Null
-            if ($LASTEXITCODE -ne 0) { throw "Git clone failed for $RepoUrl. $authenticationGuidance" }
-        }
-
+        $repoPath = Sync-SkillSourceRepository -RepoUrl $RepoUrl -CacheRoot $cacheRoot
         $repoCache[$RepoUrl] = [pscustomobject]@{ Path = $repoPath; Error = $null }
         return $repoPath
     }
@@ -120,29 +65,183 @@ function Sync-Repo {
         $repoCache[$RepoUrl] = [pscustomobject]@{ Path = $null; Error = $_.Exception.Message }
         throw
     }
+}
+
+function Invoke-RefreshGit {
+    param([Parameter(Mandatory = $true)][string]$RepoPath, [Parameter(Mandatory = $true)][string[]]$Arguments)
+
+    $ErrorActionPreference = 'Continue'
+    $output = @(git -C $RepoPath @Arguments 2>&1 | ForEach-Object { [string]$_ })
+    return [pscustomobject]@{ ExitCode = $LASTEXITCODE; Output = $output; Text = ($output -join ' ').Trim() }
+}
+
+function Get-SkillCheckoutRoot {
+    param([string]$Path, [string]$RepoUrl)
+
+    if ([string]::IsNullOrWhiteSpace($Path) -or -not (Test-Path -LiteralPath $Path -PathType Container)) { return $null }
+    $fullPath = [System.IO.Path]::GetFullPath($Path).TrimEnd([char[]]'\/')
+    if (-not (Test-SkillGitTopLevel -Path $fullPath)) { return $null }
+    $origin = Invoke-RefreshGit $fullPath @('config', '--get', 'remote.origin.url')
+    if ($origin.ExitCode -ne 0 -or (ConvertTo-SkillRepoIdentity $origin.Text) -cne (ConvertTo-SkillRepoIdentity $RepoUrl)) { return $null }
+    return $fullPath
+}
+
+function Update-SkillLocalCheckout {
+    param([Parameter(Mandatory = $true)][string]$Path, [Parameter(Mandatory = $true)][string]$RepoUrl, [switch]$NoUpdate)
+
+    $result = [pscustomobject]@{ Root = $null; Usable = $false; Reason = 'CheckoutUnavailable'; Message = "Checkout is missing or does not track ${RepoUrl}: $Path" }
+    $root = Get-SkillCheckoutRoot -Path $Path -RepoUrl $RepoUrl
+    if (-not $root) { return $result }
+    $result.Root = $root
+    $previousGitPrompt = $env:GIT_TERMINAL_PROMPT
+    $previousGcmInteractive = $env:GCM_INTERACTIVE
+    try {
+        $env:GIT_TERMINAL_PROMPT = '0'
+        $env:GCM_INTERACTIVE = 'Never'
+        $fetch = $null
+        if (-not $NoUpdate) { $fetch = Invoke-RefreshGit $root @('fetch', '--quiet', 'origin') }
+        $remoteHead = Invoke-RefreshGit $root @('symbolic-ref', '--quiet', '--short', 'refs/remotes/origin/HEAD')
+        if ($remoteHead.ExitCode -ne 0 -and -not $NoUpdate) {
+            $null = Invoke-RefreshGit $root @('remote', 'set-head', 'origin', '--auto')
+            $remoteHead = Invoke-RefreshGit $root @('symbolic-ref', '--quiet', '--short', 'refs/remotes/origin/HEAD')
+        }
+        if ($remoteHead.ExitCode -ne 0 -or $remoteHead.Text -cnotmatch '^origin/(\S+)$') { $result.Message = "Cannot determine the default branch of $root."; return $result }
+        $branch = $Matches[1]
+        $current = Invoke-RefreshGit $root @('symbolic-ref', '--quiet', '--short', 'HEAD')
+        if ($current.Text -cne $branch) {
+            $result.Reason = 'CheckoutOnOtherBranch'
+            $result.Message = "Checkout $root is on '$($current.Text)', not '$branch'; it was not updated and its installed copies wait."
+            return $result
+        }
+        $result.Usable = $true
+        $result.Reason = $null
+        $result.Message = $null
+        if ($NoUpdate) { return $result }
+        if ($fetch.ExitCode -ne 0) {
+            $result.Reason = 'CheckoutFetchFailed'
+            $result.Message = "Could not fetch into ${root}; installed copies follow its local commits. $($fetch.Text)"
+            return $result
+        }
+        $counts = (Invoke-RefreshGit $root @('rev-list', '--left-right', '--count', "HEAD...origin/$branch")).Text -split '\s+'
+        if ($counts.Count -ne 2 -or [int]$counts[1] -eq 0) { return $result }
+        if ([int]$counts[0] -eq 0) {
+            $merge = Invoke-RefreshGit $root @('merge', '--ff-only', '--quiet', "origin/$branch")
+            if ($merge.ExitCode -eq 0) { $result.Message = "Updated checkout $root from origin/$branch."; return $result }
+            $result.Reason = 'CheckoutBlocked'
+            $result.Message = "Checkout $root was not updated: uncommitted changes touch files that changed on GitHub. Commit or stash them, then rerun. $($merge.Text)"
+            return $result
+        }
+        if ((Invoke-RefreshGit $root @('status', '--porcelain', '--untracked-files=no')).Output.Count) {
+            $result.Reason = 'CheckoutBlocked'
+            $result.Message = "Checkout $root and GitHub both have new commits, and the checkout has uncommitted changes; the merge waits for your decision."
+            return $result
+        }
+        $merge = Invoke-RefreshGit $root @('merge', '--no-edit', '--quiet', "origin/$branch")
+        if ($merge.ExitCode -eq 0) { $result.Message = "Merged origin/$branch into checkout $root."; return $result }
+        if ((Invoke-RefreshGit $root @('rev-parse', '-q', '--verify', 'MERGE_HEAD')).ExitCode -eq 0) { $null = Invoke-RefreshGit $root @('merge', '--abort') }
+        $result.Reason = 'CheckoutConflict'
+        $result.Message = "Merging origin/$branch into $root conflicts; the checkout was left as it was and waits for your decision. $($merge.Text)"
+        return $result
+    }
     finally {
         $env:GIT_TERMINAL_PROMPT = $previousGitPrompt
         $env:GCM_INTERACTIVE = $previousGcmInteractive
     }
 }
 
-function Get-SourceRevision {
+function Publish-SkillAdaptations {
     param(
+        [Parameter(Mandatory = $true)][string]$RepoUrl,
         [Parameter(Mandatory = $true)][string]$RepoPath,
-        [Parameter(Mandatory = $true)][string]$SourcePath
+        [string[]]$FallbackPushUrls,
+        [Parameter(Mandatory = $true)][AllowEmptyCollection()][System.Collections.ArrayList]$Failures,
+        [Parameter(Mandatory = $true)][AllowEmptyCollection()][System.Collections.Generic.List[object]]$Unresolved
     )
 
-    $revisionSpec = if ($SourcePath -ceq '.') { 'HEAD^{tree}' } else { "HEAD:$SourcePath" }
-    try {
-        $revision = [string](git -C $RepoPath rev-parse $revisionSpec | Select-Object -First 1)
-    }
-    catch {
-        return $null
-    }
+    $catalogPath = Join-Path $RepoPath 'catalog.json'
+    if (-not (Test-Path -LiteralPath $catalogPath -PathType Leaf)) { return }
+    $adaptations = @(foreach ($entry in @(Get-Content -LiteralPath $catalogPath -Raw | ConvertFrom-Json)) {
+        if ([string]::IsNullOrWhiteSpace([string]$entry.path)) { continue }
+        $manifestPath = Join-Path (Join-Path $RepoPath ([string]$entry.path)) 'skill.json'
+        if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) { continue }
+        $manifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
+        if ($manifest.install -and [string]$manifest.install.strategy -ceq 'adapted') { $entry }
+    })
+    if (-not $adaptations.Count) { return }
 
-    if ($LASTEXITCODE -ne 0) { return $null }
-    if ([string]::IsNullOrWhiteSpace($revision)) { return $null }
-    return $revision.Trim()
+    $previousGitPrompt = $env:GIT_TERMINAL_PROMPT
+    $previousGcmInteractive = $env:GCM_INTERACTIVE
+    try {
+        $env:GIT_TERMINAL_PROMPT = '0'
+        $env:GCM_INTERACTIVE = 'Never'
+        $remoteHead = Invoke-RefreshGit $RepoPath @('symbolic-ref', '--quiet', '--short', 'refs/remotes/origin/HEAD')
+        if ($remoteHead.Text -cnotmatch '^origin/(\S+)$') { Write-SkillRefreshMessage "Skipped adaptation updates for ${RepoUrl}: unknown default branch."; return }
+        $branch = $Matches[1]
+        $pushTarget = $null
+        foreach ($candidate in @('origin') + @($FallbackPushUrls | Where-Object { $_ })) {
+            if ((Invoke-RefreshGit $RepoPath @('push', '--dry-run', '--quiet', $candidate, "HEAD:refs/heads/$branch")).ExitCode -eq 0) { $pushTarget = $candidate; break }
+        }
+        if (-not $pushTarget) { Write-SkillRefreshMessage "Skipped adaptation updates for ${RepoUrl}: no permission to publish there."; return }
+
+        $committed = [Collections.Generic.List[string]]::new()
+        foreach ($entry in $adaptations) {
+            $name = [string]$entry.name
+            $relativePath = [string]$entry.path
+            try {
+                $skillPath = Resolve-SkillSourcePath -RepositoryRoot $RepoPath -SourcePath $relativePath
+                $manifest = Read-SkillManifest -SkillPath $skillPath -ExpectedName $name
+                $upstreamRoot = Sync-SkillSourceRepository -RepoUrl ([string]$manifest.upstream.repo) -CacheRoot (Join-Path $cacheRoot 'upstream') -Version ([string]$manifest.upstream.version)
+                $commit = (Invoke-RefreshGit $upstreamRoot @('rev-parse', 'HEAD')).Text
+                $source = "$(ConvertTo-SkillRepoIdentity ([string]$manifest.upstream.repo))@$($commit.Substring(0, [Math]::Min(7, $commit.Length)))"
+                $merge = Merge-SkillAdaptation -SkillPath $skillPath -Manifest $manifest -UpstreamRoot $upstreamRoot -Commit $commit
+                if ($merge.Conflicts.Count) {
+                    $files = $merge.Conflicts -join ', '
+                    [void]$Failures.Add("${name}: Deferred - upstream changes from $source conflict with the adaptation in $files")
+                    $Unresolved.Add([pscustomobject]@{ name = $name; status = 'Deferred'; reason = "AdaptationConflict: $files" })
+                    Write-SkillRefreshMessage "Deferred: ${name}: upstream changes from $source conflict with SkillVault changes to $files; undo those changes, moving what is needed to the wrapper side, and the next refresh merges."
+                    continue
+                }
+                if (-not $merge.Changed) { continue }
+                if ((Invoke-RefreshGit $RepoPath @('add', '--all', '--', $relativePath)).ExitCode -ne 0) { throw "Cannot stage $relativePath." }
+                if ((Invoke-RefreshGit $RepoPath @('diff', '--cached', '--quiet')).ExitCode -eq 0) { continue }
+                $commitResult = Invoke-RefreshGit $RepoPath @('commit', '--quiet', '-m', "refresh: merge $source into $name")
+                if ($commitResult.ExitCode -ne 0) { throw "Commit failed: $($commitResult.Text)" }
+                $committed.Add($name)
+            }
+            catch {
+                $null = Invoke-RefreshGit $RepoPath @('reset', '--quiet', '--', $relativePath)
+                $null = Invoke-RefreshGit $RepoPath @('checkout', '--quiet', '--', $relativePath)
+                $null = Invoke-RefreshGit $RepoPath @('clean', '-fdq', '--', $relativePath)
+                [void]$Failures.Add("${name}: adaptation update failed - $($_.Exception.Message)")
+                $Unresolved.Add([pscustomobject]@{ name = $name; status = 'Failed'; reason = "AdaptationUpdateFailed: $($_.Exception.Message)" })
+                Write-SkillRefreshMessage "Failed adaptation update: ${name}: $($_.Exception.Message)"
+            }
+        }
+        if (-not $committed.Count) { return }
+
+        $push = Invoke-RefreshGit $RepoPath @('push', '--quiet', $pushTarget, "HEAD:refs/heads/$branch")
+        if ($push.ExitCode -ne 0 -and (Invoke-RefreshGit $RepoPath @('fetch', '--quiet', 'origin')).ExitCode -eq 0) {
+            if ((Invoke-RefreshGit $RepoPath @('rebase', '--quiet', "origin/$branch")).ExitCode -eq 0) {
+                $push = Invoke-RefreshGit $RepoPath @('push', '--quiet', $pushTarget, "HEAD:refs/heads/$branch")
+            }
+            else { $null = Invoke-RefreshGit $RepoPath @('rebase', '--abort') }
+        }
+        if ($push.ExitCode -eq 0) {
+            Write-SkillRefreshMessage "Published adaptation updates to ${RepoUrl}: $($committed -join ', ')"
+            return
+        }
+        # Installed copies must not get content that GitHub does not have.
+        $null = Invoke-RefreshGit $RepoPath @('checkout', '--quiet', '--detach', "origin/$branch")
+        foreach ($name in $committed) {
+            [void]$Failures.Add("${name}: adaptation update not published - $($push.Text)")
+            $Unresolved.Add([pscustomobject]@{ name = $name; status = 'Deferred'; reason = 'PublishFailed' })
+        }
+        Write-SkillRefreshMessage "Deferred adaptation updates for ${RepoUrl}: push failed. $($push.Text)"
+    }
+    finally {
+        $env:GIT_TERMINAL_PROMPT = $previousGitPrompt
+        $env:GCM_INTERACTIVE = $previousGcmInteractive
+    }
 }
 
 function Invoke-SkillVaultSync {
@@ -171,6 +270,42 @@ function Invoke-SkillVaultSync {
     }
 
     $failures = New-Object System.Collections.ArrayList
+    $workRoot = Join-Path ([System.IO.Path]::GetTempPath()) ('skillvault-refresh-' + [guid]::NewGuid().ToString('N'))
+    $checkouts = @{}
+
+    try {
+    if (-not $RetryPlanPath) {
+        $installs = @(foreach ($directory in @(Get-ChildItem -LiteralPath $globalSkillsRoot -Directory -Force)) {
+            $installMetadataPath = Join-Path $directory.FullName '.skillvault-install.json'
+            if (-not (Test-Path -LiteralPath $installMetadataPath -PathType Leaf)) { continue }
+            try { $installMetadata = Get-Content -LiteralPath $installMetadataPath -Raw | ConvertFrom-Json } catch { continue }
+            if ($installMetadata -isnot [System.Management.Automation.PSCustomObject] -or $installMetadata.installedBy -cnotin @('skillvault', 'skillvault-bootstrap') -or
+                $installMetadata.requestedVersion -cne 'latest' -or $installMetadata.scope -cne 'global') { continue }
+            $installMetadata
+        })
+        $vaultInstalls = @($installs | Where-Object { [string]$_.sourceType -cne 'upstream' })
+        foreach ($url in @($vaultInstalls | ForEach-Object { if ([string]::IsNullOrWhiteSpace([string]$_.sourceRepo)) { $defaultRepo } else { [string]$_.sourceRepo } } | Sort-Object -Unique)) {
+            try { $clone = Sync-Repo -RepoUrl $url }
+            catch { continue }
+            $fallbackUrls = @(foreach ($install in @($vaultInstalls | Where-Object { $_.sourceCheckout })) {
+                $root = Get-SkillCheckoutRoot -Path ([string]$install.sourceCheckout) -RepoUrl $url
+                if ($root) { (Invoke-RefreshGit $root @('remote', 'get-url', '--push', 'origin')).Text }
+            }) | Where-Object { $_ } | Sort-Object -Unique
+            Publish-SkillAdaptations -RepoUrl $url -RepoPath $clone -FallbackPushUrls $fallbackUrls -Failures $failures -Unresolved $unresolved
+        }
+        foreach ($install in @($vaultInstalls | Where-Object { $_.sourceCheckout })) {
+            $checkoutKey = [string]$install.sourceCheckout
+            if ($checkouts.ContainsKey($checkoutKey)) { continue }
+            $repoForCheckout = if ([string]::IsNullOrWhiteSpace([string]$install.sourceRepo)) { $defaultRepo } else { [string]$install.sourceRepo }
+            $state = Update-SkillLocalCheckout -Path $checkoutKey -RepoUrl $repoForCheckout
+            $checkouts[$checkoutKey] = $state
+            if ($state.Message) { Write-SkillRefreshMessage $state.Message }
+            if ($state.Usable -and $state.Reason) {
+                [void]$failures.Add("checkout ${checkoutKey}: Deferred - $($state.Message)")
+                $unresolved.Add([pscustomobject]@{ name = "checkout:$checkoutKey"; status = 'Deferred'; reason = $state.Reason })
+            }
+        }
+    }
 
     foreach ($skillDirectory in @(Get-ChildItem -LiteralPath $globalSkillsRoot -Directory -Force | Sort-Object -Property Name)) {
         $name = $skillDirectory.Name
@@ -220,23 +355,60 @@ function Invoke-SkillVaultSync {
             }
 
             $repoUrl = if ([string]::IsNullOrWhiteSpace([string]$metadata.sourceRepo)) { $defaultRepo } else { [string]$metadata.sourceRepo }
-            $repoPath = Sync-Repo -RepoUrl $repoUrl
-            if ($sourcePath -cmatch ('^skills/public/([a-z0-9]+(?:-[a-z0-9]+)*)/' + [regex]::Escape($name) + '$') -and
-                -not (Test-Path -LiteralPath (Join-Path $repoPath $sourcePath))) {
-                $relocatedPath = 'skills/' + $Matches[1] + '/' + $name
-                $catalogPath = Join-Path $repoPath 'catalog.json'
-                if (Test-Path -LiteralPath $catalogPath -PathType Leaf) {
-                    $catalog = Get-Content -LiteralPath $catalogPath -Raw | ConvertFrom-Json
-                    $entries = @($catalog | Where-Object { $_.name -ceq $name })
-                    if ($entries.Count -eq 1 -and $entries[0].path -ceq $relocatedPath) {
-                        $sourcePath = $relocatedPath
+            $workingSource = $null
+            $origin = [string]$metadata.sourceType -ceq 'upstream'
+            if ($origin) {
+                $repoPath = Sync-Repo -RepoUrl $repoUrl
+                $source = Join-Path $workRoot "$name-origin"
+                $originRevision = Get-SkillSourceRevision -RepoPath $repoPath -SourcePath $sourcePath
+                if (-not $originRevision -or -not (Export-SkillGitTree -RepoPath $repoPath -TreeIsh $originRevision -Destination $source)) {
+                    throw "Path '$sourcePath' was not found in $repoUrl."
+                }
+                Assert-SkillUpstreamFolder -SkillPath $source -ExpectedName $name
+            }
+            elseif (-not [string]::IsNullOrWhiteSpace([string]$metadata.sourceCheckout)) {
+                $checkoutKey = [string]$metadata.sourceCheckout
+                if (-not $checkouts.ContainsKey($checkoutKey)) { $checkouts[$checkoutKey] = Update-SkillLocalCheckout -Path $checkoutKey -RepoUrl $repoUrl -NoUpdate }
+                $checkout = $checkouts[$checkoutKey]
+                if (-not $checkout.Usable) {
+                    [void]$failures.Add("${name}: Deferred - $($checkout.Message)")
+                    $unresolved.Add([pscustomobject]@{ name = $name; status = 'Deferred'; reason = $checkout.Reason })
+                    Write-SkillRefreshMessage "Deferred: ${name}: $($checkout.Message)"
+                    continue
+                }
+                $repoPath = $checkout.Root
+                $source = Join-Path $workRoot "$name-committed"
+                if (-not (Export-SkillGitTree -RepoPath $repoPath -TreeIsh "HEAD:$sourcePath" -Destination $source)) {
+                    Write-SkillRefreshMessage "Skipped: $name has no committed version in $repoPath yet."
+                    continue
+                }
+                $workingSource = Join-Path $repoPath $sourcePath
+            }
+            else {
+                $repoPath = Sync-Repo -RepoUrl $repoUrl
+                if ($sourcePath -cmatch ('^skills/public/([a-z0-9]+(?:-[a-z0-9]+)*)/' + [regex]::Escape($name) + '$') -and
+                    -not (Test-Path -LiteralPath (Join-Path $repoPath $sourcePath))) {
+                    $relocatedPath = 'skills/' + $Matches[1] + '/' + $name
+                    $catalogPath = Join-Path $repoPath 'catalog.json'
+                    if (Test-Path -LiteralPath $catalogPath -PathType Leaf) {
+                        $catalog = Get-Content -LiteralPath $catalogPath -Raw | ConvertFrom-Json
+                        $entries = @($catalog | Where-Object { $_.name -ceq $name })
+                        if ($entries.Count -eq 1 -and $entries[0].path -ceq $relocatedPath) {
+                            $sourcePath = $relocatedPath
+                        }
                     }
                 }
+                $source = if ($sourcePath -ceq '.') { $repoPath } else { Resolve-SkillSourcePath -RepositoryRoot $repoPath -SourcePath $sourcePath }
             }
-            $source = if ($sourcePath -ceq '.') { $repoPath } else { Resolve-SkillSourcePath -RepositoryRoot $repoPath -SourcePath $sourcePath }
-            $manifest = Read-SkillManifest -SkillPath $source -ExpectedName $name
+            # An original from upstream has no skill.json; its recorded version stays.
+            $manifest = if ($origin) { [pscustomobject]@{ name = $name; version = $metadata.installedVersion } }
+                else { Read-SkillManifest -SkillPath $source -ExpectedName $name -AllowReference }
+            if (-not $origin -and $manifest.install -and [string]$manifest.install.strategy -ceq 'upstream') {
+                Write-SkillRefreshMessage "Skipped: $name is now a reference; reinstall it to get the original from $($manifest.upstream.repo)."
+                continue
+            }
             if ($requested) {
-                $revision = Get-SourceRevision -RepoPath $repoPath -SourcePath $sourcePath
+                $revision = Get-SkillSourceRevision -RepoPath $repoPath -SourcePath $sourcePath
                 if ($requested.sourceRepo -cne $repoUrl -or $requested.sourcePath -cne $sourcePath -or $requested.sourceRevision -cne $revision) {
                     $unresolved.Add([pscustomobject]@{ name = $name; status = 'Deferred'; reason = 'SourceChanged' })
                     Write-SkillRefreshMessage "Deferred: ${name}: source identity or revision changed since the approved retry."
@@ -255,6 +427,41 @@ function Invoke-SkillVaultSync {
                 continue
             }
 
+            $mergedLocalWork = $false
+            if ($workingSource -or $origin) {
+                if ($workingSource -and (Test-Path -LiteralPath $workingSource -PathType Container) -and (Test-SkillContentEqual -Source $workingSource -Target $skillDirectory.FullName)) {
+                    Write-SkillRefreshMessage "Unchanged: $name matches your working copy, which already includes the committed changes."
+                    continue
+                }
+                if (-not $revision) { $revision = Get-SkillSourceRevision -RepoPath $repoPath -SourcePath $sourcePath }
+                if ($metadata.sourceRevision -and $metadata.sourceRevision -ceq $revision) {
+                    Write-SkillRefreshMessage "Unchanged: $name keeps its installed changes; nothing new was committed for it."
+                    continue
+                }
+                $base = Join-Path $workRoot "$name-base"
+                $hasBase = $metadata.sourceRevision -and (Export-SkillGitTree -RepoPath $repoPath -TreeIsh ([string]$metadata.sourceRevision) -Destination $base) -and
+                    @(Get-SkillFiles -SkillPath $base).Count -gt 0
+                if (-not $hasBase) {
+                    [void]$failures.Add("${name}: Deferred - the installed copy has changes and no recorded base to merge them with.")
+                    $unresolved.Add([pscustomobject]@{ name = $name; status = 'Deferred'; reason = 'NoMergeBase' })
+                    Write-SkillRefreshMessage "Deferred: ${name}: the installed copy has changes and no recorded base; reinstall it or decide which version to keep."
+                    continue
+                }
+                if (-not (Test-SkillContentEqual -Source $base -Target $skillDirectory.FullName)) {
+                    $merged = Join-Path $workRoot "$name-merged"
+                    $conflicts = Merge-SkillFolder -Base $base -Ours $skillDirectory.FullName -Theirs $source -Destination $merged
+                    if ($conflicts.Count) {
+                        [void]$failures.Add("${name}: Deferred - merge conflict in $($conflicts -join ', ')")
+                        $unresolved.Add([pscustomobject]@{ name = $name; status = 'Deferred'; reason = "MergeConflict: $($conflicts -join ', ')" })
+                        Write-SkillRefreshMessage "Deferred: ${name}: your installed changes conflict with committed changes in $($conflicts -join ', '); it waits for your decision."
+                        continue
+                    }
+                    $mergedLocalWork = -not (Test-SkillContentEqual -Source $merged -Target $source)
+                    $source = $merged
+                    if (-not $origin) { $manifest = Read-SkillManifest -SkillPath $source -ExpectedName $name }
+                }
+            }
+
             $updatedMetadata = [ordered]@{}
             foreach ($property in $metadata.PSObject.Properties) { $updatedMetadata[$property.Name] = $property.Value }
             $updatedMetadata['scope'] = 'global'
@@ -263,11 +470,12 @@ function Invoke-SkillVaultSync {
             $updatedMetadata['installedVersion'] = $manifest.version
             $updatedMetadata['installedAt'] = (Get-Date).ToUniversalTime().ToString('o')
 
-            if (-not $revision) { $revision = Get-SourceRevision -RepoPath $repoPath -SourcePath $sourcePath }
+            if (-not $revision) { $revision = Get-SkillSourceRevision -RepoPath $repoPath -SourcePath $sourcePath }
             if ($revision) { $updatedMetadata['sourceRevision'] = $revision }
 
-            $installResult = Copy-SkillInstallation -Source $source -TargetRoot $globalSkillsRoot -Name $name -Metadata $updatedMetadata -Force
-            Write-SkillRefreshMessage "Updated: $name $($installResult.Version) -> $($installResult.Path)"
+            $installResult = Copy-SkillInstallation -Source $source -TargetRoot $globalSkillsRoot -Name $name -Metadata $updatedMetadata -Force -OriginManifest $(if ($origin) { $manifest })
+            $mergeNote = if ($mergedLocalWork) { ' (merged with your local changes)' } else { '' }
+            Write-SkillRefreshMessage "Updated: $name $($installResult.Version) -> $($installResult.Path)$mergeNote"
         }
         catch {
             if ($_.Exception.Data['SkillOwnershipStatus']) {
@@ -287,6 +495,8 @@ function Invoke-SkillVaultSync {
             Write-SkillRefreshMessage "Failed: ${name}: $($_.Exception.Message)"
         }
     }
+    }
+    finally { Remove-Item -LiteralPath $workRoot -Recurse -Force -ErrorAction SilentlyContinue }
 
     foreach ($name in @($retrySelection.Keys)) {
         if (-not (Test-Path -LiteralPath (Join-Path $globalSkillsRoot $name) -PathType Container)) { $unresolved.Add([pscustomobject]@{ name = $name; status = 'Deferred'; reason = 'InstalledTargetMissing' }) }

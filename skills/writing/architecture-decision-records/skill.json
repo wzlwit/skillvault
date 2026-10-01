@@ -21,6 +21,8 @@
   "upstream": {
     "repo": "https://github.com/wshobson/agents",
     "path": "plugins/documentation-generation/skills/architecture-decision-records",
+    "version": "latest",
+    "commit": "156b7a5e7a8b93642628a339ee4039c925b34c7f",
     "license": "MIT"
   },
   "install": {
@@ -28,7 +30,7 @@
     "project": true,
     "session": true,
     "defaultScope": "global",
-    "strategy": "copy"
+    "strategy": "adapted"
   },
   "readme": "SKILL.md"
 }

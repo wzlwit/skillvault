@@ -1,6 +1,9 @@
 
 # Harness Monitoring
 
+Contents: Start Here; Commands; Results and Incidents; Task Intake; Scheduling; Storage and Scope;
+Related Work.
+
 Discover source-linked work candidates or evaluate structured health observations on the existing
 harness. **No arguments only shows saved definitions, latest checks, candidates, incidents, and
 proposals.** It does not collect data, initialize state, or create tasks or schedules.

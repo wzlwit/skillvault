@@ -9,6 +9,12 @@ metadata:
 
 # OpenAPI Specification Generation
 
+Adapted from Seth Hobson's OpenAPI spec generation skill (`https://github.com/wshobson/agents`,
+`plugins/documentation-generation/skills/openapi-spec-generation`, named `openapi-spec-generation`
+there), MIT; see `UPSTREAM-LICENSE`. The original and its templates are in the Original section
+below. Where it differs, the SkillVault rules above it win; for example, use the project's existing
+tools instead of installing the linters and generators in its examples.
+
 Keep the API contract aligned with either the current implementation or an explicitly
 approved design. A plausible specification is not evidence that an endpoint implements it.
 
@@ -38,19 +44,77 @@ approved design. A plausible specification is not evidence that an endpoint impl
 - Do not call production write endpoints to discover their contracts. Use approved local
   fixtures or test environments and add only meaningful coverage for changed behavior.
 
-## Source and Curation
-
-Curated SkillVault guide for Seth Hobson's
-[OpenAPI skill in wshobson/agents](https://github.com/wshobson/agents/tree/main/plugins/documentation-generation/skills/openapi-spec-generation),
-which is [MIT licensed](https://github.com/wshobson/agents/blob/main/LICENSE).
-Authorship stays with Seth Hobson; wzlwit maintains this curated guide. The wording is
-rephrased for SkillVault and is not the unchanged upstream skill. Its template library
-remains upstream and is not bundled. This guide declares no version because it does not
-track an upstream release.
-
 ## Supporting Research
 
 For supporting research, inspect an explicit source first; otherwise use local evidence,
 configured accessible internal sources, then authoritative external sources only as needed.
 Keep private details out of public searches. This order never expands working permissions,
 replaces an unavailable explicit target, or overrides a stricter source-specific procedure.
+
+## Original
+
+<!-- upstream:begin -->
+<!-- Original: https://github.com/wshobson/agents plugins/documentation-generation/skills/openapi-spec-generation at 156b7a5e7a8b93642628a339ee4039c925b34c7f. Refresh replaces this section; put SkillVault changes outside it. -->
+
+# OpenAPI Spec Generation
+
+Comprehensive patterns for creating, maintaining, and validating OpenAPI 3.1 specifications for RESTful APIs.
+
+## When to Use This Skill
+
+- Creating API documentation from scratch
+- Generating OpenAPI specs from existing code
+- Designing API contracts (design-first approach)
+- Validating API implementations against specs
+- Generating client SDKs from specs
+- Setting up API documentation portals
+
+## Core Concepts
+
+### 1. OpenAPI 3.1 Structure
+
+```yaml
+openapi: 3.1.0
+info:
+  title: API Title
+  version: 1.0.0
+servers:
+  - url: https://api.example.com/v1
+paths:
+  /resources:
+    get: ...
+components:
+  schemas: ...
+  securitySchemes: ...
+```
+
+### 2. Design Approaches
+
+| Approach         | Description                  | Best For            |
+| ---------------- | ---------------------------- | ------------------- |
+| **Design-First** | Write spec before code       | New APIs, contracts |
+| **Code-First**   | Generate spec from code      | Existing APIs       |
+| **Hybrid**       | Annotate code, generate spec | Evolving APIs       |
+
+## Templates and detailed worked examples
+
+Full template library and detailed worked examples live in `references/details.md`. Read that file when you need the concrete templates.
+
+## Best Practices
+
+### Do's
+
+- **Use $ref** - Reuse schemas, parameters, responses
+- **Add examples** - Real-world values help consumers
+- **Document errors** - All possible error codes
+- **Version your API** - In URL or header
+- **Use semantic versioning** - For spec changes
+
+### Don'ts
+
+- **Don't use generic descriptions** - Be specific
+- **Don't skip security** - Define all schemes
+- **Don't forget nullable** - Be explicit about null
+- **Don't mix styles** - Consistent naming throughout
+- **Don't hardcode URLs** - Use server variables
+<!-- upstream:end -->

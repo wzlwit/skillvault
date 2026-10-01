@@ -41,4 +41,6 @@ unchanged; abbreviation adds no confirmation. This is conversational routing, no
   Fallback, Runner Inheritance, and Reuse or New procedures. Preserve task identity, workspace,
   checks, budgets, and reviewer independence. Do not commit, publish, or change schedules.
 - Keep required tests and independent review after development. Offer `/grilling` only when a
-  consequential human choice remains; unattended workers report questions and defer the dependent action.
+  consequential human choice remains; it is not another review pass or an automatic rule editor.
+  An unattended worker reports questions and defers the dependent action; it does not interview
+  itself or claim the choice was accepted.

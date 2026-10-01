@@ -33,6 +33,9 @@ unchanged; abbreviation adds no confirmation. This is conversational routing, no
 Bare invocation, `list`, `status`, and `help` are read-only: they show schedules and actions without
 selecting work, prompting for setup, initializing a project, or registering a timer. Unknown actions
 show choices. Follow the [scheduler contract](./references/scheduler.md) for the selected action.
+Before setting or resuming a project target, read [project preflight](./references/project.md).
+Before status, disable, resume, or migration of a legacy OS timer, read
+[PR timer](./references/pr.md) or [refresh timer](./references/refresh.md) for that target.
 
 ## Before Scripts
 

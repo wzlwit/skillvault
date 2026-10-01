@@ -392,7 +392,10 @@ try {
     Assert-True (Test-Throws { Copy-SkillInstallation -Source $alphaSource -TargetRoot (Split-Path -Parent $alphaSource) -Name 'alpha' -Metadata (New-FixtureMetadata -SourcePath 'skills/core/alpha' -Scope 'project' -Version $null) -Force }) 'an overlapping source and target is rejected'
 
     $catalogRepository = Split-Path -Parent $PSScriptRoot
-    $catalogEntries = @(Get-Content -LiteralPath (Join-Path $catalogRepository 'catalog.json') -Raw | ConvertFrom-Json)
+    # A reference installs by fetching its original from the network; the sync test covers that with local repositories.
+    $catalogEntries = @(Get-Content -LiteralPath (Join-Path $catalogRepository 'catalog.json') -Raw | ConvertFrom-Json | Where-Object {
+        [string](Get-Content -LiteralPath (Join-Path $catalogRepository "$($_.path)/skill.json") -Raw | ConvertFrom-Json).install.strategy -cne 'upstream'
+    })
     $catalogGlobalRoot = Join-Path $fixtureRoot 'catalog-global'
     $catalogProjectRoot = Join-Path $fixtureRoot 'catalog-project'
     New-Item -ItemType Directory -Path $catalogGlobalRoot, $catalogProjectRoot -Force | Out-Null

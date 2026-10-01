@@ -1,6 +1,6 @@
 ---
 name: skillvault-refresh
-description: "Refresh managed global latest skill copies one way from recorded Git sources. Use /skillvault-refresh or /sv-refresh list or run; accepts skillvault-fresh, /sv-fresh, /skv-fresh, /skillvault-sync and /sv-sync. Scheduling delegates to harness-timer set refresh. Does not push upstream or update project copies."
+description: "Merge upstream changes into adapted skills in the SkillVault repository when push is permitted, then bring new commits to the local checkout and managed global latest copies, merging local changes. Use /skillvault-refresh or /sv-refresh list or run; accepts skillvault-fresh, /sv-fresh, /skv-fresh, /skillvault-sync and /sv-sync. Scheduling delegates to harness-timer set refresh. Never pushes your own commits or updates project copies."
 metadata:
   author: wzlwit
   version: "1.0.0"
@@ -9,8 +9,9 @@ argument-hint: "[list|run]"
 
 # Skill Refresh
 
-`/skillvault-refresh` refreshes managed global `latest` copies one way from recorded Git sources; it
-never pushes upstream or updates project copies.
+`/skillvault-refresh` merges upstream changes into adapted skills in the SkillVault repository
+when it may push there, then brings new commits to the recorded local checkout and managed global
+`latest` copies, merging local changes. It never pushes your own commits or updates project copies.
 `/sv-refresh` is conversational shorthand for the same topic and subcommands, not a separate skill or folder.
 
 Action matching applies only to the explicit action token: exact canonical actions and documented

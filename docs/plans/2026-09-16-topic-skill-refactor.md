@@ -55,7 +55,7 @@ flowchart LR
     HN --> POLICY["harness-policy<br/>list, set, pause, stop, resume"]
     HN --> WORK["harness-task, harness-link, harness-dev"]
     HN --> CHECK["harness-review, harness-test, harness-monitor"]
-    HN --> OUTPUT["harness-doc, harness-report, harness-decision"]
+    HN --> OUTPUT["harness-doc, harness-comms, harness-report, harness-decision"]
     HN --> TIMER["harness-timer<br/>list, set, disable, resume, clean, migrate"]
     PR --> REVIEW["pr-review<br/>list, run, configure"]
     PR --> WATCH["pr-watch<br/>list, add, remove"]
@@ -84,6 +84,12 @@ existing approved task context when applicable and does not require initializati
 `harness.ps1` action. Humanizer edits prose before final validation; decision history remains
 with `architecture-decision-records`. See the
 [accepted documentation ADR](./decisions/2026-09-26-harness-documentation-adr.md).
+
+`harness-comms` drafts stakeholder trackers, meeting invites, and email updates or thread replies
+in the session, and `slots` ranks meeting times from saved free/busy data. It likewise needs no
+initialization or `harness.ps1` action, and it saves drafts only; sending, inviting, and sharing
+need explicit requests. See the
+[accepted communications ADR](./decisions/2026-09-29-harness-communications-adr.md).
 
 ## Folder Layout
 
@@ -121,6 +127,7 @@ skills/
   |-- grilling/
   |-- handoff/
   |-- harness/
+  |-- harness-comms/
   |-- harness-decision/
   |-- harness-dev/
   |-- harness-doc/
@@ -305,19 +312,22 @@ records the completed research; installing OMP or integrating its runtime has no
 
 Each pre-refactor skill appears once below. Independent specialists retain their scope and author
 metadata; only the three named action-suffix aliases change. Reference-only limits remain on
-Archify, Graphify, Humanizer, and Planning With Files, not on executable or authoring specialists.
+Graphify, not on executable or authoring specialists; Archify, Humanizer, and Planning With Files
+now install their originals.
 New specialists map to their own canonical names without implying a previous installation.
 
 | Former skill | Topic and action |
 | --- | --- |
 | archify | archify |
 | architecture-decision-records | architecture-decision-records |
+| awesome-gamedev-agent-skills | awesome-gamedev-agent-skills |
 | brainstorming | brainstorming |
 | differential-review | differential-review |
 | github-issues | github-issues |
 | graphify | graphify |
 | grilling | grilling |
 | handoff | handoff |
+| harness-comms | harness-comms |
 | harness-context | harness context |
 | harness-decide | harness-decision |
 | harness-dev | harness-dev |
@@ -369,8 +379,8 @@ New specialists map to their own canonical names without implying a previous ins
 ## Boundaries
 
 - `/skillvault-authoring` authors skill bundles and catalog entries in a verified SkillVault repository,
-  never the working project's application source. Show source, working project, and optional
-  installation target separately. Preserve the source resolver's existing selection rules.
+  never the working project's application source. Show source and working project separately;
+  upsert never installs. Preserve the source resolver's existing selection rules.
 - `/rules apply` loads the compact rules without changing files. Add, modify, and remove use
   the authoritative rules document and retain explicit approval. Workers receive core guidance
   explicitly; installing or mentioning a skill is not automatic context injection.

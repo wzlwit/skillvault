@@ -1,10 +1,14 @@
 
 # SkillVault Upsert
 
+Contents: Parameters; Source Repository Resolution; Check Overlap; Author From Documents; Improve
+from Task Experience; Upsert By Name; Upsert From URL; After Upsert; Validation;
+Publishing; Safety.
+
 Upsert creates or edits skill source files and their catalog entries in the selected SkillVault
-repository: an existing skill, a new one from scratch, or one derived from a URL. It can install the
-result afterward as an optional follow-up. To only install or update an existing catalog skill, use
-`/skillvault-installation install` instead.
+repository: an existing skill, a new one from scratch, or one added from a URL. It writes only to
+that repository and never installs. To install the result, or to install or update an existing
+catalog skill, use `/skillvault-installation install`.
 
 The `create` and `update` aliases use this same procedure. Decide whether the skill exists from the
 verified source, not from the alias used. An inaccessible or ambiguous target never authorizes a
@@ -12,18 +16,13 @@ replacement; resolve it before editing or creating files.
 
 ## Parameters
 
-- `nameOrUrl` (required, first): a URL derives a skill from that source and links back to it. A name
+- `nameOrUrl` (required, first): a URL adds an external skill as a reference by default, or writes
+  a skill from another kind of source; see [Upsert From URL](#upsert-from-url). A name
   edits that repository skill if present or creates a new one. A name never imports an installed
   copy; the installed inventory in [Check Overlap](#check-overlap) is for comparison only.
-- `scope` (optional, second; default `default`):
-  - `default`: the skill's `install.defaultScope`, or `project` when missing.
-  - `global`: install into `~/.copilot/skills/<skill-name>` after the source upsert.
-  - `project`: install into the current repository's `.github/skills/<skill-name>`.
-  - `session`: use the skill in the current AI session only.
-  - `none`: edit source files only.
 - `--repo <path>` (optional): an explicit SkillVault source checkout, resolved against the original
   working project. An invalid path or repository identity blocks the upsert; never silently choose
-  another source. It changes neither the installation scope nor the working project.
+  another source. It does not change the working project.
 - `publish` (optional keyword): validate, then publish as described in [Publishing](#publishing).
 
 ## Source Repository Resolution
@@ -57,9 +56,13 @@ Git/PowerShell is a blocker to report, never a reason to author in an unverified
 Accept only `Status: Resolved`, and author with its `RepoRoot`, `CatalogPath`, and `SkillsPath`,
 never the working project's similarly named paths or an installed copy. An existing skill uses its
 catalog path in that tree; a new skill gets a contained `skills/<category>/<name>` folder. Before
-writing, show the source root, catalog, exact skill folder, and any separate installation target,
-and re-resolve if the selected source changes. A verified existing destination needs no approval
+writing, show the source root, catalog, and exact skill folder, and re-resolve if the selected
+source changes. A verified existing destination needs no approval
 beyond the upsert request; the user resolves an explicit mismatch.
+
+Before writing, read the Skill Rules in `<RepoRoot>/AGENTS.md`; in particular, leave external-source
+skills unchanged unless the owner explicitly asks, and edit an adapted skill only on its wrapper
+side, never inside its marked original section or in a file from the original.
 
 `Status: NeedsSource` means no source was selected, so no source files may be written. Ask for an
 explicit local checkout, or offer these choices, each confirmed separately:
@@ -219,31 +222,43 @@ When `nameOrUrl` is not a URL:
 
 ## Upsert From URL
 
-When `nameOrUrl` is a URL:
+When `nameOrUrl` is a URL, read the source first. Then choose by what it is, following the Skill
+sources rules in `<RepoRoot>/AGENTS.md`:
 
-1. Identify the source project and derive a name such as `<project>-patterns`, unless the user
-   gives a better one.
-2. Read the source README or project homepage when available.
-3. Write a curated skill that summarizes reusable workflows and links back to the upstream source;
-   do not vendor large upstream docs.
-4. Keep the verified original `author` and record the SkillVault curator as `maintainer`. Use a
-   verified upstream version only for an actual matching release; otherwise, including rewritten
-   guides, use explicit `null`. Keep catalog and manifest versions aligned. Unknown authorship or
-   licensing is `null`, never an inferred attribution or permission grant. Record the upstream
-   repository, path, and license under `upstream`; `source` describes the SkillVault folder being
-   installed. Disclose adaptations in the instructions, and never claim that a reference-only entry
-   installs upstream scripts, hooks, or packages.
-5. Update `catalog.json` the same way: four fields, sorted by name.
+1. **An external skill** (a folder with its own `SKILL.md`): add a reference by default. Keep the
+   original's skill name and write only `skill.json`, with `kind: reference`,
+   `install.strategy: upstream`, and `upstream` `repo`, `path`, `version: latest`, and `license`.
+   Pin a tag or commit only when the author sets one on purpose. Add no `SKILL.md`; installing
+   fetches the original.
+2. **An adaptation**, only when the user wants SkillVault changes to an external skill: use
+   `install.strategy: adapted` and keep the original's other files. Write `SKILL.md` with the
+   SkillVault changes and an empty `<!-- upstream:begin -->` / `<!-- upstream:end -->` pair, then
+   fill the pair with the original text using `Set-SkillUpstreamSection` from the
+   `skillvault-installation` helper `scripts/skill-files.ps1`. Add the repository's license as
+   `UPSTREAM-LICENSE` when the original folder has none, and record the merged commit in
+   `upstream.commit`.
+3. **A guide**, when the original cannot be installed as one skill (a collection, a tool that
+   installs its own skill, or a license that forbids copies or grants none): write a SkillVault
+   guide that links to it and copies none of its files.
+4. **Not a skill** (a project, tool, or documentation site): write a native skill that summarizes
+   reusable workflows and links back to the source; do not vendor large upstream docs. Derive a
+   name such as `<project>-patterns` unless the user gives a better one.
 
-## Install After Upsert
+For all of them, keep the verified original `author` and record the SkillVault curator as
+`maintainer`. Unknown authorship or licensing is `null`, never an inferred attribution or permission
+grant; copy the original's files only when the upstream repository has a license that permits it.
+Use a verified upstream version only for an actual matching release; otherwise use explicit `null`,
+and keep catalog and manifest versions aligned. Record the upstream repository, path, and license
+under `upstream`; `source` describes the SkillVault folder. A reference installs the original with
+any scripts or hooks, so say so in its description; never claim that a guide installs them. Update
+`catalog.json` the same way: four fields, sorted by name.
 
-After the source edit, resolve `scope` as described in [Parameters](#parameters). For `global` or
-`project`, run the checkout's `scripts/install-skills.ps1` with the exact catalog name, resolved
-scope, and `-RepoRoot <resolved-source-root>`, keeping `-ProjectPath` on the original working
-project, not the source checkout. Preview differences in existing targets and use `-Force` only for
-approved replacements. The script stages files and writes install metadata from the SkillVault
-repository and catalog path, not an upstream reference URL. `session` applies the skill to the
-current request only; `none` skips installation.
+## After Upsert
+
+Upsert never installs a skill. After validation, say that nothing was installed and give the
+`/skillvault-installation install <name>` command for the user to run if wanted, adding
+`--repo <source-root>` when the source is not the known checkout. Refreshing copies that are already
+installed is separate and follows the repository's own instructions.
 
 ## Validation
 
@@ -251,6 +266,11 @@ Choose checks before editing, based on the change's behavior and risk. A wording
 behavior or trigger change does not start model trials. The optional checks below never replace
 required repository contracts, catalog/resource validation, or permission controls. Use scripts or
 code when they make a repeated or error-prone task clearer, safer, or easier to rerun.
+
+Before shortening or rewording existing text, list its specifics: commands, parameters, defaults,
+limits, approvals, prohibitions, examples, and domain rules. Afterward, confirm each one still
+exists, in `SKILL.md` when every use needs it, otherwise in a reference linked from `SKILL.md`. A
+general phrase that replaces a specific rule counts as a loss. Report what moved and where.
 
 After every upsert, run catalog validation; `npm ci` installs its development-only dependencies
 and is needed once per checkout:

@@ -7,7 +7,7 @@
   "tags": ["testing", "playwright", "browser", "regression"],
   "author": "Anthropic",
   "maintainer": "wzlwit",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "homepage": "https://github.com/anthropics/skills/tree/main/skills/webapp-testing",
   "source": {
     "repo": "skillvault",
@@ -16,6 +16,8 @@
   "upstream": {
     "repo": "https://github.com/anthropics/skills",
     "path": "skills/webapp-testing",
+    "version": "latest",
+    "commit": "8a1541c4a3ffa5a20a5a91de0dcf3f0bab1d1ef4",
     "license": "Apache-2.0"
   },
   "install": {
@@ -23,7 +25,7 @@
     "project": true,
     "session": true,
     "defaultScope": "global",
-    "strategy": "copy"
+    "strategy": "adapted"
   },
   "readme": "SKILL.md"
 }

@@ -18,5 +18,6 @@ It works without harness initialization. When a harness is present, it reuses co
 `/harness-policy fallback` still owns actual execution controls. Suggested next actions are not automatic resume.
 
 The bundle includes no scripts, hooks, or upstream plugin setup. Installing it creates no handoff
-note and changes no runtime state. Original author: Matt Pocock; curator: wzlwit; [license: MIT](./LICENSE).
-Version is explicitly `null` because this adaptation does not track an upstream release.
+note and changes no runtime state. Original author: Matt Pocock; curator: wzlwit;
+[license: MIT](./UPSTREAM-LICENSE). The skill keeps the original text in its Original section;
+refresh follows the original's latest commit.

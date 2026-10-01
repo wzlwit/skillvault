@@ -4,7 +4,8 @@
   "version": "1.1.0",
   "runtimeInterfaces": {
     "compatibility": 1,
-    "installation-transactions": 1
+    "installation-transactions": 1,
+    "upstream-references": 3
   },
   "status": "public",
   "visibility": "public",

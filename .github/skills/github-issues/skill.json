@@ -16,6 +16,8 @@
   "upstream": {
     "repo": "https://github.com/github/awesome-copilot",
     "path": "skills/github-issues",
+    "version": "latest",
+    "commit": "d6131471b85fbb4799e64175ebc42c9309ecc28a",
     "license": "MIT"
   },
   "install": {
@@ -23,7 +25,7 @@
     "project": true,
     "session": true,
     "defaultScope": "global",
-    "strategy": "copy"
+    "strategy": "adapted"
   },
   "readme": "SKILL.md"
 }
