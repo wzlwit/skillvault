@@ -1,10 +1,10 @@
 ---
 name: skillvault-installation
-description: "Manage installed SkillVault copies. Use /skillvault-installation or /sv-installation list, install, update, or uninstall. Replaces skillvault-install, skillvault-list, skillvault-uninstall and /sv-install, /sv-list, /sv-uninstall. List defaults to installed copies; list catalog inspects sources. Does not edit SkillVault source or application code; skillvault-authoring owns skill authoring."
+description: "Manage installed SkillVault copies. Use /skillvault-installation or /sv-installation list, install, update, uninstall, or clean. Replaces skillvault-install, skillvault-list, skillvault-uninstall and /sv-install, /sv-list, /sv-uninstall. List defaults to installed copies; list catalog inspects sources; clean finds skills that load twice or conflict and shows overlaps, which skillvault-discovery evaluate can judge. Does not edit SkillVault source or application code; skillvault-authoring owns skill authoring."
 metadata:
   author: wzlwit
   version: "1.1.0"
-argument-hint: "[list|install|update|uninstall] [<arguments>...]"
+argument-hint: "[list|install|update|uninstall|clean] [<arguments>...]"
 ---
 
 # Skill Installation
@@ -27,6 +27,7 @@ unchanged; abbreviation adds no confirmation. This is conversational routing, no
 | `list catalog` | [Verified source catalog](./references/install.md#no-skillname-given-catalog-exploration) |
 | `install`, `update` | [Install or update copies](./references/install.md) |
 | `uninstall` | [Confirmed removal of installed copies](./references/uninstall.md) |
+| `clean` | [Find and fix skills that load twice or conflict, and show overlaps](./references/clean.md) |
 
 Bare invocation, `list`, `status`, and `help` show the installed inventory and actions; `catalog`
 aliases `list catalog`. Unknown actions show choices without copying or deleting files. If a token is
@@ -49,6 +50,8 @@ Selectors match name fragments before descriptions, so `install harness` selects
 - Preserve unrelated, customized, and pinned copies. Deletion and forced replacement need explicit approval.
 - Keep one installed copy per skill: before installing, check global and the current project, and
   ask whether to move a copy found in the other scope (see [target scope](./references/install.md#skillname-foldername-or-keyword-given-installupdate-mode)).
+- `clean` changes nothing until the user picks findings. It fixes only copies SkillVault installed,
+  through the existing steps, and never removes a skill only because it overlaps another.
 - Compatibility-only bundles are excluded from default discovery and bulk installs; an ordinary
   refresh never replaces old installed copies with forwarders.
 - Keep one current copy per canonical name through [transactional updates](./references/install.md#transactional-updates).

@@ -225,6 +225,11 @@ do not rename canonical topics to abbreviations or create duplicate alias bundle
   one run. Refresh never pushes the owner's own commits or commits in the owner's checkout.
 - `/skillvault-installation uninstall` removes exact displayed installed copies by index, range, keyword,
   or name after confirmation. Compatibility-only bundles are not bulk-install/refresh candidates.
+- `/skillvault-installation clean` finds skills that load twice (global and a project, or two global
+  folders), adaptations next to their originals, old names, copies missing from the catalog, and
+  skills that cannot load, and shows overlaps. It changes nothing until the user picks findings,
+  fixes only SkillVault-installed copies through the existing steps, and never removes a skill only
+  because it overlaps another.
 - `/schedule-manager` lists Windows scheduled tasks and enables, disables, or deletes selected tasks by index, range, list, or keyword after confirmation.
 - `/skillvault-discovery explain <skill>` explains principles, workflow, and usage without running or installing the target skill.
 

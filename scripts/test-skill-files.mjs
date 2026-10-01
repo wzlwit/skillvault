@@ -796,6 +796,20 @@ test('installation metadata supports partial selection and explicit exact names'
   assert.ok(guide.includes('-Preview'));
 });
 
+test('installation clean stays read-only until the user picks findings', () => {
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const directory = path.join(root, 'skills/core/skillvault-installation');
+  const manifest = parseJson(fs.readFileSync(path.join(directory, 'skill.json'), 'utf8'), 'skillvault-installation/skill.json');
+  const instructions = fs.readFileSync(path.join(directory, 'SKILL.md'), 'utf8');
+  assert.ok(manifest.inputs.find(input => input.name === 'action').enum.includes('clean'));
+  assert.match(instructions, /\| `clean` \| \[[^\]]+\]\(\.\/references\/clean\.md\) \|/);
+  const clean = fs.readFileSync(path.join(directory, 'references/clean.md'), 'utf8');
+  assert.match(clean, /Clean changes nothing until the user picks/);
+  assert.match(clean, /skillvault-list\.ps1 -Check/);
+  assert.match(clean, /copies SkillVault did not install[\s\S]*never remove them/);
+  assert.match(clean, /An overlap never removes a skill/);
+});
+
 test('monitor discovery declares supported sources and a compatible runtime', () => {
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
   const catalog = parseJson(fs.readFileSync(path.join(root, 'catalog.json'), 'utf8'), 'catalog.json');

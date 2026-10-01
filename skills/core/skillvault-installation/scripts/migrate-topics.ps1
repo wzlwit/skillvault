@@ -32,26 +32,11 @@ $projectSkills = Join-Path $projectRoot '.github/skills'
 $installed = @($entries | Where-Object {
     $_.Managed -eq 'yes' -and ((Split-Path -Parent $_.Path) -ieq $globalRoot -or (Split-Path -Parent $_.Path) -ieq $projectSkills)
 })
-$mapping = @{
-    'harness-init' = 'harness'; 'harness-root' = 'harness'; 'harness-loc' = 'harness'; 'harness-context' = 'harness'; 'harness-management' = 'harness'
-    'harness-decide' = 'harness-decision'; 'harness-ref' = 'harness-link'; 'harness-report-create' = 'harness-report'
-    'harness-fallback' = 'harness-policy'; 'harness-restrict' = 'harness-policy'
-    'sv-installation' = 'skillvault-installation'; 'sv-discovery' = 'skillvault-discovery'
-    'sv-refresh' = 'skillvault-refresh'; 'sv-source' = 'skillvault-authoring'; 'skillvault-source' = 'skillvault-authoring'
-    'skillvault-install' = 'skillvault-installation'; 'skillvault-list' = 'skillvault-installation'; 'skillvault-uninstall' = 'skillvault-installation'
-    'skillvault-upsert' = 'skillvault-authoring'; 'skillvault-remove' = 'skillvault-authoring'; 'skillvault-fresh' = 'skillvault-refresh'
-    'skillvault-evaluate' = 'skillvault-discovery'; 'skillvault-search' = 'skillvault-discovery'; 'skillvault-key-points' = 'skillvault-discovery'
-    'pr-review-add' = 'pr-watch'; 'pr-review-list' = 'pr-watch'; 'pr-review-remove' = 'pr-watch'; 'pr-review-timer' = 'harness-timer'
-    'rules-core' = 'rules'; 'jarvis-metrics-create' = 'jarvis-metrics'; 'kpi-dashboard-design' = 'kpi-dashboard'; 'openapi-spec-generation' = 'openapi-spec'
-}
+$mapping = Get-SkillFormerNames
 $installs = [Collections.Generic.List[object]]::new()
 $retire = [Collections.Generic.List[object]]::new()
 $skipped = [Collections.Generic.List[object]]::new()
-$isOrigin = {
-    param($path)
-    $metadataPath = Join-Path $path '.skillvault-install.json'
-    (Test-Path -LiteralPath $metadataPath) -and [string](Get-Content -LiteralPath $metadataPath -Raw | ConvertFrom-Json).sourceType -ceq 'upstream'
-}
+$isOrigin = { param($path) Test-SkillInstalledOriginal -SkillPath $path }
 foreach ($group in @($installed | Group-Object ScopeType)) {
     $targetRoot = if ($group.Name -eq 'global') { $globalRoot } else { $projectSkills }
     $wanted = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)

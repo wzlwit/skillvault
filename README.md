@@ -154,6 +154,8 @@ An optional follow-up step alone is not material overlap; describe it directly, 
 | `harness-timer`, `skillvault-refresh`, `schedule-manager` | Schedule setup and controls. | Timer dispatches to existing project, PR, and refresh owners; refresh performs one-way copying; schedule-manager administers Windows tasks broadly. |
 | `skillvault-discovery` | Search, evaluation, and explanation within one topic. | `explain` describes use; `evaluate` judges adoption value; `search` finds candidates. |
 | `planning-with-files` | Planning with `grilling`; decision notes with `architecture-decision-records`. | Installs OthmanAdi's original for task tracking and recovery; its hooks run local scripts in hosts that support skill hooks. |
+| `pr-publish` | Opening PRs with the GitHub Pull Requests extension's `create-pull-request` skill. | Use for PRs that need the repository template, a scenario table, and named tests, or to update an existing PR; it opens PRs through that extension's tool when available. |
+| `skillvault-authoring` | Writing `SKILL.md` files with VS Code's `agent-customization` skill. | Use only for skills in the SkillVault repository and its catalog; it never installs. |
 
 The [brainstorming skill](skills/planning/brainstorming/SKILL.md) adapts the Superpowers
 workflow, including its visual companion, for the selected discussion or project, with global
@@ -586,6 +588,9 @@ with `--chat-only` to skip it; explanation stays read-only.
 - `/skillvault-installation install <skill-or-folder-or-keyword> [scope] [version] [--repo path]` installs existing catalog
   skills or updates their installed copies. It does not author source skills. Omit the
   target to browse the catalog; `/skillvault-installation update` refreshes approved managed copies.
+- `/skillvault-installation clean` finds skills that load twice or conflict (for example, global and
+  project copies of one skill, or an adaptation next to its original) and shows overlaps. It changes
+  nothing until you pick findings to fix.
 - `/skillvault-authoring upsert <name-or-url> [--repo <path>]` edits an existing repository skill or creates one from
   scratch or a URL, updating its source files and catalog entry. A name does not automatically
   import an installed copy. It never installs; install the result separately with

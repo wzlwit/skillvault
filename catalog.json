@@ -187,7 +187,7 @@
   },
   {
     "name": "pr-publish",
-    "description": "Create or update your own pull request: a description that follows the repository template, a current vs. to-be scenario table, tests named for each scenario, and draft or ready state. Use /pr-publish list, preview, or upsert. Opens PRs through the VS Code create-pull-request tool when available, otherwise through gh; pr-review reviews PRs instead. Never pushes or writes to a PR without an explicit ask.",
+    "description": "Create or update your own pull request: a description that follows the repository template, a current vs. to-be scenario table, tests named for each scenario, and draft or ready state. Use /pr-publish list, preview, or upsert. Overlaps with the GitHub Pull Requests extension's create-pull-request skill on opening PRs; use pr-publish when the PR needs the template, scenario table, and named tests, or to update an existing PR. Opens PRs through the VS Code create-pull-request tool when available, otherwise through gh; pr-review reviews PRs instead. Never pushes or writes to a PR without an explicit ask.",
     "path": "skills/github/pr-publish",
     "version": "1.0.0"
   },
@@ -223,7 +223,7 @@
   },
   {
     "name": "skillvault-authoring",
-    "description": "Author and maintain skill bundles and catalog entries in the SkillVault repository, not application source or installed copies. Use /skillvault-authoring or /sv-authoring list, upsert, or remove; create/update are upsert aliases. Accepts legacy /skillvault-source, /sv-source, skillvault-upsert, skillvault-remove and their shortcuts. Never installs; use skillvault-installation to install the result.",
+    "description": "Author and maintain skill bundles and catalog entries in the SkillVault repository, not application source or installed copies. Use /skillvault-authoring or /sv-authoring list, upsert, or remove; create/update are upsert aliases. Accepts legacy /skillvault-source, /sv-source, skillvault-upsert, skillvault-remove and their shortcuts. Overlaps with VS Code's agent-customization skill on writing SKILL.md files; use this one only for skills in the SkillVault repository and its catalog. Never installs; use skillvault-installation to install the result.",
     "path": "skills/core/skillvault-authoring",
     "version": "1.0.0"
   },
@@ -235,7 +235,7 @@
   },
   {
     "name": "skillvault-installation",
-    "description": "Manage installed SkillVault copies. Use /skillvault-installation or /sv-installation list, install, update, or uninstall. Replaces skillvault-install, skillvault-list, skillvault-uninstall and /sv-install, /sv-list, /sv-uninstall. List defaults to installed copies; list catalog inspects sources. Does not edit SkillVault source or application code; skillvault-authoring owns skill authoring.",
+    "description": "Manage installed SkillVault copies. Use /skillvault-installation or /sv-installation list, install, update, uninstall, or clean. Replaces skillvault-install, skillvault-list, skillvault-uninstall and /sv-install, /sv-list, /sv-uninstall. List defaults to installed copies; list catalog inspects sources; clean finds skills that load twice or conflict and shows overlaps, which skillvault-discovery evaluate can judge. Does not edit SkillVault source or application code; skillvault-authoring owns skill authoring.",
     "path": "skills/core/skillvault-installation",
     "version": "1.1.0"
   },

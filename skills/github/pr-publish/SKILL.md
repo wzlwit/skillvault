@@ -1,6 +1,6 @@
 ---
 name: pr-publish
-description: "Create or update your own pull request: a description that follows the repository template, a current vs. to-be scenario table, tests named for each scenario, and draft or ready state. Use /pr-publish list, preview, or upsert. Opens PRs through the VS Code create-pull-request tool when available, otherwise through gh; pr-review reviews PRs instead. Never pushes or writes to a PR without an explicit ask."
+description: "Create or update your own pull request: a description that follows the repository template, a current vs. to-be scenario table, tests named for each scenario, and draft or ready state. Use /pr-publish list, preview, or upsert. Overlaps with the GitHub Pull Requests extension's create-pull-request skill on opening PRs; use pr-publish when the PR needs the template, scenario table, and named tests, or to update an existing PR. Opens PRs through the VS Code create-pull-request tool when available, otherwise through gh; pr-review reviews PRs instead. Never pushes or writes to a PR without an explicit ask."
 metadata:
   author: wzlwit
   version: "1.0.0"

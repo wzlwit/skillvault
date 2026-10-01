@@ -108,6 +108,29 @@ function Assert-SkillUpstreamFolder {
     }
 }
 
+function Get-SkillFormerNames {
+    # Former SkillVault folder names mapped to the catalog names that replace them.
+    @{
+        'harness-init' = 'harness'; 'harness-root' = 'harness'; 'harness-loc' = 'harness'; 'harness-context' = 'harness'; 'harness-management' = 'harness'
+        'harness-decide' = 'harness-decision'; 'harness-ref' = 'harness-link'; 'harness-report-create' = 'harness-report'
+        'harness-fallback' = 'harness-policy'; 'harness-restrict' = 'harness-policy'
+        'sv-installation' = 'skillvault-installation'; 'sv-discovery' = 'skillvault-discovery'
+        'sv-refresh' = 'skillvault-refresh'; 'sv-source' = 'skillvault-authoring'; 'skillvault-source' = 'skillvault-authoring'
+        'skillvault-install' = 'skillvault-installation'; 'skillvault-list' = 'skillvault-installation'; 'skillvault-uninstall' = 'skillvault-installation'
+        'skillvault-upsert' = 'skillvault-authoring'; 'skillvault-remove' = 'skillvault-authoring'; 'skillvault-fresh' = 'skillvault-refresh'
+        'skillvault-evaluate' = 'skillvault-discovery'; 'skillvault-search' = 'skillvault-discovery'; 'skillvault-key-points' = 'skillvault-discovery'
+        'pr-review-add' = 'pr-watch'; 'pr-review-list' = 'pr-watch'; 'pr-review-remove' = 'pr-watch'; 'pr-review-timer' = 'harness-timer'
+        'rules-core' = 'rules'; 'jarvis-metrics-create' = 'jarvis-metrics'; 'kpi-dashboard-design' = 'kpi-dashboard'; 'openapi-spec-generation' = 'openapi-spec'
+    }
+}
+
+function Test-SkillInstalledOriginal {
+    param([Parameter(Mandatory = $true)][string]$SkillPath)
+
+    $metadataPath = Join-Path $SkillPath '.skillvault-install.json'
+    (Test-Path -LiteralPath $metadataPath) -and [string](Get-Content -LiteralPath $metadataPath -Raw | ConvertFrom-Json).sourceType -ceq 'upstream'
+}
+
 function Read-SkillManifest {
     param(
         [Parameter(Mandatory = $true)][string]$SkillPath,
