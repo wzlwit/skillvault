@@ -1,7 +1,7 @@
 {
   "name": "jarvis-metrics",
   "title": "Jarvis Metrics",
-  "version": null,
+  "version": "1.0.0",
   "kind": "agent",
   "description": "Design Jarvis metrics and dashboards from existing Geneva/MDM metrics, Kusto queries, or logs. Use for /jarvis-metrics, legacy /jarvis-metrics-create, Jarvis dashboard creation, metric-source selection, pre-aggregation, dimensions, monitors, and CDS-style success/failure reporting. Overlaps with kpi-dashboard on dashboard/metric design and harness-report on Jarvis authoring; owns Jarvis metric-source plumbing and widget configuration rather than general dispatch or layout guidance.",
   "tags": [

@@ -4,7 +4,7 @@ description: Design Jarvis metrics and dashboards from existing Geneva/MDM metri
 argument-hint: '<signal-or-monitoring-goal>'
 metadata:
   author: wzlwit
-  version: null
+  version: "1.0.0"
 ---
 
 # Jarvis Metrics and Dashboards
@@ -28,6 +28,9 @@ represents them cleanly:
 Check the existing Geneva account, namespace, metric names, emitting code, and dimensions before
 rebuilding a direct metric from Kusto or logs.
 
+Before configuring a source, read its runbook in [metric sources](./references/metric-sources.md):
+permissions, step-by-step setup, stop conditions, and preaggregates.
+
 ## Define the Signal
 
 Write down the numerator, denominator, success state, failure state, time window, and units. For
@@ -43,6 +46,9 @@ Use stable, bounded dimensions such as environment, geography, feature, version,
 categorized failure reason. Never put arbitrary request text, customer data, or full error
 messages into dimensions; normalize them into categories such as `InvalidPayload`,
 `InsufficientData`, `SystemFailure`, or `Other`.
+
+Before configuring anything, record the full
+[metric contract](./references/validation.md#record-the-contract-before-configuration).
 
 ## Convert Kusto or Logs
 
@@ -62,9 +68,13 @@ convert them to bounded dimensions, and document sampling, parsing, missing or d
 and aggregation. Prefer a direct Geneva metric or Kusto conversion when either gives a more
 stable contract.
 
+The [Kusto count example](./examples/kusto-counts.kql) and
+[log event example](./examples/log-events.kql) are synthetic; check a query's shape against them,
+and compare with their expected results in [worked checks](./references/validation.md#worked-checks).
+
 ## Build the Dashboard
 
-The usual UI flow is:
+The usual UI flow is (not checked against current Jarvis):
 
 ```text
 Dashboard → … → + Dashboard
@@ -75,9 +85,13 @@ Dashboard → … → + Dashboard
 For each layer, configure the time range, data source, account, namespace, metric, sampling type,
 dimensions, missing-data behavior, and resolution reduction. Use Display for legends, tooltips,
 colors, and thresholds, and dashboard Parameters for reusable filters. Use multiple layers for
-multiple counters in one chart and Advanced → Subquery for calculated values, documenting the
-expression. Save or copy reusable widgets rather than recreating them. Chart types vary by product
-and deployment; inspect the `+ Widget` menu instead of assuming a fixed list.
+multiple counters in one chart and Advanced → Subquery (not checked against current Jarvis) for
+calculated values, documenting the expression. Save or copy reusable widgets rather than
+recreating them. Chart types vary by product and deployment; inspect the `+ Widget` menu instead
+of assuming a fixed list.
+
+Before building widgets, read [dashboards](./references/dashboards.md) for panel choices,
+derived measures, direct Kusto widgets, parameters, and import or export.
 
 ## Add Monitoring
 
@@ -89,7 +103,8 @@ dashboard link is not an interchangeable input.
 After validating dashboard values, add a monitor only when the service's operational requirements
 define the condition. Connect it to the appropriate alert or IcM flow and record the owner,
 evaluation window, threshold source, and missing-data behavior. Never derive production thresholds
-from an illustrative example.
+from an illustrative example. To prepare the monitor, follow the
+[monitor steps](./references/validation.md#optional-metric-based-monitor).
 
 ## Validation Checklist
 
@@ -105,6 +120,9 @@ is not evidence that a dashboard has been saved or is readable in Jarvis.
 - [ ] Success/failure calculations reconcile with the underlying metric.
 - [ ] The dashboard is saved and readable by its intended audience.
 - [ ] Monitor thresholds and IcM behavior come from service requirements.
+
+Before reporting results, run the [acceptance checks](./references/validation.md#acceptance-checks).
+When values look wrong, use its diagnosis table before changing configuration.
 
 ## Boundaries and Reuse
 

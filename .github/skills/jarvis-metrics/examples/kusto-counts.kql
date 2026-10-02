@@ -1,0 +1,17 @@
+// Synthetic standalone fixture; replace data and window bindings only after verifying the target contract.
+let windowStart = datetime(2026-01-01T00:00:00Z);
+let windowEnd = datetime(2026-01-01T00:05:00Z);
+let events = datatable(EventTime:datetime, Region:string, Outcome:string)
+[
+    datetime(2025-12-31T23:59:59Z), "East", "Failure",
+    datetime(2026-01-01T00:00:00Z), "East", "Success",
+    datetime(2026-01-01T00:01:00Z), "East", "Success",
+    datetime(2026-01-01T00:02:00Z), "East", "Failure",
+    datetime(2026-01-01T00:03:00Z), "West", "Success",
+    datetime(2026-01-01T00:05:00Z), "West", "Failure"
+];
+events
+| where EventTime >= windowStart and EventTime < windowEnd
+| summarize m_Requests = count() by dt = bin(EventTime, 5m), d_Region = Region, d_Status = Outcome
+| project dt, d_Region, d_Status, m_Requests
+| order by d_Region asc, d_Status asc

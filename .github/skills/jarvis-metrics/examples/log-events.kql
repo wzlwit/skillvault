@@ -1,0 +1,13 @@
+// Synthetic standalone fixture; a live L2M rule uses the editor's input and supported operator subset.
+let events = datatable(EventTime:datetime, EventKind:string, Region:string, Outcome:string, LatencyText:string)
+[
+    datetime(2026-01-01T00:01:00Z), "Completed", "East", "Success", "120",
+    datetime(2026-01-01T00:02:00Z), "Completed", "", "Failure", "200",
+    datetime(2026-01-01T00:03:00Z), "Started", "West", "", "invalid"
+];
+events
+| where EventKind == "Completed"
+| extend d_Region = iff(isempty(Region), "Unknown", Region),
+         d_Status = case(Outcome == "Success", "Success", Outcome == "Failure", "Failure", "Unknown"),
+         m_Completed = tolong(1)
+| project dt = EventTime, d_Region, d_Status, m_Completed

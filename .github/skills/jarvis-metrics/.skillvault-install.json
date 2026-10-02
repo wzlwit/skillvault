@@ -4,6 +4,8 @@
   "sourcePath": "skills/monitoring/jarvis-metrics",
   "scope": "project",
   "requestedVersion": "latest",
-  "installedVersion": null,
-  "installedAt": "2026-09-28T02:02:01.8695870Z"
+  "installedVersion": "1.0.0",
+  "installedAt": "2026-10-02T01:46:41.9066834Z",
+  "sourceCheckout": "C:\\repos\\skillvault",
+  "sourceRevision": "472df0dfdfdcd18257104dbea05e1c3a4463159d"
 }
