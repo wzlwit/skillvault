@@ -109,6 +109,25 @@ The `version` field must be present in both files: use a non-empty string for a 
 version, or explicit JSON `null` when unversioned. `latest` is an installation policy,
 not a substitute for an unknown version.
 
+Versions (owner decision, 2026-10-01): a native skill's version changes with the change itself,
+in `skill.json`, `catalog.json`, and the `SKILL.md` metadata together.
+
+| Change | Version |
+| --- | --- |
+| Wording, typos, docs, tests, or an internal change; nothing works differently | No change |
+| Bug fix; it works the same way | Patch |
+| Adds something; old use still works | Minor |
+| Removes or renames an action or option, changes a default, or changes a saved file format | Major |
+
+- Changes between two tags take one step, the largest.
+- A new native skill starts at `1.0.0`; an unversioned one starts at `1.0.0` at its next change.
+- Adapted, reference, and guide skills stay `null`; an original's version is pinned only in
+  `upstream.version`.
+- Tag each version `<skill>/vX.Y.Z` on the commit that contains it, only when the owner asks for
+  a commit or push, and push the tags with it.
+- Installs default to `latest`. `install <skill> <scope> vX.Y.Z` pins a copy to that skill's tag;
+  refresh leaves pinned copies alone.
+
 ## Skill Rules
 
 - Each skill folder has `skill.json` and usually `SKILL.md`; add `README.md` when useful for humans.

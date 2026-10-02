@@ -3,7 +3,7 @@ name: skillvault-installation
 description: "Manage installed SkillVault copies. Use /skillvault-installation or /sv-installation list, install, update, uninstall, or clean. Replaces skillvault-install, skillvault-list, skillvault-uninstall and /sv-install, /sv-list, /sv-uninstall. List defaults to installed copies; list catalog inspects sources; clean finds skills that load twice or conflict and shows overlaps, which skillvault-discovery evaluate can judge. Does not edit SkillVault source or application code; skillvault-authoring owns skill authoring."
 metadata:
   author: wzlwit
-  version: "1.1.0"
+  version: "1.2.0"
 argument-hint: "[list|install|update|uninstall|clean] [<arguments>...]"
 ---
 

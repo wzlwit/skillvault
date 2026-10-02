@@ -21,20 +21,10 @@ $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot '..\skills\core\skillvault-installation\scripts\skill-files.ps1')
 
 if ($RequestedVersion -cnotmatch '^(latest|v\d+\.\d+\.\d+)$') {
-    throw "Invalid -RequestedVersion '$RequestedVersion'. Use 'latest' or a v#.#.# tag."
+    throw "Invalid -RequestedVersion '$RequestedVersion'. Use 'latest' or a v#.#.# version."
 }
 
 $repositoryRoot = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($RepoRoot)
-if ($RequestedVersion -cne 'latest') {
-    $tagCommit = git -C $repositoryRoot rev-parse --verify "refs/tags/${RequestedVersion}^{commit}"
-    if ($LASTEXITCODE -ne 0) { throw "Cannot resolve requested tag: $RequestedVersion" }
-    $headCommit = git -C $repositoryRoot rev-parse --verify HEAD
-    if ($LASTEXITCODE -ne 0 -or [string]$headCommit -cne [string]$tagCommit) {
-        throw "The local checkout is not at tag $RequestedVersion. Select the tag before installing a pinned version."
-    }
-    $worktreeChanges = git -C $repositoryRoot status --porcelain
-    if ($LASTEXITCODE -ne 0 -or $worktreeChanges) { throw 'A pinned installation requires a clean tagged checkout.' }
-}
 $catalogPath = Join-Path $repositoryRoot 'catalog.json'
 if (-not (Test-Path -LiteralPath $catalogPath -PathType Leaf)) {
     throw "Missing catalog: $catalogPath"
@@ -63,9 +53,13 @@ foreach ($skillName in @($Name | Select-Object -Unique)) {
         }
 
         $catalogEntry = $catalogMatches[0]
-        $sourcePath = Resolve-SkillSourcePath -RepositoryRoot $repositoryRoot -SourcePath ([string]$catalogEntry.path)
-        $manifest = Read-SkillManifest -SkillPath $sourcePath -ExpectedName $skillName -AllowReference
-        if ($manifest.version -cne $catalogEntry.version) { throw "Catalog and manifest versions differ for $skillName" }
+        $pin = if ($RequestedVersion -cne 'latest') { Get-SkillTagSnapshot -RepoPath $repositoryRoot -Name $skillName -Version $RequestedVersion -Destination (Join-Path $snapshotRoot $skillName) }
+        if ($pin) { $sourcePath = $pin.Folder; $manifest = $pin.Manifest }
+        else {
+            $sourcePath = Resolve-SkillSourcePath -RepositoryRoot $repositoryRoot -SourcePath ([string]$catalogEntry.path)
+            $manifest = Read-SkillManifest -SkillPath $sourcePath -ExpectedName $skillName -AllowReference
+            if ($manifest.version -cne $catalogEntry.version) { throw "Catalog and manifest versions differ for $skillName" }
+        }
         $strategy = if ($manifest.install) { [string]$manifest.install.strategy } else { '' }
         if ($Variant -ceq 'origin' -and $strategy -cnotin @('upstream', 'adapted')) { throw "Skill '$skillName' has no upstream original; install it without 'origin'." }
         if ($Variant -ceq 'adapt' -and $strategy -ceq 'upstream') { throw "Skill '$skillName' has no adaptation; install it without 'adapt' to get the original." }
@@ -99,12 +93,13 @@ foreach ($skillName in @($Name | Select-Object -Unique)) {
         [void]$plannedInstalls.Add([pscustomobject]@{
             Name = $skillName
             SourcePath = $sourcePath
-            CatalogPath = [string]$catalogEntry.path
+            CatalogPath = $(if ($pin) { $pin.Path } else { [string]$catalogEntry.path })
             Manifest = $manifest
             Scope = $resolvedScope
             TargetRoot = $targetRoot
             Variant = $(if ($fromOrigin) { 'origin' } elseif ($strategy -ceq 'adapted') { 'adapt' })
             Snapshot = $snapshot
+            Pin = $pin
         })
     }
     catch {
@@ -124,6 +119,7 @@ if ($Preview) {
             $item.SourceRepo = $_.Snapshot.Repo; $item.UpstreamPath = $_.Snapshot.Path; $item.RequestedVersion = $_.Snapshot.Version
             $item.Commit = $_.Snapshot.Commit; $item.Files = $_.Snapshot.Files
         }
+        elseif ($_.Pin) { $item.Tag = $_.Pin.Tag; $item.Commit = $_.Pin.Commit; $item.PathAtTag = $_.Pin.Path }
         else { $item.SourcePath = $_.SourcePath }
         $item.TargetPath = Join-Path $_.TargetRoot $_.Name
         [pscustomobject]$item
@@ -163,12 +159,12 @@ foreach ($plannedInstall in $plannedInstalls) {
     if ($checkoutRoot) {
         # Refresh merges committed updates into this copy; the recorded base marks what was committed at install.
         $metadata['sourceCheckout'] = $checkoutRoot
-        $baseRevision = Get-SkillSourceRevision -RepoPath $checkoutRoot -SourcePath $plannedInstall.CatalogPath
+        $baseRevision = if ($plannedInstall.Pin) { $plannedInstall.Pin.Revision } else { Get-SkillSourceRevision -RepoPath $checkoutRoot -SourcePath $plannedInstall.CatalogPath }
         if ($baseRevision) { $metadata['sourceRevision'] = $baseRevision }
     }
 
     $installResult = Copy-SkillInstallation -Source $plannedInstall.SourcePath -TargetRoot $plannedInstall.TargetRoot -Name $plannedInstall.Name -Metadata $metadata -Force:$Force -OwnershipLease $updateLease
-    Write-Output "Installed skill: $($installResult.Name) [$($plannedInstall.Scope)] -> $($installResult.Path)"
+    Write-Output "Installed skill: $($installResult.Name) [$($plannedInstall.Scope)] -> $($installResult.Path)$(if ($plannedInstall.Pin) { " from tag $($plannedInstall.Pin.Tag)" })"
     if ($installResult.RecoveryBackup) { Write-Output "Recovery backup: $($installResult.RecoveryBackup)" }
 }
 }

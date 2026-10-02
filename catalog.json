@@ -147,7 +147,7 @@
     "name": "jarvis-metrics",
     "description": "Design Jarvis metrics and dashboards from existing Geneva/MDM metrics, Kusto queries, or logs. Use for /jarvis-metrics, legacy /jarvis-metrics-create, Jarvis dashboard creation, metric-source selection, pre-aggregation, dimensions, monitors, and CDS-style success/failure reporting. Overlaps with kpi-dashboard on dashboard/metric design and harness-report on Jarvis authoring; owns Jarvis metric-source plumbing and widget configuration rather than general dispatch or layout guidance.",
     "path": "skills/monitoring/jarvis-metrics",
-    "version": null
+    "version": "1.0.0"
   },
   {
     "name": "kpi-dashboard",
@@ -225,7 +225,7 @@
     "name": "skillvault-authoring",
     "description": "Author and maintain skill bundles and catalog entries in the SkillVault repository, not application source or installed copies. Use /skillvault-authoring or /sv-authoring list, upsert, or remove; create/update are upsert aliases. Accepts legacy /skillvault-source, /sv-source, skillvault-upsert, skillvault-remove and their shortcuts. Overlaps with VS Code's agent-customization skill on writing SKILL.md files; use this one only for skills in the SkillVault repository and its catalog. Never installs; use skillvault-installation to install the result.",
     "path": "skills/core/skillvault-authoring",
-    "version": "1.0.0"
+    "version": "2.0.0"
   },
   {
     "name": "skillvault-discovery",
@@ -237,7 +237,7 @@
     "name": "skillvault-installation",
     "description": "Manage installed SkillVault copies. Use /skillvault-installation or /sv-installation list, install, update, uninstall, or clean. Replaces skillvault-install, skillvault-list, skillvault-uninstall and /sv-install, /sv-list, /sv-uninstall. List defaults to installed copies; list catalog inspects sources; clean finds skills that load twice or conflict and shows overlaps, which skillvault-discovery evaluate can judge. Does not edit SkillVault source or application code; skillvault-authoring owns skill authoring.",
     "path": "skills/core/skillvault-installation",
-    "version": "1.1.0"
+    "version": "1.2.0"
   },
   {
     "name": "skillvault-refresh",

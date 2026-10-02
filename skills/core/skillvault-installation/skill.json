@@ -1,7 +1,7 @@
 {
   "name": "skillvault-installation",
   "title": "SkillVault Installation",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "runtimeInterfaces": {
     "compatibility": 1,
     "installation-transactions": 1,
@@ -75,7 +75,7 @@
       "required": false,
       "type": "string",
       "default": "latest",
-      "description": "Optional third positional version: latest or a tag in v#.#.# format. Defaults to latest."
+      "description": "Optional third positional version: latest or a skill version in v#.#.# format, installed from that skill's <skill>/v#.#.# tag. Defaults to latest."
     },
     {
       "name": "repoPath",

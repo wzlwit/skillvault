@@ -3,7 +3,7 @@ name: skillvault-authoring
 description: "Author and maintain skill bundles and catalog entries in the SkillVault repository, not application source or installed copies. Use /skillvault-authoring or /sv-authoring list, upsert, or remove; create/update are upsert aliases. Accepts legacy /skillvault-source, /sv-source, skillvault-upsert, skillvault-remove and their shortcuts. Overlaps with VS Code's agent-customization skill on writing SKILL.md files; use this one only for skills in the SkillVault repository and its catalog. Never installs; use skillvault-installation to install the result."
 metadata:
   author: wzlwit
-  version: "1.0.0"
+  version: "2.0.0"
 argument-hint: "[list|upsert|remove] [<arguments>...]"
 ---
 
@@ -38,7 +38,8 @@ unchanged; abbreviation adds no confirmation. This is conversational routing, no
   selection order; never silently choose another checkout or change a Git remote.
 - Show the **SkillVault repository** and **working project** separately; `--repo` selects only the
   first. Upsert has no installation target.
-- Preserve public authorship, versions, dependencies, and overlap descriptions. Removal is previewed
+- Preserve public authorship, dependencies, and overlap descriptions; change a version only by the
+  [version rules](./references/upsert.md#versions). Removal is previewed
   and confirmed. Authoring does not authorize commits, publishing, installation, or changes to
   unrelated repositories. Upsert never installs; afterward, give the
   `/skillvault-installation install <name>` command for the user to run if wanted.

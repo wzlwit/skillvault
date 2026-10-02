@@ -37,8 +37,8 @@ Parse these from the user's invocation text as positional arguments:
   - `session` uses the resolved skill in the current AI session only. Do not copy files into
     `~/.copilot/skills` or `.github/skills`; read the resolved skill instructions and apply
     them for the current request.
-- `version` — optional third positional argument: `latest` (default) or a tag in `v#.#.#`
-  format, such as `v1.2.0`.
+- `version` — optional third positional argument: `latest` (default) or a skill version in
+  `v#.#.#` format, such as `v1.2.0`, which installs that skill's `<skill>/v#.#.#` tag.
 - `adapt` or `origin` — optional, after the selector, for skills from another repository (see
   [upstream references](#upstream-references)). Without it, install the adaptation when one
   exists, otherwise the original. `origin` fetches the original even when an adaptation exists;
@@ -59,8 +59,8 @@ Examples of invocations to recognize:
   `.github/skills/`.
 - `/skillvault-installation install schedule-manager session latest` → use `schedule-manager` only in the current AI
   session.
-- `/skillvault-installation install public global v1.0.0` → install the skills under `skills/` from tag
-  `v1.0.0` globally.
+- `/skillvault-installation install schedule-manager global v1.1.0` → install `schedule-manager`
+  globally from its tag `schedule-manager/v1.1.0`.
 - `/skillvault-installation update` → refresh the approved managed installed skills in global scope and
   the current project, preserving pins unless explicitly changed.
 - `/skillvault-installation install harness-review project latest --repo C:\repos\skillvault` selects an exact source
@@ -175,12 +175,13 @@ and operation first, then re-resolve the explicit path. Never overwrite another 
      (`https://github.com/wzlwit/skillvault.git`)
    - `sourcePath`: the copied folder's path within that repository
    - `scope`: resolved scope, either `global` or `project`
-   - `requestedVersion`: `latest` or the requested `v#.#.#` tag
+   - `requestedVersion`: `latest` or the pinned `v#.#.#` version
   - `installedVersion`: version from the copied skill's `skill.json`, including explicit null
    - `installedAt`: UTC timestamp
    - `sourceCheckout` and `sourceRevision`, when the source is the root of a Git checkout: the
      checkout path and the committed Git tree of the skill folder. Refresh merges new commits into
      the installed copy from that base, so installed uncommitted work is kept, not overwritten.
+     For a pin, `sourcePath` and `sourceRevision` come from the skill's tag.
    - An original records the upstream instead: `sourceType: upstream`, the upstream `sourceRepo`
      and `sourcePath`, its `version` as `requestedVersion`, and the fetched Git tree as
      `sourceRevision`.
@@ -190,7 +191,8 @@ and operation first, then re-resolve the explicit path. Never overwrite another 
 6. For `session`, read the resolved skill's `SKILL.md` or `README.md`, follow it for the current
   request, and confirm that no persistent install was written.
 7. Confirm to the user: what was installed or used, the version from its `skill.json`, the
-  requested source version (`latest` or tag), and the exact target path when files were copied.
+  requested source version (`latest` or the pinned version), and the exact target path when files
+  were copied.
 
 ### Upstream references
 
@@ -303,11 +305,13 @@ installed original (`UpstreamOriginal`); install those with `install`.
 
 ## Notes on versioning
 
-- Local `latest` uses the resolved checkout's current files. For a requested tag, require an
-  explicitly selected clean checkout at that tag and pass `-RequestedVersion v#.#.#` to the
-  installer. It verifies HEAD matches the tag before recording the pin. A missing tag or dirty
-  tagged checkout blocks installation; do not silently switch the actual working repository or
-  use another session's clone. Selecting/preparing another checkout requires explicit approval.
+- Local `latest` uses the resolved checkout's current files. A pin passes `-RequestedVersion v#.#.#`
+  to the installer, which reads the skill's own `<skill>/v#.#.#` tag in the resolved checkout: the
+  catalog at that tag gives the folder, and the tagged `skill.json` must hold that version. It never
+  switches branches or changes the checkout's files, so uncommitted work is safe. A missing tag
+  blocks installation; fetching tags or using another checkout needs approval, and another
+  session's clone is never used. Versions and tags follow the version rules in the SkillVault
+  repository's `AGENTS.md`.
 - Release version may be null. It is distinct from requested install policy and source
   revision; never substitute `latest` for an undeclared release version.
 - After copying, read the target's `skill.json` `version` field back to confirm what was

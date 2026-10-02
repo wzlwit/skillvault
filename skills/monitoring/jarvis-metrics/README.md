@@ -7,3 +7,7 @@ monitoring.
 
 The guide is intentionally tool-free: it does not bundle Microsoft-internal documentation,
 credentials, telemetry libraries, Kusto access, or Jarvis automation.
+
+Step-by-step runbooks for each metric source, dashboard recipes, and checks are in
+`references/`; synthetic KQL examples are in `examples/`. Screen labels marked
+"not checked against current Jarvis" come from older guides.

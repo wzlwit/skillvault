@@ -56,6 +56,8 @@ $savedFixtureRecoveryRoot = $env:SKILLVAULT_RECOVERY_ROOT
 $env:SKILLVAULT_RECOVERY_ROOT = Join-Path $fixtureRoot 'recovery'
 $savedFixtureTransactionRoot = $env:SKILLVAULT_TRANSACTION_ROOT
 $env:SKILLVAULT_TRANSACTION_ROOT = Join-Path $fixtureRoot 'updates'
+$savedGitConfigGlobal = $env:GIT_CONFIG_GLOBAL
+$savedGitConfigNoSystem = $env:GIT_CONFIG_NOSYSTEM
 $repositoryRoot = Join-Path $fixtureRoot 'repo'
 $projectRoot = Join-Path $fixtureRoot 'project'
 $globalRoot = Join-Path $fixtureRoot 'global'
@@ -497,26 +499,70 @@ try {
     & (Join-Path $PSScriptRoot 'verify-installed-skills.ps1') -RepoRoot $catalogRepository -SkillsPath $migrationGlobal -Name $scopedNames | Out-Null
     & (Join-Path $PSScriptRoot 'verify-installed-skills.ps1') -RepoRoot $catalogRepository -SkillsPath (Join-Path $migrationProject '.github/skills') -Name $scopedNames | Out-Null
 
-    $global:fixtureTagHead = 'head'
-    function global:git {
-        $global:LASTEXITCODE = 0
-        if ($args[2] -eq 'status') { return }
-        if ($args[-1] -eq 'HEAD') { return $global:fixtureTagHead }
-        return 'tag'
+    # Real Git with isolated settings: a pin reads the skill's own tag and leaves the checkout as it was.
+    $env:GIT_CONFIG_GLOBAL = Join-Path $fixtureRoot 'gitconfig'
+    $env:GIT_CONFIG_NOSYSTEM = '1'
+    New-Item -ItemType File -Path $env:GIT_CONFIG_GLOBAL -Force | Out-Null
+    foreach ($setting in @(@('user.name', 'SkillVault Fixture'), @('user.email', 'fixture@example.invalid'), @('core.autocrlf', 'false'), @('init.defaultBranch', 'main'))) {
+        git config --global $setting[0] $setting[1]
     }
-    Assert-True (Test-Throws { & $installScript -Name 'alpha' -RepoRoot $repositoryRoot -ProjectPath $projectRoot -GlobalSkillsPath $globalRoot -RequestedVersion 'v1.2.0' -Force }) 'a tag not matching HEAD is rejected'
-    $global:fixtureTagHead = 'tag'
-    & $installScript -Name 'alpha' -RepoRoot $repositoryRoot -ProjectPath $projectRoot -GlobalSkillsPath $globalRoot -RequestedVersion 'v1.2.0' -Force | Out-Null
-    Assert-True ((Get-Content -LiteralPath (Join-Path $alphaTarget '.skillvault-install.json') -Raw | ConvertFrom-Json).requestedVersion -eq 'v1.2.0') 'a verified tag remains pinned in metadata'
+    $tagRepository = Join-Path $fixtureRoot 'tag-repo'
+    $tagGlobal = Join-Path $fixtureRoot 'tag-global'
+    $tagSkill = Join-Path $tagRepository 'skills\core\alpha'
+    $tagCatalog = Join-Path $tagRepository 'catalog.json'
+    function Invoke-TagGit {
+        $ErrorActionPreference = 'Continue'
+        $output = @(git -C $tagRepository @args 2>&1 | ForEach-Object { [string]$_ })
+        if ($LASTEXITCODE -ne 0) { throw "git $($args -join ' ') failed: $($output -join ' ')" }
+        return $output
+    }
+    $null = New-FixtureSkill -RepositoryRoot $tagRepository -RelativePath 'skills/core/alpha' -SkillName 'alpha' -Version '1.0.0' -DefaultScope 'global'
+    'released notes' | Set-Content -LiteralPath (Join-Path $tagSkill 'notes.md') -Encoding utf8
+    ConvertTo-Json -Depth 5 -InputObject @([ordered]@{ name = 'alpha'; description = 'Fixture alpha'; path = 'skills/core/alpha'; version = '1.0.0' }) | Set-Content -LiteralPath $tagCatalog -Encoding utf8
+    Invoke-TagGit init -q | Out-Null
+    Invoke-TagGit add --all | Out-Null
+    Invoke-TagGit commit -q -m 'alpha 1.0.0' | Out-Null
+    Invoke-TagGit tag -a alpha/v1.0.0 -m 'alpha 1.0.0' | Out-Null
+    $releasedCopy = Join-Path $fixtureRoot 'alpha-1.0.0'
+    Copy-Item -LiteralPath $tagSkill -Destination $releasedCopy -Recurse
+    $null = New-FixtureSkill -RepositoryRoot $tagRepository -RelativePath 'skills/core/alpha' -SkillName 'alpha' -Version '1.1.0' -DefaultScope 'global'
+    Remove-Item -LiteralPath (Join-Path $tagSkill 'notes.md')
+    ConvertTo-Json -Depth 5 -InputObject @([ordered]@{ name = 'alpha'; description = 'Fixture alpha'; path = 'skills/core/alpha'; version = '1.1.0' }) | Set-Content -LiteralPath $tagCatalog -Encoding utf8
+    Invoke-TagGit add --all | Out-Null
+    Invoke-TagGit commit -q -m 'alpha 1.1.0' | Out-Null
+    Invoke-TagGit tag -a alpha/v2.0.0 -m 'mislabeled' | Out-Null
+    'staged' | Set-Content -LiteralPath (Join-Path $tagRepository 'staged.md')
+    Invoke-TagGit add staged.md | Out-Null
+    'uncommitted' | Set-Content -LiteralPath (Join-Path $tagSkill 'SKILL.md')
+    $checkoutState = { (@(Invoke-TagGit symbolic-ref HEAD) + @(Invoke-TagGit rev-parse HEAD) + @(Invoke-TagGit status --porcelain)) -join '|' }
+    $stateBefore = & $checkoutState
 
-    Write-Output 'Install helper checks passed: scope routing, metadata, exclusions, preflight batching, and staged rollback.'
+    $pinPreview = @(& $installScript -Name alpha -Scope global -RepoRoot $tagRepository -ProjectPath $projectRoot -GlobalSkillsPath $tagGlobal -RequestedVersion v1.0.0 -Preview | ConvertFrom-Json)
+    Assert-True ($pinPreview[0].Tag -ceq 'alpha/v1.0.0' -and $pinPreview[0].PathAtTag -ceq 'skills/core/alpha' -and -not (Test-Path -LiteralPath $tagGlobal)) 'a pin preview names the skill tag and copies nothing'
+    & $installScript -Name alpha -Scope global -RepoRoot $tagRepository -ProjectPath $projectRoot -GlobalSkillsPath $tagGlobal -RequestedVersion v1.0.0 | Out-Null
+    $pinnedTarget = Join-Path $tagGlobal 'alpha'
+    $pinnedMetadata = Get-Content -LiteralPath (Join-Path $pinnedTarget '.skillvault-install.json') -Raw | ConvertFrom-Json
+    Assert-True (Test-SkillContentEqual -Source $releasedCopy -Target $pinnedTarget) 'a pin installs the files at its skill tag, not the current checkout'
+    Assert-True ($pinnedMetadata.requestedVersion -ceq 'v1.0.0' -and $pinnedMetadata.installedVersion -ceq '1.0.0' -and $pinnedMetadata.sourcePath -ceq 'skills/core/alpha') 'pin metadata records the requested and installed versions'
+    Assert-True ($pinnedMetadata.sourceRevision -ceq [string](Invoke-TagGit rev-parse 'alpha/v1.0.0:skills/core/alpha')) 'a pin records the tagged skill folder as its source revision'
+    Assert-True ((& $checkoutState) -ceq $stateBefore) 'a pin leaves the branch, staged change, and uncommitted edit as they were'
+    Assert-True (Test-Throws { & $installScript -Name alpha -Scope global -RepoRoot $tagRepository -ProjectPath $projectRoot -GlobalSkillsPath $tagGlobal -RequestedVersion v9.9.9 -Force }) 'a missing skill tag blocks installation'
+    Assert-True (Test-Throws { & $installScript -Name alpha -Scope global -RepoRoot $tagRepository -ProjectPath $projectRoot -GlobalSkillsPath $tagGlobal -RequestedVersion v2.0.0 -Force }) 'a tag whose skill holds another version is rejected'
+    Assert-True (Test-SkillContentEqual -Source $releasedCopy -Target $pinnedTarget) 'rejected pins leave the installed copy unchanged'
+    $verifyScript = Join-Path $PSScriptRoot 'verify-installed-skills.ps1'
+    Assert-True ((@(& $verifyScript -RepoRoot $tagRepository -SkillsPath $tagGlobal -Name alpha) -join ' ') -match '1 of them are pinned') 'verification compares a pinned copy with its own tag'
+    'local edit' | Set-Content -LiteralPath (Join-Path $pinnedTarget 'notes.md')
+    Assert-True (Test-Throws { & $verifyScript -RepoRoot $tagRepository -SkillsPath $tagGlobal -Name alpha }) 'verification reports a pinned copy that differs from its tag'
+
+    Write-Output 'Install helper checks passed: scope routing, metadata, exclusions, preflight batching, staged rollback, and per-skill tag pins.'
 }
 finally {
     $env:SKILLVAULT_OWNERSHIP_ROOT = $savedFixtureOwnershipRoot
     $env:SKILLVAULT_RECOVERY_ROOT = $savedFixtureRecoveryRoot
     $env:SKILLVAULT_TRANSACTION_ROOT = $savedFixtureTransactionRoot
-    if (Test-Path -LiteralPath 'Function:\git') { Remove-Item -LiteralPath 'Function:\git' -Force }
-    Remove-Variable -Name fixtureTagHead, fixturePartialSwapReached -Scope Global -ErrorAction SilentlyContinue
+    $env:GIT_CONFIG_GLOBAL = $savedGitConfigGlobal
+    $env:GIT_CONFIG_NOSYSTEM = $savedGitConfigNoSystem
+    Remove-Variable -Name fixturePartialSwapReached -Scope Global -ErrorAction SilentlyContinue
     if (Test-Path -LiteralPath 'Function:\Copy-Item') { Remove-Item -LiteralPath 'Function:\Copy-Item' -Force }
     if (Test-Path -LiteralPath 'Function:\Move-Item') { Remove-Item -LiteralPath 'Function:\Move-Item' -Force }
     if (Test-Path -LiteralPath $fixtureRoot) { Remove-Item -LiteralPath $fixtureRoot -Recurse -Force }

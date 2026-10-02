@@ -247,11 +247,21 @@ sources rules in `<RepoRoot>/AGENTS.md`:
 For all of them, keep the verified original `author` and record the SkillVault curator as
 `maintainer`. Unknown authorship or licensing is `null`, never an inferred attribution or permission
 grant; copy the original's files only when the upstream repository has a license that permits it.
-Use a verified upstream version only for an actual matching release; otherwise use explicit `null`,
-and keep catalog and manifest versions aligned. Record the upstream repository, path, and license
-under `upstream`; `source` describes the SkillVault folder. A reference installs the original with
-any scripts or hooks, so say so in its description; never claim that a guide installs them. Update
-`catalog.json` the same way: four fields, sorted by name.
+Set `version` as in [Versions](#versions): `null` for a reference, adaptation, or guide, and
+`1.0.0` for a new native skill; keep catalog and manifest versions aligned. Record the upstream
+repository, path, and license under `upstream`; `source` describes the SkillVault folder. A
+reference installs the original with any scripts or hooks, so say so in its description; never
+claim that a guide installs them. Update `catalog.json` the same way: four fields, sorted by name.
+
+## Versions
+
+Follow the version rules in `<RepoRoot>/AGENTS.md` (Catalog Rules). Change a native skill's
+version only when it works differently: a bug fix is a patch, an addition is minor, and a removed
+or renamed action or option, a changed default, or a changed saved format is major. Wording, docs,
+and tests keep the version. Changes between two tags take one step, the largest. Update
+`skill.json`, `catalog.json`, and `SKILL.md` metadata together. A new native skill starts at
+`1.0.0`; references, adaptations, and guides keep `null`. Upsert creates no tags; see
+[Publishing](#publishing).
 
 ## After Upsert
 
@@ -377,7 +387,9 @@ actual push destination is the approved SkillVault repository (`wzlwit/skillvaul
 origin alone is not a publishing check. Push directly only when the current branch is meant for
 direct publishing; otherwise open a PR. Without a local checkout, offer the confirmed `clone` or `pr`
 choices from [Source Repository Resolution](#source-repository-resolution). Never use an unrelated
-repository as the SkillVault source or publish to its remote.
+repository as the SkillVault source or publish to its remote. When publishing to `main`, tag each
+versioned skill whose `<skill>/vX.Y.Z` tag does not exist yet on the published commit, and push
+those tags with it.
 
 ## Safety
 

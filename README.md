@@ -108,8 +108,10 @@ See the [per-skill scope audit](review/install-scopes-2026-09-15.md) for the ass
 
 Keep `version` present in both the catalog and manifest: use the declared version string,
 or JSON `null` when no version is declared. `latest` describes the requested installation
-policy, not a release version. Preserve original authorship on imports and disclose any
-adaptation; access to a source repository does not establish redistribution rights.
+policy, not a release version. Native skill versions follow the version rules in
+[AGENTS.md](AGENTS.md#catalog-rules), and each version is tagged `<skill>/vX.Y.Z`. Preserve
+original authorship on imports and disclose any adaptation; access to a source repository does
+not establish redistribution rights.
 
 Catalog entry example:
 
@@ -118,7 +120,7 @@ Catalog entry example:
   "name": "skillvault-installation",
   "description": "Manage installed SkillVault skill copies by subcommand.",
   "path": "skills/core/skillvault-installation",
-  "version": "1.1.0"
+  "version": "1.2.0"
 }
 ```
 
@@ -635,7 +637,8 @@ installation through `/skillvault-installation install`; existing copies are not
 `/skillvault-refresh schedule` explicitly configures one-way refresh; `/skillvault-sync` and `/sv-sync`
 are compatibility aliases. Use `/skillvault-installation install <skill-or-folder-or-keyword> <scope> <version>` for
 specific skills or keyword-matched sets. Omitted scope uses `install.defaultScope`, then `project`.
-`session` writes no installed copy. Omitted version is `latest`; pinned versions use `v#.#.#`.
+`session` writes no installed copy. Omitted version is `latest`; a pinned version `v#.#.#` installs
+that skill's `<skill>/v#.#.#` tag.
 
 PowerShell installation uses the bundled file helper. Bash installation requires Node.js for
 JSON metadata; neither installer runs skill workflows or changes Windows schedules. Existing
@@ -708,9 +711,9 @@ checkout and the committed version of the skill folder, which refresh uses to me
 .\scripts\install-skills.ps1 -Name webapp-testing -Scope project -ProjectPath C:\repos\my-project
 ```
 
-Use `-Force` only after reviewing an existing installation. For a pinned install, select a
-clean checkout of the desired tag and pass `-RequestedVersion v1.0.0`; the installer checks
-HEAD against that tag. Uncommitted local changes can be installed with `latest`, but are not
+Use `-Force` only after reviewing an existing installation. For a pinned install, pass
+`-RequestedVersion v1.0.0`; the installer reads the skill from its own `<skill>/v1.0.0` tag without
+changing your checkout. Uncommitted local changes can be installed with `latest`, but are not
 available remotely until explicitly published.
 
 Use `/skillvault-authoring remove <skill-name[,skill-name...]> [repo-path]` to remove exact source skills and

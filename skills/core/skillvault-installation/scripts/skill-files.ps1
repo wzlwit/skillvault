@@ -479,6 +479,35 @@ function Get-SkillUpstreamSnapshot {
     }
 }
 
+function Get-SkillTagSnapshot {
+    param(
+        [Parameter(Mandatory = $true)][string]$RepoPath,
+        [Parameter(Mandatory = $true)][string]$Name,
+        [Parameter(Mandatory = $true)][string]$Version,
+        [Parameter(Mandatory = $true)][string]$Destination
+    )
+
+    # A pin reads the skill's own tag; the checkout's branch, index, and files stay as they are.
+    $ErrorActionPreference = 'Continue'
+    $tag = "$Name/$Version"
+    $commit = [string](git -C $RepoPath rev-parse --verify --quiet "refs/tags/${tag}^{commit}" 2>$null | Select-Object -First 1)
+    if ($LASTEXITCODE -ne 0 -or -not $commit.Trim()) { throw "Tag $tag was not found in $RepoPath." }
+    $commit = $commit.Trim()
+    $catalogText = @(git -C $RepoPath show "${commit}:catalog.json" 2>$null) -join "`n"
+    if ($LASTEXITCODE -ne 0) { throw "Tag $tag has no catalog.json." }
+    $catalog = $catalogText | ConvertFrom-Json
+    $entry = @($catalog | Where-Object { $_.name -ceq $Name })
+    if ($entry.Count -ne 1) { throw "The catalog at tag $tag does not list '$Name' exactly once." }
+    $path = [string]$entry[0].path
+    $revision = [string](git -C $RepoPath rev-parse --verify --quiet "${commit}:$path" 2>$null | Select-Object -First 1)
+    if ($LASTEXITCODE -ne 0 -or -not $revision.Trim() -or -not (Export-SkillGitTree -RepoPath $RepoPath -TreeIsh $revision.Trim() -Destination $Destination)) {
+        throw "Could not read '$path' at tag $tag."
+    }
+    $manifest = Read-SkillManifest -SkillPath $Destination -ExpectedName $Name
+    if ("v$($manifest.version)" -cne $Version) { throw "Tag $tag holds $Name version $($manifest.version)." }
+    return [pscustomobject]@{ Tag = $tag; Commit = $commit; Path = $path; Revision = $revision.Trim(); Folder = $Destination; Manifest = $manifest }
+}
+
 function Set-SkillUpstreamSection {
     param(
         [Parameter(Mandatory = $true)][string]$SkillFile,
