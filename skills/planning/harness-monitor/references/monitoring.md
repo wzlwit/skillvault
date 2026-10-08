@@ -40,7 +40,7 @@ paths are illustrative, not installed configuration or recommendations for a rea
 | `condition` | Numeric breach condition: `gt`, `ge`, `lt`, `le`, `eq`, or `ne`, plus finite threshold |
 | `response` | Optional `propose-task` default or `report-only`; no automatic intake option |
 | `allowScheduled` | Optional boolean, false when omitted; independent of timer registration |
-| `referenceId` | Optional active `/harness-link` ID pointing to a dashboard, query, or source guide |
+| `referenceId` | Optional active `/harness-project context` source ID pointing to a dashboard, query, or source guide |
 
 All nonoptional fields must be supplied. Unknown declaration/source/condition fields are rejected.
 No numeric defaults are guessed. `monitors` upserts by name and preserves unmentioned definitions;
@@ -98,6 +98,13 @@ task acceptance uses the existing task/reference helpers and stores their IDs on
 Repeated acceptance returns the existing task rather than adding another. The first report link
 is stable; subsequent checks update its reference note with latest evidence. Recovered episodes
 and completed/cancelled tasks are not automatically reopened or closed by a metric reading.
+
+`/harness-monitor auto <name> --worker <flow>` gives a health monitor the same standing intake as a
+discovery source: each complete check accepts the open incident's proposal and runs the declared
+local-only worker flow for it, with `HARNESS_ITEM_ID` set to the incident ID (`I-...`) and
+`HARNESS_SOURCE` to its `harness-monitor://` identity. Only an incident still open in that check is
+worked; a recovered episode is not. The rules in [standing intake](discovery.md#standing-intake)
+apply unchanged.
 
 ## Helper Examples
 

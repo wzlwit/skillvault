@@ -1,10 +1,13 @@
 # ADR: Stakeholder Communications Drafting
 
+> Topic and command names in this record were updated to the current topics on 2026-10-07; see the [old-name retirement ADR](./2026-10-07-retire-old-names-adr.md).
+
 - Date: 2026-09-29
 - Status: Accepted
 - Decision owner: Zhaolong Wang
 - Scope: Status trackers, meeting-slot comparison, sync-up invites, and email updates or thread replies for tracked work.
 - Related: [Topic contracts](../2026-09-16-topic-skill-refactor.md) and [documentation authoring](2026-09-26-harness-documentation-adr.md).
+- Topic name superseded 2026-10-07: this topic is now `/harness-write` (`upsert tracker|meeting|email`, `slots`); the decisions below stand. See the [topic consolidation ADR](./2026-10-07-harness-topic-consolidation-adr.md).
 
 ## Context
 
@@ -16,12 +19,12 @@ reader guides, not these time-bound drafts.
 
 ## Decisions
 
-1. Register one `harness-comms` skill, with `/hn-comms` as conversational shorthand. Bare invocation
+1. Register one `harness-write` skill, with `/hn-write` as conversational shorthand. Bare invocation
    and `list` show known artifacts and actions; `slots` compares meeting times read-only; `upsert`
    creates or updates a `tracker`, `meeting`, or `email` draft, with `create` and `update` as aliases.
    Do not add separate meeting, email, or tracker bundles.
 2. Work directly in the session without an initialized harness or runtime action. When a harness root
-   exists, offer to register artifact links through `harness-link`.
+   exists, offer to register artifact links through `harness-project context add`.
 3. Save drafts only. Sending mail, sending or updating invites, sharing pages, changing link
    permissions, and deleting items each need an explicit request. Add meeting attendees through
    Outlook on the web and save the event as a draft, because adding them through Graph can send
@@ -41,7 +44,7 @@ reader guides, not these time-bound drafts.
 ## Alternatives
 
 - Three standalone skills would duplicate the shared evidence, drafting, and verification rules.
-- Extending `harness-report` would mix time-bound messages with dashboard and query authoring.
+- Extending the separate report topic would mix time-bound messages with dashboard and query authoring.
 - A `send` action would make the most consequential step one command away; the user sends instead.
 - Ranking slots by hand in every session repeats time-zone arithmetic that is easy to get wrong.
 
@@ -55,8 +58,8 @@ change schedules, or publish anything.
 
 ## References
 
-- [Skill entrypoint](../../../skills/planning/harness-comms/SKILL.md)
-- [Shared workflow](../../../skills/planning/harness-comms/references/workflow.md)
-- [Meeting guide](../../../skills/planning/harness-comms/references/meeting.md)
-- [Slot ranking script](../../../skills/planning/harness-comms/scripts/rank-slots.ps1)
+- [Skill entrypoint](../../../skills/planning/harness-write/SKILL.md)
+- [Shared workflow](../../../skills/planning/harness-write/references/comms.md)
+- [Meeting guide](../../../skills/planning/harness-write/references/meeting.md)
+- [Slot ranking script](../../../skills/planning/harness-write/scripts/rank-slots.ps1)
 - [Current project plan](../2026-09-15-harness-command-and-record-contracts.md#communications-drafting)

@@ -5,6 +5,10 @@ $fixtureRoot = Join-Path ([System.IO.Path]::GetTempPath()) ('pr-review-' + [guid
 $savedFixtureOwnershipRoot = $env:SKILLVAULT_OWNERSHIP_ROOT
 $env:SKILLVAULT_OWNERSHIP_ROOT = Join-Path $fixtureRoot 'runtime-ownership'
 $savedGitConfigGlobal = $env:GIT_CONFIG_GLOBAL
+$savedReviewModels = $env:SKILLVAULT_REVIEW_MODELS
+$reviewModelsFixture = Join-Path ([System.IO.Path]::GetTempPath()) ('pr-review-models-' + [guid]::NewGuid().ToString('N') + '.json')
+[System.IO.File]::WriteAllText($reviewModelsFixture, '{"families":[{"id":"gpt","label":"GPT","pattern":"gpt-*","models":["gpt-fixture-top","gpt-fixture-next"]},{"id":"claude-opus","label":"Claude Opus","pattern":"claude-opus-*","models":["claude-opus-fixture-top"]}]}')
+$env:SKILLVAULT_REVIEW_MODELS = $reviewModelsFixture
 
 function Assert-PrFailure {
     param([scriptblock]$Operation, [string]$Expected)
@@ -127,7 +131,7 @@ try {
     $null = Invoke-HarnessGit $sourceRepo ($commitOptions + @('head fixture'))
     $headCommit = [string](Invoke-HarnessGit $sourceRepo @('rev-parse', 'HEAD'))
     foreach ($number in @(1, 2)) { $null = Invoke-HarnessGit $sourceRepo @('update-ref', "refs/pull/$number/head", $headCommit) }
-    $script:providerFixture = [pscustomobject]@{ Commands = [Collections.Generic.List[object]]::new(); PullReads = 0; ChangeAfterReview = $false; FailEvidence = $false; Numbers = @(1); Workers = 0; Guidance = ''; LastWorkspace = ''; Current = $null }
+    $script:providerFixture = [pscustomobject]@{ Commands = [Collections.Generic.List[object]]::new(); PullReads = 0; ChangeAfterReview = $false; FailEvidence = $false; Numbers = @(1); Workers = 0; Guidance = ''; LastWorkspace = ''; Current = $null; Credits = [Collections.Generic.List[object]]::new() }
     $realCommand = ${function:Invoke-PrReviewCommand}
     function Invoke-PrReviewCommand {
         param($Runtime, $Config, $Clock, $Executable, $Arguments, $Directory, $EnvironmentVariables)
@@ -165,6 +169,7 @@ try {
     function Invoke-HarnessAgent {
         param($Paths, $Config, $Task, $Workspace, $Phase, $Snapshot, $ReviewGuidance)
         $script:providerFixture.Workers++
+        $script:providerFixture.Credits.Add($Config.runner.maxCredits)
         $script:providerFixture.Guidance = $ReviewGuidance
         $script:providerFixture.LastWorkspace = $Workspace
         $script:providerFixture.Current = (Read-HarnessState $Paths).prReviewCurrent
@@ -239,6 +244,48 @@ try {
     if ($creditBounded.status -cne 'Bounded' -or $creditBounded.attempted -ne 1 -or $creditBounded.deferred -ne 1 -or $creditBounded.reservedCreditCeiling -ne 1 -or $script:providerFixture.Workers -ne $workersBeforeBudget + 2) { throw 'The exhausted reserved-credit ceiling launched another PR review.' }
     $definition.prReview.maxCycleCredits = 8
     $null = Set-PrReviewConfiguration $paths $definition -Apply
+    $unlimitedDefinition = $definition | ConvertTo-Json -Depth 15 | ConvertFrom-Json
+    $unlimitedDefinition.runner.PSObject.Properties.Remove('maxCredits')
+    $unlimitedDefinition.prReview.PSObject.Properties.Remove('maxCycleCredits')
+    $freshPaths = Get-PrReviewPaths (Join-Path $fixtureRoot 'fresh-controller')
+    $unlimitedPreview = Set-PrReviewConfiguration $freshPaths $unlimitedDefinition
+    if ($null -ne $unlimitedPreview.effectiveRunner.maxCredits -or (Test-Path -LiteralPath $freshPaths.Config)) { throw 'An omitted cycle credit budget became a per-session cap.' }
+    $uncappedConfig = Read-HarnessConfig $runtime
+    $uncappedConfig.prReview.PSObject.Properties.Remove('maxCycleCredits')
+    $uncappedConfig.runner.maxCredits = $null
+    Write-HarnessConfig $runtime $uncappedConfig
+    $script:providerFixture.Credits.Clear()
+    $uncapped = Invoke-PrReviewRun $paths -Again
+    if ($uncapped.attempted -ne 2 -or $uncapped.reservedCreditCeiling -ne 0 -or $script:providerFixture.Credits.Count -ne 4 -or @($script:providerFixture.Credits | Where-Object { $null -ne $_ }).Count) { throw 'Without a declared credit budget, PR review sessions received a cap or the cycle stopped on credits.' }
+    $null = Set-PrReviewConfiguration $paths $definition -Apply
+    $savedSettings = (Read-HarnessConfig $runtime).prReview
+    if ($savedSettings.maxCycleCredits -ne 8 -or (Read-HarnessConfig $runtime).runner.maxCredits -ne 2) { throw 'Restoring the declared budgets lost the cycle or per-session credit cap.' }
+    $defaults = Get-PrReviewSettings $null
+    if (-not $defaults.defaultProfiles -or ($defaults.githubHosts -join ',') -cne 'github.com' -or $null -ne $defaults.maxPullRequests -or $null -ne $defaults.maxCycleMinutes -or $null -ne $defaults.maxCycleCredits -or $defaults.allowScheduled -or $defaults.securityReview) { throw 'Unsaved PR settings did not default to github.com, no limits, no schedule, and the review model list.' }
+    $defaultChoice = Select-PrReviewProfile ([pscustomobject]@{ prReview = $null }) $capabilities
+    if ($defaultChoice.model -cne 'gpt-fixture-top' -or $defaultChoice.effort -cne 'max' -or $defaultChoice.context -cne 'long_context' -or (@($defaultChoice.options).model -join ',') -cne 'gpt-fixture-top,gpt-fixture-next,claude-opus-fixture-top') { throw 'The default PR reviewer did not come from the review model list, strongest first.' }
+    $narrowedChoice = Select-PrReviewProfile ([pscustomobject]@{ prReview = $null; restrictions = [pscustomobject]@{ allowedModels = @('claude-opus-fixture-top') } }) $capabilities
+    if ($narrowedChoice.model -cne 'claude-opus-fixture-top' -or @($narrowedChoice.options).Count -ne 1) { throw 'allowedModels did not narrow the default PR models.' }
+    if ((Select-PrReviewProfile (Read-HarnessConfig $runtime) $capabilities).PSObject.Properties['options']) { throw 'Saved PR profiles gained automatic model fallback.' }
+    $partialPreview = Set-PrReviewConfiguration $freshPaths ([pscustomobject]@{ prReview = [pscustomobject]@{ allowScheduled = $true } })
+    if ($partialPreview.selection.model -cne 'gpt-fixture-top' -or $null -ne $partialPreview.effectiveRunner.maxMinutes -or $null -ne $partialPreview.effectiveRunner.maxCredits -or (Test-Path -LiteralPath $freshPaths.Config)) { throw 'A partial PR configuration did not keep defaults for omitted settings.' }
+    Assert-PrFailure { Set-PrReviewConfiguration $freshPaths ([pscustomobject]@{ schedule = 'daily' }) } 'accepts only runner and prReview'
+    $zeroRoot = Join-Path $fixtureRoot 'zero-config'
+    New-Item -ItemType Directory -Path (Join-Path $zeroRoot '.github/skills/rules/references') -Force | Out-Null
+    [System.IO.File]::WriteAllText((Join-Path $zeroRoot '.github/skills/rules/references/core.md'), 'Fixture rules for the unconfigured controller.')
+    $zeroPaths = Get-PrReviewPaths $zeroRoot
+    $script:providerFixture.Credits.Clear()
+    $workersBeforeZero = $script:providerFixture.Workers
+    $zeroRun = Invoke-PrReviewRun $zeroPaths -Url 'https://github.com/owner/repo/pull/1'
+    $zeroRuntime = Get-HarnessPaths $zeroRoot
+    $zeroConfig = Read-HarnessConfig $zeroRuntime
+    $zeroRecord = @((Read-HarnessState $zeroRuntime).prReviews)[-1]
+    if ($zeroRun.status -cne 'Completed' -or $zeroRun.results[0].status -cne 'clean' -or $script:providerFixture.Workers -ne $workersBeforeZero + 2) { throw ('A PR review without saved settings did not run: ' + ($zeroRun | ConvertTo-Json -Depth 8)) }
+    if ($null -ne $zeroConfig.prReview -or $zeroConfig.boardPath -cne 'reports' -or $zeroRecord.model -cne 'gpt-fixture-top' -or $zeroRecord.effort -cne 'max' -or @($script:providerFixture.Credits | Where-Object { $null -ne $_ }).Count) { throw 'The first run saved settings, misplaced reports, or used a model or cap other than the defaults.' }
+    $zeroResults = Get-PrReviewResults $zeroPaths
+    if (-not $zeroResults.configured -or @($zeroResults.reviews).Count -ne 1 -or $zeroResults.reviews[0].status -cne 'clean') { throw 'Results did not show a review made without saved settings.' }
+    $null = Add-PrReviewWatch $zeroPaths 'https://github.com/owner/repo/pull/1'
+    Assert-PrFailure { Invoke-PrReviewRun $zeroPaths -Scheduled } 'Save allowScheduled: true'
     $reportsBeforeRemove = @((Read-HarnessState $runtime).prReviews).Count
     $null = Remove-PrReviewWatch $paths $readded.id -Apply
     if (@((Read-HarnessState $runtime).prReviews).Count -ne $reportsBeforeRemove -or -not (Test-Path -LiteralPath $run.results[0].report)) { throw 'Removing a watch deleted review evidence.' }
@@ -292,5 +339,7 @@ try {
 finally {
     $env:SKILLVAULT_OWNERSHIP_ROOT = $savedFixtureOwnershipRoot
     $env:GIT_CONFIG_GLOBAL = $savedGitConfigGlobal
+    $env:SKILLVAULT_REVIEW_MODELS = $savedReviewModels
+    Remove-Item -LiteralPath $reviewModelsFixture -Force -ErrorAction SilentlyContinue
     if (Test-Path -LiteralPath $fixtureRoot) { Remove-Item -LiteralPath $fixtureRoot -Recurse -Force }
 }

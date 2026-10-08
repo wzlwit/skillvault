@@ -11,7 +11,7 @@ Resolve the SkillVault checkout as for install (Install mode; `--repo` maps to `
 the read-only scan:
 
 ```powershell
-~/.copilot/skills/skillvault-installation/scripts/skillvault-list.ps1 -Check [-RepoPath <checkout>] [-ProjectPath <project>]
+~/.copilot/skills/skillvault-installation/scripts/skill-inventory.ps1 -Check [-RepoPath <checkout>] [-ProjectPath <project>]
 ```
 
 It reads the same places as [list](./list.md) (global `~/.copilot/skills` and discovered project
@@ -24,7 +24,7 @@ folders, not with another project's, so one skill in two projects is not a dupli
 | Kind | Meaning | Suggested fix (`action`) |
 | --- | --- | --- |
 | `Duplicate` | One skill name loads twice: in two global folders, or in a global folder and a project | Keep one copy, preferably the global SkillVault copy, and `uninstall` the other. A pinned copy (`decide`) needs the user's choice. |
-| `AdaptationAndOriginal` | An adaptation and its original load together, under one name or as a renamed pair such as `kpi-dashboard` and `kpi-dashboard-design` | Keep the adaptation, the install default, and `uninstall` the original |
+| `AdaptationAndOriginal` | An adaptation and its original load together, under one name or as a renamed adaptation beside its differently named original | Keep the adaptation, the install default, and `uninstall` the original |
 | `FormerName` | A SkillVault copy still uses an old name | `update-topics`: follow [topic-layout migration](./install.md#topic-layout-migration) |
 | `NotInCatalog` | A SkillVault copy whose name no catalog skill uses | `uninstall` |
 | `CannotLoad` | `SKILL.md` is missing or has no `name` or `description` header | `reinstall` a SkillVault copy with `install <name>`; otherwise `report` |
@@ -48,7 +48,7 @@ folders, not with another project's, so one skill in two projects is not a dupli
    that SkillVault cannot fix.
 2. Ask the user to reply with numbers, `all`, or nothing. No answer changes nothing.
 3. Fix only the picked rows, each through its existing procedure and confirmations:
-   - `uninstall`: run `skillvault-list.ps1 -Uninstall -Selector "<indexes>"` with the same scope and
+   - `uninstall`: run `skill-inventory.ps1 -Uninstall -Selector "<indexes>"` with the same scope and
      project path as the scan, check that the preview shows the expected paths, then rerun with
      `-Force`. A copy in another repository is a tracked file there; say that removing it leaves an
      uncommitted change in that repository.

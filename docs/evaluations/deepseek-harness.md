@@ -41,9 +41,9 @@ the existing task, validation, review, and scheduling procedures.
 
 ## Overlap and Integration
 
-The installed [development guide](../../skills/planning/harness-dev/SKILL.md),
+The installed [development guide](../../skills/planning/harness-work/SKILL.md),
 [review guide](../../skills/planning/harness-review/SKILL.md),
-[policy guide](../../skills/planning/harness-policy/SKILL.md), and
+[policy guide](../../skills/planning/harness-project/SKILL.md), and
 [timer guide](../../skills/planning/harness-timer/SKILL.md) were inspected before this recommendation.
 They already coordinate tasks, workspaces, independent checks, explicit permissions, durable
 pauses, and schedules. Dsh overlaps in agent execution, delegation, tool policy, and session
@@ -86,7 +86,7 @@ model turn must not substitute for SkillVault validation and independent review.
 - Default scope: `global`; availability does not grant execution permission
 - Fit: URL-derived, reference-only guide, not a bundled runtime or automatic installer
 - Description: "Configure DeepSeek Harness profiles, providers, and plugins and select headless,
-  SDK, or ACP interfaces. Overlaps with harness-dev on execution; owns dsh-specific runtime
+  SDK, or ACP interfaces. Overlaps with harness-work on execution; owns dsh-specific runtime
   guidance, not task orchestration or an installed backend."
 
 Suggested authoring request: `/skillvault-authoring upsert https://github.com/deepseek-ai/deepseek-harness none`.

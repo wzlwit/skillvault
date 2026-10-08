@@ -11,11 +11,11 @@ param(
     [string]$RunnerContextPath,
     [switch]$Apply,
     [switch]$Prepare,
-    [string]$RunnerPath = (Join-Path $PSScriptRoot '..\..\harness\scripts\harness.ps1')
+    [string]$RunnerPath = (Join-Path $PSScriptRoot '..\..\harness-runtime\scripts\harness.ps1')
 )
 
-. (Join-Path $PSScriptRoot '..\..\harness\scripts\harness-store.ps1')
-. (Join-Path $PSScriptRoot '..\..\harness\scripts\harness-runner.ps1')
+. (Join-Path $PSScriptRoot '..\..\harness-runtime\scripts\harness-store.ps1')
+. (Join-Path $PSScriptRoot '..\..\harness-runtime\scripts\harness-runner.ps1')
 $paths = Get-HarnessPaths $ProjectPath
 if ($Prepare -and ($Apply -or $Action -ne 'Set')) { throw 'Prepare only validates a Set definition without applying it.' }
 if ($InstanceMode -and $Action -ne 'Set') { throw 'InstanceMode applies only to Set; select an existing instance by InstanceName for Status, Disable, or Resume.' }
@@ -115,7 +115,7 @@ if ($Action -eq 'Set') {
         $IntervalDay = [System.Xml.XmlConvert]::ToTimeSpan([string]$task[0].Triggers[0].Repetition.Interval).TotalDays
     }
     if ($IntervalDay -le 0 -or [double]::IsNaN($IntervalDay) -or [double]::IsInfinity($IntervalDay)) {
-        throw 'Set requires a positive interval in days. Use /harness-dev or /harness-test run for immediate work; zero does not create a timer.'
+        throw 'Set requires a positive interval in days. Use /harness-work run or /harness-work test run for immediate work; zero does not create a timer.'
     }
 }
 if ($Action -eq 'Set' -or $Action -eq 'Resume') {
@@ -153,7 +153,7 @@ if ($Action -eq 'Set' -or $Action -eq 'Resume') {
     }
     elseif ($Topic -eq 'review') {
         Assert-HarnessRunnerConfig $config -ReviewOnly
-        Assert-HarnessRestrictions -Config $config -ProjectRoot $paths.Project -Workspace $executionRoot -Model $config.runner.model -Tools @('view', 'glob', 'grep') -Executable $config.runner.command
+        foreach ($reviewer in (Get-HarnessReviewPanel $config).reviewers) { Assert-HarnessRestrictions -Config $config -ProjectRoot $paths.Project -Workspace $executionRoot -Model $reviewer.model -Tools @('view', 'glob', 'grep') -Executable $config.runner.command }
     }
     else {
         Assert-HarnessRunnerConfig $config
@@ -196,7 +196,9 @@ switch ($Action) {
         $scheduledAction = New-ScheduledTaskAction -Execute $powerShell -Argument $arguments
         $interval = [timespan]::FromDays($IntervalDay)
         $trigger = New-ScheduledTaskTrigger -Once -At ((Get-Date).Add($interval)) -RepetitionInterval $interval
-        $minutes = if ($MonitorName) { Get-HarnessExecutionLimit $config maxProcessMinutes $monitorDefinition.maxMinutes } elseif ($TestFlow) { Get-HarnessExecutionLimit $config maxProcessMinutes $testPlan.maxMinutes } elseif ($null -eq $config.runner.maxMinutes) { $null } elseif ($Topic -eq 'review') { $config.runner.maxMinutes * 2 } elseif ($null -ne $config.runner.maxTasksPerCycle) { $config.runner.maxMinutes * 4 * $config.runner.maxTasksPerCycle } else { $null }
+        $panel = Get-HarnessReviewPanel $config
+        $reviewSessionsPerPass = if ($panel.parallel) { 1 } else { [Math]::Max(1, @($panel.reviewers).Count) }
+        $minutes = if ($MonitorName) { Get-HarnessExecutionLimit $config maxProcessMinutes $monitorDefinition.maxMinutes } elseif ($TestFlow) { Get-HarnessExecutionLimit $config maxProcessMinutes $testPlan.maxMinutes } elseif ($null -eq $config.runner.maxMinutes) { $null } elseif ($Topic -eq 'review') { $config.runner.maxMinutes * 2 * $reviewSessionsPerPass } elseif ($null -ne $config.runner.maxTasksPerCycle) { $config.runner.maxMinutes * (2 + 2 * $reviewSessionsPerPass) * $config.runner.maxTasksPerCycle } else { $null }
         $timeLimit = if ($null -eq $minutes) { [timespan]::Zero } else { [timespan]::FromMinutes($minutes + 2) }
         $settings = New-ScheduledTaskSettingsSet -MultipleInstances IgnoreNew -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit $timeLimit
         Register-ScheduledTask -TaskName $taskName -TaskPath '\' -Action $scheduledAction -Trigger $trigger -Settings $settings -Description $description -Force | Out-Null

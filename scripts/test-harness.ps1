@@ -1,11 +1,19 @@
 param([switch]$LayoutOnly, [switch]$BoardNameOnly, [switch]$ProcessOnly)
 
 $ErrorActionPreference = 'Stop'
-. (Join-Path $PSScriptRoot '..\skills\planning\harness\scripts\harness-store.ps1')
-. (Join-Path $PSScriptRoot '..\skills\planning\harness\scripts\harness-runner.ps1')
+. (Join-Path $PSScriptRoot '..\skills\planning\harness-runtime\scripts\harness-store.ps1')
+. (Join-Path $PSScriptRoot '..\skills\planning\harness-runtime\scripts\harness-runner.ps1')
 $fixtureRoot = Join-Path ([System.IO.Path]::GetTempPath()) ('harness-' + [guid]::NewGuid().ToString('N'))
 $savedFixtureOwnershipRoot = $env:SKILLVAULT_OWNERSHIP_ROOT
 $env:SKILLVAULT_OWNERSHIP_ROOT = Join-Path $fixtureRoot 'runtime-ownership'
+$bundledReviewModels = Join-Path $PSScriptRoot '..\skills\planning\harness-runtime\scripts\review-models.json'
+$savedReviewModels = $env:SKILLVAULT_REVIEW_MODELS
+$reviewModelsFixture = Join-Path ([System.IO.Path]::GetTempPath()) ('harness-review-models-' + [guid]::NewGuid().ToString('N') + '.json')
+$env:SKILLVAULT_REVIEW_MODELS = $reviewModelsFixture
+# These fixtures replace runtime functions, which a background test thread would not see.
+$savedInlineValidation = $env:SKILLVAULT_INLINE_VALIDATION
+$env:SKILLVAULT_INLINE_VALIDATION = '1'
+$originalInvokeHarnessAgent = ${function:Invoke-HarnessAgent}
 
 function Assert-HarnessFailure {
     param([scriptblock]$Operation, [string]$Expected)
@@ -20,7 +28,7 @@ function Assert-HarnessFailure {
 
 function Test-HarnessProcessBehavior {
     param([string]$Directory)
-    $windowOptions = @(${function:Invoke-HarnessProcess}.Ast.FindAll({
+    $windowOptions = @(${function:Start-HarnessProcess}.Ast.FindAll({
         param($node)
         $node -is [System.Management.Automation.Language.AssignmentStatementAst] -and $node.Left.Extent.Text -ceq '$start.CreateNoWindow'
     }, $true))
@@ -41,13 +49,27 @@ function Test-HarnessProcessBehavior {
     $largeInput = 'Fixture input ' * 8000
     $inputResult = Invoke-HarnessProcess -Executable pwsh -Arguments @('-NoProfile', '-NonInteractive', '-Command', '[Console]::Out.Write([Console]::In.ReadToEnd().Length)') -Directory $Directory -MaxMinutes 1 -InputText $largeInput
     if ($inputResult.ExitCode -ne 0 -or [int]$inputResult.Output -ne $largeInput.Length) { throw 'Large worker standard input was truncated or blocked.' }
+    $timedProbe = '$started = [DateTime]::UtcNow.Ticks; Start-Sleep -Milliseconds 1500; [Console]::Out.Write(("{0}:{1}:{2}" -f "NAME", $started, [DateTime]::UtcNow.Ticks))'
+    $group = @(Invoke-HarnessProcessGroup -Launches @(
+        @{ Executable = 'pwsh'; Arguments = @('-NoProfile', '-NonInteractive', '-Command', $timedProbe.Replace('NAME', 'first')); Directory = $Directory; MaxMinutes = 1 }
+        @{ Executable = 'pwsh'; Arguments = @('-NoProfile', '-NonInteractive', '-Command', $timedProbe.Replace('NAME', 'second')); Directory = $Directory; MaxMinutes = 1 }
+    ))
+    $spans = @($group | ForEach-Object { $parts = $_.Output -split ':'; [pscustomobject]@{ name = $parts[0]; start = [long]$parts[1]; end = [long]$parts[2] } })
+    if ($group.Count -ne 2 -or @($group | Where-Object ExitCode -NE 0).Count -or ($spans.name -join ',') -cne 'first,second') { throw 'A parallel process group lost a result, its exit status, or launch order.' }
+    if ([Math]::Max($spans[0].start, $spans[1].start) -ge [Math]::Min($spans[0].end, $spans[1].end)) { throw 'Parallel reviewer processes ran one after the other instead of overlapping.' }
+    $mixed = @(Invoke-HarnessProcessGroup -Launches @(
+        @{ Executable = 'pwsh'; Arguments = @('-NoProfile', '-NonInteractive', '-Command', 'Start-Sleep -Seconds 60'); Directory = $Directory; MaxMinutes = 0.03 }
+        @{ Executable = 'pwsh'; Arguments = @('-NoProfile', '-NonInteractive', '-Command', '[Console]::Out.Write("quick")'); Directory = $Directory; MaxMinutes = 1 }
+    ))
+    if ($mixed[0].ExitCode -ne 124 -or -not $mixed[0].TimedOut -or $mixed[1].ExitCode -ne 0 -or $mixed[1].Output -cne 'quick' -or $mixed[1].TimedOut) { throw 'A parallel process timeout did not stay limited to its own process.' }
 }
 
 try {
     New-Item -ItemType Directory -Path $fixtureRoot | Out-Null
+    '{"families":[{"id":"gpt","label":"GPT","pattern":"gpt-*","models":[]},{"id":"claude-opus","label":"Claude Opus","pattern":"claude-opus-*","models":[]}]}' | Set-Content -LiteralPath $env:SKILLVAULT_REVIEW_MODELS -Encoding UTF8
     if ($ProcessOnly) {
         Test-HarnessProcessBehavior -Directory $fixtureRoot
-        Write-Output 'Process checks passed: no-window launch, output, errors, exit status, permission isolation, and standard input.'
+        Write-Output 'Process checks passed: no-window launch, output, errors, exit status, permission isolation, standard input, and parallel groups.'
         return
     }
     if ($BoardNameOnly) {
@@ -80,7 +102,7 @@ try {
         }
         finally { Set-Item Function:Write-HarnessNavigation -Value $writer }
         if ([IO.File]::ReadAllText($paths.Config) -cne $configBefore -or -not (Test-Path $currentPath) -or (Test-Path $preview.destination)) { throw 'Failed rename did not roll back its files and configuration.' }
-        $dispatcher = Join-Path $PSScriptRoot '../skills/planning/harness/scripts/harness.ps1'
+        $dispatcher = Join-Path $PSScriptRoot '../skills/planning/harness-runtime/scripts/harness.ps1'
         $renamed = & $dispatcher -ProjectPath $project -Action Board -CurrentFileName 'current-service.csv' -Apply | ConvertFrom-Json
         if ($renamed.status -cne 'Renamed' -or (Test-Path $currentPath) -or -not (Test-Path $renamed.destination) -or [IO.File]::ReadAllText($paths.State) -cne $stateBefore -or
             @(Import-Csv $renamed.destination)[0].id -cne $task.id) { throw 'Rename lost records, changed task state, or left duplicate canonical boards.' }
@@ -109,12 +131,12 @@ try {
         Assert-HarnessFailure { Set-HarnessCurrentFileName $paths 'current-active.csv' -Apply } 'active work'
         $null = Update-HarnessState $paths { param($saved); $saved.active = $null }
         $reference = Set-HarnessReference $paths -Source $renamed.destination -Note 'Canonical board link'
-        $decisionHelper = Join-Path $PSScriptRoot '../skills/planning/harness-decision/scripts/harness-decide.ps1'
+        $decisionHelper = Join-Path $PSScriptRoot '../skills/planning/harness-decision/scripts/harness-decision.ps1'
         $decision = & $decisionHelper -ProjectPath $project -Action Record -Question 'Which board?' -Choice 'Canonical' -Owner Fixture -Reference $renamed.destination | ConvertFrom-Json
         $linkedRename = Set-HarnessCurrentFileName $paths 'current-linked.csv' -Apply
         if (((Read-HarnessState $paths).references | Where-Object id -CEQ $reference.id).source -cne $linkedRename.destination -or
             (Import-Csv (Join-Path (Get-HarnessBoard $paths $config) 'decisions.csv')).reference -cne $linkedRename.destination) { throw 'Stored board reference or decision links did not follow the explicit rename.' }
-        . (Join-Path $PSScriptRoot '../skills/planning/harness/scripts/harness-move.ps1')
+        . (Join-Path $PSScriptRoot '../skills/planning/harness-runtime/scripts/harness-move.ps1')
         function Get-ScheduledTask { param($TaskPath); @() }
         $movedProject = Join-Path $fixtureRoot 'Renamed Parent'
         New-Item -ItemType Directory -Path $movedProject | Out-Null
@@ -163,7 +185,7 @@ try {
         Write-HarnessViews $paths $loaded (Read-HarnessState $paths)
         if (-not (Test-Path (Get-HarnessCurrentPath $paths $loaded))) { throw 'The declarative layout did not separate board views.' }
         if (-not (Test-Path (Join-Path $paths.Control 'README.md'))) { throw 'The new controller lacks its navigation entry point.' }
-        $decisionHelper = Join-Path $PSScriptRoot '../skills/planning/harness-decision/scripts/harness-decide.ps1'
+        $decisionHelper = Join-Path $PSScriptRoot '../skills/planning/harness-decision/scripts/harness-decision.ps1'
         $null = & $decisionHelper -ProjectPath $fixtureRoot -Action Record -Question 'Layout fixture?' -Choice 'Accepted' -Owner Fixture
         if (-not (Test-Path (Join-Path $paths.Control 'board/decisions.csv'))) { throw 'Decision records ignored the declarative board location.' }
         $standaloneRoot = Join-Path $fixtureRoot 'standalone-decisions'
@@ -178,12 +200,12 @@ try {
             [IO.File]::ReadAllText($standaloneRegister) -cne $standaloneBefore) { throw 'Initialization hid or moved standalone decision records.' }
         $reportPath = Get-HarnessReportPath $paths $loaded 'run-fixture' Monitor ([datetimeoffset]'2026-09-25T12:34:56Z')
         if ([IO.Path]::GetRelativePath($paths.Control, $reportPath).Replace('\', '/') -cne 'history/2026-09/20260925T123456000Z-monitor-run-fixture.md') { throw 'Run evidence did not use the monthly readable naming contract.' }
-        . (Join-Path $PSScriptRoot '../skills/planning/harness/scripts/harness-maintenance.ps1')
+        . (Join-Path $PSScriptRoot '../skills/planning/harness-runtime/scripts/harness-maintenance.ps1')
         if (-not (Test-HarnessOwnedHistoryPath (Get-HarnessBoard $paths $loaded) $reportPath 'run-fixture' -HistoryRoot (Get-HarnessHistoryRoot $paths $loaded)) -or
             (Test-HarnessOwnedHistoryPath (Get-HarnessBoard $paths $loaded) $reportPath 'another-run' -HistoryRoot (Get-HarnessHistoryRoot $paths $loaded))) { throw 'Retention lost exact report ownership in the dated layout.' }
         $policyPath = Join-Path $fixtureRoot 'policy-input.json'
         Write-HarnessJson $policyPath ([pscustomobject]@{ maxTasksPerCycle = 4 })
-        $dispatcher = Join-Path $PSScriptRoot '..\skills\planning\harness\scripts\harness.ps1'
+        $dispatcher = Join-Path $PSScriptRoot '..\skills\planning\harness-runtime\scripts\harness.ps1'
         $null = & $dispatcher -ProjectPath $fixtureRoot -Action Restrict -PolicyAction Declare -DefinitionPath $policyPath -Apply -Actor Fixture -Reason 'Test policy storage'
         if ((Read-HarnessConfigObject (Join-Path $paths.Control 'config/policy.json')).restrictions.maxTasksPerCycle -ne 4 -or
             (Read-HarnessConfigObject $paths.Config).PSObject.Properties['restrictions']) { throw 'Policy mutation bypassed the authoritative domain file.' }
@@ -193,7 +215,7 @@ try {
         $null = & $dispatcher -ProjectPath $fixtureRoot -Action MonitorConfig -DefinitionPath $monitorInput -Apply -Actor Fixture -Reason 'Test monitor storage'
         if ((Read-HarnessConfig $paths).monitoring.monitors[0].maxAgeMinutes -ne 5 -or
             (Read-HarnessConfigObject $paths.Config).PSObject.Properties['monitoring']) { throw 'Monitor mutation bypassed the authoritative domain file.' }
-        . (Join-Path $PSScriptRoot '../skills/planning/harness/scripts/harness-duration.ps1')
+        . (Join-Path $PSScriptRoot '../skills/planning/harness-runtime/scripts/harness-duration.ps1')
         $job = [pscustomobject]@{ id = 'schedule-fixture'; interval = '1h'; anchor = '2026-09-25T10:00:00Z'; timeZoneId = 'UTC'; enabled = $true; arguments = @('original'); nextDue = '2026-09-25T11:00:00Z'; active = $null; recoveryRequired = $false; lastResult = $null; staleSince = '' }
         $schedules = [pscustomobject]@{ schemaVersion = 1; projectId = $config.projectId; jobs = @($job) }
         Write-HarnessProjectSchedules $paths $schedules
@@ -309,7 +331,7 @@ try {
     }
     if (-not (Test-Path -LiteralPath $linkedFolder) -or -not (Test-Path -LiteralPath $referenceFile)) { throw 'Unregistering a link deleted its target.' }
     Assert-HarnessFailure { Set-HarnessBoard $paths 'other-board' } 'contains records'
-    $dispatcher = Join-Path $PSScriptRoot '..\skills\planning\harness\scripts\harness.ps1'
+    $dispatcher = Join-Path $PSScriptRoot '..\skills\planning\harness-runtime\scripts\harness.ps1'
     $commandProject = Join-Path $fixtureRoot 'command-project'
     New-Item -ItemType Directory -Path $commandProject | Out-Null
     $selectedRoot = & $dispatcher -ProjectPath $commandProject -Action Root | ConvertFrom-Json
@@ -642,7 +664,7 @@ try {
     $inheritedOutcome = Invoke-HarnessCycle -Paths $folderPaths -RunnerContext ([pscustomobject]@{ runner = $config.runner })
     $script:phaseResponses = $false
     $inheritedRuns = @((Read-HarnessState $folderPaths).runs | Where-Object taskId -CEQ $inheritedTask.id)
-    if ($inheritedOutcome.status -cne 'Completed' -or $script:processDirectories.Count -ne 4 -or $inheritedRuns.Count -ne 4 -or @($inheritedRuns | Where-Object model -CNE $config.runner.model).Count -ne 0 -or $null -ne (Read-HarnessConfig $folderPaths).runner.model) { throw 'Parent allowances did not reach a complete development/validation/review cycle without persistence.' }
+    if ($inheritedOutcome.status -cne 'Completed' -or $script:processDirectories.Count -ne 4 -or $inheritedRuns.Count -ne 3 -or ($inheritedRuns.phase -join ',') -cne 'Develop,Validate,Fresh' -or @($inheritedRuns | Where-Object model -CNE $config.runner.model).Count -ne 0 -or $null -ne (Read-HarnessConfig $folderPaths).runner.model) { throw 'Parent allowances did not reach a complete development/validation/review cycle without persistence.' }
     Write-HarnessJson $folderPaths.Config $folderConfig
     $securityDirectory = Join-Path $fixtureRoot '.github/skills/differential-review'
     New-Item -ItemType Directory -Path $securityDirectory -Force | Out-Null
@@ -652,10 +674,25 @@ try {
     if (($script:agentArguments -join "`n") -notmatch 'Fixture security methodology' -or ($script:agentArguments -join "`n") -notmatch 'one fresh full-scope pass' -or $script:agentArguments -notcontains '--deny-tool=shell') { throw 'Fresh security review lost its supplied methodology, fresh instruction, or read-only permissions.' }
     $freshPrompt = $script:agentArguments[3]
     if ($freshPrompt -notmatch 'whole selected repository, including unchanged code' -or $freshPrompt -notmatch 'return blocked' -or $freshPrompt -match 'in the requested change set\.' -or $task.scope -cne 'fixture.txt') { throw 'Fresh retained a change-only contract, lost its coverage gate, or mutated the original task scope.' }
-    foreach ($reviewPhase in @('Review', 'Critical')) {
-        $null = Invoke-HarnessAgent $paths $config $task $fixtureRoot $reviewPhase 'fixture-snapshot'
-        if ($script:agentArguments[3] -notmatch 'in the requested change set\.' -or $script:agentArguments[3] -match 'changeScope identifies the first pass' -or $script:agentArguments -notcontains '--deny-tool=shell') { throw 'Ordinary or critical review widened its scope or permissions.' }
-    }
+    if (-not $task.id -or $freshPrompt -notmatch 'outsideTaskScope' -or $freshPrompt -notmatch 'follow-up proposals instead of task work') { throw 'A tracked task Full pass cannot separate findings outside the task scope.' }
+    $null = Invoke-HarnessAgent $paths $config ([pscustomobject]@{ id = ''; title = 'Standalone review'; scope = 'Current changes'; kind = 'verify' }) $fixtureRoot Fresh 'fixture-snapshot'
+    if ($script:agentArguments[3] -match 'outsideTaskScope') { throw 'Standalone Full review asked for task-scope labels without a tracked task.' }
+    $null = Invoke-HarnessAgent $paths $config $task $fixtureRoot Review 'fixture-snapshot'
+    if ($script:agentArguments[3] -notmatch 'in the requested change set\.' -or $script:agentArguments[3] -match 'changeScope identifies the first pass' -or $script:agentArguments -notcontains '--deny-tool=shell') { throw 'Ordinary review widened its scope or permissions.' }
+    Assert-HarnessFailure { Invoke-HarnessAgent $paths $config $task $fixtureRoot Critical 'fixture-snapshot' } 'Critical'
+    $null = Invoke-HarnessAgent $paths $config $task $fixtureRoot Review 'fixture-snapshot' -Reviewer ([pscustomobject]@{ family = 'gpt'; model = 'gpt-fixture'; effort = 'xhigh'; context = 'long_context' })
+    $modelIndex = [Array]::IndexOf($script:agentArguments, '--model')
+    $effortIndex = [Array]::IndexOf($script:agentArguments, '--reasoning-effort')
+    $contextIndex = [Array]::IndexOf($script:agentArguments, '--context')
+    if ($script:agentArguments[$modelIndex + 1] -cne 'gpt-fixture' -or $script:agentArguments[$effortIndex + 1] -cne 'xhigh' -or $script:agentArguments[$contextIndex + 1] -cne 'long_context' -or $script:agentArguments -notcontains '--deny-tool=write') { throw 'A panel reviewer did not use its own model, effort, and context with read-only tools.' }
+    $fixTask = $task | Select-Object *
+    $fixTask | Add-Member -NotePropertyName reviewFindings -NotePropertyValue @([pscustomobject]@{ file = 'fixture.txt'; line = 1; severity = 'P2'; message = 'Fixture fix-round finding' }) -Force
+    $script:agentOutput = '{"outcome":"ready","summary":"Fixture fix ready"}'
+    $null = Invoke-HarnessAgent $paths $config $fixTask $fixtureRoot Develop 'fixture-snapshot'
+    if ($script:agentArguments[3] -notmatch 'Review fix round' -or $script:agentArguments[3] -notmatch 'Fixture fix-round finding' -or $script:agentArguments[3] -notmatch 'return needs-decision') { throw 'A fix-round developer did not receive the review findings and the decision path.' }
+    $script:agentOutput = '{"verdict":"findings","summary":"Fixture scope label","findings":[{"file":"fixture.txt","line":1,"message":"Labelled finding","outsideTaskScope":"yes"}]}'
+    Assert-HarnessFailure { Invoke-HarnessAgent $paths $config $task $fixtureRoot Fresh 'fixture-snapshot' } 'outsideTaskScope must be true or false'
+    $script:agentOutput = '{"verdict":"clean","summary":"Fixture clean","findings":[]}'
     $recheckTask = $task | Select-Object *
     $recheckTask | Add-Member -NotePropertyName recheckFindings -NotePropertyValue @([pscustomobject]@{ file = 'unchanged.txt'; line = 2; severity = 'P2'; message = 'Earlier unresolved fixture issue' })
     foreach ($reviewPhase in @('Review', 'Fresh')) {
@@ -664,7 +701,7 @@ try {
     }
     $script:agentOutput = '{"verdict":"findings","summary":"Fixture malformed finding","findings":[{"file":"fixture.txt","line":0,"message":"No valid anchor"}]}'
     Assert-HarnessFailure { Invoke-HarnessAgent $paths $config $task $fixtureRoot Review '' } 'positive line number'
-    foreach ($phase in @('Develop', 'Review', 'Critical', 'Fresh')) {
+    foreach ($phase in @('Develop', 'Review', 'Fresh')) {
         $validOutput = if ($phase -eq 'Develop') { '{"outcome":"ready","summary":"Parsed final response"}' } else { '{"verdict":"clean","summary":"Parsed final response","findings":[]}' }
         $script:agentOutput = $validOutput
         $parsedResult = Invoke-HarnessAgent $paths $config $task $fixtureRoot $phase 'parser-fixture'
@@ -700,6 +737,13 @@ try {
     $script:agentError = 'Fixture process failure'
     $script:agentOutput = '{"outcome":"ready","summary":"Must not override a failed process"}'
     Assert-HarnessFailure { Invoke-HarnessAgent $paths $config $task $fixtureRoot Develop '' } 'exit 23'
+    $script:agentExitCode = 1
+    $script:agentOutput = ''
+    $script:agentError = 'error: Invalid value for --max-ai-credits: "1". Use at least 30 AI credits.'
+    $creditRefusal = $null
+    try { $null = Invoke-HarnessAgent $paths $config $task $fixtureRoot Develop '' }
+    catch { $creditRefusal = $_ }
+    if (-not $creditRefusal -or $creditRefusal.Exception.Message -notmatch 'refused the per-session AI credit cap' -or $creditRefusal.Exception.Message -notmatch 'remove them for no cap' -or (Get-HarnessFailureKind $creditRefusal) -cne 'Blocked') { throw 'A credit cap the CLI refused was not reported as a configuration block with guidance.' }
     $script:agentExitCode = 0
     $script:agentError = ''
     $script:agentOutput = 'Invalid output that an Idle cycle must never read'
@@ -741,9 +785,9 @@ try {
     }
     finally { Exit-SkillOwnership $otherControllerLease }
     $outcome = Invoke-HarnessCycle $paths
-    if ($outcome.status -cne 'Completed' -or ($script:phases -join ',') -cne 'Develop,Review,Critical') { throw 'Task did not complete through distinct development and review passes.' }
+    if ($outcome.status -cne 'Completed' -or ($script:phases -join ',') -cne 'Develop,Review,Fresh') { throw 'Task did not complete through development, the Changes review, and the Full review.' }
     $state = Read-HarnessState $paths
-    if (@($state.runs).Count -ne 4 -or $state.active -or @((Import-Csv -LiteralPath (Join-Path $fixtureRoot 'board/current.csv'))).Count -ne 0) { throw 'Completed task state or CSV view is incorrect.' }
+    if (@($state.runs).Count -ne 3 -or ($state.runs.phase -join ',') -cne 'Develop,Validate,Fresh' -or $state.active -or @((Import-Csv -LiteralPath (Join-Path $fixtureRoot 'board/current.csv'))).Count -ne 0) { throw 'Completed task state or CSV view is incorrect.' }
     if (-not (Test-Path -LiteralPath $outcome.report)) { throw 'Run report was not written.' }
     $review = Invoke-HarnessReview $paths
     if ($review.passes -ne 2 -or $review.status -cne 'clean' -or $script:phases[-1] -cne 'Fresh') { throw 'Independent clean review did not run exactly one fresh full-scope pass.' }
@@ -904,7 +948,9 @@ try {
     $failedTask = Add-HarnessTask -Paths $paths -Title 'Validation failure' -Description 'Fixture work' -Scope 'failure' -Acceptance 'Fails clearly' -Kind fix -Risk Low -AutoEligible
     function Invoke-HarnessProcess { param($Executable, $Arguments, $Directory, $MaxMinutes); [pscustomobject]@{ ExitCode = 9; Output = ''; Error = 'Fixture failure'; TimedOut = $false } }
     $failedRun = Invoke-HarnessCycle $paths
-    if ($failedRun.status -cne 'Failed' -or (Get-HarnessTask (Read-HarnessState $paths) $failedTask.id).status -cne 'Failed') { throw 'Failed validation was reported as completion.' }
+    $failedSaved = Get-HarnessTask (Read-HarnessState $paths) $failedTask.id
+    $testFinding = @($failedSaved.reviewFindings)[0]
+    if ($failedRun.status -cne 'NeedsDecision' -or $failedSaved.status -cne 'NeedsDecision' -or $failedSaved.phase -cne 'Develop' -or [int]$failedSaved.reviewRound -ne 1 -or $testFinding.source -cne 'test' -or $testFinding.test -cne 'flow:regression:local' -or $testFinding.message -notmatch 'exited 9' -or $testFinding.message -notmatch 'Fixture failure') { throw 'A failed test did not go back to the developer as a fix round, or a fix round without code changes did not stop.' }
     $config.runner.workspaceMode = 'worktree'
     Write-HarnessJson $paths.Config $config
     $interruptedTask = Add-HarnessTask -Paths $paths -Title 'Interrupted' -Description 'Fixture work' -Scope 'interrupt' -Acceptance 'Resume' -Risk Low -AutoEligible
@@ -926,6 +972,390 @@ try {
     if ($urgentOutcome.taskId -cne $urgentTask.id -or (Select-HarnessTask (Read-HarnessState $paths)).id -cne $interruptedTask.id) { throw 'Interrupted work was not first after urgent work.' }
     $resumed = Invoke-HarnessCycle $paths
     if ($resumed.status -cne 'Completed' -or $resumed.taskId -cne $interruptedTask.id) { throw 'Paused task did not resume from its saved phase.' }
+    $panelProfiles = @(
+        [pscustomobject]@{ model = 'claude-opus-fixture-2'; efforts = @('high', 'max'); contexts = @('default', 'long_context') }
+        [pscustomobject]@{ model = 'gpt-fixture-2'; efforts = @('xhigh', 'high'); contexts = @('default') }
+        [pscustomobject]@{ model = 'gpt-fixture-1'; efforts = @('max'); contexts = @('long_context') }
+    )
+    $defaultPanel = Get-HarnessReviewPanel (Resolve-HarnessRunnerConfig $config ([pscustomobject]@{ profiles = $panelProfiles }))
+    if (($defaultPanel.reviewers.model -join ',') -cne 'gpt-fixture-2,claude-opus-fixture-2' -or ($defaultPanel.reviewers.effort -join ',') -cne 'xhigh,max' -or ($defaultPanel.reviewers.context -join ',') -cne 'default,long_context' -or -not $defaultPanel.parallel -or $defaultPanel.note) { throw 'The default panel did not pick the strongest GPT and Claude Opus profiles at their highest effort and context, in parallel.' }
+    $restrictedPanel = Get-HarnessReviewPanel (Resolve-HarnessRunnerConfig $config ([pscustomobject]@{ profiles = $panelProfiles; restrictions = [pscustomobject]@{ allowedModels = @('gpt-fixture-1', 'claude-opus-fixture-2', 'fixture-model') } }))
+    if ($restrictedPanel.reviewers[0].model -cne 'gpt-fixture-1' -or $restrictedPanel.reviewers[0].effort -cne 'max') { throw 'Restrictions did not select the highest allowed GPT model.' }
+    $gptOnlyPanel = Get-HarnessReviewPanel (Resolve-HarnessRunnerConfig $config ([pscustomobject]@{ profiles = $panelProfiles; restrictions = [pscustomobject]@{ allowedModels = @('gpt-fixture-1', 'fixture-model') } }))
+    if (@($gptOnlyPanel.reviewers).Count -ne 1 -or $gptOnlyPanel.reviewers[0].model -cne 'gpt-fixture-1' -or $gptOnlyPanel.parallel -or $gptOnlyPanel.note -notmatch 'Only one reviewer ran' -or $gptOnlyPanel.note -notmatch 'restrictions allow no Claude Opus model') { throw 'A single allowed family did not run alone with an explicit note.' }
+    $unconfiguredPanel = Get-HarnessReviewPanel (Resolve-HarnessRunnerConfig $config)
+    if (@($unconfiguredPanel.reviewers).Count -ne 1 -or $unconfiguredPanel.reviewers[0].model -cne 'fixture-model' -or $unconfiguredPanel.note -notmatch 'no GPT model in the review list; no Claude Opus model in the review list') { throw 'An empty model list did not fall back to one labeled reviewer.' }
+    $env:SKILLVAULT_REVIEW_MODELS = $bundledReviewModels
+    try {
+        $bundledList = Get-HarnessReviewModelList
+        foreach ($family in $bundledList.families) {
+            if (@($family.models).Count -eq 0 -or @($family.models | Select-Object -Unique).Count -ne @($family.models).Count) { throw "The bundled $($family.label) review list is empty or repeats a model." }
+        }
+        if ((@($bundledList.families.id) -join ',') -cne 'gpt,claude-opus') { throw 'The bundled review list lost its GPT or Claude Opus family.' }
+        $bundledPanel = Get-HarnessReviewPanel (Resolve-HarnessRunnerConfig $config)
+        if (($bundledPanel.reviewers.model -join ',') -cne 'gpt-6.1-sol,claude-opus-5.5' -or ($bundledPanel.reviewers.effort -join ',') -cne 'max,max' -or ($bundledPanel.reviewers.context -join ',') -cne 'long_context,long_context' -or ($bundledPanel.reviewers.source -join ',') -cne 'default,default' -or -not $bundledPanel.parallel -or $bundledPanel.note) { throw 'Without profiles, the panel did not use the top bundled GPT and Claude Opus models at max effort and long context.' }
+        $narrowedPanel = Get-HarnessReviewPanel (Resolve-HarnessRunnerConfig $config ([pscustomobject]@{ restrictions = [pscustomobject]@{ allowedModels = @('fixture-model', 'gpt-6-sol', 'claude-opus-5') } }))
+        $gptListing = $narrowedPanel.families | Where-Object family -CEQ 'gpt'
+        if (($narrowedPanel.reviewers.model -join ',') -cne 'gpt-6-sol,claude-opus-5' -or @($gptListing.models | Where-Object allowed).model -cne 'gpt-6-sol' -or @($gptListing.models).Count -ne @(($bundledList.families | Where-Object id -CEQ 'gpt').models).Count) { throw 'allowedModels did not narrow the bundled list or the listing lost excluded models.' }
+        $profiledPanel = Get-HarnessReviewPanel (Resolve-HarnessRunnerConfig $config ([pscustomobject]@{ profiles = $panelProfiles }))
+        if (($profiledPanel.reviewers.model -join ',') -cne 'gpt-fixture-2,claude-opus-fixture-2' -or ($profiledPanel.reviewers.source -join ',') -cne 'profile,profile') { throw 'Supplied profiles did not take precedence over the bundled list.' }
+    }
+    finally { $env:SKILLVAULT_REVIEW_MODELS = $reviewModelsFixture }
+    $observedRejections = @(
+        [pscustomobject]@{ kind = 'model'; error = 'Error: Model "zz-not-a-model" from --model flag is not available.'; supported = '' }
+        [pscustomobject]@{ kind = 'no-effort'; error = 'Error: Model "claude-haiku-4.5" does not support reasoning effort configuration (requested: "max").'; supported = '' }
+        [pscustomobject]@{ kind = 'effort'; error = "Execution failed: Reasoning effort 'none' is not supported for model 'claude-opus-5'."; supported = '' }
+        [pscustomobject]@{ kind = 'effort'; error = "Execution failed: 400 Unsupported value: 'none' is not supported with the 'gpt-6.1-sol' model. Supported values are: 'low', 'medium', 'high', 'xhigh', and 'max'. (Request ID: 44F5:FC8A5)"; supported = 'low,medium,high,xhigh,max' }
+    )
+    foreach ($observed in $observedRejections) {
+        $rejection = Get-HarnessReviewerRejection ([pscustomobject]@{ ExitCode = 1; Output = ''; Error = $observed.error; TimedOut = $false; Stopped = $false })
+        if ($rejection.kind -cne $observed.kind -or (@($rejection.supported) -join ',') -cne $observed.supported) { throw "A CLI rejection was misclassified: $($observed.error)" }
+    }
+    foreach ($notRejection in @(
+        [pscustomobject]@{ ExitCode = 1; Output = ''; Error = 'Execution failed: network unreachable'; TimedOut = $false; Stopped = $false }
+        [pscustomobject]@{ ExitCode = 124; Output = ''; Error = 'Error: Model "x" from --model flag is not available.'; TimedOut = $true; Stopped = $false }
+        [pscustomobject]@{ ExitCode = 1; Output = '{"verdict":"clean"}'; Error = 'Error: Model "x" from --model flag is not available.'; TimedOut = $false; Stopped = $false }
+    )) { if (Get-HarnessReviewerRejection $notRejection) { throw 'A real failure, timeout, or produced output was treated as a free rejection.' } }
+    $sequentialPanel = Get-HarnessReviewPanel (Resolve-HarnessRunnerConfig $config ([pscustomobject]@{ profiles = $panelProfiles; restrictions = [pscustomobject]@{ maxParallelReviewers = 1 } }))
+    if (@($sequentialPanel.reviewers).Count -ne 2 -or $sequentialPanel.parallel) { throw 'maxParallelReviewers 1 did not run both reviewers one after the other.' }
+    Assert-HarnessFailure { Assert-HarnessPolicyDefinition restrictions ([pscustomobject]@{ maxParallelReviewers = 1.5 }) } 'positive integer'
+    $singleReviewerConfig = $config | ConvertTo-Json -Depth 20 | ConvertFrom-Json
+    $singleReviewerConfig.runner.criticalReview = $false
+    $singlePanel = Get-HarnessReviewPanel (Resolve-HarnessRunnerConfig $singleReviewerConfig ([pscustomobject]@{ profiles = $panelProfiles }))
+    if (@($singlePanel.reviewers).Count -ne 1 -or $singlePanel.reviewers[0].model -cne 'fixture-model' -or $singlePanel.note -notmatch 'criticalReview is false') { throw 'An explicit criticalReview false did not keep one reviewer.' }
+    $prPanel = Get-HarnessReviewPanel (Resolve-HarnessRunnerConfig $config ([pscustomobject]@{ profiles = $panelProfiles })) -RunnerProfile ([pscustomobject]@{ model = 'pr-model' })
+    if (@($prPanel.reviewers).Count -ne 1 -or $prPanel.note) { throw 'PR review gained a second reviewer.' }
+    $explicitOpusConfig = $config | ConvertTo-Json -Depth 20 | ConvertFrom-Json
+    $explicitOpusConfig.runner.model = 'claude-opus-explicit'
+    $mixedPanel = Get-HarnessReviewPanel (Resolve-HarnessRunnerConfig $explicitOpusConfig ([pscustomobject]@{ profiles = @($panelProfiles[1]) }))
+    if (($mixedPanel.reviewers.model -join ',') -cne 'gpt-fixture-2,claude-opus-explicit') { throw 'An explicit Claude Opus runner model was not used for its family.' }
+    $panelCalls = [System.Collections.Generic.List[object]]::new()
+    $panelVerdicts = @{ 'gpt-fixture-2' = 'clean'; 'claude-opus-fixture-2' = 'findings' }
+    function Get-HarnessSnapshot { param($Paths, $Config, $Workspace, $BaseRef); '{"head":"panel-head","base":"panel-head","diff":"","untracked":[]}' }
+    function Invoke-HarnessAgent {
+        param($Paths, $Config, $Task, $Workspace, $Phase, $Snapshot, $ReviewGuidance, $RunnerContext, $Reviewer)
+        $panelCalls.Add([pscustomobject]@{ phase = $Phase; model = $Reviewer.model })
+        if ($panelVerdicts[$Reviewer.model] -eq 'blocked') { return [pscustomobject]@{ verdict = 'blocked'; summary = 'Fixture coverage gap'; findings = @() } }
+        if ($panelVerdicts[$Reviewer.model] -eq 'findings') { return [pscustomobject]@{ verdict = 'findings'; summary = "$($Reviewer.model) found a defect"; findings = @([pscustomobject]@{ file = 'panel.txt'; line = 4; severity = 'P2'; message = 'Panel fixture defect' }) } }
+        [pscustomobject]@{ verdict = 'clean'; summary = "$($Reviewer.model) clean"; findings = @() }
+    }
+    $sequentialContext = [pscustomobject]@{ profiles = $panelProfiles; restrictions = [pscustomobject]@{ maxParallelReviewers = 1 } }
+    $panelFindings = Invoke-HarnessReview $paths -Scope 'Panel fixture' -RunnerContext $sequentialContext
+    if ($panelFindings.status -cne 'findings' -or $panelFindings.passes -ne 1 -or $panelFindings.sessions -ne 2 -or (($panelCalls | ForEach-Object { "$($_.phase):$($_.model)" }) -join ',') -cne 'Review:gpt-fixture-2,Review:claude-opus-fixture-2' -or $panelFindings.findings[0].reviewers[0] -cne 'claude-opus-fixture-2' -or $panelFindings.parallelReviewers) { throw 'Sequential panel reviewers did not both review the pass or lost which reviewer found the issue.' }
+    if ([IO.File]::ReadAllText($panelFindings.report) -notmatch 'Reviewers: gpt-fixture-2 \(xhigh, default\) \+ claude-opus-fixture-2 \(max, long_context\)') { throw 'The review report did not name both reviewers and their settings.' }
+    $panelVerdicts['claude-opus-fixture-2'] = 'clean'
+    $panelCalls.Clear()
+    $panelClean = Invoke-HarnessReview $paths -Scope 'Panel fixture' -RunnerContext $sequentialContext
+    if ($panelClean.status -cne 'clean' -or -not $panelClean.complete -or $panelClean.passes -ne 2 -or $panelClean.sessions -ne 4 -or $panelCalls.Count -ne 4) { throw 'A clean panel round did not run both reviewers in the Changes and Full passes.' }
+    $panelVerdicts['claude-opus-fixture-2'] = 'blocked'
+    $panelBlocked = Invoke-HarnessReview $paths -Scope 'Blocked panel fixture' -RunnerContext $sequentialContext
+    if ($panelBlocked.status -cne 'blocked' -or $panelBlocked.complete) { throw 'One blocked reviewer did not block a pass that the other reviewer called clean.' }
+    $originalGroup = ${function:Invoke-HarnessProcessGroup}
+    $groupCalls = [System.Collections.Generic.List[object]]::new()
+    try {
+        function Invoke-HarnessProcessGroup {
+            param([object[]]$Launches)
+            $models = @(foreach ($launch in $Launches) { $launch.Arguments[[Array]::IndexOf($launch.Arguments, '--model') + 1] })
+            $groupCalls.Add($models)
+            @(foreach ($model in $models) {
+                $output = switch ($panelVerdicts[$model]) {
+                    'fail' { '' }
+                    'findings' { '{"verdict":"findings","summary":"Parallel finding","findings":[{"file":"panel.txt","line":9,"severity":"P2","message":"Parallel fixture defect"}]}' }
+                    default { '{"verdict":"clean","summary":"Parallel clean","findings":[]}' }
+                }
+                [pscustomobject]@{ ExitCode = $(if ($output) { 0 } else { 9 }); Output = $output; Error = $(if ($output) { '' } else { 'Fixture reviewer crash' }); TimedOut = $false; Stopped = $false }
+            })
+        }
+        $parallelContext = [pscustomobject]@{ profiles = $panelProfiles }
+        $panelVerdicts = @{ 'gpt-fixture-2' = 'clean'; 'claude-opus-fixture-2' = 'findings' }
+        $parallelReview = Invoke-HarnessReview $paths -Scope 'Parallel panel fixture' -RunnerContext $parallelContext
+        if ($parallelReview.status -cne 'findings' -or -not $parallelReview.parallelReviewers -or $groupCalls.Count -ne 1 -or ($groupCalls[0] -join ',') -cne 'gpt-fixture-2,claude-opus-fixture-2' -or $parallelReview.sessions -ne 2 -or $parallelReview.findings[0].message -cne 'Parallel fixture defect') { throw 'Parallel panel reviewers were not launched together and merged.' }
+        $panelVerdicts['claude-opus-fixture-2'] = 'fail'
+        $parallelFailure = Invoke-HarnessReview $paths -Scope 'Parallel failure fixture' -RunnerContext $parallelContext
+        $failureReport = [IO.File]::ReadAllText($parallelFailure.report)
+        if ($parallelFailure.status -cne 'Failed' -or $failureReport -notmatch 'Reviewer claude-opus-fixture-2 failed' -or $failureReport -notmatch 'Parallel clean') { throw 'A failed parallel reviewer did not fail the pass while keeping the other result as evidence.' }
+        $panelVerdicts['claude-opus-fixture-2'] = 'clean'
+        $parallelRecovery = Invoke-HarnessReview $paths -Scope 'Parallel failure fixture' -RunnerContext $parallelContext
+        if ($parallelRecovery.status -cne 'clean' -or $groupCalls.Count -ne 4) { throw 'A clean parallel round did not run both passes as reviewer groups.' }
+    }
+    finally { Set-Item Function:Invoke-HarnessProcessGroup -Value $originalGroup }
+    '{"families":[{"id":"gpt","label":"GPT","pattern":"gpt-*","models":["gpt-a","gpt-b"]},{"id":"claude-opus","label":"Claude Opus","pattern":"claude-opus-*","models":["claude-opus-a","claude-opus-b"]}]}' | Set-Content -LiteralPath $env:SKILLVAULT_REVIEW_MODELS -Encoding UTF8
+    $fallback = [pscustomobject]@{ Calls = [System.Collections.Generic.List[string]]::new(); Unavailable = @('gpt-a'); EffortLimits = @{ 'claude-opus-a' = @('low', 'medium', 'high') }; Groups = [System.Collections.Generic.List[string]]::new() }
+    $fallbackResponse = {
+        param([string[]]$Arguments)
+        $model = $Arguments[[Array]::IndexOf($Arguments, '--model') + 1]
+        $effortIndex = [Array]::IndexOf($Arguments, '--reasoning-effort')
+        $effort = if ($effortIndex -ge 0) { $Arguments[$effortIndex + 1] } else { 'auto' }
+        $fallback.Calls.Add("${model}:$effort")
+        if ($model -cin $fallback.Unavailable) { return [pscustomobject]@{ ExitCode = 1; Output = ''; Error = "Error: Model `"$model`" from --model flag is not available."; TimedOut = $false; Stopped = $false } }
+        $limits = $fallback.EffortLimits[$model]
+        if ($limits -and $effort -cnotin $limits) { return [pscustomobject]@{ ExitCode = 1; Output = ''; Error = "Execution failed: 400 Unsupported value: '$effort' is not supported with the '$model' model. Supported values are: $(@($limits | ForEach-Object { "'$_'" }) -join ', '). (Request ID: fixture)"; TimedOut = $false; Stopped = $false } }
+        [pscustomobject]@{ ExitCode = 0; Output = '{"verdict":"clean","summary":"Fallback fixture clean","findings":[]}'; Error = ''; TimedOut = $false; Stopped = $false }
+    }
+    $savedPanelAgent = ${function:Invoke-HarnessAgent}
+    $savedProcess = ${function:Invoke-HarnessProcess}
+    $savedGroup = ${function:Invoke-HarnessProcessGroup}
+    try {
+        Set-Item Function:Invoke-HarnessAgent -Value $originalInvokeHarnessAgent
+        function Invoke-HarnessProcess { param($Executable, $Arguments, $Directory, $MaxMinutes, $Paths, $Config, $Targets, $InheritPermissions, $InputText); & $fallbackResponse $Arguments }
+        function Invoke-HarnessProcessGroup {
+            param([object[]]$Launches)
+            $fallback.Groups.Add(@(foreach ($launch in $Launches) { $launch.Arguments[[Array]::IndexOf($launch.Arguments, '--model') + 1] }) -join '+')
+            @(foreach ($launch in $Launches) { & $fallbackResponse $launch.Arguments })
+        }
+        $oneAtATime = [pscustomobject]@{ restrictions = [pscustomobject]@{ maxParallelReviewers = 1 } }
+        $steppedReview = Invoke-HarnessReview $paths -Scope 'Fallback fixture' -RunnerContext $oneAtATime
+        $steppedReport = [IO.File]::ReadAllText($steppedReview.report)
+        if ($steppedReview.status -cne 'clean' -or $steppedReview.sessions -ne 4 -or ($fallback.Calls -join ',') -cne 'gpt-a:max,claude-opus-a:max,gpt-b:max,claude-opus-a:high,gpt-b:max,claude-opus-a:high') { throw "A rejected model or effort was not skipped before review, or a later pass retried it: $($fallback.Calls -join ',')" }
+        if ($steppedReport -notmatch 'gpt-a' -or $steppedReport -notmatch 'is not available' -or $steppedReport -notmatch 'Reviewers: gpt-b \(max, long_context\) \+ claude-opus-a \(high, long_context\)') { throw 'The review report did not record the skipped choices and the reviewers that ran.' }
+        $fallback.Calls.Clear()
+        $parallelStepped = Invoke-HarnessReview $paths -Scope 'Parallel fallback fixture'
+        if ($parallelStepped.status -cne 'clean' -or ($fallback.Groups -join ',') -cne 'gpt-a+claude-opus-a,gpt-b+claude-opus-a,gpt-b+claude-opus-a' -or ($fallback.Calls -join ',') -cne 'gpt-a:max,claude-opus-a:max,gpt-b:max,claude-opus-a:high,gpt-b:max,claude-opus-a:high') { throw "Parallel reviewers did not relaunch only the rejected choice: $($fallback.Groups -join ',') / $($fallback.Calls -join ',')" }
+        $fallback.Calls.Clear()
+        $fallback.Unavailable = @('gpt-a', 'claude-opus-a', 'claude-opus-b')
+        $droppedFamily = Invoke-HarnessReview $paths -Scope 'Dropped family fixture' -RunnerContext $oneAtATime
+        if ($droppedFamily.status -cne 'clean' -or $droppedFamily.sessions -ne 2 -or $droppedFamily.reviewerNote -notmatch 'Only one reviewer ran \(gpt-b\): the CLI accepted no allowed Claude Opus model \(claude-opus-a, claude-opus-b\)' -or @($fallback.Calls | Where-Object { $_ -like 'claude-opus-*' }).Count -ne 2) { throw "An unavailable family was retried in later passes or not reported: $($droppedFamily.reviewerNote) / $($fallback.Calls -join ',')" }
+        $fallback.Calls.Clear()
+        $fallback.Unavailable = @('gpt-a', 'gpt-b', 'claude-opus-a', 'claude-opus-b')
+        $runnerOnly = Invoke-HarnessReview $paths -Scope 'Runner fallback fixture' -RunnerContext $oneAtATime
+        if ($runnerOnly.status -cne 'clean' -or (@($runnerOnly.reviewers).model -join ',') -cne 'fixture-model' -or @($fallback.Calls | Where-Object { $_ -like 'fixture-model:*' }).Count -ne 2) { throw 'When no listed model was available, the runner model did not review alone.' }
+        $fallback.Calls.Clear()
+        $fallback.Unavailable = @('fixture-model')
+        $strictConfig = $config | ConvertTo-Json -Depth 20 | ConvertFrom-Json
+        $strictConfig.runner.criticalReview = $false
+        Write-HarnessJson $paths.Config $strictConfig
+        $strictReview = Invoke-HarnessReview $paths -Scope 'Explicit runner fixture'
+        if ($strictReview.status -cne 'Failed' -or ($fallback.Calls -join ',') -cne 'fixture-model:high' -or [IO.File]::ReadAllText($strictReview.report) -notmatch 'was not started') { throw 'An explicitly configured reviewer the CLI rejected was replaced instead of failing.' }
+        Write-HarnessJson $paths.Config $config
+        $listedProfile = { [pscustomobject]@{ model = 'gpt-a'; effort = 'max'; context = 'long_context'; options = @([pscustomobject]@{ model = 'gpt-a'; efforts = @('max', 'high'); context = 'long_context' }, [pscustomobject]@{ model = 'claude-opus-b'; efforts = @('max'); context = 'long_context' }) } }
+        $listedPanel = Get-HarnessReviewPanel (Resolve-HarnessRunnerConfig $config) -RunnerProfile (& $listedProfile)
+        if (@($listedPanel.reviewers).Count -ne 1 -or -not $listedPanel.reviewers[0].fallback -or $listedPanel.primary -or $listedPanel.parallel) { throw 'A caller model list did not become one reviewer that can skip rejected models.' }
+        $fallback.Calls.Clear()
+        $fallback.Unavailable = @('gpt-a')
+        $listedReview = Invoke-HarnessReview $paths -Scope 'Listed fallback fixture' -RunnerProfile (& $listedProfile)
+        if ($listedReview.status -cne 'clean' -or ($fallback.Calls -join ',') -cne 'gpt-a:max,claude-opus-b:max,claude-opus-b:max' -or (@($listedReview.reviewers).model -join ',') -cne 'claude-opus-b' -or $listedReview.reviewerNote) { throw "A listed reviewer did not skip its unavailable first model once: $($fallback.Calls -join ',')" }
+        $fallback.Calls.Clear()
+        $fallback.Unavailable = @('gpt-a', 'claude-opus-b')
+        $noneListed = Invoke-HarnessReview $paths -Scope 'Listed none available fixture' -RunnerProfile (& $listedProfile)
+        $noneReport = [IO.File]::ReadAllText($noneListed.report)
+        if ($noneListed.status -cne 'Failed' -or $noneListed.complete -or $noneReport -notmatch 'No reviewer could start' -or $noneReport -match '"verdict": "clean"' -or ($fallback.Calls -join ',') -cne 'gpt-a:max,claude-opus-b:max') { throw 'A review where no listed model could start was not reported as a failure.' }
+    }
+    finally {
+        Write-HarnessJson $paths.Config $config
+        Set-Item Function:Invoke-HarnessAgent -Value $savedPanelAgent
+        Set-Item Function:Invoke-HarnessProcess -Value $savedProcess
+        Set-Item Function:Invoke-HarnessProcessGroup -Value $savedGroup
+        '{"families":[{"id":"gpt","label":"GPT","pattern":"gpt-*","models":[]},{"id":"claude-opus","label":"Claude Opus","pattern":"claude-opus-*","models":[]}]}' | Set-Content -LiteralPath $env:SKILLVAULT_REVIEW_MODELS -Encoding UTF8
+    }
+    $loopFixture = [pscustomobject]@{ Revision = 0; Mode = 'progress'; Calls = [System.Collections.Generic.List[object]]::new() }
+    $outsideFinding = [pscustomobject]@{ file = 'unrelated.txt'; line = 8; severity = 'P3'; message = 'Pre-existing unrelated defect'; outsideTaskScope = $true }
+    function Get-HarnessSnapshot { param($Paths, $Config, $Workspace, $BaseRef); [ordered]@{ head = 'loop-head'; base = 'loop-head'; diff = "loop-revision-$($loopFixture.Revision)"; untracked = @() } | ConvertTo-Json -Compress }
+    function Invoke-HarnessAgent {
+        param($Paths, $Config, $Task, $Workspace, $Phase, $Snapshot, $ReviewGuidance, $RunnerContext, $Reviewer)
+        $round = [int]$Task.reviewRound
+        $loopFixture.Calls.Add([pscustomobject]@{ phase = $Phase; round = $round; model = $Reviewer.model; recheck = @($Task.recheckFindings | Where-Object { $null -ne $_ }).Count })
+        if ($Phase -eq 'Develop') {
+            if ($loopFixture.Mode -ne 'idle-fix' -or $round -eq 0) { $loopFixture.Revision++ }
+            return [pscustomobject]@{ outcome = 'ready'; summary = 'Loop fixture ready' }
+        }
+        if ($loopFixture.Mode -eq 'clean') { return [pscustomobject]@{ verdict = 'clean'; summary = 'Loop fixture clean'; findings = @() } }
+        if ($Phase -eq 'Fresh') { return [pscustomobject]@{ verdict = 'findings'; summary = 'Only an unrelated issue'; findings = @($outsideFinding) } }
+        if ($round -eq 0 -or $loopFixture.Mode -eq 'stall') { return [pscustomobject]@{ verdict = 'findings'; summary = 'Change needs a fix'; findings = @([pscustomobject]@{ file = 'fixture.txt'; line = 3 + $round; severity = 'P2'; message = 'Loop fixture defect' }) } }
+        [pscustomobject]@{ verdict = 'clean'; summary = 'Fix verified'; findings = @() }
+    }
+    $loopPhases = { ($loopFixture.Calls | ForEach-Object { $_.phase }) -join ',' }
+    $loopTask = Add-HarnessTask -Paths $paths -Title 'Review loop' -Description 'Fix review findings automatically' -Scope 'loop.txt' -Acceptance 'Changes and Full reviews are clean for the task' -Kind fix -Risk Low
+    $null = Queue-HarnessTask $paths $loopTask.id 'now'
+    $loopOutcome = Invoke-HarnessCycle $paths
+    $loopSaved = Get-HarnessTask (Read-HarnessState $paths) $loopTask.id
+    if ($loopOutcome.status -cne 'Completed' -or (& $loopPhases) -cne 'Develop,Review,Develop,Review,Fresh') { throw 'Review findings did not loop back to development before the Full pass.' }
+    if ($loopFixture.Calls[3].recheck -ne 1 -or $loopSaved.reviewRound -ne 1 -or @($loopSaved.reviewFindings).Count -ne 0) { throw 'The fix round lost its findings or the next Changes review did not recheck them.' }
+    if (@($loopOutcome.followUpProposals).Count -ne 1 -or $loopOutcome.followUpProposals[0].message -cne $outsideFinding.message -or @($loopSaved.followUpProposals).Count -ne 1 -or [IO.File]::ReadAllText($loopOutcome.report) -notmatch 'Follow-up proposals') { throw 'A Full-pass finding outside the task scope blocked completion or was not recorded as a follow-up proposal.' }
+    if (@((Read-HarnessState $paths).tasks | Where-Object { $_.title -ceq $outsideFinding.message -or $_.description -ceq $outsideFinding.message }).Count) { throw 'A follow-up proposal created a task without acceptance.' }
+    $loopFixture.Mode = 'stall'
+    $loopFixture.Calls.Clear()
+    $stallTask = Add-HarnessTask -Paths $paths -Title 'Stalled loop' -Description 'Fix nothing' -Scope 'stall.txt' -Acceptance 'Stop when fixes stall' -Kind fix -Risk Low
+    $null = Queue-HarnessTask $paths $stallTask.id 'now'
+    $stallOutcome = Invoke-HarnessCycle $paths
+    $stallSaved = Get-HarnessTask (Read-HarnessState $paths) $stallTask.id
+    if ($stallOutcome.status -cne 'NeedsDecision' -or (& $loopPhases) -cne 'Develop,Review,Develop,Review' -or $stallSaved.phase -cne 'Develop' -or @($stallSaved.reviewFindings).Count -ne 1 -or [IO.File]::ReadAllText($stallOutcome.report) -notmatch 'still reported') { throw 'A fix round that resolved nothing did not stop for a decision.' }
+    $loopFixture.Mode = 'idle-fix'
+    $loopFixture.Calls.Clear()
+    $idleFixTask = Add-HarnessTask -Paths $paths -Title 'Idle fix' -Description 'Claim a fix without editing' -Scope 'idle.txt' -Acceptance 'Stop without code changes' -Kind fix -Risk Low
+    $null = Queue-HarnessTask $paths $idleFixTask.id 'now'
+    $idleFixOutcome = Invoke-HarnessCycle $paths
+    if ($idleFixOutcome.status -cne 'NeedsDecision' -or (& $loopPhases) -cne 'Develop,Review,Develop' -or [IO.File]::ReadAllText($idleFixOutcome.report) -notmatch 'without changing code') { throw 'A fix round without code changes repeated review instead of stopping.' }
+    $loopFixture.Mode = 'progress'
+    $loopFixture.Calls.Clear()
+    $scheduledConfig = $config | ConvertTo-Json -Depth 20 | ConvertFrom-Json
+    $scheduledConfig.testing.environments[0].allowScheduled = $true
+    Write-HarnessJson $paths.Config $scheduledConfig
+    try {
+        $scheduledTask = Add-HarnessTask -Paths $paths -Title 'Scheduled loop' -Description 'One round per tick' -Scope 'scheduled.txt' -Acceptance 'Resume the fix next tick' -Kind fix -Risk Low
+        $null = Queue-HarnessTask $paths $scheduledTask.id 'now'
+        $firstTick = Invoke-HarnessCycle $paths -Scheduled
+        $tickState = Read-HarnessState $paths
+        if ($firstTick.status -cne 'Paused' -or $firstTick.checkpoint -cne 'ReviewRound' -or @($tickState.resumeQueue)[0] -cne $scheduledTask.id -or (Get-HarnessTask $tickState $scheduledTask.id).phase -cne 'Develop' -or (& $loopPhases) -cne 'Develop,Review') { throw 'A scheduled tick ran more than one review round or lost the pending fix.' }
+        $secondTick = Invoke-HarnessCycle $paths -Scheduled
+        if ($secondTick.status -cne 'Completed' -or $secondTick.taskId -cne $scheduledTask.id -or (& $loopPhases) -cne 'Develop,Review,Develop,Review,Fresh') { throw 'The next scheduled tick did not resume the fix round first.' }
+    }
+    finally { Write-HarnessJson $paths.Config $config }
+    $loopFixture.Mode = 'clean'
+    $loopFixture.Calls.Clear()
+    $legacyTask = Add-HarnessTask -Paths $paths -Title 'Saved critical pass' -Description 'Resume a pre-panel task' -Scope 'legacy.txt' -Acceptance 'Resume at the Changes review' -Kind fix -Risk Low
+    $legacySnapshot = Get-HarnessSnapshot $paths $config $fixtureRoot
+    $null = Update-HarnessState $paths { param($saved); $legacy = Get-HarnessTask $saved $legacyTask.id; $legacy.phase = 'Critical'; $legacy.snapshot = $legacySnapshot }
+    $null = Queue-HarnessTask $paths $legacyTask.id 'now'
+    $legacyOutcome = Invoke-HarnessCycle $paths -RunnerContext $sequentialContext
+    $legacyRuns = @((Read-HarnessState $paths).runs | Where-Object taskId -CEQ $legacyTask.id)
+    if ($legacyOutcome.status -cne 'Completed' -or (($loopFixture.Calls | ForEach-Object { "$($_.phase):$($_.model)" }) -join ',') -cne 'Review:gpt-fixture-2,Review:claude-opus-fixture-2,Fresh:gpt-fixture-2,Fresh:claude-opus-fixture-2' -or ($legacyRuns.phase -join ',') -cne 'Review,Fresh' -or $legacyRuns[0].model -cne 'gpt-fixture-2 + claude-opus-fixture-2') { throw 'A saved Critical task did not resume at a two-reviewer Changes review followed by the Full pass.' }
+    # Real tests: a failed test is a fix round, the same failure after a fix stops, afterReview runs on the reviewed
+    # code, scheduled runs keep the environment rule, and background tests run while the first review reads the code.
+    $savedSnapshotFunction = ${function:Get-HarnessSnapshot}
+    $savedAgentFunction = ${function:Invoke-HarnessAgent}
+    $savedProcessFunction = ${function:Invoke-HarnessProcess}
+    $testLoop = [pscustomobject]@{ Revision = 0; Fail = @{}; Calls = [System.Collections.Generic.List[string]]::new(); Overlap = ''; FixOutcome = 'ready'; ReviewVerdict = 'clean' }
+    function Get-HarnessSnapshot { param($Paths, $Config, $Workspace, $BaseRef); [ordered]@{ head = 'test-loop'; base = 'test-loop'; diff = "test-loop-revision-$($testLoop.Revision)"; untracked = @() } | ConvertTo-Json -Compress }
+    function Invoke-HarnessAgent {
+        param($Paths, $Config, $Task, $Workspace, $Phase, $Snapshot, $ReviewGuidance, $RunnerContext, $Reviewer)
+        $testLoop.Calls.Add($Phase)
+        if ($Phase -eq 'Develop') {
+            if ([int]$Task.reviewRound -gt 0 -and $testLoop.FixOutcome -cne 'ready') { return [pscustomobject]@{ outcome = $testLoop.FixOutcome; summary = 'The test failure needs a person' } }
+            $testLoop.Revision++
+            return [pscustomobject]@{ outcome = 'ready'; summary = 'Test loop ready' }
+        }
+        if ($Phase -eq 'Review' -and $testLoop.ReviewVerdict -ceq 'blocked') { return [pscustomobject]@{ verdict = 'blocked'; summary = 'The reviewer lacks access'; findings = @() } }
+        if ($Phase -eq 'Review' -and $testLoop.Overlap) {
+            [IO.File]::WriteAllText((Join-Path $testLoop.Overlap 'review-started'), 'review')
+            $deadline = [DateTime]::UtcNow.AddSeconds(30)
+            while (-not (Test-Path -LiteralPath (Join-Path $testLoop.Overlap 'test-started')) -and [DateTime]::UtcNow -lt $deadline) { Start-Sleep -Milliseconds 100 }
+            if (-not (Test-Path -LiteralPath (Join-Path $testLoop.Overlap 'test-started'))) { return [pscustomobject]@{ verdict = 'findings'; summary = 'No tests ran during review'; findings = @([pscustomobject]@{ file = 'overlap.txt'; line = 1; severity = 'P1'; message = 'The tests did not start while the review ran' }) } }
+        }
+        [pscustomobject]@{ verdict = 'clean'; summary = 'Test loop clean'; findings = @() }
+    }
+    function Invoke-HarnessProcess {
+        param($Executable, $Arguments, $Directory, $MaxMinutes, $EnvironmentVariables, $Paths, $Config, $Targets, $InputText, $InheritPermissions)
+        $name = [string]@($Arguments)[-1]
+        $testLoop.Calls.Add("test:$name")
+        if ($testLoop.Fail.ContainsKey($name) -and $testLoop.Fail[$name] -gt 0) {
+            $testLoop.Fail[$name] = $testLoop.Fail[$name] - 1
+            return [pscustomobject]@{ ExitCode = 3; Output = "Assertion failed in $name"; Error = ''; TimedOut = $false; Stopped = $false }
+        }
+        [pscustomobject]@{ ExitCode = 0; Output = "$name passed"; Error = ''; TimedOut = $false; Stopped = $false }
+    }
+    $testLoopConfig = $config | ConvertTo-Json -Depth 20 | ConvertFrom-Json
+    $testLoopConfig.runner.validationCommands = @()
+    $testLoopConfig.testing = [pscustomobject]@{
+        environments = @(
+            [pscustomobject]@{ name = 'local'; workingDirectory = '.'; variables = @{}; requiredVariables = @(); allowScheduled = $true }
+            [pscustomobject]@{ name = 'shared'; workingDirectory = '.'; variables = @{}; requiredVariables = @(); allowScheduled = $false }
+        )
+        flows = @(
+            [pscustomobject]@{ name = 'unit'; method = 'Unit tests'; defaultEnvironment = 'local'; maxMinutes = 1; effects = 'local'; steps = @([pscustomobject]@{ name = 'unit'; executable = 'pwsh'; arguments = @('unit') }) }
+            [pscustomobject]@{ name = 'ppe-smoke'; method = 'Shared smoke test'; defaultEnvironment = 'local'; maxMinutes = 1; effects = 'external'; steps = @([pscustomobject]@{ name = 'smoke'; executable = 'pwsh'; arguments = @('smoke') }) }
+        )
+        afterDev = @([pscustomobject]@{ flow = 'unit'; environment = 'local' })
+        afterReview = @([pscustomobject]@{ flow = 'ppe-smoke'; environment = 'local' })
+        unitTests = 'broad'
+    }
+    Write-HarnessJson $paths.Config $testLoopConfig
+    try {
+        $testLoop.Fail = @{ unit = 1 }
+        $fixTask = Add-HarnessTask -Paths $paths -Title 'Test failure fix' -Description 'Fix what the tests report' -Scope 'tests.txt' -Acceptance 'Declared tests pass' -Kind fix -Risk Low
+        $null = Queue-HarnessTask $paths $fixTask.id 'now'
+        $fixOutcome = Invoke-HarnessCycle $paths
+        $fixSaved = Get-HarnessTask (Read-HarnessState $paths) $fixTask.id
+        $fixRuns = @((Read-HarnessState $paths).runs | Where-Object taskId -CEQ $fixTask.id)
+        if ($fixOutcome.status -cne 'Completed' -or ($testLoop.Calls -join ',') -cne 'Develop,test:unit,Review,Develop,test:unit,Review,Fresh,test:smoke' -or ($fixRuns.phase -join ',') -cne 'Develop,Validate,Develop,Validate,Fresh,AfterReview') { throw "A failed test did not return to the developer, or the after-review test did not run once on the reviewed code: $($testLoop.Calls -join ',') / $($fixRuns.phase -join ',')" }
+        if ((@($fixSaved.testsRun) -join ',') -cne 'flow unit (local),flow ppe-smoke (local)' -or [IO.File]::ReadAllText($fixOutcome.report) -notmatch 'Tests run: flow unit \(local\); flow ppe-smoke \(local\)' -or [IO.File]::ReadAllText($fixRuns[1].report) -notmatch 'Assertion failed in unit') { throw 'The task or its reports did not record which tests ran and how they failed.' }
+        $testLoop.Calls.Clear()
+        $testLoop.Fail = @{ unit = 2 }
+        $repeatTask = Add-HarnessTask -Paths $paths -Title 'Repeated test failure' -Description 'The fix leaves the test failing' -Scope 'repeat.txt' -Acceptance 'Stop for a decision' -Kind fix -Risk Low
+        $null = Queue-HarnessTask $paths $repeatTask.id 'now'
+        $repeatOutcome = Invoke-HarnessCycle $paths
+        $repeatSaved = Get-HarnessTask (Read-HarnessState $paths) $repeatTask.id
+        if ($repeatOutcome.status -cne 'NeedsDecision' -or ($testLoop.Calls -join ',') -cne 'Develop,test:unit,Review,Develop,test:unit,Review' -or $repeatSaved.phase -cne 'Develop' -or [IO.File]::ReadAllText($repeatOutcome.report) -notmatch 'same test still fails') { throw 'The same test failing right after a fix round did not stop for a decision.' }
+        $developPrompt = [string](New-HarnessAgentLaunch -Paths $paths -Config $testLoopConfig -Task $repeatSaved -Workspace $fixtureRoot -Phase Develop -Snapshot 'prompt-snapshot').Process.Arguments[3]
+        $reviewPrompt = [string](New-HarnessAgentLaunch -Paths $paths -Config $testLoopConfig -Task $repeatSaved -Workspace $fixtureRoot -Phase Review -Snapshot 'prompt-snapshot').Process.Arguments[3]
+        if ($developPrompt -notmatch 'Unit tests: cover new and changed behavior' -or $developPrompt -notmatch 'Findings with source "test"' -or $developPrompt -notmatch 'never weaken, skip, or delete a test' -or $developPrompt -notmatch 'while the first review runs: unit \(local\)' -or $developPrompt -notmatch 'after a clean review: ppe-smoke \(local\)' -or $reviewPrompt -notmatch 'Report missing unit-test coverage') { throw 'The broad unit-test level, the planned tests, or the failed-test instructions did not reach the prompts.' }
+        $criticalConfig = $testLoopConfig | ConvertTo-Json -Depth 20 | ConvertFrom-Json
+        $criticalConfig.testing.PSObject.Properties.Remove('unitTests')
+        $criticalDevelop = [string](New-HarnessAgentLaunch -Paths $paths -Config $criticalConfig -Task $repeatSaved -Workspace $fixtureRoot -Phase Develop -Snapshot 'prompt-snapshot').Process.Arguments[3]
+        $criticalReview = [string](New-HarnessAgentLaunch -Paths $paths -Config $criticalConfig -Task $repeatSaved -Workspace $fixtureRoot -Phase Fresh -Snapshot 'prompt-snapshot').Process.Arguments[3]
+        if ($criticalDevelop -notmatch 'only where they protect critical behavior' -or $criticalDevelop -match 'cover new and changed behavior' -or $criticalReview -notmatch 'only when it leaves critical behavior unprotected') { throw 'The default critical unit-test level did not reach the developer and reviewers.' }
+        $testLoop.Calls.Clear()
+        $testLoop.Fail = @{ smoke = 2 }
+        $smokeTask = Add-HarnessTask -Paths $paths -Title 'After-review failure' -Description 'The shared smoke test keeps failing' -Scope 'smoke.txt' -Acceptance 'Stop for a decision' -Kind fix -Risk Low
+        $null = Queue-HarnessTask $paths $smokeTask.id 'now'
+        $smokeOutcome = Invoke-HarnessCycle $paths
+        $smokeRuns = @((Read-HarnessState $paths).runs | Where-Object taskId -CEQ $smokeTask.id)
+        if ($smokeOutcome.status -cne 'NeedsDecision' -or ($testLoop.Calls -join ',') -cne 'Develop,test:unit,Review,Fresh,test:smoke,Develop,test:unit,Review,Fresh,test:smoke' -or ($smokeRuns.phase -join ',') -cne 'Develop,Validate,Fresh,AfterReview,Develop,Validate,Fresh,AfterReview' -or [IO.File]::ReadAllText($smokeOutcome.report) -notmatch 'same test still fails') { throw "An after-review failure did not go back through the tests and both reviews, or a repeat failure did not stop: $($testLoop.Calls -join ',')" }
+        $testLoop.Calls.Clear()
+        $testLoop.Fail = @{ unit = 1 }
+        $testLoop.ReviewVerdict = 'blocked'
+        $blockedReviewTask = Add-HarnessTask -Paths $paths -Title 'Blocked review with failing tests' -Description 'Retry must test again' -Scope 'blocked.txt' -Acceptance 'Tests pass before completion' -Kind fix -Risk Low
+        $null = Queue-HarnessTask $paths $blockedReviewTask.id 'now'
+        $blockedReview = Invoke-HarnessCycle $paths
+        if ($blockedReview.status -cne 'Blocked' -or (Get-HarnessTask (Read-HarnessState $paths) $blockedReviewTask.id).phase -cne 'Validate' -or ($testLoop.Calls -join ',') -cne 'Develop,test:unit,Review') { throw 'A blocked review did not keep the task at its tests.' }
+        $testLoop.ReviewVerdict = 'clean'
+        $null = Queue-HarnessTask $paths $blockedReviewTask.id 'now'
+        $blockedRetry = Invoke-HarnessCycle $paths
+        if ($blockedRetry.status -cne 'Completed' -or ($testLoop.Calls -join ',') -cne 'Develop,test:unit,Review,test:unit,Review,Fresh,test:smoke') { throw 'The retry after a blocked review skipped the failing tests.' }
+        $testLoop.Calls.Clear()
+        $testLoop.Fail = @{}
+        $sharedConfig = $testLoopConfig | ConvertTo-Json -Depth 20 | ConvertFrom-Json
+        $sharedConfig.testing.afterReview = @([pscustomobject]@{ flow = 'ppe-smoke'; environment = 'shared' })
+        Write-HarnessJson $paths.Config $sharedConfig
+        $sharedTask = Add-HarnessTask -Paths $paths -Title 'Unattended shared test' -Description 'Wait for an attended run' -Scope 'shared.txt' -Acceptance 'Shared test runs attended' -Kind fix -Risk Low
+        $null = Queue-HarnessTask $paths $sharedTask.id 'now'
+        $scheduledShared = Invoke-HarnessCycle $paths -Scheduled
+        $sharedSaved = Get-HarnessTask (Read-HarnessState $paths) $sharedTask.id
+        if ($scheduledShared.status -cne 'Blocked' -or $sharedSaved.phase -cne 'AfterReview' -or ($testLoop.Calls -join ',') -cne 'Develop,test:unit,Review,Fresh' -or [IO.File]::ReadAllText($scheduledShared.report) -notmatch 'not approved for environment shared') { throw 'A scheduled run used an environment that does not allow scheduled runs.' }
+        $testLoop.Revision++
+        $null = Queue-HarnessTask $paths $sharedTask.id 'now'
+        $changedShared = Invoke-HarnessCycle $paths
+        if ($changedShared.status -cne 'Failed' -or (Get-HarnessTask (Read-HarnessState $paths) $sharedTask.id).phase -cne 'Validate' -or ($testLoop.Calls -join ',') -cne 'Develop,test:unit,Review,Fresh') { throw 'Code changed after the review reached the after-review tests without being tested and reviewed again.' }
+        $null = Queue-HarnessTask $paths $sharedTask.id 'now'
+        $attendedShared = Invoke-HarnessCycle $paths
+        if ($attendedShared.status -cne 'Completed' -or ($testLoop.Calls -join ',') -cne 'Develop,test:unit,Review,Fresh,test:unit,Review,Fresh,test:smoke') { throw 'An attended run did not test and review the changed code before the after-review test.' }
+        Remove-Item Env:SKILLVAULT_INLINE_VALIDATION
+        try {
+            $overlapRoot = Join-Path $fixtureRoot 'overlap'
+            New-Item -ItemType Directory -Path $overlapRoot -Force | Out-Null
+            $testLoop.Overlap = $overlapRoot
+            $testLoop.Calls.Clear()
+            $overlapConfig = $testLoopConfig | ConvertTo-Json -Depth 20 | ConvertFrom-Json
+            $overlapConfig.testing.afterReview = @()
+            $overlapConfig.testing.flows[0].steps[0].arguments = @('-NoProfile', '-NonInteractive', '-Command', "Set-Content -LiteralPath '$overlapRoot\test-started' -Value test; `$deadline = [DateTime]::UtcNow.AddSeconds(30); while (-not (Test-Path -LiteralPath '$overlapRoot\review-started') -and [DateTime]::UtcNow -lt `$deadline) { Start-Sleep -Milliseconds 100 }; if (Test-Path -LiteralPath '$overlapRoot\review-started') { [Console]::Write('overlap seen'); exit 0 }; [Console]::Write('review never started'); exit 5")
+            Write-HarnessJson $paths.Config $overlapConfig
+            $overlapTask = Add-HarnessTask -Paths $paths -Title 'Background tests' -Description 'Tests and review together' -Scope 'overlap.txt' -Acceptance 'Both run at once' -Kind fix -Risk Low
+            $null = Queue-HarnessTask $paths $overlapTask.id 'now'
+            $overlapOutcome = Invoke-HarnessCycle $paths
+            $overlapRun = @((Read-HarnessState $paths).runs | Where-Object { $_.taskId -ceq $overlapTask.id -and $_.phase -ceq 'Validate' })[0]
+            if ($overlapOutcome.status -cne 'Completed' -or ($testLoop.Calls -join ',') -cne 'Develop,Review,Fresh' -or [IO.File]::ReadAllText($overlapRun.report) -notmatch 'overlap seen') { throw "The declared tests did not run while the first review read the code: $($overlapOutcome.status) $($testLoop.Calls -join ',')" }
+            $testLoop.Overlap = ''
+            $testLoop.Calls.Clear()
+            $testLoop.FixOutcome = 'needs-decision'
+            $overlapConfig.testing.flows[0].steps[0].arguments = @('-NoProfile', '-NonInteractive', '-Command', "[Console]::Write('background boom'); exit 4")
+            Write-HarnessJson $paths.Config $overlapConfig
+            $backgroundTask = Add-HarnessTask -Paths $paths -Title 'Background failure' -Description 'A background test fails' -Scope 'background.txt' -Acceptance 'The developer sees the failure' -Kind fix -Risk Low
+            $null = Queue-HarnessTask $paths $backgroundTask.id 'now'
+            $backgroundOutcome = Invoke-HarnessCycle $paths
+            $backgroundSaved = Get-HarnessTask (Read-HarnessState $paths) $backgroundTask.id
+            $unitTarget = @((Get-HarnessSafetyState (Read-HarnessState $paths)).targets | Where-Object target -CEQ 'test:unit:local')[0]
+            if ($backgroundOutcome.status -cne 'NeedsDecision' -or ($testLoop.Calls -join ',') -cne 'Develop,Review,Develop' -or @($backgroundSaved.reviewFindings)[0].message -notmatch 'background boom' -or $unitTarget.lastOutcome -cne 'Failure') { throw 'A background test failure did not reach the developer, or its policy outcome was not saved.' }
+        }
+        finally {
+            $env:SKILLVAULT_INLINE_VALIDATION = '1'
+            $testLoop.FixOutcome = 'ready'
+        }
+    }
+    finally {
+        Write-HarnessJson $paths.Config $config
+        Set-Item Function:Get-HarnessSnapshot -Value $savedSnapshotFunction
+        Set-Item Function:Invoke-HarnessAgent -Value $savedAgentFunction
+        Set-Item Function:Invoke-HarnessProcess -Value $savedProcessFunction
+    }
     $timerPath = Join-Path $PSScriptRoot '..\skills\planning\harness-timer\scripts\harness-project-timer.ps1'
     $timerState = [pscustomobject]@{ Tasks = @(); Calls = (New-Object 'System.Collections.Generic.List[string]'); EnabledName = ''; DisabledName = '' }
     function Get-ScheduledTask { param($TaskPath); $timerState.Tasks }
@@ -1116,5 +1546,8 @@ try {
 }
 finally {
     $env:SKILLVAULT_OWNERSHIP_ROOT = $savedFixtureOwnershipRoot
+    $env:SKILLVAULT_REVIEW_MODELS = $savedReviewModels
+    $env:SKILLVAULT_INLINE_VALIDATION = $savedInlineValidation
+    Remove-Item -LiteralPath $reviewModelsFixture -Force -ErrorAction SilentlyContinue
     Remove-Item -LiteralPath $fixtureRoot -Recurse -Force -ErrorAction SilentlyContinue
 }

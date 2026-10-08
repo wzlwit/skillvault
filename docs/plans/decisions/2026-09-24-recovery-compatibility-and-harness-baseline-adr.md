@@ -6,6 +6,7 @@
 - Scope: Retained installation backups, executable dependency interfaces, and acceptance of the current reusable harness baseline.
 - Supersedes: Only the proposed coordinator, unified executor, independent reviewer, `now`/`next` scheduling, and development critical-review clauses in the [original harness ADR](./2026-09-15-harness-command-and-record-contracts-adr.md#still-proposed).
 - Extends: The [shared ownership contract](./2026-09-23-shared-ownership-adr.md); later accepted work and scheduling decisions remain in force.
+- Superseded in part: The [October 2 review-panel ADR](./2026-10-02-review-panel-dev-loop-and-sprints-adr.md) replaces the development critical-review clause in Current Harness Baseline with a second-family reviewer.
 
 The [September 25 current-copy-only ADR](./2026-09-25-current-copy-only-installation-adr.md)
 supersedes Recovery Location and Backup Retention below. Those sections preserve the earlier

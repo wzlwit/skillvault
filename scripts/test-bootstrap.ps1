@@ -15,7 +15,8 @@ $expectedLegacySkills = @(
     'sv-sync:skills/public/sv-sync',
     'skillvault-sync:skills/public/skillvault-sync',
     'ai-principles:skills/public/core/ai-principles',
-    'rule-update:skills/public/core/rule-update'
+    'rule-update:skills/public/core/rule-update',
+    'skillvault-refresh:skills/core/skillvault-refresh'
 )
 
 function Assert-True {
@@ -363,6 +364,7 @@ $legacySkillEntries = @(
     New-LegacyInstall -Root $globalRoot -Name 'skillvault-sync' -InstalledBy 'skillvault' -SourcePath 'skills/public/skillvault-sync' -SourceRepo 'https://github.com/wzlwit/skillvault' | Out-Null
     New-LegacyInstall -Root $globalRoot -Name 'ai-principles' -InstalledBy 'skillvault' -SourcePath 'skills/public/core/ai-principles' -SourceRepo 'https://github.com/wzlwit/skillvault.git' | Out-Null
     New-LegacyInstall -Root $globalRoot -Name 'rule-update' -InstalledBy 'skillvault-bootstrap' -SourcePath 'skills/public/core/rule-update' -SourceRepo 'https://github.com/wzlwit/skillvault/' | Out-Null
+    New-LegacyInstall -Root $globalRoot -Name 'skillvault-refresh' -InstalledBy 'skillvault-bootstrap' -SourcePath 'skills/core/skillvault-refresh' | Out-Null
 
     & $bootstrapScript -RepoRoot $repositoryRoot -GlobalSkillsPath $globalRoot | Out-Null
     Assert-True (Test-Path -LiteralPath $legacyInstallerPath) 'the renamed installer is preserved until migration is explicitly approved with -Force'
@@ -379,6 +381,7 @@ $legacySkillEntries = @(
     New-LegacyInstall -Root $globalRoot -Name 'skillvault-sync' -InstalledBy 'skillvault' -SourcePath 'skills/public/core/skillvault' | Out-Null
     New-LegacyInstall -Root $globalRoot -Name 'ai-principles' -InstalledBy 'skillvault' -SourcePath 'skills/public/core/ai-principles' -SourceRepo 'https://github.com/someone-else/skillvault.git' | Out-Null
     New-LegacyInstall -Root $globalRoot -Name 'rule-update' -WithoutMetadata | Out-Null
+    New-LegacyInstall -Root $globalRoot -Name 'skillvault-refresh' -WithoutMetadata | Out-Null
 
     & $bootstrapScript -RepoRoot $repositoryRoot -GlobalSkillsPath $globalRoot | Out-Null
     foreach ($legacyEntry in $expectedLegacySkills) {

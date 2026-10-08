@@ -1,5 +1,7 @@
 # ADR: Report Authoring Dispatch
 
+> Topic and command names in this record were updated to the current topics on 2026-10-07; see the [old-name retirement ADR](./2026-10-07-retire-old-names-adr.md).
+
 - Date: 2026-09-15
 - Status: Accepted
 - Decision owner: Zhaolong Wang
@@ -7,6 +9,7 @@
 - Supersedes: Only the report-authoring-skill deferral in the
   [harness command ADR](./2026-09-15-harness-command-and-record-contracts-adr.md).
 - Installation-default clause superseded by the [scope audit](../../../review/install-scopes-2026-09-15.md).
+- Topic name superseded 2026-10-07: this topic is now `/harness-write upsert report`; the decisions below stand. See the [topic consolidation ADR](./2026-10-07-harness-topic-consolidation-adr.md).
   The authoring workflow remains Accepted; the original decision below is retained for history.
 
 ## Context
@@ -19,8 +22,8 @@ validated cross-platform report generator.
 
 ## Decision
 
-Add native `harness-report-create` as a thin session-level dispatcher and a curated, reusable
-`kpi-dashboard-design` companion, both project-default. Reuse local development/task handling
+Add native `harness-write` as a thin session-level dispatcher and a curated, reusable
+`kpi-dashboard` companion, both project-default. Reuse local development/task handling
 and existing platform tools, load only the relevant specialist, preserve artifact identity, and
 distinguish design-only from created, validated, and separately published results.
 
@@ -32,7 +35,7 @@ for command contracts and capability checks rather than duplicating them here.
 
 ## Alternatives and Consequences
 
-- General `/hn-dev` alone remains available, but does not specialize platform selection or delivery claims.
+- General `/hn-work` alone remains available, but does not specialize platform selection or delivery claims.
 - A universal reporting engine is not selected: it adds integrations beyond the requested workflow.
 - Copying all upstream platform guides is not selected: it duplicates maintenance and confuses
   installed instructions with working tools. Specialist skills stay separately discoverable.

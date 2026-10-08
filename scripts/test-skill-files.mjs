@@ -8,22 +8,23 @@ import { parseJson, parseSkill, resolveInside, validateRepository, validateRunti
 
 const validSkill = '---\nname: fixture\ndescription: A valid fixture\nargument-hint: "[value]"\nmetadata:\n  version: "1.0.0"\n---\n# Fixture\n';
 
+// Old skill and command names retired on 2026-10-07; current guidance must not accept or advertise them.
+const retiredCommandNames = /(?<![\w./-])\/(?:harness|hn)(?![\w-])|(?<![\w./-])\/(?:harness|hn)-(?:task|dev|test|link|policy|doc|comms|report|ref|decide|restrict|fallback|root|loc|init|context|management|report-create)(?![\w-])|(?<![\w./-])\/pr-review-(?:add|list|remove|timer)\b|(?<![\w/-])rules-core(?![\w-])|(?<![\w./-])\/(?:jarvis-metrics-create|kpi-dashboard-design|openapi-spec-generation|skillvault-refresh)\b/;
+
 const harnessProcedures = {
-  context: 'harness/references/context.md',
-  decide: 'harness-decision/references/workflow.md',
-  dev: 'harness-dev/references/workflow.md',
-  doc: 'harness-doc/references/workflow.md',
-  fallback: 'harness-policy/references/fallback.md',
-  init: 'harness/references/init.md',
-  loc: 'harness/references/loc.md',
+  context: 'harness-project/references/context.md',
+  decision: 'harness-decision/references/workflow.md',
+  dev: 'harness-work/references/dev.md',
+  doc: 'harness-write/references/doc.md',
+  fallback: 'harness-project/references/fallback.md',
+  init: 'harness-project/references/init.md',
+  limits: 'harness-project/references/limits.md',
   monitor: 'harness-monitor/references/workflow.md',
-  ref: 'harness-link/references/workflow.md',
-  'report-create': 'harness-report/references/workflow.md',
-  restrict: 'harness-policy/references/limits.md',
+  report: 'harness-write/references/report.md',
   review: 'harness-review/references/workflow.md',
-  root: 'harness/references/loc.md',
-  task: 'harness-task/references/workflow.md',
-  test: 'harness-test/references/workflow.md',
+  root: 'harness-project/references/root.md',
+  task: 'harness-work/references/task.md',
+  test: 'harness-work/references/test.md',
   timer: 'harness-timer/references/project.md',
 };
 
@@ -40,6 +41,56 @@ test('malformed YAML, duplicate keys, and mismatched names or versions fail', ()
   assert.throws(() => parseSkill(validSkill, 'fixture', { version: '2.0.0' }));
   assert.throws(() => parseJson('{"version":null,"version":"1.0.0"}', 'fixture.json'));
   assert.throws(() => parseJson('{invalid}', 'fixture.json'));
+});
+
+test('multi-action descriptions start with their argument-hint actions except list', () => {
+  const multiAction = validSkill.replace('argument-hint: "[value]"', 'argument-hint: "[list|run] [<arguments>...]"');
+  const leading = multiAction.replace('description: A valid fixture', 'description: "[run] A valid fixture"');
+  assert.throws(() => parseSkill(multiAction, 'fixture'), /argument-hint actions/);
+  assert.throws(() => parseSkill(multiAction.replace('description: A valid fixture', 'description: "[list|run] A valid fixture"'), 'fixture'), /argument-hint actions/);
+  assert.throws(() => parseSkill(multiAction.replace('description: A valid fixture', 'description: "[run|configure] A valid fixture"'), 'fixture'), /argument-hint actions/);
+  assert.equal(parseSkill(leading, 'fixture').name, 'fixture');
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'skillvault-actions-'));
+  try {
+    const relative = 'skills/testing/fixture';
+    const directory = path.join(root, relative);
+    fs.mkdirSync(directory, { recursive: true });
+    fs.writeFileSync(path.join(directory, 'SKILL.md'), leading);
+    const write = (manifestDescription, catalogDescription) => {
+      fs.writeFileSync(path.join(directory, 'skill.json'), JSON.stringify({ name: 'fixture', version: '1.0.0', description: manifestDescription }));
+      fs.writeFileSync(path.join(root, 'catalog.json'), JSON.stringify([{ name: 'fixture', description: catalogDescription, path: relative, version: '1.0.0' }]));
+    };
+    write('A valid fixture', '[run] A valid fixture');
+    assert.throws(() => validateRepository(root), /skill\.json description/);
+    write('[run] A valid fixture', 'A valid fixture');
+    assert.throws(() => validateRepository(root), /catalog description/);
+    write('[run] A valid fixture', '[run] A valid fixture');
+    assert.equal(validateRepository(root).publicCount, 1);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('catalog, skill.json, and SKILL.md share one description', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'skillvault-description-'));
+  try {
+    const relative = 'skills/testing/fixture';
+    const directory = path.join(root, relative);
+    fs.mkdirSync(directory, { recursive: true });
+    fs.writeFileSync(path.join(directory, 'SKILL.md'), validSkill);
+    const write = (manifestDescription, catalogDescription) => {
+      fs.writeFileSync(path.join(directory, 'skill.json'), JSON.stringify({ name: 'fixture', version: '1.0.0', description: manifestDescription }));
+      fs.writeFileSync(path.join(root, 'catalog.json'), JSON.stringify([{ name: 'fixture', description: catalogDescription, path: relative, version: '1.0.0' }]));
+    };
+    write('A valid fixture', 'A shorter fixture');
+    assert.throws(() => validateRepository(root), /catalog description must match skill\.json/);
+    write('A different fixture', 'A different fixture');
+    assert.throws(() => validateRepository(root), /SKILL\.md description must match skill\.json/);
+    write('A valid fixture', 'A valid fixture');
+    assert.equal(validateRepository(root).publicCount, 1);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
 });
 
 test('root containment uses path boundaries', () => {
@@ -70,10 +121,10 @@ test('catalog installation defaults are supported and shared helpers stay coloca
     assert.equal(manifest.install[manifest.install.defaultScope], true, `Unsupported default scope for ${name}`);
   }
   for (const [caller, helper] of [
-    ['harness-timer', 'harness'],
-    ['pr-review', 'harness'],
+    ['harness-timer', 'harness-runtime'],
+    ['pr-review', 'harness-runtime'],
     ['skillvault-authoring', 'skillvault-installation'],
-    ['skillvault-refresh', 'skillvault-installation'],
+    ['harness-timer', 'skillvault-installation'],
   ]) {
     assert.equal(manifests.get(caller).install.defaultScope, manifests.get(helper).install.defaultScope, `${caller} requires sibling ${helper}`);
   }
@@ -102,7 +153,7 @@ test('chart selection preserves data evidence and requirement-first fallback', (
 
 test('chart evidence and fallback preserve the report contract', () => {
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-  const workflow = fs.readFileSync(path.join(root, 'skills/planning/harness-report/references/workflow.md'), 'utf8');
+  const workflow = fs.readFileSync(path.join(root, 'skills/planning/harness-write/references/report.md'), 'utf8');
   const fallback = workflow.split('## Requirement-Preserving Fallback')[1].split('## Validate and Deliver')[0];
   const validation = workflow.split('## Validate and Deliver')[1].split('## Optional Monitoring Handoff')[0];
   assert.ok(workflow.includes('(#requirement-preserving-fallback)'));
@@ -126,7 +177,7 @@ test('chart evidence and fallback preserve the report contract', () => {
 
 test('editable report acceptance distinguishes native data and conditional checks', () => {
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-  const workflow = fs.readFileSync(path.join(root, 'skills/planning/harness-report/references/workflow.md'), 'utf8');
+  const workflow = fs.readFileSync(path.join(root, 'skills/planning/harness-write/references/report.md'), 'utf8');
   const contract = workflow.split('### Editability Acceptance')[1].split('## Dispatch and Upsert')[0];
   const validation = workflow.split('## Validate and Deliver')[1].split('## Optional Monitoring Handoff')[0];
   assert.ok(workflow.includes('(#editability-acceptance)'));
@@ -145,7 +196,7 @@ test('editable report acceptance distinguishes native data and conditional check
 
 test('workbook acceptance preserves formulas and distinguishes caches from verified results', () => {
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-  const workflow = fs.readFileSync(path.join(root, 'skills/planning/harness-report/references/workflow.md'), 'utf8');
+  const workflow = fs.readFileSync(path.join(root, 'skills/planning/harness-write/references/report.md'), 'utf8');
   const workbook = workflow.split('### Workbook Acceptance')[1].split('## Dispatch and Upsert')[0];
   const validation = workflow.split('## Validate and Deliver')[1].split('## Optional Monitoring Handoff')[0];
   assert.ok(workflow.includes('(#workbook-acceptance)'));
@@ -231,8 +282,21 @@ test('Power BI modeling preserves scope and grain-aware validation cases', () =>
 test('harness topics use canonical names and conversational hn shortcuts', () => {
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
   const catalog = parseJson(fs.readFileSync(path.join(root, 'catalog.json'), 'utf8'), 'catalog.json');
-  const topics = ['harness', ...['policy', 'decision', 'dev', 'doc', 'comms', 'review', 'task', 'link', 'test', 'monitor', 'report', 'timer'].map(suffix => `harness-${suffix}`)];
-  assert.deepEqual(catalog.filter(entry => entry.name === 'harness' || entry.name.startsWith('harness-')).map(entry => entry.name).sort(), topics.slice().sort());
+  const topics = ['project', 'work', 'write', 'review', 'decision', 'monitor', 'timer'].map(suffix => `harness-${suffix}`);
+  assert.deepEqual(catalog.filter(entry => entry.name === 'harness' || entry.name.startsWith('harness-')).map(entry => entry.name).sort(), ['harness-runtime', ...topics].sort());
+  const runtimeEntry = catalog.find(entry => entry.name === 'harness-runtime');
+  assert.equal(runtimeEntry.path, 'skills/planning/harness-runtime');
+  const runtimeDirectory = path.join(root, runtimeEntry.path);
+  const runtimeManifest = parseJson(fs.readFileSync(path.join(runtimeDirectory, 'skill.json'), 'utf8'), 'harness-runtime/skill.json');
+  const runtimeSkill = parseSkill(fs.readFileSync(path.join(runtimeDirectory, 'SKILL.md'), 'utf8'), 'harness-runtime', runtimeManifest);
+  assert.equal(runtimeSkill['user-invocable'], false, 'The shared runtime stays out of the slash menu');
+  assert.equal(runtimeSkill['disable-model-invocation'], true, 'The shared runtime is never loaded as a topic');
+  assert.equal(runtimeManifest.inputs, undefined, 'The shared runtime has no actions of its own');
+  assert.match(runtimeSkill.description, /harness-project/);
+  assert.equal(runtimeManifest.install.defaultScope, 'global');
+  for (const file of ['scripts/harness.ps1', 'scripts/review-models.json', 'references/runtime.md']) {
+    assert.ok(fs.existsSync(path.join(runtimeDirectory, file)), `The shared runtime keeps ${file} in place`);
+  }
   for (const name of topics) {
     const entries = catalog.filter(entry => entry.name === name);
     assert.equal(entries.length, 1, `Expected exactly one ${name} catalog entry`);
@@ -245,14 +309,29 @@ test('harness topics use canonical names and conversational hn shortcuts', () =>
     assert.equal(manifest.install.project, true);
     const instructions = fs.readFileSync(path.join(directory, 'SKILL.md'), 'utf8');
     const skill = parseSkill(instructions, name, manifest);
-    assert.match(skill.description, new RegExp(`/${name}(?![\\w-])`));
-    const shortcut = name === 'harness' ? 'hn' : name.replace('harness-', 'hn-');
+    const shortcut = name.replace('harness-', 'hn-');
     assert.match(skill.description, new RegExp(`/${shortcut}(?![\\w-])`));
     assert.match(instructions, /shorthand for the same topic and subcommands, not a separate skill or folder/);
     assert.notEqual(skill['user-invocable'], false);
     assert.match(skill['argument-hint'], /^\[list(?:\||\])/);
     assert.equal(manifest.inputs.find(input => input.name === 'action').default, 'list');
     assert.equal((manifest.dependencies ?? []).some(dependency => dependency.startsWith('hn-')), false);
+  }
+  // Every current skill's catalog entry, manifest, and guides stay free of retired names. The installer's
+  // former-name map and the bootstrap legacy lists keep them only to retire old installed copies.
+  for (const entry of catalog) {
+    const directory = path.join(root, entry.path);
+    const pending = [directory];
+    const texts = [entry.description];
+    while (pending.length) {
+      const current = pending.pop();
+      for (const item of fs.readdirSync(current, { withFileTypes: true })) {
+        const file = path.join(current, item.name);
+        if (item.isDirectory()) { pending.push(file); continue; }
+        if (item.name === 'skill.json' || item.name.endsWith('.md')) texts.push(fs.readFileSync(file, 'utf8'));
+      }
+    }
+    for (const text of texts) assert.doesNotMatch(text, retiredCommandNames, `${entry.name} still accepts or advertises a retired name`);
   }
   for (const entry of catalog) {
     assert.doesNotMatch(entry.name, /^(hn-|sv-)/, `Register only the canonical topic: ${entry.name}`);
@@ -263,7 +342,7 @@ test('harness topics use canonical names and conversational hn shortcuts', () =>
       .map(entry => entry.name);
     assert.deepEqual(legacyDirectories, [], `Remove obsolete source folders from ${category}`);
   }
-  for (const retired of ['harness-context', 'harness-decide', 'harness-fallback', 'harness-init', 'harness-loc', 'harness-management', 'harness-ref', 'harness-report-create', 'harness-restrict', 'harness-root', 'hn', 'hn-decision', 'hn-management', 'hn-timer']) {
+  for (const retired of ['harness', 'harness-comms', 'harness-context', 'harness-decide', 'harness-dev', 'harness-doc', 'harness-fallback', 'harness-init', 'harness-link', 'harness-loc', 'harness-management', 'harness-policy', 'harness-ref', 'harness-report', 'harness-report-create', 'harness-restrict', 'harness-root', 'harness-task', 'harness-test', 'hn', 'hn-decision', 'hn-management', 'hn-timer']) {
     assert.equal(fs.existsSync(path.join(root, 'skills/planning', retired)), false, `Do not retain a duplicate ${retired} source bundle`);
   }
 });
@@ -271,41 +350,41 @@ test('harness topics use canonical names and conversational hn shortcuts', () =>
 test('harness communications stay draft-only with bundled slot ranking', () => {
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
   const catalog = parseJson(fs.readFileSync(path.join(root, 'catalog.json'), 'utf8'), 'catalog.json');
-  const entry = catalog.find(candidate => candidate.name === 'harness-comms');
+  const entry = catalog.find(candidate => candidate.name === 'harness-write');
   const directory = path.join(root, entry.path);
-  const manifest = parseJson(fs.readFileSync(path.join(directory, 'skill.json'), 'utf8'), 'harness-comms/skill.json');
+  const manifest = parseJson(fs.readFileSync(path.join(directory, 'skill.json'), 'utf8'), 'harness-write/skill.json');
   const content = fs.readFileSync(path.join(directory, 'SKILL.md'), 'utf8');
   const skill = parseSkill(content, entry.name, manifest);
-  assert.equal(entry.path, 'skills/planning/harness-comms');
+  assert.equal(entry.path, 'skills/planning/harness-write');
   assert.equal(entry.description, manifest.description);
   assert.equal(skill.description, manifest.description);
-  assert.deepEqual(manifest.inputs.find(input => input.name === 'action').enum, ['list', 'slots', 'upsert']);
-  assert.deepEqual(manifest.inputs.find(input => input.name === 'artifact').enum, ['tracker', 'meeting', 'email']);
-  assert.deepEqual(manifest.dependencies, ['rules']);
-  assert.match(content, /without requiring an initialized harness/);
+  assert.deepEqual(manifest.inputs.find(input => input.name === 'action').enum, ['list', 'upsert', 'slots']);
+  assert.deepEqual(manifest.inputs.find(input => input.name === 'kind').enum, ['doc', 'tracker', 'meeting', 'email', 'report']);
+  assert.ok(manifest.dependencies.includes('rules'));
+  assert.match(content, /without\s+requiring an initialized harness/);
   assert.match(content, /\*\*Drafts only\.\*\*/);
-  assert.match(skill.description, /never sends, invites, or shares without explicit approval/);
-  for (const reference of ['workflow', 'meeting', 'email', 'tracker']) {
+  assert.match(skill.description, /never sends, invites, shares, or publishes without explicit approval/);
+  for (const reference of ['comms', 'meeting', 'email', 'tracker']) {
     assert.ok(fs.existsSync(path.join(directory, `references/${reference}.md`)), `Missing ${reference} guide`);
   }
   assert.ok(fs.existsSync(path.join(directory, 'scripts/rank-slots.ps1')));
-  const workflow = fs.readFileSync(path.join(directory, 'references/workflow.md'), 'utf8');
+  const workflow = fs.readFileSync(path.join(directory, 'references/comms.md'), 'utf8');
   assert.match(workflow, /Commit authors, managers, and\s+directory titles only suggest candidates/);
   assert.match(workflow, /Re-read before every write/);
   const meeting = fs.readFileSync(path.join(directory, 'references/meeting.md'), 'utf8');
   assert.match(meeting, /\*\*Save as draft\*\*\. Never choose \*\*Send\*\*/);
-  const rootGuide = fs.readFileSync(path.join(root, 'skills/planning/harness/SKILL.md'), 'utf8');
-  assert.ok(rootGuide.includes('/harness-comms list|slots|upsert'));
-  for (const name of ['harness-doc', 'harness-monitor']) {
+  const projectGuide = fs.readFileSync(path.join(root, 'skills/planning/harness-project/SKILL.md'), 'utf8');
+  assert.match(projectGuide, /`\/harness-write` works without initialization/);
+  for (const name of ['harness-monitor']) {
     const counterpart = catalog.find(candidate => candidate.name === name);
     const counterpartManifest = parseJson(fs.readFileSync(path.join(root, counterpart.path, 'skill.json'), 'utf8'), `${name}/skill.json`);
     const counterpartSkill = parseSkill(fs.readFileSync(path.join(root, counterpart.path, 'SKILL.md'), 'utf8'), name, counterpartManifest);
     assert.ok(skill.description.includes(name));
     for (const description of [counterpart.description, counterpartManifest.description, counterpartSkill.description]) {
-      assert.ok(description.includes('harness-comms'), `Declare the communications overlap for ${name}`);
+      assert.ok(description.includes('harness-write'), `Declare the communications overlap for ${name}`);
     }
   }
-  const bundleText = ['SKILL.md', 'references/workflow.md', 'references/meeting.md', 'references/email.md', 'references/tracker.md']
+  const bundleText = ['SKILL.md', 'references/comms.md', 'references/meeting.md', 'references/email.md', 'references/tracker.md']
     .map(file => fs.readFileSync(path.join(directory, file), 'utf8')).join('\n');
   assert.doesNotMatch(bundleText, /@(?!example\.com)[a-z0-9-]+\.(?:com|net|org)\b/i, 'Use example.com addresses in the public bundle');
 });
@@ -313,22 +392,21 @@ test('harness communications stay draft-only with bundled slot ranking', () => {
 test('harness documentation declares standalone authoring and post-Humanizer validation', () => {
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
   const catalog = parseJson(fs.readFileSync(path.join(root, 'catalog.json'), 'utf8'), 'catalog.json');
-  const entry = catalog.find(candidate => candidate.name === 'harness-doc');
+  const entry = catalog.find(candidate => candidate.name === 'harness-write');
   const directory = path.join(root, entry.path);
-  const manifest = parseJson(fs.readFileSync(path.join(directory, 'skill.json'), 'utf8'), 'harness-doc/skill.json');
+  const manifest = parseJson(fs.readFileSync(path.join(directory, 'skill.json'), 'utf8'), 'harness-write/skill.json');
   const content = fs.readFileSync(path.join(directory, 'SKILL.md'), 'utf8');
   const skill = parseSkill(content, entry.name, manifest);
-  assert.equal(entry.path, 'skills/planning/harness-doc');
+  assert.equal(entry.path, 'skills/planning/harness-write');
   assert.equal(entry.description, manifest.description);
   assert.equal(skill.description, manifest.description);
-  assert.deepEqual(manifest.inputs.find(input => input.name === 'action').enum, ['list', 'upsert']);
+  assert.ok(manifest.inputs.find(input => input.name === 'action').enum.includes('upsert'));
   assert.deepEqual(manifest.inputs.find(input => input.name === 'audience').enum, ['internal', 'partner', 'public']);
-  assert.deepEqual(manifest.dependencies, ['rules', 'humanizer']);
+  for (const dependency of ['rules', 'humanizer']) assert.ok(manifest.dependencies.includes(dependency), `Documentation still needs ${dependency}`);
   assert.equal(manifest.requiredInterfaces, undefined);
-  assert.match(content, /without requiring\s+an initialized harness/);
-  const rootGuide = fs.readFileSync(path.join(root, 'skills/planning/harness/SKILL.md'), 'utf8');
-  assert.ok(rootGuide.includes('/harness-doc list|upsert'));
-  const workflow = fs.readFileSync(path.join(directory, 'references/workflow.md'), 'utf8');
+  assert.match(content, /without\s+requiring\s+an initialized harness/);
+  assert.match(content, /\| `upsert doc <feature-or-doc-set> \[<focused-request>\]` \| \[[^\]]+\]\(\.\/references\/doc\.md\)/);
+  const workflow = fs.readFileSync(path.join(directory, 'references/doc.md'), 'utf8');
   const phases = ['## Resolve the request', '## Gather evidence', '## Draft the set', '## Humanizer pass', '## Validate and deliver'];
   const positions = phases.map(phase => workflow.indexOf(phase));
   assert.ok(positions.every((position, index) => position >= 0 && (index === 0 || position > positions[index - 1])));
@@ -342,12 +420,12 @@ test('harness documentation declares standalone authoring and post-Humanizer val
   const decision = catalog.find(candidate => candidate.name === 'architecture-decision-records');
   const decisionManifest = parseJson(fs.readFileSync(path.join(root, decision.path, 'skill.json'), 'utf8'), 'architecture-decision-records/skill.json');
   const decisionSkill = parseSkill(fs.readFileSync(path.join(root, decision.path, 'SKILL.md'), 'utf8'), decision.name, decisionManifest);
-  for (const description of [decision.description, decisionManifest.description, decisionSkill.description]) assert.ok(description.includes('harness-doc'));
+  for (const description of [decision.description, decisionManifest.description, decisionSkill.description]) assert.ok(description.includes('harness-write'));
 });
 
 test('paginated document acceptance checks final pages without widening Markdown output', () => {
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-  const workflow = fs.readFileSync(path.join(root, 'skills/planning/harness-doc/references/workflow.md'), 'utf8');
+  const workflow = fs.readFileSync(path.join(root, 'skills/planning/harness-write/references/doc.md'), 'utf8');
   const validation = workflow.split('## Validate and deliver')[1].split('## Optional restructuring and publication')[0];
   assert.ok(workflow.indexOf('## Humanizer pass') < workflow.indexOf('## Validate and deliver'));
   assert.match(validation, /When PDF\/DOCX is an agreed deliverable/);
@@ -418,7 +496,7 @@ test('PPT Master installs its original and keeps counterpart overlap notes', () 
   assert.equal(entry.description, manifest.description);
   assert.deepEqual(fs.readdirSync(directory), ['skill.json']);
   assert.deepEqual(manifest.dependencies ?? [], []);
-  for (const name of ['harness-report', 'kpi-dashboard']) {
+  for (const name of ['harness-write', 'kpi-dashboard']) {
     assert.ok(manifest.description.includes(name));
     const counterpart = catalog.find(candidate => candidate.name === name);
     const counterpartManifest = parseJson(fs.readFileSync(path.join(root, counterpart.path, 'skill.json'), 'utf8'), `${name}/skill.json`);
@@ -463,7 +541,7 @@ test('office documents reference separates original navigation from proprietary 
   assert.match(content, /Do not infer Apache licensing/);
   assert.match(content, /reference grants no rights to the upstream materials/);
   assert.match(content, /does not certify file preservation, calculation accuracy, or Chinese\/mixed-language rendering/);
-  for (const name of ['harness-doc', 'harness-report']) {
+  for (const name of ['harness-write']) {
     assert.ok(skill.description.includes(name));
     const counterpart = catalog.find(candidate => candidate.name === name);
     const counterpartManifest = parseJson(fs.readFileSync(path.join(root, counterpart.path, 'skill.json'), 'utf8'), `${name}/skill.json`);
@@ -547,7 +625,7 @@ test('gamedev reference links upstream without bundling or installing it', () =>
 
 test('document evidence distinguishes partial extraction from complete coverage', () => {
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-  const workflow = fs.readFileSync(path.join(root, 'skills/planning/harness-doc/references/workflow.md'), 'utf8');
+  const workflow = fs.readFileSync(path.join(root, 'skills/planning/harness-write/references/doc.md'), 'utf8');
   const evidence = workflow.split('## Gather evidence')[1].split('## Draft the set')[0];
   assert.match(evidence, /requested files\/sections with those actually read/);
   assert.match(evidence, /skipped or unreadable inputs[\s\S]*existing claim\/source map/);
@@ -564,26 +642,38 @@ test('document evidence distinguishes partial extraction from complete coverage'
 test('SkillVault topics register full names and keep sv as conversational shortcuts', () => {
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
   const catalog = parseJson(fs.readFileSync(path.join(root, 'catalog.json'), 'utf8'), 'catalog.json');
-  const topics = ['authoring', 'discovery', 'installation', 'refresh'].map(suffix => `skillvault-${suffix}`);
+  const topics = ['authoring', 'discovery', 'installation'].map(suffix => `skillvault-${suffix}`);
   assert.deepEqual(catalog.filter(entry => entry.name.startsWith('skillvault-')).map(entry => entry.name).sort(), topics);
+  // Retired command spellings stay out of current guidance; the installer's former-name map still retires old copies.
+  const retiredNames = /(?<![\w./-])\/?(?:skillvault|sv|skv)-(?:install|list|uninstall|search|evaluate|key-points|upsert|remove|source|fresh|sync|refresh)(?![\w.-])|\/skv-/;
   for (const name of topics) {
     const entry = catalog.find(candidate => candidate.name === name);
     assert.equal(entry.path, `skills/core/${name}`);
     const directory = path.join(root, entry.path);
     const manifest = parseJson(fs.readFileSync(path.join(directory, 'skill.json'), 'utf8'), `${name}/skill.json`);
-    const skill = parseSkill(fs.readFileSync(path.join(directory, 'SKILL.md'), 'utf8'), name, manifest);
+    const instructions = fs.readFileSync(path.join(directory, 'SKILL.md'), 'utf8');
+    const skill = parseSkill(instructions, name, manifest);
     const shortcut = name.replace('skillvault-', 'sv-');
     assert.equal(manifest.name, name);
     assert.equal(manifest.source.path, entry.path);
     assert.notEqual(skill['user-invocable'], false);
-    assert.match(skill.description, new RegExp(`/${name}(?![\\w-])`));
     assert.match(skill.description, new RegExp(`/${shortcut}(?![\\w-])`));
     assert.equal(fs.existsSync(path.join(root, 'skills/core', shortcut)), false);
     assert.equal((manifest.dependencies ?? []).some(dependency => dependency.startsWith('sv-')), false);
+    for (const text of [entry.description, manifest.description, instructions]) assert.doesNotMatch(text, retiredNames, `${name} still advertises a retired name`);
   }
-  assert.equal(fs.existsSync(path.join(root, 'skills/core/skillvault-source')), false);
-  const authoring = fs.readFileSync(path.join(root, 'skills/core/skillvault-authoring/SKILL.md'), 'utf8');
-  for (const alias of ['/skillvault-source', '/sv-source']) assert.ok(authoring.includes(alias), `Preserve ${alias} compatibility`);
+  for (const retired of ['skillvault-source', 'skillvault-refresh']) assert.equal(fs.existsSync(path.join(root, 'skills/core', retired)), false, `Do not retain the retired ${retired} bundle`);
+  const installation = path.join(root, 'skills/core/skillvault-installation');
+  const manifest = parseJson(fs.readFileSync(path.join(installation, 'skill.json'), 'utf8'), 'skillvault-installation/skill.json');
+  assert.ok(manifest.inputs.find(input => input.name === 'action').enum.includes('refresh'));
+  assert.equal(manifest.ownershipProtocol, 1, 'The refresh runtime reports ownership');
+  assert.equal(manifest.runtimeInterfaces['structured-refresh'], 2);
+  for (const file of ['scripts/skill-refresh.ps1', 'references/refresh.md']) assert.ok(fs.existsSync(path.join(installation, file)), `Missing ${file}`);
+  const timer = parseJson(fs.readFileSync(path.join(root, 'skills/planning/harness-timer/skill.json'), 'utf8'), 'harness-timer/skill.json');
+  assert.equal(timer.requiredInterfaces['skillvault-installation']['structured-refresh'], 2);
+  assert.equal((timer.dependencies ?? []).includes('skillvault-refresh'), false);
+  const bootstrap = parseJson(fs.readFileSync(path.join(root, 'scripts/bootstrap-skills.json'), 'utf8'), 'bootstrap-skills.json');
+  assert.equal(bootstrap.includes('skillvault-refresh'), false);
 });
 
 test('experience-driven authoring keeps learning destinations and edit authority separate', () => {
@@ -789,7 +879,7 @@ test('installation metadata supports partial selection and explicit exact names'
   assert.equal(exact.type, 'boolean');
   assert.equal(exact.default, false);
   assert.ok(manifest.examples.includes('/skillvault-installation install harness global'));
-  assert.ok(manifest.examples.includes('/skillvault-installation install --exact harness global'));
+  assert.ok(manifest.examples.includes('/skillvault-installation install --exact harness-project global'));
   const guide = fs.readFileSync(path.join(directory, 'references/install.md'), 'utf8');
   assert.ok(guide.includes('Find-SkillCatalogEntry'));
   assert.ok(guide.includes('-Select harness'));
@@ -805,7 +895,7 @@ test('installation clean stays read-only until the user picks findings', () => {
   assert.match(instructions, /\| `clean` \| \[[^\]]+\]\(\.\/references\/clean\.md\) \|/);
   const clean = fs.readFileSync(path.join(directory, 'references/clean.md'), 'utf8');
   assert.match(clean, /Clean changes nothing until the user picks/);
-  assert.match(clean, /skillvault-list\.ps1 -Check/);
+  assert.match(clean, /skill-inventory\.ps1 -Check/);
   assert.match(clean, /copies SkillVault did not install[\s\S]*never remove them/);
   assert.match(clean, /An overlap never removes a skill/);
 });
@@ -819,9 +909,9 @@ test('monitor discovery declares supported sources and a compatible runtime', ()
   const skill = parseSkill(fs.readFileSync(path.join(directory, 'SKILL.md'), 'utf8'), entry.name, manifest);
   assert.equal(entry.description, manifest.description);
   assert.equal(skill.description, manifest.description);
-  const runtime = parseJson(fs.readFileSync(path.join(root, 'skills/planning/harness/skill.json'), 'utf8'), 'harness/skill.json');
-  assert.equal(manifest.requiredInterfaces.harness['monitor-discovery'], 5);
-  assert.equal(runtime.runtimeInterfaces['monitor-discovery'], 5);
+  const runtime = parseJson(fs.readFileSync(path.join(root, 'skills/planning/harness-runtime/skill.json'), 'utf8'), 'harness-runtime/skill.json');
+  assert.equal(manifest.requiredInterfaces['harness-runtime']['monitor-discovery'], 7);
+  assert.equal(runtime.runtimeInterfaces['monitor-discovery'], 7);
   assert.equal(runtime.runtimeInterfaces['harness-runtime'], 4);
   const guide = fs.readFileSync(path.join(directory, 'references/discovery.md'), 'utf8');
   const cases = [...guide.matchAll(/```json\r?\n([\s\S]*?)\r?\n```/g)].map(match => parseJson(match[1], 'discovery example'));
@@ -839,6 +929,10 @@ test('monitor discovery declares supported sources and a compatible runtime', ()
   assert.deepEqual(cases[3].sameRequirementAs, ['https://example.invalid/tracker/value']);
   assert.equal(cases[3].claims[0].fact, 'acceptance.value');
   assert.equal(cases[4].correlations[0].authorities['acceptance.value'], cases[4].correlations[0].sources[1]);
+  const intake = cases.find(example => example.intake)?.intake;
+  assert.ok(intake && intake.mode === 'auto' && typeof intake.worker.flow === 'string' && intake.approvedBy && intake.reason, 'standing intake example names its worker and approval');
+  assert.ok(Number.isInteger(intake.maxPerCheck) && intake.maxPerCheck >= 1 && intake.maxPerCheck <= 20);
+  assert.match(guide, /effects: "local"/);
   assert.ok(guide.includes('"type": "json-feed"'));
 });
 
@@ -849,29 +943,29 @@ test('harness initialization reuses selected root without another location promp
   assert.ok(selection > 0 && selection < guide.indexOf('## Workflow'));
   assert.match(guide, /including the displayed `\.\/` fallback/);
   assert.match(guide, /Do not ask for location confirmation again/);
-  assert.match(guide, /If no Root has been selected[\s\S]*\/harness root \.\//);
+  assert.match(guide, /If no Root has been selected[\s\S]*\/harness-project root \.\//);
   assert.match(guide, /Supply `-ConfirmLocation` automatically/);
   assert.match(guide, /-Action Init -ConfirmLocation/);
-  assert.match(guide, /\/harness root/);
+  assert.match(guide, /\/harness-project root/);
   assert.doesNotMatch(guide, /Bare reconnects require the same choice|fallback is not initialization confirmation/);
 });
 
-test('harness root selects a parent and preserves legacy board boundaries', () => {
+test('harness root selects a parent and keeps board placement separate', () => {
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
   const guide = fs.readFileSync(path.join(root, 'skills/planning', harnessProcedures.root), 'utf8');
-  const location = fs.readFileSync(path.join(root, 'skills/planning', harnessProcedures.loc), 'utf8');
-  const runtime = fs.readFileSync(path.join(root, 'skills/planning/harness/references/runtime.md'), 'utf8');
-  assert.equal(harnessProcedures.root, harnessProcedures.loc);
+  const location = guide;
+  const runtime = fs.readFileSync(path.join(root, 'skills/planning/harness-runtime/references/runtime.md'), 'utf8');
   assert.match(guide, /always prompt\s+to confirm the location/i);
   assert.match(guide, /If there is no answer[\s\S]*displayed `\.\/` for session selection/);
-  assert.match(guide, /subsequent harness actions, including\s+`\/harness init`[\s\S]*without another location confirmation/);
+  assert.match(guide, /subsequent harness actions, including\s+`\/harness-project init`[\s\S]*without another location confirmation/);
   assert.match(runtime, /## Root Inheritance/);
   assert.match(runtime, /Every harness action reuses the selected Root/);
   assert.match(runtime, /location selection, not blanket permission/);
   assert.match(guide, /-Action Root/);
-  assert.match(location, /`\/harness root <path>` selects the parent/);
-  assert.match(location, /`\/hn root` is shorthand for `\/harness root`/);
-  assert.match(location, /`\/harness loc` and `\/hn loc` remain aliases/);
+  assert.match(location, /`\/harness-project root <path>` selects the parent/);
+  assert.match(location, /`\/hn-project root` is shorthand for `\/harness-project root`/);
+  assert.match(location, /`\/harness-project loc` and `\/hn-project loc` remain aliases/);
+  assert.match(location, /`\/harness-project loc <path>` aliases\s+`\/harness-project root <path>`/);
   assert.match(location, /`\.harness_sv\/` workspace/);
   assert.match(location, /Newly initialized controllers[\s\S]*`\.harness_sv\/`/);
   assert.match(runtime, /## Artifact Storage/);
@@ -883,7 +977,7 @@ test('harness root selects a parent and preserves legacy board boundaries', () =
   assert.match(location, /without another confirmation prompt/);
   const relocation = location.split('## Explicit Relocation')[1]?.split('\n## ')[0];
   assert.ok(relocation, 'Root selection must own its move confirmation');
-  assert.match(relocation, /`\/harness root <new-parent>`[\s\S]*previously selected harness was initialized[\s\S]*target differs/);
+  assert.match(relocation, /`\/harness-project root <new-parent>`[\s\S]*previously selected harness was initialized[\s\S]*target differs/);
   const choices = relocation.split('\n').filter(line => /^\| (Yes:|No:)/.test(line));
   assert.equal(choices.length, 2, 'The prompt decides only whether existing data moves');
   assert.match(choices[0], /Yes: Move \(default\)[\s\S]*Preview[\s\S]*apply the requested relocation/);
@@ -895,7 +989,7 @@ test('harness root selects a parent and preserves legacy board boundaries', () =
   assert.match(relocation, /ambiguous substantive answer needs clarification/);
   assert.match(relocation, /not that the user answered Yes/);
   assert.match(relocation, /Scheduled ticks cannot initiate this root-change workflow/);
-  assert.match(location, /`\/hn-root <path>`[\s\S]*`\/hn root <path>` do not add a second location prompt/);
+  assert.match(location, /`\/hn-project root <path>` shorthand do not add a second\s+location prompt/);
   assert.match(relocation, /first-selection `\.\/` fallback does not apply/);
   assert.match(relocation, /blocked or failed move is reported separately[\s\S]*new Root remains selected/);
   assert.match(relocation, /-ProjectPath <previous-root> -Action Root -Move -DestinationPath <new-parent> -Apply/);
@@ -903,24 +997,24 @@ test('harness root selects a parent and preserves legacy board boundaries', () =
   assert.match(location, /select the valid new root\s+before asking about moving data/);
   assert.match(location, /previous harness is not initialized[\s\S]*without another confirmation prompt/);
   assert.match(location, /invalid target leaves the current Root unchanged/);
-  const manifest = JSON.parse(fs.readFileSync(path.join(root, 'skills/planning/harness/skill.json'), 'utf8'));
-  const entrypoint = fs.readFileSync(path.join(root, 'skills/planning/harness/SKILL.md'), 'utf8');
+  const manifest = JSON.parse(fs.readFileSync(path.join(root, 'skills/planning/harness-project/skill.json'), 'utf8'));
+  const entrypoint = fs.readFileSync(path.join(root, 'skills/planning/harness-project/SKILL.md'), 'utf8');
   assert.equal(manifest.inputs.some(input => input.name === 'move'), false, 'Move confirmation replaces a public move flag');
   assert.doesNotMatch(manifest.description + manifest.examples.join(' '), /--move/);
   assert.match(entrypoint, /\| `root \[<path>\]` \|/);
   assert.match(location, /-BoardPath <path>/);
   assert.doesNotMatch(guide, /Never pass `-ConfirmLocation`[\s\S]*unanswered root prompt/);
-  for (const suffix of ['context', 'decide', 'report-create']) {
+  for (const suffix of ['context', 'decision', 'report']) {
     const standalone = fs.readFileSync(path.join(root, 'skills/planning', harnessProcedures[suffix]), 'utf8');
     assert.match(standalone, /Reuse the selected Root without another location prompt/);
-    assert.match(standalone, /If no Root or explicit target exists, use\s+`\/harness root \.\/` once/);
+    assert.match(standalone, /If no Root or explicit target exists, use\s+`\/harness-project root \.\/` once/);
     assert.doesNotMatch(standalone, /Identify the target project from the request or workspace/);
   }
 });
 
 test('harness script permissions precede execution and agent fallback preserves boundaries', () => {
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-  const runtime = fs.readFileSync(path.join(root, 'skills/planning/harness/references/runtime.md'), 'utf8');
+  const runtime = fs.readFileSync(path.join(root, 'skills/planning/harness-runtime/references/runtime.md'), 'utf8');
   const procedure = runtime.split('## Script Permissions and Agent Fallback')[1]?.split('\n## ')[0];
   assert.ok(procedure, 'Missing shared permission/fallback procedure');
   assert.match(procedure, /Reuse existing approvals/);
@@ -934,7 +1028,7 @@ test('harness script permissions precede execution and agent fallback preserves 
   assert.ok(preflight > 0 && preflight < development.indexOf('-Action Dev'));
   assert.ok(development.indexOf('Resolve runner allowances') < development.indexOf('-Action Dev'));
   assert.match(development, /attended agent fallback/);
-  for (const suffix of ['init', 'review', 'test', 'restrict', 'fallback', 'timer']) {
+  for (const suffix of ['init', 'review', 'test', 'limits', 'fallback', 'timer']) {
     const guide = fs.readFileSync(path.join(root, 'skills/planning', harnessProcedures[suffix]), 'utf8');
     assert.match(guide, /Script Permissions and Agent\s+Fallback/, `Missing preflight guidance: harness-${suffix}`);
   }
@@ -952,7 +1046,7 @@ test('harness script permissions precede execution and agent fallback preserves 
 
 test('harness missing allowances inherit without invented limits', () => {
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-  const runtime = fs.readFileSync(path.join(root, 'skills/planning/harness/references/runtime.md'), 'utf8');
+  const runtime = fs.readFileSync(path.join(root, 'skills/planning/harness-runtime/references/runtime.md'), 'utf8');
   const inheritance = runtime.split('## Runner Inheritance')[1]?.split('\n## ')[0];
   assert.ok(inheritance);
   assert.match(inheritance, /Missing or null allowances inherit/);
@@ -961,11 +1055,11 @@ test('harness missing allowances inherit without invented limits', () => {
   assert.match(inheritance, /does not rewrite project settings/);
   assert.match(inheritance, /Blank strings and empty allowance lists add no local restriction/);
   assert.match(inheritance, /`None`, and `Max` use inheritance/);
-  const restrictions = fs.readFileSync(path.join(root, 'skills/planning', harnessProcedures.restrict), 'utf8');
+  const restrictions = fs.readFileSync(path.join(root, 'skills/planning', harnessProcedures.limits), 'utf8');
   assert.match(restrictions, /No default restriction is added/);
   assert.match(restrictions, /"allowedModels": "None"/);
   assert.match(restrictions, /"maxAgentCredits": "Max"/);
-  for (const suffix of ['dev', 'review', 'restrict', 'timer']) {
+  for (const suffix of ['dev', 'review', 'limits', 'timer']) {
     const guide = fs.readFileSync(path.join(root, 'skills/planning', harnessProcedures[suffix]), 'utf8');
     assert.match(guide, /Runner\s+Inheritance/);
     assert.doesNotMatch(guide, /Missing runtime settings require setup|unresolved execution settings before creating/);
@@ -974,7 +1068,7 @@ test('harness missing allowances inherit without invented limits', () => {
 
 test('harness confirms reuse or new without sharing reviewer conclusions or bypassing locks', () => {
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-  const runtime = fs.readFileSync(path.join(root, 'skills/planning/harness/references/runtime.md'), 'utf8');
+  const runtime = fs.readFileSync(path.join(root, 'skills/planning/harness-runtime/references/runtime.md'), 'utf8');
   const selection = runtime.split('## Reuse or New')[1]?.split('\n## ')[0];
   assert.ok(selection, 'Missing shared instance-selection procedure');
   assert.match(selection, /Reuse \(singleton\) or New\?/);
@@ -991,6 +1085,74 @@ test('harness confirms reuse or new without sharing reviewer conclusions or bypa
   assert.match(timer, /-InstanceMode New -InstanceName/);
   assert.match(timer, /NeedsInstanceChoice/);
   assert.match(timer, /same purpose|same E2E|same topic/);
+});
+
+test('harness review panel and development loop share one runtime contract', () => {
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const planning = path.join(root, 'skills/planning');
+  const runtime = fs.readFileSync(path.join(planning, 'harness-runtime/references/runtime.md'), 'utf8');
+  const panel = runtime.split('## Review Panel')[1]?.split('\n## ')[0];
+  assert.ok(panel, 'Missing the shared review panel section');
+  for (const identifier of ['`allowedModels`', '`maxParallelReviewers: 1`', '`runner.criticalReview: false`', '`/pr-review`', '`profiles`', '`scripts/review-models.json`', '`/harness-project policy list limits`', '`SKILLVAULT_REVIEW_MODELS`']) {
+    assert.ok(panel.includes(identifier), `Review panel contract lost ${identifier}`);
+  }
+  assert.match(panel.replace(/\s+/g, ' '), /before any model work/);
+  const list = parseJson(fs.readFileSync(path.join(planning, 'harness-runtime/scripts/review-models.json'), 'utf8'), 'review-models.json');
+  assert.deepEqual(list.families.map(family => family.id), ['gpt', 'claude-opus']);
+  for (const family of list.families) {
+    const prefix = family.pattern.replace(/\*$/, '');
+    assert.ok(family.models.length > 0, `Empty ${family.label} review list`);
+    assert.equal(new Set(family.models).size, family.models.length, `Repeated ${family.label} review model`);
+    for (const model of family.models) assert.ok(model.startsWith(prefix), `${model} is outside the ${family.label} family`);
+  }
+  const limits = fs.readFileSync(path.join(planning, harnessProcedures.limits), 'utf8');
+  assert.match(limits, /^\| `maxParallelReviewers` \|/m);
+  const review = fs.readFileSync(path.join(planning, harnessProcedures.review), 'utf8');
+  const dev = fs.readFileSync(path.join(planning, harnessProcedures.dev), 'utf8');
+  for (const guide of [review, dev]) assert.match(guide, /Review Panel/);
+  for (const identifier of ['`reviewFindings`', '`outsideTaskScope`', '`NeedsDecision`']) assert.ok(dev.includes(identifier), `Development loop lost ${identifier}`);
+  for (const [name, text] of [['runtime', runtime], ['review', review], ['dev', dev]]) {
+    assert.doesNotMatch(text, /critical second pass|critical-review phase|Review, Critical, and Fresh/, `Current ${name} guidance still describes the removed Critical pass`);
+  }
+});
+
+test('harness-work sprint delegates to owning topics without a second task store', () => {
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const catalog = parseJson(fs.readFileSync(path.join(root, 'catalog.json'), 'utf8'), 'catalog.json');
+  const entry = catalog.find(candidate => candidate.name === 'harness-work');
+  const directory = path.join(root, entry.path);
+  const manifest = parseJson(fs.readFileSync(path.join(directory, 'skill.json'), 'utf8'), 'harness-work/skill.json');
+  const content = fs.readFileSync(path.join(directory, 'SKILL.md'), 'utf8');
+  const skill = parseSkill(content, entry.name, manifest);
+  assert.deepEqual(manifest.inputs.find(input => input.name === 'action').enum, ['list', 'upsert', 'run', 'queue', 'sprint', 'test']);
+  assert.match(skill['argument-hint'], /^\[list\|upsert\|run\|queue\|sprint\|test\]/);
+  assert.match(content, /^\| `sprint \[<goal>\] \[<task>\.\.\.\]` \|/m);
+  assert.match(content, /\]\(\.\/references\/sprint\.md\)/);
+  for (const reference of ['task', 'dev', 'sprint', 'test', 'test-flows']) {
+    assert.ok(fs.existsSync(path.join(directory, `references/${reference}.md`)), `Missing ${reference} procedure`);
+  }
+  for (const description of [entry.description, manifest.description, skill.description]) assert.ok(description.includes('harness-write'));
+  for (const optional of ['harness-write', 'pr-publish']) assert.equal((manifest.dependencies ?? []).includes(optional), false, `${optional} stays optional for sprints`);
+  const sprint = fs.readFileSync(path.join(directory, 'references/sprint.md'), 'utf8');
+  for (const heading of ['Start or Resume', 'Plan', 'Run', 'Sprint Review', 'Retro', 'Record']) assert.match(sprint, new RegExp(`^## ${heading}\\r?$`, 'm'));
+  assert.ok(sprint.includes('.harness_sv/docs/sprints/'));
+  assert.ok(sprint.includes('-Action Dev -Id <task-id>'));
+  for (const route of ['/harness-write upsert', '/pr-publish', '/harness-work upsert']) assert.ok(sprint.includes(route), `Sprint lost its ${route} delegation`);
+});
+
+test('real tests share the development-tests interface, test stages, and the unit-test policy route', () => {
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const read = relative => fs.readFileSync(path.join(root, relative), 'utf8');
+  const runtime = parseJson(read('skills/planning/harness-runtime/skill.json'), 'harness-runtime/skill.json');
+  assert.equal(runtime.runtimeInterfaces['development-tests'], 1);
+  for (const consumer of ['harness-work', 'harness-project']) {
+    const manifest = parseJson(read(`skills/planning/${consumer}/skill.json`), `${consumer}/skill.json`);
+    assert.equal(manifest.requiredInterfaces['harness-runtime']['development-tests'], 1, `${consumer} must require the test stages`);
+  }
+  const flows = read('skills/planning/harness-work/references/test-flows.md');
+  assert.match(flows, /^## When Tests Run\r?$/m);
+  for (const field of ['"afterReview"', '"unitTests"', '"effects": "external"']) assert.ok(flows.includes(field), `The example declaration lacks ${field}`);
+  assert.match(read('skills/planning/harness-project/SKILL.md'), /^\| `policy set unit-tests <critical\\\|broad>` \|/m);
 });
 
 test('handoff preserves explicit invocation, global default, and upstream attribution', () => {
@@ -1015,11 +1177,11 @@ test('handoff follow-ups stay optional at selected transfer points', () => {
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
   const catalog = parseJson(fs.readFileSync(path.join(root, 'catalog.json'), 'utf8'), 'catalog.json');
   for (const [name, procedure] of [
-    ['harness', 'references/context.md'],
+    ['harness-project', 'references/context.md'],
     ['harness-decision', 'references/workflow.md'],
-    ['harness-dev', 'references/workflow.md'],
-    ['harness-policy', 'references/fallback.md'],
-    ['harness-report', 'references/workflow.md'],
+    ['harness-work', 'references/dev.md'],
+    ['harness-project', 'references/fallback.md'],
+    ['harness-write', 'references/report.md'],
     ['skillvault-discovery', 'references/search.md'],
   ]) {
     const entry = catalog.find(candidate => candidate.name === name);
@@ -1036,8 +1198,8 @@ test('report authoring advertises Jarvis and query routes with an optional speci
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
   const catalog = parseJson(fs.readFileSync(path.join(root, 'catalog.json'), 'utf8'), 'catalog.json');
   for (const [name, counterpart] of [
-    ['harness-report', 'jarvis-metrics'],
-    ['jarvis-metrics', 'harness-report'],
+    ['harness-write', 'jarvis-metrics'],
+    ['jarvis-metrics', 'harness-write'],
   ]) {
     const entry = catalog.find(candidate => candidate.name === name);
     assert.ok(entry, `Missing reporting skill: ${name}`);
@@ -1047,8 +1209,8 @@ test('report authoring advertises Jarvis and query routes with an optional speci
     for (const description of [entry.description, manifest.description, skill.description]) {
       assert.ok(description.includes(counterpart), `Missing reporting overlap: ${name}`);
     }
-    if (name === 'harness-report') {
-      const workflow = fs.readFileSync(path.join(directory, 'references/workflow.md'), 'utf8');
+    if (name === 'harness-write') {
+      const workflow = fs.readFileSync(path.join(directory, 'references/report.md'), 'utf8');
       for (const route of ['powerbi', 'grafana', 'jarvis', 'web', 'query']) {
         assert.match(workflow, new RegExp(`\\b${route}\\b`));
       }
@@ -1058,6 +1220,35 @@ test('report authoring advertises Jarvis and query routes with an optional speci
       assert.match(routes, /`jarvis-metrics`/);
     }
   }
+});
+
+test('dri investigates read-only and keeps service details in a private profile', () => {
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const catalog = parseJson(fs.readFileSync(path.join(root, 'catalog.json'), 'utf8'), 'catalog.json');
+  const entry = catalog.find(candidate => candidate.name === 'dri');
+  assert.equal(entry.path, 'skills/monitoring/dri');
+  const directory = path.join(root, entry.path);
+  const manifest = parseJson(fs.readFileSync(path.join(directory, 'skill.json'), 'utf8'), 'dri/skill.json');
+  const instructions = fs.readFileSync(path.join(directory, 'SKILL.md'), 'utf8');
+  const skill = parseSkill(instructions, 'dri', manifest);
+  assert.equal(manifest.install.defaultScope, 'global');
+  assert.deepEqual(manifest.dependencies, []);
+  const monitor = catalog.find(candidate => candidate.name === 'harness-monitor');
+  const monitorDirectory = path.join(root, monitor.path);
+  const monitorManifest = parseJson(fs.readFileSync(path.join(monitorDirectory, 'skill.json'), 'utf8'), 'harness-monitor/skill.json');
+  const monitorSkill = parseSkill(fs.readFileSync(path.join(monitorDirectory, 'SKILL.md'), 'utf8'), 'harness-monitor', monitorManifest);
+  for (const description of [entry.description, manifest.description, skill.description]) assert.match(description, /harness-monitor/);
+  for (const description of [monitor.description, monitorManifest.description, monitorSkill.description]) assert.match(description, /\bdri\b/);
+  const rules = instructions.replace(/\s+/g, ' ');
+  assert.match(rules, /Read-only by default/);
+  assert.match(rules, /Every side effect needs the DRI's explicit approval of that exact action/);
+  assert.match(rules, /`dri-profile\.md`/);
+  assert.match(rules, /Never invent sources, queries, owners, signals, or thresholds/);
+  assert.match(rules, /Before `investigate`, read the \[investigation procedure\]\(\.\/references\/investigate\.md\)/);
+  const investigation = fs.readFileSync(path.join(directory, 'references/investigate.md'), 'utf8').replace(/\s+/g, ' ');
+  assert.match(investigation, /changes nothing/);
+  assert.match(investigation, /Never post it/);
+  assert.match(fs.readFileSync(path.join(directory, 'references/proposal.md'), 'utf8'), /^Status: Proposed\./m);
 });
 
 test('PR commands share one global-default runtime without recursive harness routing', () => {
@@ -1072,10 +1263,10 @@ test('PR commands share one global-default runtime without recursive harness rou
     const guide = fs.readFileSync(path.join(directory, 'SKILL.md'), 'utf8');
     const skill = parseSkill(guide, name, manifest);
     assert.equal(manifest.install.defaultScope, 'global');
-    assert.match(skill.description, new RegExp(`/${name}(?![\\w-])`));
     assert.match(guide, /user-wide/);
+    if (name !== 'harness-timer') assert.match(guide.replace(/\s+/g, ' '), /no harness Root, `\/harness-project init`, or data-root choice/, `${name} must not send agents looking for a harness Root or data root`);
     assert.equal(manifest.dependencies.includes('harness-review'), false);
-    assert.ok(manifest.dependencies.includes(name === 'pr-review' ? 'harness' : 'pr-review'));
+    assert.ok(manifest.dependencies.includes(name === 'pr-review' ? 'harness-runtime' : 'pr-review'));
   }
   for (const [name, counterpart] of [['harness-review', 'pr-review'], ['differential-review', 'pr-review'], ['schedule-manager', 'harness-timer']]) {
     const entry = catalog.find(candidate => candidate.name === name);
@@ -1091,9 +1282,18 @@ test('topic map covers canonical skills and rules apply stays separate from auth
   const catalog = parseJson(fs.readFileSync(path.join(root, 'catalog.json'), 'utf8'), 'catalog.json');
   const plan = fs.readFileSync(path.join(root, 'docs/plans/2026-09-16-topic-skill-refactor.md'), 'utf8');
   const targets = [...plan.matchAll(/^\| [a-z][a-z0-9-]* \| ([a-z][a-z0-9-]*)/gm)].map(match => match[1]);
-  assert.deepEqual([...new Set(targets)].sort(), catalog.map(entry => entry.name).sort());
+  // Hidden runtime bundles are not topics; every user-facing catalog skill needs a topic-map row.
+  const hidden = catalog.filter(entry => {
+    const skillPath = path.join(root, entry.path, 'SKILL.md');
+    if (!fs.existsSync(skillPath)) return false;
+    const header = /^---\r?\n([\s\S]*?)\r?\n---/.exec(fs.readFileSync(skillPath, 'utf8').replace(/^\uFEFF/, ''));
+    return Boolean(header) && /^user-invocable:\s*false\s*$/m.test(header[1]) && /^disable-model-invocation:\s*true\s*$/m.test(header[1]);
+  }).map(entry => entry.name);
+  assert.deepEqual(hidden, ['harness-runtime']);
+  assert.deepEqual([...new Set(targets)].sort(), catalog.map(entry => entry.name).filter(name => !hidden.includes(name)).sort());
   assert.match(plan, /```mermaid\r?\nflowchart LR/);
-  assert.match(plan, /Harness topics register as `\/harness` and `\/harness-\*`/);
+  assert.match(plan, /Harness topics register as `\/harness-\*`/);
+  assert.match(plan, /shared `harness-runtime` bundle is hidden from the `\/` menu/);
   assert.match(plan, /`\/hn-\*` is only conversational shorthand/);
   assert.match(plan, /## Project Storage[\s\S]*<root>\/\.harness_sv\//);
   const folderTree = plan.match(/## Folder Layout[\s\S]*?```text\r?\n([\s\S]*?)```/);
@@ -1114,7 +1314,7 @@ test('topic map covers canonical skills and rules apply stays separate from auth
   assert.equal([...core.matchAll(/^\d\. \*\*/gm)].length, 4);
   assert.match(rules, /apply[\s\S]*without editing files/);
   assert.match(management, /Wait for explicit confirmation/);
-  const runner = fs.readFileSync(path.join(root, 'skills/planning/harness/scripts/harness-runner.ps1'), 'utf8');
+  const runner = fs.readFileSync(path.join(root, 'skills/planning/harness-runtime/scripts/harness-runner.ps1'), 'utf8');
   assert.match(runner, /rules\/references\/core\.md/);
   assert.doesNotMatch(runner, /rules\/references\/manage\.md/);
   const source = fs.readFileSync(path.join(root, 'skills/core/skillvault-authoring/SKILL.md'), 'utf8');
@@ -1126,7 +1326,7 @@ test('topic map covers canonical skills and rules apply stays separate from auth
 test('multi-action topics default to list and keep aliases out of primary menus', () => {
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
   const catalog = parseJson(fs.readFileSync(path.join(root, 'catalog.json'), 'utf8'), 'catalog.json');
-  for (const entry of catalog.filter(entry => /^(harness(?:-|$)|skillvault-|pr-review$|pr-watch$|pr-publish$|rules$|schedule-manager$)/.test(entry.name))) {
+  for (const entry of catalog.filter(entry => /^(harness-|skillvault-|pr-review$|pr-watch$|pr-publish$|rules$|schedule-manager$|dri$)/.test(entry.name) && entry.name !== 'harness-runtime')) {
     const directory = path.join(root, entry.path);
     const manifest = parseJson(fs.readFileSync(path.join(directory, 'skill.json'), 'utf8'), `${entry.name}/skill.json`);
     const instructions = fs.readFileSync(path.join(directory, 'SKILL.md'), 'utf8');
@@ -1151,7 +1351,7 @@ test('multi-action topics default to list and keep aliases out of primary menus'
       /conversational routing, not script argument parsing/,
     ]) assert.match(routing, rule, entry.name);
     for (const alias of ['help', 'status', 'show', 'now', 'next']) assert.ok(!action.enum.includes(alias), `${entry.name}: alias ${alias}`);
-    if (['skillvault-authoring', 'harness-report'].includes(entry.name)) {
+    if (['skillvault-authoring', 'harness-write'].includes(entry.name)) {
       assert.ok(action.enum.includes('upsert'), `${entry.name}: one authoring action`);
       for (const alias of ['create', 'update']) assert.ok(!action.enum.includes(alias), `${entry.name}: alias ${alias}`);
     }
@@ -1236,6 +1436,51 @@ test('topic action-prefix ADR examples match canonical action menus', () => {
       assert.deepEqual(matches, [expectedAction], `${topic}: ambiguous or unknown example ${token}`);
     }
   }
+});
+
+test('documented action menus match each topic argument-hint', () => {
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const catalog = parseJson(fs.readFileSync(path.join(root, 'catalog.json'), 'utf8'), 'catalog.json');
+  const menus = new Map();
+  for (const entry of catalog) {
+    const skillPath = path.join(root, entry.path, 'SKILL.md');
+    if (!fs.existsSync(skillPath)) continue;
+    const group = /^\[([a-z]+(?:\|[a-z]+)+)\]/.exec(parseSkill(fs.readFileSync(skillPath, 'utf8'), entry.name)['argument-hint'] ?? '');
+    if (group) menus.set(entry.name, group[1].split('|'));
+  }
+  // Synopses such as `/topic [a|b]` (shorthand and escaped table pipes included), Mermaid labels
+  // such as `topic<br/>a, b`, and topic-map rows such as `| topic | topic a, b |`.
+  const patterns = [
+    /(?<![\w./-])\/([a-z][a-z0-9-]*) \[([a-z]+(?:\\?\|[a-z]+)+)\]/g,
+    /"([a-z][a-z0-9-]*)<br\/>([a-z]+(?:, [a-z]+)+)(?="|<br\/>)/g,
+    /^\| ([a-z][a-z0-9-]*) \| \1 ([a-z]+(?:, [a-z]+)+) \|/gm,
+  ];
+  let checked = 0;
+  const stale = (file, text) => patterns.flatMap(pattern => [...text.matchAll(pattern)]).flatMap(match => {
+    const expected = menus.get(match[1].replace(/^hn-/, 'harness-').replace(/^sv-/, 'skillvault-'));
+    if (!expected) return [];
+    checked++;
+    const found = match[2].split(/\\?\||, /);
+    return found.join('|') === expected.join('|') ? []
+      : [`${file}:${text.slice(0, match.index).split('\n').length}: ${match[1]} [${found.join('|')}], expected [${expected.join('|')}]`];
+  });
+  for (const sample of [
+    '| `/harness-project [list\\|root\\|init\\|migrate\\|context\\|clean\\|link\\|policy]` | Project |',
+    'HN --> WORK["harness-work<br/>list, add, update, run, queue, sprint, test"]',
+    '| rules | rules list, apply, add, update, remove |',
+    '`/hn-project [list|root|init|migrate|context|clean|link|policy]`',
+  ]) assert.equal(stale('fixture', sample).length, 1, sample);
+  const markdown = (directory) => fs.existsSync(directory) ? fs.readdirSync(directory, { withFileTypes: true }).flatMap(item => {
+    const full = path.join(directory, item.name);
+    return item.isDirectory() ? markdown(full) : item.name.endsWith('.md') ? [full] : [];
+  }) : [];
+  // Decision records and evaluations keep the menus they decided on; current docs and bundles must not drift.
+  const files = [path.join(root, 'README.md'), path.join(root, 'AGENTS.md'),
+    ...markdown(path.join(root, 'docs')).filter(file => !/[\\/]docs[\\/](?:plans[\\/]decisions|evaluations)[\\/]/.test(file)),
+    ...markdown(path.join(root, 'skills')), ...markdown(path.join(root, 'templates'))];
+  checked = 0;
+  assert.deepEqual(files.flatMap(file => stale(path.relative(root, file), fs.readFileSync(file, 'utf8'))), []);
+  assert.ok(checked >= 30, `expected at least 30 documented action menus, found ${checked}`);
 });
 
 test('discovery search builds scoped queries and evidence-backed shortlists', () => {
@@ -1336,7 +1581,7 @@ test('discovery explains the requested tool or product without substituting or r
 test('topic operation guides keep local resource links inside their bundles', () => {
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
   const catalog = parseJson(fs.readFileSync(path.join(root, 'catalog.json'), 'utf8'), 'catalog.json');
-  for (const entry of catalog.filter(entry => /^(harness(?:-|$)|skillvault-|rules$|pr-watch$|pr-publish$)/.test(entry.name))) {
+  for (const entry of catalog.filter(entry => /^(harness(?:-|$)|skillvault-|rules$|pr-watch$|pr-publish$|dri$)/.test(entry.name))) {
     const directory = path.join(root, entry.path);
     const pending = [directory];
     while (pending.length) {
@@ -1364,8 +1609,8 @@ test('repository validation catches broken resources and catalog traversal', () 
     const directory = path.join(root, relative);
     fs.mkdirSync(directory, { recursive: true });
     fs.writeFileSync(path.join(directory, 'SKILL.md'), validSkill);
-    fs.writeFileSync(path.join(directory, 'skill.json'), JSON.stringify({ name: 'fixture', version: '1.0.0' }));
-    fs.writeFileSync(path.join(root, 'catalog.json'), JSON.stringify([{ name: 'fixture', path: relative }]));
+    fs.writeFileSync(path.join(directory, 'skill.json'), JSON.stringify({ name: 'fixture', version: '1.0.0', description: 'A valid fixture' }));
+    fs.writeFileSync(path.join(root, 'catalog.json'), JSON.stringify([{ name: 'fixture', description: 'A valid fixture', path: relative }]));
     assert.equal(validateRepository(root).publicCount, 1);
     fs.appendFileSync(path.join(directory, 'SKILL.md'), '\n[Missing](./missing.md)\n');
     assert.throws(() => validateRepository(root), /missing linked file/);
@@ -1397,9 +1642,9 @@ test('references keep only their source, and adaptations record the upstream com
   try {
     const directory = path.join(root, 'skills/testing/fixture');
     fs.mkdirSync(directory, { recursive: true });
-    fs.writeFileSync(path.join(root, 'catalog.json'), JSON.stringify([{ name: 'fixture', path: 'skills/testing/fixture' }]));
+    fs.writeFileSync(path.join(root, 'catalog.json'), JSON.stringify([{ name: 'fixture', description: 'A valid fixture', path: 'skills/testing/fixture' }]));
     const write = (upstream, extra = {}, strategy = 'upstream') => fs.writeFileSync(path.join(directory, 'skill.json'), JSON.stringify({
-      name: 'fixture', version: '1.0.0', kind: 'reference', upstream, install: { defaultScope: 'global', global: true, strategy }, ...extra,
+      name: 'fixture', version: '1.0.0', description: 'A valid fixture', kind: 'reference', upstream, install: { defaultScope: 'global', global: true, strategy }, ...extra,
     }));
     const skillFile = path.join(directory, 'SKILL.md');
     const valid = { repo: 'https://github.com/owner/repo', path: 'skills/fixture', version: 'latest' };

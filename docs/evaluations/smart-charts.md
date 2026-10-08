@@ -18,7 +18,7 @@ Value: High for repeated file-to-chart work. Fit: A script-backed charting speci
 adapter. It has a distinct rendering role; it is not simply another KPI design guide.
 
 Installed recommendation: Keep `kpi-dashboard` for metric and visual-design contracts and
-`harness-report` for artifact identity, authoring, and validation. Skill recommendation: Defer a
+the `harness-write` report action for artifact identity, authoring, and validation. Skill recommendation: Defer a
 managed Smart Charts bundle until the execution and output-contract issues below are addressed
 and a focused trial verifies the intended host. Do not replace either existing workflow.
 
@@ -120,7 +120,7 @@ descriptions below refer to the pre-change workflows.
 
 ### 2. Reconcile Chart Explanations With Plotted Data
 
-- Target: `harness-report`, Validate and Deliver, reusing `kpi-dashboard`'s metric contract.
+- Target: `harness-write` report, Validate and Deliver, reusing `kpi-dashboard`'s metric contract.
 - Evidence and gap: The candidate exposes plot statistics and advisories alongside its artifact.
   Current report validation covers formulas, filters, grain, and rendering, but does not explicitly
   bind a chart's explanatory numbers to its final displayed data after transformations.
@@ -145,13 +145,13 @@ now uses authorized data evidence before uncertain chart choices, including card
 missingness, entity/detail grain, and suspicious header/total rows. It preserves valid explicit
 requests and design-only scope, without a mandatory profile call or new dependency.
 
-[Report validation](../../skills/planning/harness-report/references/workflow.md#validate-and-deliver)
+[Report validation](../../skills/planning/harness-write/references/report.md#validate-and-deliver)
 now reconciles explanatory numbers with the final plotted scope, units, filters, aggregation, and
 series. It exposes partial batches and material assumptions, avoids sharing unused sensitive
 columns, and does not force a narrative for a bare-chart request.
 
 Both guides honor explicit tools, platforms, formats, chart types, and data requirements before
-defaults. [Report fallback](../../skills/planning/harness-report/references/workflow.md#requirement-preserving-fallback)
+defaults. [Report fallback](../../skills/planning/harness-write/references/report.md#requirement-preserving-fallback)
 reuses an available approved method only when it preserves that contract. It retains retry/time
 budgets, reconciles prior execution and possible writes before conflicting work, and preserves
 ownership and pauses. Changes to requested coverage, sampling, tools, or deliverable need approval;
@@ -192,4 +192,4 @@ live retry policies, or authorize data access and publication.
 - [CLI](https://github.com/hherosoul/dsh-smart-charts/blob/fdb5dcba78ae650b572a347160176d1f9491870e/skills/smart-charts/scripts/cli.py)
 - [Current KPI workflow](../../skills/data/kpi-dashboard/SKILL.md)
 - [Metric contract](../../skills/data/kpi-dashboard/references/metric-contract.md)
-- [Current report workflow](../../skills/planning/harness-report/references/workflow.md)
+- [Current report workflow](../../skills/planning/harness-write/references/report.md)

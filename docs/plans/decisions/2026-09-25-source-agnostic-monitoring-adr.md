@@ -61,4 +61,4 @@ managed latest copies follow the repository's guarded installation procedure.
 
 - [Current plan](../2026-09-15-harness-command-and-record-contracts.md#monitoring)
 - [Source contract](../../../skills/planning/harness-monitor/references/discovery.md)
-- [Shared runtime](../../../skills/planning/harness/references/runtime.md#monitoring)
+- [Shared runtime](../../../skills/planning/harness-runtime/references/runtime.md#monitoring)

@@ -1,15 +1,15 @@
 {
   "name": "pr-review",
   "title": "PR Review",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "ownershipProtocol": 1,
   "requiredInterfaces": {
-    "harness": {
+    "harness-runtime": {
       "harness-runtime": 4
     }
   },
   "kind": "agent",
-  "description": "Review a PR URL, repository, or user-wide watchlist. Use /pr-review list, run, configure, or explicit PR input. Overlaps with harness-review on general review and differential-review on security; owns remote selection and isolated evidence, while pr-watch manages targets.",
+  "description": "[run|configure] Review a PR URL, repository, or user-wide watchlist; a PR URL alone also starts a review. Overlaps with harness-review on general review and differential-review on security; owns remote selection and isolated evidence, while pr-watch manages targets.",
   "tags": [
     "github",
     "pull-request",
@@ -31,7 +31,7 @@
   "dependencies": [
     "git",
     "gh",
-    "harness",
+    "harness-runtime",
     "rules"
   ],
   "examples": [

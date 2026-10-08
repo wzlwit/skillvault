@@ -46,6 +46,7 @@ legacy_skill_entries=(
   "skillvault-sync:skills/public/skillvault-sync"
   "ai-principles:skills/public/core/ai-principles"
   "rule-update:skills/public/core/rule-update"
+  "skillvault-refresh:skills/core/skillvault-refresh"
 )
 
 if ! command -v node >/dev/null 2>&1; then
@@ -225,7 +226,7 @@ function run(args) {
     for (const entry of fs.readdirSync(root, { withFileTypes: true })) {
       if (!entry.isDirectory() || entry.name.startsWith('.skillvault-')) continue;
       const manifest = readJsonObject(path.join(root, entry.name, 'skill.json'));
-      if (manifest && ['harness', 'harness-init', 'harness-timer', 'pr-review', 'skillvault-refresh', 'skillvault-fresh', 'sv-refresh'].includes(manifest.name)) {
+      if (manifest && ['harness', 'harness-runtime', 'harness-init', 'harness-timer', 'pr-review', 'skillvault-installation', 'skillvault-refresh', 'skillvault-fresh', 'sv-refresh'].includes(manifest.name)) {
         throw new Error('Deferred: runtime ownership cannot be verified without PowerShell. Use the guarded PowerShell installer; --force does not bypass runtime coordination.');
       }
     }

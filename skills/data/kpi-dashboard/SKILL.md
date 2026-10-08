@@ -1,6 +1,6 @@
 ---
 name: kpi-dashboard
-description: Define actionable KPIs and design dashboard layouts, comparisons, filters, and freshness states. Use for /kpi-dashboard, legacy /kpi-dashboard-design, executive SaaS dashboards, MRR/churn/LTV-CAC metrics, operations-center views, cohort retention, or conflicting metric calculations. Overlaps with harness-report on authoring, harness-monitor on metric contracts, jarvis-metrics on dashboard design, powerbi-modeling on grain and measure semantics, and the ppt-master reference on presentation design; supplies reusable, platform-agnostic design guidance, not a platform writer, incident engine, or Jarvis-specific metric-source workflow.
+description: Define actionable KPIs and design dashboard layouts, comparisons, filters, and freshness states. Use for /kpi-dashboard, executive SaaS dashboards, MRR/churn/LTV-CAC metrics, operations-center views, cohort retention, or conflicting metric calculations. Overlaps with harness-write on authoring, harness-monitor on metric contracts, jarvis-metrics on dashboard design, powerbi-modeling on grain and measure semantics, and the ppt-master reference on presentation design; supplies reusable, platform-agnostic design guidance, not a platform writer, incident engine, or Jarvis-specific metric-source workflow.
 license: MIT
 metadata:
   author: Seth Hobson
@@ -107,7 +107,7 @@ scope Partial; fallback never invents data, substitutes zero for missing values,
 
 ## Reuse and Boundaries
 
-- `harness-report` chooses the authoring platform and coordinates artifact creation and validation;
+- `harness-write` chooses the authoring platform and coordinates artifact creation and validation;
   this skill supplies platform-independent metric and layout guidance.
 - `harness-monitor` evaluates exported observations; this skill helps define that metric contract
   but never declares or activates monitors.

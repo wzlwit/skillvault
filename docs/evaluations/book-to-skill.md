@@ -70,7 +70,7 @@ machinery than a generic authoring guide, but it should not become another Skill
 [SkillVault authoring](../../skills/core/skillvault-authoring/references/upsert.md) already owns
 canonical-source editing, reuse of an existing owner, attribution, scope, and validation. The
 candidate contributes document-oriented extraction and knowledge organization; it does not replace
-that ownership. [Harness documentation](../../skills/planning/harness-doc/references/workflow.md)
+that ownership. [Harness documentation](../../skills/planning/harness-write/references/doc.md)
 authors reader guides from evidence. Converting documents into agent guidance is a different output,
 and both now include the extraction-quality and coverage checks described below.
 
@@ -131,7 +131,7 @@ to the pre-change workflows; current implementation and verification are recorde
 
 ### 2. Extraction Coverage Before Synthesis
 
-- Target: `harness-doc`, Gather evidence, for external document sources; the same check can be supplied
+- Target: `harness-write` doc, Gather evidence, for external document sources; the same check can be supplied
   to authoring when its input is extracted text.
 - Evidence and gap: The extractor distinguishes methods and warns about skipped inputs, but can finish
   successfully with partial coverage. The current doc workflow handles unknown claims but does not
@@ -167,7 +167,7 @@ now maps supported source knowledge to task triggers, inputs, decisions, steps, 
 and traceable references. It checks extraction coverage, keeps short inputs small, and uses supporting
 files only where needed. The entrypoint routes document-based upserts to this procedure.
 
-[Document input checks](../../skills/planning/harness-doc/references/workflow.md#check-document-inputs)
+[Document input checks](../../skills/planning/harness-write/references/doc.md#check-document-inputs)
 now compare requested and read sources, retain skipped/unreadable evidence, preserve source-specific
 section identities, and inspect task-critical extraction quality. Missing essential content leaves
 the affected guidance Draft; readable text needs no conversion dependency.

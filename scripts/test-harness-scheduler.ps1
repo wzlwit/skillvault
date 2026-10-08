@@ -1,7 +1,7 @@
 param([switch]$RefreshRetryOnly, [switch]$LayoutOnly)
 
 $ErrorActionPreference = 'Stop'
-. (Join-Path $PSScriptRoot '../skills/planning/harness/scripts/harness-duration.ps1')
+. (Join-Path $PSScriptRoot '../skills/planning/harness-runtime/scripts/harness-duration.ps1')
 
 function Assert-SchedulerFailure {
     param([scriptblock]$Operation)
@@ -334,7 +334,7 @@ try {
     $refreshBundle = Join-Path $fixture 'refresh-adapter'
     $refreshFixture = Join-Path $refreshBundle 'scripts/refresh-runner.ps1'
     New-Item -ItemType Directory -Path (Split-Path -Parent $refreshFixture) -Force | Out-Null
-    $refreshManifest = [pscustomobject]@{ name = 'skillvault-refresh'; version = '1.0.0'; runtimeInterfaces = [pscustomobject]@{ 'structured-refresh' = 1 } }
+    $refreshManifest = [pscustomobject]@{ name = 'skillvault-installation'; version = '1.0.0'; runtimeInterfaces = [pscustomobject]@{ 'structured-refresh' = 2 } }
     Write-HarnessJson (Join-Path $refreshBundle 'skill.json') $refreshManifest
     [IO.File]::WriteAllText($refreshFixture, @'
 param([switch]$RunOnce, [switch]$ResultJson, [string]$RetryPlanPath, [int]$OwnerProcessId)
@@ -365,7 +365,7 @@ if ($RetryPlanPath) {
         if (@(Get-ChildItem -LiteralPath $transportPaths.Receipts -Filter 'refresh-retry-*').Count) { throw 'Refresh retry input was not cleaned up.' }
     }
     Remove-Item (Join-Path (Split-Path -Parent $refreshFixture) 'invoked.txt')
-    $refreshManifest.runtimeInterfaces.'structured-refresh' = 2
+    $refreshManifest.runtimeInterfaces.'structured-refresh' = 3
     Write-HarnessJson (Join-Path $refreshBundle 'skill.json') $refreshManifest
     $transportState = Read-HarnessSchedules $transportPaths
     $blockedRun = [guid]::NewGuid().ToString('N')
@@ -373,7 +373,7 @@ if ($RetryPlanPath) {
     Write-HarnessSchedules $transportPaths $transportState
     Assert-SchedulerFailure { & $heartbeatScript -SchedulerRoot $transportPaths.Root -Action Execute -JobId $transportJob.id -RunId $blockedRun }
     $blockedReceipt = Get-Content (Join-Path $transportPaths.Receipts ($transportJob.id + '.json')) -Raw | ConvertFrom-Json
-    if ($blockedReceipt.status -cne 'Blocked' -or $blockedReceipt.requiredUpdates -notcontains 'skillvault-refresh' -or (Test-Path (Join-Path (Split-Path -Parent $refreshFixture) 'invoked.txt'))) { throw 'An incompatible saved refresh adapter launched or failed to report its required update set.' }
+    if ($blockedReceipt.status -cne 'Blocked' -or $blockedReceipt.requiredUpdates -notcontains 'skillvault-installation' -or (Test-Path (Join-Path (Split-Path -Parent $refreshFixture) 'invoked.txt'))) { throw 'An incompatible saved refresh adapter launched or failed to report its required update set.' }
     $maintenanceRoot = Join-Path $fixture 'maintenance-only'
     $null = & $publicTimer -SchedulerRoot $maintenanceRoot -Action Set -Target maintenance -Apply
     $maintenanceTrigger = $registeredTasks[$registeredTasks.Count - 1].Triggers[0]

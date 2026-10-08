@@ -29,7 +29,7 @@ maintenance policy. `status` and `help` alias read-only `list`. An explicit old 
 setup request routes to `set`; bare `/hn-timer` no longer requests setup. Do not invent a duration
 when a new work schedule has none. Legacy `-IntervalDay` values still mean fixed days.
 
-Use `/harness clean [--policy <file>] [--apply]` for historical data or retention settings; the
+Use `/harness-project clean [--policy <file>] [--apply]` for historical data or retention settings; the
 installed harness runtime guide's History Cleanup section owns that contract. The former timer
 `clean --policy <file>` route delegates there for compatibility, without running cleanup.
 
@@ -41,13 +41,13 @@ remain singleton logical targets, not per-watch or per-repository schedules.
 
 ## Scope and Execution
 
-Reuse Root selected through `/harness root` and pass `-ProjectPath` explicitly. In layout 2,
+Reuse Root selected through `/harness-project root` and pass `-ProjectPath` explicitly. In layout 2,
 `config/schedules.json` is the authoritative project declaration: definitions, interval, anchor,
 and enabled setting. `runtime/schedules.json` holds nextDue, results, recovery, and active invocation
 snapshots; `runtime/locks/schedules.lock` protects updates. Direct edits activate at the next safe
 operation; a launched invocation stays stable until completion. Ticks do not rewrite declarations.
 New control is `<root>/.harness_sv`; legacy flat files and recognized `.harness` controllers stay
-in place until explicit `/hn migrate`, separate from this topic's legacy OS-task migration.
+in place until explicit `/hn-project migrate`, separate from this topic's legacy OS-task migration.
 
 The default user-wide scheduler root is `~/.copilot/skillvault/scheduler`. Its `schedules.json`
 holds project registrations, the PR/refresh logical schedules, shared maintenance settings,
@@ -100,7 +100,7 @@ the underlying harness safety pause or recover interrupted task state on the use
 
 The heartbeat checks declared executable dependency interfaces during runtime admission. Refresh
 setup/resume also checks the selected adapter, and execution claims and checks the actual saved
-adapter before invoking it. `structured-refresh: 1` is required for receipt and retry transport;
+adapter before invoking it. `structured-refresh: 2` is required for receipt and retry transport;
 matching package versions or ownership markers do not imply that support. A mismatch blocks work
 and identifies the companion update set without installing it or retrying it as temporary Busy.
 
@@ -194,7 +194,7 @@ tests, commits, or automatic worktree deletion. A partial run stays visible; it 
 in a tight loop that morning.
 
 The heartbeat checks stale schedules, then delegates historical data to the same
-`Invoke-HarnessHistoryCleanup` implementation used by `/harness clean`. It selects registered
+`Invoke-HarnessHistoryCleanup` implementation used by `/harness-project clean`. It selects registered
 project/PR controllers only, respects a project's `maintenance.enabled: false`, and retains
 the owner's evidence protections and runtime locks. No competing retention implementation or
 new maintenance topic is introduced.

@@ -1,10 +1,10 @@
 $ErrorActionPreference = 'Stop'
 $harnessCandidates = @(
-    (Join-Path $PSScriptRoot '../../harness/scripts'),
-    (Join-Path $PSScriptRoot '../../../planning/harness/scripts')
+    (Join-Path $PSScriptRoot '../../harness-runtime/scripts'),
+    (Join-Path $PSScriptRoot '../../../planning/harness-runtime/scripts')
 )
 $harnessScripts = $harnessCandidates | Where-Object { Test-Path -LiteralPath (Join-Path $_ 'harness-runner.ps1') -PathType Leaf } | Select-Object -First 1
-if (-not $harnessScripts) { throw 'Install the sibling harness-init dependency before using PR review.' }
+if (-not $harnessScripts) { throw 'Install the sibling harness dependency before using PR review.' }
 . (Join-Path $harnessScripts 'harness-store.ps1')
 . (Join-Path $harnessScripts 'harness-runner.ps1')
 
@@ -45,7 +45,7 @@ function ConvertTo-PrReviewTarget {
 
 function Get-PrReviewHosts {
     param($Paths)
-    if (Test-Path -LiteralPath $Paths.Config -PathType Leaf) { return @((Read-HarnessConfig (Get-HarnessPaths $Paths.Root)).prReview.githubHosts) }
+    if (Test-Path -LiteralPath $Paths.Config -PathType Leaf) { return @((Get-PrReviewSettings (Read-HarnessConfig (Get-HarnessPaths $Paths.Root)).prReview).githubHosts) }
     @('github.com')
 }
 
@@ -163,21 +163,28 @@ function Get-PrReviewResults {
     [pscustomobject]@{ dataRoot = $Paths.Root; configured = $configured; reviews = @($reviews | Sort-Object { ConvertTo-PrReviewTime $_.at } -Descending) }
 }
 
+# Every setting is optional; omitted ones fall back to the defaults in Get-PrReviewSettings.
 function Assert-PrReviewSettings {
     param($Settings)
-    if ($Settings -is [array] -or $Settings -isnot [pscustomobject] -or $Settings.profiles -isnot [array] -or $Settings.profiles.Count -eq 0) { throw 'Declare a nonempty, strongest-first profiles array.' }
+    if ($null -eq $Settings) { return }
+    if ($Settings -is [array] -or $Settings -isnot [pscustomobject]) { throw 'PR review settings must be a JSON object.' }
     $allowedFields = @('profiles', 'githubHosts', 'maxPullRequests', 'maxCycleMinutes', 'maxCycleCredits', 'allowScheduled', 'securityReview')
     foreach ($field in $Settings.PSObject.Properties.Name) { if ($field -cnotin $allowedFields) { throw "Unknown PR review setting: $field" } }
     foreach ($field in @('maxPullRequests', 'maxCycleMinutes', 'maxCycleCredits')) {
         $value = $Settings.$field
-        if ($null -eq $value -or $value -is [string] -or $value -is [bool] -or [double]$value -le 0 -or -not [double]::IsFinite([double]$value)) { throw "Declare a positive finite $field." }
+        if (Test-HarnessUnspecifiedAllowance $value) { continue }
+        if ($value -is [string] -or $value -is [bool] -or [double]$value -le 0 -or -not [double]::IsFinite([double]$value)) { throw "$field must be a positive finite number when supplied." }
     }
-    if ($Settings.maxPullRequests -ne [Math]::Floor($Settings.maxPullRequests) -or $Settings.maxPullRequests -gt 100) { throw 'maxPullRequests must be an integer from 1 through 100.' }
-    foreach ($field in @('allowScheduled', 'securityReview')) { if ($Settings.$field -isnot [bool]) { throw "Choose $field explicitly." } }
-    if ($Settings.githubHosts -isnot [array] -or $Settings.githubHosts.Count -eq 0) { throw 'Declare the GitHub host allowlist.' }
-    foreach ($hostName in $Settings.githubHosts) {
-        if ($hostName -isnot [string] -or [uri]::CheckHostName($hostName) -ne [UriHostNameType]::Dns -or $hostName -notmatch '\.' -or $hostName -match '[/\\:]') { throw 'GitHub hosts must be DNS names without paths or ports.' }
+    if (-not (Test-HarnessUnspecifiedAllowance $Settings.maxPullRequests) -and ($Settings.maxPullRequests -ne [Math]::Floor($Settings.maxPullRequests) -or $Settings.maxPullRequests -gt 100)) { throw 'maxPullRequests must be an integer from 1 through 100.' }
+    foreach ($field in @('allowScheduled', 'securityReview')) { if ($null -ne $Settings.$field -and $Settings.$field -isnot [bool]) { throw "$field must be true or false when supplied." } }
+    if (-not (Test-HarnessUnspecifiedAllowance $Settings.githubHosts)) {
+        if ($Settings.githubHosts -isnot [array]) { throw 'githubHosts must be a list of DNS names.' }
+        foreach ($hostName in $Settings.githubHosts) {
+            if ($hostName -isnot [string] -or [uri]::CheckHostName($hostName) -ne [UriHostNameType]::Dns -or $hostName -notmatch '\.' -or $hostName -match '[/\\:]') { throw 'GitHub hosts must be DNS names without paths or ports.' }
+        }
     }
+    if (Test-HarnessUnspecifiedAllowance $Settings.profiles) { return }
+    if ($Settings.profiles -isnot [array]) { throw 'profiles must be a strongest-first array when supplied.' }
     $models = @()
     foreach ($profile in $Settings.profiles) {
         if ($profile -is [array] -or (@($profile.PSObject.Properties.Name | Sort-Object) -join ',') -cne 'contexts,efforts,model' -or
@@ -188,45 +195,97 @@ function Assert-PrReviewSettings {
     }
 }
 
+# Returns saved settings with defaults filled in; null limits mean no limit.
+function Get-PrReviewSettings {
+    param($Settings)
+    if ($null -ne $Settings -and $Settings.PSObject.Properties['defaultProfiles']) { return $Settings }
+    Assert-PrReviewSettings $Settings
+    $effective = [ordered]@{ profiles = @(); githubHosts = @('github.com'); maxPullRequests = $null; maxCycleMinutes = $null; maxCycleCredits = $null; allowScheduled = $false; securityReview = $false }
+    if ($null -ne $Settings) {
+        foreach ($field in @($effective.Keys)) { if (-not (Test-HarnessUnspecifiedAllowance $Settings.$field)) { $effective[$field] = $Settings.$field } }
+    }
+    $effective.defaultProfiles = @($effective.profiles).Count -eq 0
+    [pscustomobject]$effective
+}
+
+function Get-PrReviewDefaultProfiles {
+    if (-not (Get-Command Get-HarnessReviewModelList -ErrorAction SilentlyContinue)) { throw 'The installed harness has no review model list. Update harness and pr-review together, or save explicit profiles with /pr-review configure.' }
+    @(foreach ($family in (Get-HarnessReviewModelList).families) {
+        foreach ($model in @($family.models)) { [pscustomobject]@{ model = [string]$model; efforts = @('max', 'xhigh', 'high', 'medium', 'low', 'minimal', 'none'); contexts = @('long_context', 'default') } }
+    })
+}
+
+function Read-PrReviewConfig {
+    param($Runtime)
+    $config = Read-HarnessConfig $Runtime
+    $config | Add-Member -NotePropertyName prReview -NotePropertyValue (Get-PrReviewSettings $config.prReview) -Force
+    $config
+}
+
+# Creates the user-wide controller on first use; reports live under its reports folder.
+function Initialize-PrReviewController {
+    param($Paths)
+    New-Item -ItemType Directory -Path $Paths.Root -Force | Out-Null
+    $runtime = Get-HarnessPaths $Paths.Root
+    if (-not (Test-Path -LiteralPath $runtime.Config -PathType Leaf)) {
+        $config = Initialize-Harness $runtime
+        $config.boardPath = 'reports'
+        Write-HarnessConfig $runtime $config
+    }
+    $runtime
+}
+
 function Select-PrReviewProfile {
     param($Config, $Capabilities)
-    Assert-PrReviewSettings $Config.prReview
+    $settings = Get-PrReviewSettings $Config.prReview
     $restrictions = ConvertTo-HarnessRestrictions $Config.restrictions
-    $profile = @($Config.prReview.profiles | Where-Object { $null -eq $restrictions.allowedModels -or $_.model -cin $restrictions.allowedModels }) | Select-Object -First 1
-    if (-not $profile) { throw 'No approved ranked model is allowed by the current restrictions.' }
-    $effort = @('max', 'xhigh', 'high', 'medium', 'low', 'minimal', 'none') | Where-Object { $_ -cin $profile.efforts -and ($null -eq $Capabilities -or $_ -cin $Capabilities.efforts) } | Select-Object -First 1
-    $context = @('long_context', 'default') | Where-Object { $_ -cin $profile.contexts -and ($null -eq $Capabilities -or $_ -cin $Capabilities.contexts) } | Select-Object -First 1
-    if (-not $effort -or -not $context) { throw 'The highest-ranked allowed model has no supported approved effort/context combination; do not silently choose another model.' }
-    [pscustomobject]@{ model = $profile.model; effort = $effort; context = $context }
+    $profiles = if ($settings.defaultProfiles) { @(Get-PrReviewDefaultProfiles) } else { @($settings.profiles) }
+    $allowed = @($profiles | Where-Object { $null -eq $restrictions.allowedModels -or $_.model -cin $restrictions.allowedModels })
+    if ($allowed.Count -eq 0) { throw 'No approved ranked model is allowed by the current restrictions.' }
+    $choices = @(foreach ($profile in $allowed) {
+        $efforts = @(@('max', 'xhigh', 'high', 'medium', 'low', 'minimal', 'none') | Where-Object { $_ -cin $profile.efforts -and ($null -eq $Capabilities -or $_ -cin $Capabilities.efforts) })
+        $context = @('long_context', 'default') | Where-Object { $_ -cin $profile.contexts -and ($null -eq $Capabilities -or $_ -cin $Capabilities.contexts) } | Select-Object -First 1
+        [pscustomobject]@{ model = [string]$profile.model; efforts = $efforts; context = $context }
+    })
+    if ($choices[0].efforts.Count -eq 0 -or -not $choices[0].context) { throw 'The highest-ranked allowed model has no supported approved effort/context combination; do not silently choose another model.' }
+    $selection = [pscustomobject]@{ model = $choices[0].model; effort = [string]$choices[0].efforts[0]; context = $choices[0].context }
+    # Default models may be skipped when the CLI rejects them; saved profiles are never replaced.
+    if ($settings.defaultProfiles) { $selection | Add-Member -NotePropertyName options -NotePropertyValue @($choices | Where-Object { $_.efforts.Count -and $_.context }) }
+    $selection
 }
 
 function Set-PrReviewConfiguration {
     param($Paths, $Definition, [switch]$Apply)
-    if ($Definition -is [array] -or (@($Definition.PSObject.Properties.Name | Sort-Object) -join ',') -cne 'prReview,runner') { throw 'Configuration requires only runner and prReview objects; use harness policy commands for restrictions and fallback.' }
+    if ($Definition -is [array] -or $Definition -isnot [pscustomobject] -or @($Definition.PSObject.Properties.Name).Count -eq 0 -or @($Definition.PSObject.Properties.Name | Where-Object { $_ -cnotin @('runner', 'prReview') }).Count) { throw 'Configuration accepts only runner and prReview objects; use harness policy commands for restrictions and fallback.' }
     Assert-PrReviewSettings $Definition.prReview
-    foreach ($field in $Definition.runner.PSObject.Properties.Name) { if ($field -cnotin @('command', 'maxMinutes', 'maxCredits', 'rulesPath')) { throw "Unsupported PR runner setting: $field" } }
+    if ($null -ne $Definition.runner) { foreach ($field in $Definition.runner.PSObject.Properties.Name) { if ($field -cnotin @('command', 'maxMinutes', 'maxCredits', 'rulesPath')) { throw "Unsupported PR runner setting: $field" } } }
     $current = if (Test-Path -LiteralPath $Paths.Config) { Read-HarnessConfig (Get-HarnessPaths $Paths.Root) } else { $null }
-    $profile = Select-PrReviewProfile ([pscustomobject]@{ prReview = $Definition.prReview; restrictions = $current.restrictions })
+    $saved = if ($null -ne $Definition.prReview) { $Definition.prReview } else { $current.prReview }
+    $settings = Get-PrReviewSettings $saved
+    $profile = Select-PrReviewProfile ([pscustomobject]@{ prReview = $settings; restrictions = $current.restrictions })
     $runner = [pscustomobject]@{ command = $Definition.runner.command; maxMinutes = $Definition.runner.maxMinutes; maxCredits = $Definition.runner.maxCredits; rulesPath = $Definition.runner.rulesPath; model = $profile.model; reasoningEffort = $profile.effort; contextTier = $profile.context; validationCommands = @() }
     foreach ($field in @('command', 'maxMinutes', 'maxCredits', 'rulesPath')) {
         if (Test-HarnessUnspecifiedAllowance $runner.$field) { $runner.$field = if (Test-HarnessUnspecifiedAllowance $current.runner.$field) { $null } else { $current.runner.$field } }
     }
     if (-not $runner.command) { $runner.command = 'copilot' }
-    if ($null -eq $runner.maxMinutes) { $runner.maxMinutes = $Definition.prReview.maxCycleMinutes }
-    if ($null -eq $runner.maxCredits) { $runner.maxCredits = $Definition.prReview.maxCycleCredits }
+    if ($null -eq $runner.maxMinutes) { $runner.maxMinutes = $settings.maxCycleMinutes }
+    if ($null -eq $runner.maxCredits) { $runner.maxCredits = $settings.maxCycleCredits }
     Assert-HarnessRunnerConfig ([pscustomobject]@{ runner = $runner }) -ReviewOnly
     if (-not $Apply) { return [pscustomobject]@{ preview = $true; dataRoot = $Paths.Root; current = $current; proposed = $Definition; selection = $profile; effectiveRunner = $runner } }
     New-Item -ItemType Directory -Path $Paths.Root -Force | Out-Null
     $cycleLock = Enter-HarnessLock $Paths.CycleLock
     try {
-        $runtime = Get-HarnessPaths $Paths.Root
-        $config = Initialize-Harness $runtime
+        $runtime = Initialize-PrReviewController $Paths
         $runLock = Enter-HarnessLock $runtime.RunLock
         try {
             if ((Read-HarnessState $runtime).active) { throw 'Recover the prior active run before changing PR settings.' }
             $config = Read-HarnessConfig $runtime
             if (-not $config.prReview) { $config.boardPath = 'reports' }
-            $config | Add-Member -NotePropertyName prReview -NotePropertyValue $Definition.prReview -Force
+            if ($null -ne $Definition.prReview) {
+                $stored = [ordered]@{}
+                foreach ($property in $Definition.prReview.PSObject.Properties) { if (-not (Test-HarnessUnspecifiedAllowance $property.Value)) { $stored[$property.Name] = $property.Value } }
+                $config | Add-Member -NotePropertyName prReview -NotePropertyValue ([pscustomobject]$stored) -Force
+            }
             foreach ($field in @('command', 'maxMinutes', 'maxCredits', 'rulesPath', 'model', 'reasoningEffort', 'contextTier')) { $config.runner | Add-Member -NotePropertyName $field -NotePropertyValue $runner.$field -Force }
             $profile = Select-PrReviewProfile $config
             Assert-HarnessRestrictions -Config $config -ProjectRoot $runtime.Project -Workspace $runtime.Project -Model $profile.model -Tools @('view', 'glob', 'grep') -Executable $runner.command
@@ -239,7 +298,7 @@ function Set-PrReviewConfiguration {
 }
 
 function Get-PrReviewCapabilities {
-    param($Runtime, $Config, [double]$MaxMinutes)
+    param($Runtime, $Config, [Nullable[double]]$MaxMinutes)
     $result = Invoke-HarnessProcess -Executable $Config.runner.command -Arguments @('--no-auto-update', '--help') -Directory $Runtime.Project -MaxMinutes $MaxMinutes -Paths $Runtime -Config $Config -Targets @('review')
     Assert-HarnessProcessSuccess $result 'Unable to inspect the configured Copilot CLI; no review started.' -FailureKind Blocked
     foreach ($flag in @('model', 'reasoning-effort', 'context', 'no-custom-instructions', 'silent', 'max-ai-credits', 'available-tools', 'deny-tool', 'no-ask-user', 'no-remote', 'no-remote-export', 'disable-builtin-mcps', 'disallow-temp-dir')) {

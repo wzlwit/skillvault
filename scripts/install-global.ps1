@@ -23,7 +23,8 @@ $legacySkillEntries = @(
     'sv-sync:skills/public/sv-sync',
     'skillvault-sync:skills/public/skillvault-sync',
     'ai-principles:skills/public/core/ai-principles',
-    'rule-update:skills/public/core/rule-update'
+    'rule-update:skills/public/core/rule-update',
+    'skillvault-refresh:skills/core/skillvault-refresh'
 )
 
 function Get-SkillInstallMetadata {

@@ -95,7 +95,7 @@ try {
     $status = Get-PrPublishStatus $script:repo
     if ($status.branch -cne 'users/me/fix' -or $status.base -cne 'develop' -or -not $status.pushed -or $status.ahead -ne 1 -or $status.behind -ne 0 -or $status.pullRequest -or -not $status.template) { throw ('Status misread the branch: ' + ($status | ConvertTo-Json -Depth 4)) }
 
-    $good = "## Description`n`nFixes [issue 12](https://example.ghe.com/team/tool/issues/12). Rounding now goes up at .5.`n`n## Current vs. to-be`n`n| # | Scenario | Current (``develop``) | To-be (this PR) |`n|---|---|---|---|`n| 1 | Round 2.5 | 2 | 3 |`n`n## Checklist:`n`n- [x] All new and existing unit tests passed.`n`n## Test Validation Proof`n`n| Row | Tests |`n|---|---|`n| 1 | ``Widget_RoundsUp_WhenHalf`` |`n"
+    $good = "## Description`n`nFixes [issue 12](https://example.ghe.com/team/tool/issues/12). Rounding now goes up at .5.`n`n- ``widget.txt``: rounds half up (row 1)`n`n## Current vs. to-be`n`n| # | Scenario | Current (``develop``) | To-be (this PR) |`n|---|---|---|---|`n| 1 | Round 2.5 | 2 | 3 |`n`n## Checklist:`n`n- [x] All new and existing unit tests passed.`n`n## Test Validation Proof`n`n- Row 1: ``Widget_RoundsUp_WhenHalf```n"
     $findings = Test-PrPublishBody $good -Template $template -RepositoryPath $script:repo
     if ($findings.Count) { throw ('A complete description had findings: ' + ($findings | ConvertTo-Json)) }
     $cases = [ordered]@{
@@ -105,11 +105,16 @@ try {
         'TableColumns' = $good.Replace('| 1 | Round 2.5 | 2 | 3 |', '| 1 | Round 2.5 | 2 |')
         'UnknownTest' = $good.Replace('Widget_RoundsUp_WhenHalf', 'Widget_Never_Written')
         'ScenarioTable' = $good.Replace('| 1 | Round 2.5 | 2 | 3 |', '| 1 |  |  |  |')
+        'ExtraTable' = $good.Replace("- ``widget.txt``: rounds half up (row 1)", "| Path | What changed |`n|---|---|`n| ``widget.txt`` | Rounds half up |")
     }
     foreach ($expected in $cases.Keys) {
         $codes = Get-FixtureCodes (Test-PrPublishBody $cases[$expected] -Template $template -RepositoryPath $script:repo)
         if ($codes -cne $expected) { throw "Expected only $expected, got '$codes'." }
     }
+    $templateTable = "| Risk | Mitigation |`n|---|---|`n"
+    $riskTemplate = $template.Replace('## Checklist:', "## Risk`n`n$templateTable`n## Checklist:")
+    $riskBody = $good.Replace('## Checklist:', "## Risk`n`n$templateTable| Rounding changes totals | Covered by row 1 |`n`n## Checklist:")
+    if ((Get-FixtureCodes (Test-PrPublishBody $riskBody -Template $riskTemplate -RepositoryPath $script:repo)) -cne '') { throw 'A table the repository template asks for was reported as extra.' }
     $noChange = $good -replace '(?s)\| # \| Scenario.*?\| 3 \|', 'No behavior change.'
     if ((Get-FixtureCodes (Test-PrPublishBody $noChange -Template $template)) -cne '') { throw 'A no-behavior-change description still required a scenario table.' }
     if ((Get-FixtureCodes (Test-PrPublishBody $good.Replace('https://example.ghe.com/team/tool/issues/12', 'issue-12') -Template $template -PreviousBody $good)) -cne 'LinkRemoved') { throw 'A removed link target was not reported.' }

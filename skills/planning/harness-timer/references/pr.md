@@ -13,15 +13,15 @@ Discussing, creating, or installing this skill does not authorize a live timer.
 
 ## Workflow
 
-1. Locate `pr-review` and read its runtime reference. Inspect the user-wide list and explicit
-   runner configuration. A nonempty list, verified account/model capabilities, positive budgets,
-   and `allowScheduled: true` are prerequisites. Missing choices need attended setup.
+1. Locate `pr-review` and read its runtime reference. Inspect the user-wide list and its saved
+   settings. A nonempty list, working `gh` and Copilot CLI access, and saved `allowScheduled: true`
+   are prerequisites; other settings keep their defaults. Missing approval needs attended setup.
 2. Bare invocation requests Set. Map a supplied positive decimal `intervalDays` to `-IntervalDays`;
    otherwise reuse this one task's single saved cadence. If none exists, ask. Never invent a
    default interval, copy another task's cadence, or interpret zero as an immediate run.
 3. Preview with the dependency's `scripts/pr-review.ps1 -Action Timer -IntervalDays <days>`.
-   Show task name/path, whole-list scope, cadence, approved model/effort/context and budgets,
-   and current-user limited-privilege execution. No worker is started during setup.
+   Show task name/path, whole-list scope, cadence, the requested model/effort/context and any saved
+   limits, and current-user limited-privilege execution. No worker is started during setup.
 4. After approval of the exact operation, repeat with `-Apply`. A direct, fully resolved timer
    request authorizes that operation; skill-authoring approval does not. The helper creates or
    updates the same `SkillVault PR Review <current-user-SID>` task at root task path `\`, and

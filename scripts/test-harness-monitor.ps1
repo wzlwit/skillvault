@@ -1,9 +1,9 @@
 param([switch]$DiscoveryOnly, [switch]$VerificationOnly, [switch]$ProjectionOnly, [switch]$BatchOnly, [switch]$RepositoryOnly, [switch]$CorrelationOnly)
 
 $ErrorActionPreference = 'Stop'
-. (Join-Path $PSScriptRoot '..\skills\planning\harness\scripts\harness-store.ps1')
-. (Join-Path $PSScriptRoot '..\skills\planning\harness\scripts\harness-runner.ps1')
-. (Join-Path $PSScriptRoot '..\skills\planning\harness\scripts\harness-monitor.ps1')
+. (Join-Path $PSScriptRoot '..\skills\planning\harness-runtime\scripts\harness-store.ps1')
+. (Join-Path $PSScriptRoot '..\skills\planning\harness-runtime\scripts\harness-runner.ps1')
+. (Join-Path $PSScriptRoot '..\skills\planning\harness-runtime\scripts\harness-monitor.ps1')
 
 function Assert-MonitorFailure {
     param([scriptblock]$Operation, [string]$Expected)
@@ -481,7 +481,7 @@ if ($DiscoveryOnly) {
     $discovery.source.PSObject.Properties.Remove('token')
     $discovery.PSObject.Properties.Remove('scope')
     $discovery.response = 'create-task'
-    Assert-MonitorFailure { Assert-HarnessMonitorSettings $settings } 'never create tasks automatically'
+    Assert-MonitorFailure { Assert-HarnessMonitorSettings $settings } 'only through a declared intake'
     $discoveryRoot = Join-Path ([IO.Path]::GetTempPath()) ('harness-discovery-' + [guid]::NewGuid().ToString('N'))
     $savedDiscoveryOwnershipRoot = $env:SKILLVAULT_OWNERSHIP_ROOT
     $env:SKILLVAULT_OWNERSHIP_ROOT = Join-Path $discoveryRoot 'ownership'
@@ -727,7 +727,7 @@ if ($DiscoveryOnly) {
         $beforeAssessment = [IO.File]::ReadAllText($sourcePaths.State)
         $assessmentPreview = Set-HarnessDiscoveryAssessment $sourcePaths platform-work $assessmentPath
         if (-not $assessmentPreview.preview -or [IO.File]::ReadAllText($sourcePaths.State) -cne $beforeAssessment) { throw 'Assessment preview changed state.' }
-        $dispatcher = Join-Path $PSScriptRoot '..\skills\planning\harness\scripts\harness.ps1'
+        $dispatcher = Join-Path $PSScriptRoot '..\skills\planning\harness-runtime\scripts\harness.ps1'
         $assessed = & $dispatcher -ProjectPath $discoveryRoot -Action MonitorAssess -MonitorName platform-work -DefinitionPath $assessmentPath -Apply | ConvertFrom-Json
         if ($assessed.proposals.Count -ne 1 -or $assessed.proposals[0].priority -ne 1 -or -not $assessed.proposals[0].relevanceReason -or $assessed.assessment.status -cne 'Assessed') { throw 'Relevance/priority assessment failed to produce the narrow ranked proposal.' }
         $rankedView = Get-HarnessMonitorView $sourcePaths
@@ -856,7 +856,7 @@ try {
     $definition.condition.threshold = 2
     $definition.response = 'create-task'
     Write-HarnessJson $definitionFile ([pscustomobject]@{ monitors = @($definition) })
-    Assert-MonitorFailure { Set-HarnessMonitorSettings $paths $definitionFile -Apply -Actor Owner -Reason Change } 'never create tasks automatically'
+    Assert-MonitorFailure { Set-HarnessMonitorSettings $paths $definitionFile -Apply -Actor Owner -Reason Change } 'only through a declared intake'
     $null = Update-HarnessState -Paths $paths -SkipViews -Operation {
         param($saved)
         $saved.monitoring = [pscustomobject]@{ latest = @(); incidents = @() }
@@ -870,7 +870,7 @@ try {
     $observation.environment = 'local'; $observation.value = 5
     $observation.windowEnd = $sampleTime.ToString('o'); $observation.windowStart = $sampleTime.AddMinutes(-5).ToString('o'); $observation.observedAt = $sampleTime.ToString('o')
     Write-HarnessJson (Join-Path $fixtureRoot 'observation.json') $observation
-    $dispatcher = Join-Path $PSScriptRoot '..\skills\planning\harness\scripts\harness.ps1'
+    $dispatcher = Join-Path $PSScriptRoot '..\skills\planning\harness-runtime\scripts\harness.ps1'
     $run = & $dispatcher -ProjectPath $fixtureRoot -Action Monitor -MonitorName service-health | ConvertFrom-Json
     if ($run.status -cne 'Succeeded' -or $run.health -cne 'Unhealthy' -or -not $run.proposal -or -not (Test-Path -LiteralPath $run.report)) { throw 'Public monitoring did not collect a real local JSON snapshot and propose an investigation.' }
     if ([IO.Path]::GetRelativePath($paths.Control, $run.report).StartsWith('..')) { throw 'Default monitor evidence was written outside .harness_sv.' }

@@ -1,9 +1,9 @@
 {
   "name": "harness-review",
   "title": "Harness Review",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "kind": "agent",
-  "description": "Review current-project changes with a whole-repository Fresh pass when no new findings appear, automatically restarting when local files change. Use /harness-review or /hn-review with list, run, or explicit review options. Overlaps with pr-review on general review and differential-review on security; PR URLs delegate to pr-review.",
+  "description": "[run] Review current-project changes with two independent reviewers per pass, GPT and Claude Opus, and a whole-repository Fresh pass when no new findings appear, automatically restarting when local files change. Shorthand: /hn-review; explicit scope or options also start a review. Overlaps with pr-review on general review and differential-review on security; PR URLs delegate to pr-review.",
   "tags": [
     "harness",
     "review",
@@ -22,7 +22,7 @@
     "strategy": "copy"
   },
   "dependencies": [
-    "harness",
+    "harness-runtime",
     "rules"
   ],
   "examples": [

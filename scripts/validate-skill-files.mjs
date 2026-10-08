@@ -8,6 +8,13 @@ const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url))
 const namePattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const own = (value, key) => Object.prototype.hasOwnProperty.call(value, key);
 const textFile = (file) => fs.readFileSync(file, 'utf8').replace(/^\uFEFF/, '');
+// A multi-action topic's argument-hint starts with its action group, such as [list|run]. Its description
+// leads with the same actions except the bare-default list, such as [run], to save picker space.
+const leadingActions = (metadata) => {
+  const group = typeof metadata['argument-hint'] === 'string' ? /^\[([a-z]+(?:\|[a-z]+)+)\]/.exec(metadata['argument-hint']) : null;
+  const actions = group ? group[1].split('|').filter((action) => action !== 'list') : [];
+  return actions.length ? `[${actions.join('|')}]` : null;
+};
 
 function parseYaml(text, label) {
   const document = parseDocument(text, { uniqueKeys: true });
@@ -39,6 +46,12 @@ export function parseSkill(text, expectedName, manifest) {
   }
   for (const flag of ['user-invocable', 'disable-model-invocation']) {
     if (own(metadata, flag)) assert.equal(typeof metadata[flag], 'boolean', `${expectedName}: ${flag} must be boolean`);
+  }
+  // The / picker shows only the start of a description and shows argument-hint only after selection.
+  const actions = leadingActions(metadata);
+  if (actions) {
+    assert.ok(metadata.description.startsWith(`${actions} `),
+      `${expectedName}: description must start with its argument-hint actions except list, "${actions} "`);
   }
   return metadata;
 }
@@ -99,12 +112,14 @@ function checkBundle(directory, name, manifest) {
     checkUpstreamReference(directory, name, manifest);
     assert.ok(!fs.existsSync(file), `${name}: a reference keeps no SKILL.md; make it an adapted skill instead`);
     if (manifest.readme) assert.ok(fs.existsSync(resolveInside(directory, manifest.readme)), `${name}: missing declared readme`);
-    return;
+    return { actions: null };
   }
   const content = textFile(file);
-  parseSkill(content, name, manifest);
+  const metadata = parseSkill(content, name, manifest);
+  const actions = leadingActions(metadata);
   if (manifest) {
     assert.equal(manifest.name, name, `${name}: manifest name mismatch`);
+    if (actions) assert.ok(String(manifest.description).startsWith(`${actions} `), `${name}: skill.json description must start with "${actions} "`);
     validateRuntimeInterfaces(manifest);
     if (manifest.readme) assert.ok(fs.existsSync(resolveInside(directory, manifest.readme)), `${name}: missing declared readme`);
     if (manifest.install?.strategy === 'adapted') checkUpstreamReference(directory, name, manifest);
@@ -116,6 +131,7 @@ function checkBundle(directory, name, manifest) {
     assert.ok(fs.existsSync(resolved), `${name}: missing linked file ${target}`);
     resolveInside(fs.realpathSync(directory), fs.realpathSync(resolved));
   }
+  return { actions, description: metadata.description };
 }
 
 export function validateRepository(root) {
@@ -133,7 +149,11 @@ export function validateRepository(root) {
     const directory = resolveInside(root, entry.path);
     resolveInside(fs.realpathSync(path.join(root, 'skills')), fs.realpathSync(directory));
     const manifest = parseJson(textFile(path.join(directory, 'skill.json')), `${entry.path}/skill.json`);
-    checkBundle(directory, entry.name, manifest);
+    const bundle = checkBundle(directory, entry.name, manifest);
+    if (bundle.actions) assert.ok(String(entry.description).startsWith(`${bundle.actions} `), `${entry.name}: catalog description must start with "${bundle.actions} "`);
+    // Each skill has one description: the catalog and SKILL.md frontmatter repeat the manifest's text.
+    assert.equal(entry.description, manifest.description, `${entry.name}: catalog description must match skill.json`);
+    if (bundle.description !== undefined) assert.equal(bundle.description, manifest.description, `${entry.name}: SKILL.md description must match skill.json`);
     manifests.set(entry.name, manifest);
   }
   for (const [name, manifest] of manifests) {

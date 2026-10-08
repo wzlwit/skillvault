@@ -1,6 +1,6 @@
 ---
 name: openapi-spec
-description: Design and validate REST API contracts. Use for /openapi-spec, legacy /openapi-spec-generation, OpenAPI or Swagger specifications, code-first API documentation, request and response schemas, contract drift, or SDK input specifications.
+description: Design and validate REST API contracts. Use for /openapi-spec, OpenAPI or Swagger specifications, code-first API documentation, request and response schemas, contract drift, or SDK input specifications.
 metadata:
   author: Seth Hobson
   maintainer: wzlwit

@@ -5,14 +5,14 @@ Contents: Start Here; No Arguments: Read Only; Explain a Decision or Question; R
 Choice; Register; Boundaries.
 
 Show active open decisions and a brief summary of optional configuration by default; include
-resolved outcomes only when requested. This skill works without `/harness init`, a timer, or a
+resolved outcomes only when requested. This skill works without `/harness-project init`, a timer, or a
 harness controller. It does not execute project tasks or require unused features to be configured.
 
 ## Start Here
 
 1. Reuse the selected Root without another location prompt, including its displayed `./` fallback.
    The session supplies `-ProjectPath` automatically. A valid explicit project target overrides
-   this call only. If no Root or explicit target exists, use `/harness root ./` once; never substitute
+   this call only. If no Root or explicit target exists, use `/harness-project root ./` once; never substitute
    the workspace or terminal directory for Root. Read and apply `/rules apply` and the applicable
    project instructions. Global skill installation is not rule injection.
    Read available source guides if a dependency is not installed; do not install anything to
@@ -28,10 +28,10 @@ harness controller. It does not execute project tasks or require unused features
 
 ## No Arguments: Read Only
 
-Use the [CSV helper](../scripts/harness-decide.ps1) when `decisions.csv` uses the schema below:
+Use the [CSV helper](../scripts/harness-decision.ps1) when `decisions.csv` uses the schema below:
 
 ```powershell
-& <skill-folder>/scripts/harness-decide.ps1 -ProjectPath <project-root>
+& <skill-folder>/scripts/harness-decision.ps1 -ProjectPath <project-root>
 ```
 
 Pass `-BoardPath <path>` for a configured board. The helper returns JSON with `Open` before
@@ -149,7 +149,7 @@ interview, or triggers work. Use `record` for an explicit human choice.
    Optional fields are `-Rationale`, `-Reference`, and `-Task`. Do not invent a rationale or owner.
 
    ```powershell
-   & <skill-folder>/scripts/harness-decide.ps1 -ProjectPath <project-root> -Action Record -Id D-001 -Choice "Use option B" -Owner "Decision owner" -Rationale "Agreed reason"
+   & <skill-folder>/scripts/harness-decision.ps1 -ProjectPath <project-root> -Action Record -Id D-001 -Choice "Use option B" -Owner "Decision owner" -Rationale "Agreed reason"
    ```
 
 4. When the project has only Markdown decision records or a different register schema, preserve

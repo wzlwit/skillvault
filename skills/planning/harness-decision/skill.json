@@ -1,9 +1,9 @@
 {
   "name": "harness-decision",
   "title": "Harness Decision",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "kind": "agent",
-  "description": "List open harness decisions separately from optional configuration, filter closed/all decisions, explain one decision or question, or record a choice. Use /harness-decision or /hn-decision with list, explain, or record; also accepts legacy /harness-decide and /hn-decide. Overlaps with architecture-decision-records on history; owns the compact bulletin, decision register, and read-only explanations.",
+  "description": "[explain|record] List open harness decisions separately from optional configuration, filter closed/all decisions, explain one decision or question, or record a choice. Shorthand: /hn-decision. Overlaps with architecture-decision-records on history; owns the compact bulletin, decision register, and read-only explanations.",
   "tags": [
     "planning",
     "decisions",

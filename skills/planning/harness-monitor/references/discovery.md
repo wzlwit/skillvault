@@ -1,12 +1,14 @@
 # Work Discovery Sources
 
 Contents: Source Requests; Built-In Readers; Other Sources; Source Ownership; Relevance and
-Priority Assessment; Auto Status Verification; Related Sources and Conflicts; Checks and Task Intake.
+Priority Assessment; Auto Status Verification; Related Sources and Conflicts; Checks and Task Intake;
+Standing Intake.
 
 `/harness-monitor` (`/hn-monitor`) can watch a source for relevant work, not only health metrics. A
 check collects candidates, assesses relevance and priority, verifies current status with the Auto
 model, reconciles evidence-backed local outcomes, and then ranks unfinished work. Discovery feeds the
-existing task list only through explicit acceptance; it creates no task store, starts no development,
+existing task list through explicit acceptance, or through a [standing intake](#standing-intake) the
+owner declared for one source; it creates no task store, starts no development,
 and enables no timer. The workflow is source-agnostic: the built-in ADO and folder readers are examples, and any
 approved adapter can supply the same evidence contract. Adopting these policies creates no
 connector, listener, access, or schedule.
@@ -205,6 +207,14 @@ Publish the feed atomically only after all intended pages or files are read; a p
 `complete: false`. Keep private material in its original source: reports keep bounded evidence
 excerpts, not arbitrary adapter fields. Source text never grants execution permission or changes risk
 or automatic eligibility.
+
+A feed can name its producer: `source: { "type": "json-feed", "path": "...", "producer": { "flow":
+"<flow>", "environment": "<optional environment>" } }`. Each check then runs that declared
+`/harness-work test` flow first, under the check's lock, and reads the feed only if the producer exits
+0; a failed producer fails the check. An exit code listed in the source's `intake.setupExitCodes`,
+such as "a shared resource is busy", blocks the check instead, without counting a failure, and the
+next check retries. The producer flow must declare `effects: "local"`. Changing the
+producer keeps the source's meaning, so it needs no new monitor name.
 
 ## Source Ownership
 
@@ -446,11 +456,67 @@ proposal when fresh evidence proves work remains open. Repeated acceptance reuse
 source changes remain evidence; task contract changes and completed-task follow-ups use the normal
 explicit task workflow, never automatic reopening or overwriting human edits.
 
-After source review, `/harness-task` and `/harness-dev` own readiness, repository binding, manual
+After source review, `/harness-work` owns readiness, repository binding, manual
 queueing, and separately approved low-risk automatic pickup; monitoring never starts development.
 Approved eligible work, including postponed work, is picked by priority after the existing human
 queue precedence. Scheduling still needs that definition's `allowScheduled: true` and an explicit
-`/harness-timer` operation, and an adapter feed also needs an independently approved producer.
+`/harness-timer` operation, and an adapter feed also needs an independently approved producer, such
+as a declared `producer` flow.
 
-This feature requires the colocated `harness` runtime interface `monitor-discovery: 5`. Installing
+## Standing Intake
+
+When the owner's policy is to work every item a source lists, the source can carry that approval
+instead of an `accept` per item. Turn it on with `/harness-monitor auto <name> --worker <flow>`:
+it previews the intake below, writes it on the owner's approval (with `approvedBy` set to that
+owner and `allowScheduled: true`), and delegates the `monitor <name>` timer to `/harness-timer`.
+`/harness-monitor auto` lists every monitor's intake and worker tasks; `auto <name> off` removes it.
+Health monitors take the same intake for their incidents; see
+[health observations](monitoring.md#episode-and-task-contract). The intake is plain declaration data:
+
+```json
+{
+  "intake": {
+    "mode": "auto",
+    "worker": { "flow": "investigate-item", "environment": "local" },
+    "maxPerCheck": 2,
+    "maxAttempts": 2,
+    "setupExitCodes": [2],
+    "approvedBy": "Owner Name",
+    "reason": "Work every Active item in the reviewed query; drafts only."
+  }
+}
+```
+
+- **Approval.** `approvedBy` and `reason` are required, even in a direct edit of
+  `config/monitors.json`. Applying through `auto` or `MonitorConfig` records a `StandingIntake` policy
+  event with the human Actor, and removing it records `StandingIntakeRemoved`. Without `intake`,
+  acceptance stays manual.
+- **Worker.** A declared `/harness-work test` flow (`environment` defaults to the flow's own) that
+  declares `effects: "local"`: it writes only local files such as drafts and reports, never posts,
+  changes another system, or changes code. The harness cannot check this; the declaration is the
+  owner's statement, so review the worker first. Work that writes elsewhere stays manual.
+- **Intake.** At the end of a complete named check (`check <name>` and its `monitor <name>` timer),
+  every proposal that manual acceptance would take becomes a task, in priority order: same freshness,
+  relevance, and verification rules, with Unknown risk and no automatic eligibility. Follow-ups of
+  completed work and blocked proposals stay for a human. `check all` never takes items in.
+- **Work.** Then the worker runs once per queued task of this source whose item is in the current
+  collection, up to `maxPerCheck`, highest priority first. A Missing item waits. The worker receives
+  `HARNESS_ITEM_ID` (the adapter's item ID), `HARNESS_TASK_ID`, `HARNESS_SOURCE`,
+  `HARNESS_SOURCE_REVISION`, and `HARNESS_MONITOR`; its arguments stay literal.
+- **Outcomes.** Exit 0 completes the task. An exit code in `setupExitCodes`, such as an expired
+  sign-in, stops this check's work without counting an attempt. Any other failure or a timeout
+  counts an attempt; at `maxAttempts` (default 2) the task fails. Each run gets a report and a `Work`
+  history row, and records its outcome on the flow's `test:<flow>:<environment>` target, so the usual
+  pause, stop, budget, and failure-threshold rules apply. A timeout, stop, pause, or restriction also
+  ends this check's work, and a restriction or a blocked start counts no attempt. A worker whose
+  process cannot be confirmed stopped stays Running with its recovery marker; explicit recovery counts
+  that attempt once and requeues the task until the cap. Failed or blocked work makes the check
+  command exit nonzero.
+- **Boundaries.** Worker tasks never enter development: `/harness-work run` or `queue` on one only
+  resets its attempts and requeues it for this source's next check, which is how to retry a failed
+  item. If the source no longer declares `intake`, that request releases the task from its worker
+  instead, and it then follows the normal development review. A completed task is not reopened when
+  its source item changes later; that change stays evidence.
+
+This feature requires the colocated `harness-runtime` interface `monitor-discovery: 7`. Installing
 or updating the skill selects no private source, supplies no credentials, and creates no live monitor.

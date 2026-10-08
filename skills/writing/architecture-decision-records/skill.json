@@ -3,7 +3,7 @@
   "title": "Architecture Decision Records",
   "version": null,
   "kind": "agent",
-  "description": "Preserve architectural rationale and supersession; overlaps with grilling on trade-offs, planning-with-files on notes, harness-decision on decision history, and harness-doc on reader-facing rationale.",
+  "description": "Write or review architecture decision records. Use for ADRs, significant technology choices, design trade-offs, decision history, or superseding an accepted architectural decision. Overlaps with grilling on trade-offs, planning-with-files on decision notes, harness-decision on decision history, and harness-write on reader-facing rationale; focuses on lasting rationale and supersession.",
   "tags": [
     "documentation",
     "adr",

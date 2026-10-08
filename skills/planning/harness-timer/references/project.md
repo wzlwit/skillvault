@@ -15,8 +15,8 @@ as the current topic's default. Installed skill edits authorize no live schedule
 ## Resolve and Schedule
 
 1. Resolve the project, apply `/rules apply` and project instructions, and read the installed
-   `harness` runtime guide. Keep that canonical dependency beside `harness-timer` in the same
-   scope. Do not use an obsolete `hn-init` runtime merely because an old shortcut folder exists.
+   `harness-runtime` guide. Keep that canonical dependency beside `harness-timer` in the same
+   scope. Do not use an obsolete runtime copy merely because a retired shortcut folder exists.
    During attended setup, follow its Script Permissions and Agent Fallback procedure before
    scripts: reuse approvals and request only missing command-scoped access. Resolve required
    authentication before enabling unattended execution. Agent-assisted investigation is not a
@@ -29,7 +29,7 @@ as the current topic's default. Installed skill edits authorize no live schedule
    instance's identity, ownership, status, purpose, cadence, and context before changing it.
    Recommend reuse for the same purpose; an unanswered choice creates/updates nothing. Do not
    ask again on recurring ticks or for an already explicit reuse/new request.
-4. Inspect state and prerequisites. Offer `/harness init` for missing initialization. Follow Runner
+4. Inspect state and prerequisites. Offer `/harness-project init` for missing initialization. Follow Runner
    Inheritance for allowances instead of blocking on missing settings. The session can supply
    `-RunnerContextPath` with known compatible model/tool/resource values; the timer stores that
    non-secret path for its child command and reuses it on later Set/Resume. With no file, use
@@ -51,7 +51,7 @@ as the current topic's default. Installed skill edits authorize no live schedule
 
 Within a selected instance, `Set -InstanceMode Reuse` is an upsert. The unique scheduler identity
 is the root task path `\` plus the deterministic task name below. These names retain the existing
-unnamed singleton. `<project-id>` is the ID saved by `/harness init`, never a new ID per invocation.
+unnamed singleton. `<project-id>` is the ID saved by `/harness-project init`, never a new ID per invocation.
 
 | Purpose | Task name |
 | --- | --- |
@@ -100,7 +100,7 @@ Resume, which enables the saved trigger without changing its cadence or starting
 | `monitor <flow> [environment]` | Retained command-flow mode: run a reviewed health-check flow through the Test executor; do not silently convert existing schedules into named monitors |
 | `<topic> <flow> [environment]` | Run that explicitly declared executable flow under a separate topic-labeled timer; unsupported adapters/workflows remain unresolved |
 
-`test`, legacy monitor flows, and custom flow topics require a `/harness-test` declaration, verified executables,
+`test`, legacy monitor flows, and custom flow topics require a `/harness-work test` declaration, verified executables,
 directories and variables, a time budget, and explicit environment `allowScheduled: true`.
 Omitted environment uses the flow's declared default. A topic label grants no additional access
 or side effects; review the actual flow. These runs use the existing Test report/history format
@@ -110,11 +110,14 @@ For a named monitor, read its `/harness-monitor` definition and use `-MonitorNam
 or environment override. Require its own `allowScheduled: true`, declared source and collector
 budget, and approved directory/launcher/environment access. Health sources use numeric JSON;
 discovery uses ADO, local folders, or adapter feeds. Scheduled ADO collection needs an approved
-worker credential-delivery mechanism; a feed needs its independently approved producer. Discovery
+worker credential-delivery mechanism; a feed needs its independently approved producer, such as its
+declared `producer` flow. Discovery
 status verification uses the read-only model-auto worker under the same budgets and permissions;
 numeric health checks need no AI. Checks can reconcile evidence-backed local task outcomes and
-update candidates/incidents and proposals, but never accept proposals or
-create tasks automatically. Its task name is
+update candidates/incidents and proposals. They accept proposals and create tasks only for a source
+with a declared standing intake, which `/harness-monitor auto` turns on and then schedules here, and
+then also run its local-only worker flow, so the timer covers Monitor and Work in one job; see the
+monitor's discovery guide. Its task name is
 `SkillVault Harness <project-id> Monitor <name>` and its pause target is `monitor:<name>`.
 
 Resolve monitor-versus-flow meaning from existing definitions and an explicit request. If both
@@ -123,8 +126,9 @@ identity when managing a legacy flow. `-MonitorName` and `-TestFlow` are mutuall
 Review uses inherited or verified/native model settings and read-only tool access, not development
 write permissions. E2E/dev resolves missing allowances before checking scheduled validation.
 Known caps bound execution; absent caps add no arbitrary timer limit. Independent review timers
-retain the legacy OS time limit sized for two review sessions and do not use the development
-`criticalReview` switch. Local snapshot restarts remain subject to that existing limit; setup does
+size their OS time limit for two passes; one-after-the-other review panels (`maxParallelReviewers: 1`)
+multiply it by the reviewers per pass, and development timers size their review phases the same way.
+Local snapshot restarts remain subject to that existing limit; setup does
 not enlarge it implicitly. Their default does not request the optional security sub-skill.
 
 ## Default End-to-End Flow
@@ -136,14 +140,16 @@ every `/harness-*` skill on every tick:
 2. Select an eligible existing task from the human/resume queues or approved automatic backlog.
 3. Run bounded development, fix, or verification work for that task.
 4. Execute configured validation and `testing.afterDev` flows against its workspace.
-5. Run a fresh independent review and the configured critical pass when applicable.
+5. Run the review loop with the review panel: Changes, fix rounds for its findings, then one Full
+   pass. Each pickup runs at most one review round; the fix waits first in the resume queue, and each
+   further round is another pickup counted by `maxTasksPerCycle`.
 6. Preserve reports, task status, queues, and failures/pauses on the existing board.
 
 The runtime performs these phases directly; do not launch duplicate slash-command workers for
 the same phase. With no eligible task it records no invented work and returns Idle. Each tick is
 bounded; it does not exhaust the backlog or repair failures indefinitely.
 
-`/harness init`, Graphify setup, `/harness-link`, task intake, `/harness-policy limits`, `/harness-policy fallback`, and `/harness-decision`
+`/harness-project init`, Graphify setup, `/harness-project context add`, task intake, `/harness-project policy limits`, `/harness-project policy fallback`, and `/harness-decision`
 support setup/context or explicit configuration and decisions. Invoke their applicable workflows
 when needed during attended setup, not as recurring mutations. Missing decisions remain open;
 do not schedule automatic grilling, decision acceptance, policy changes, `/init`, publishing, or
@@ -156,13 +162,13 @@ Retain the existing failure/pause outcome for attended recovery; do not widen ac
 Use the [legacy preflight helper](../scripts/harness-project-timer.ps1) from the canonical installation:
 
 ```powershell
-& <hn-timer-folder>/scripts/harness-timer.ps1 -ProjectPath <root> -Action Set -Topic e2e -IntervalDay <approved-days>
-& <hn-timer-folder>/scripts/harness-timer.ps1 -ProjectPath <root> -Action Set -Topic review -IntervalDay <approved-days>
-& <hn-timer-folder>/scripts/harness-timer.ps1 -ProjectPath <root> -Action Set -MonitorName <name> -IntervalDay <approved-days>
-& <hn-timer-folder>/scripts/harness-timer.ps1 -ProjectPath <root> -Action Set -Topic monitor -TestFlow <flow> -TestEnvironment <environment> -IntervalDay <approved-days>
-& <hn-timer-folder>/scripts/harness-timer.ps1 -ProjectPath <root> -Action Status
-& <hn-timer-folder>/scripts/harness-timer.ps1 -ProjectPath <root> -Topic review -InstanceMode Reuse -Apply
-& <hn-timer-folder>/scripts/harness-timer.ps1 -ProjectPath <root> -Topic review -InstanceMode New -InstanceName second-review -IntervalDay <approved-days> -Apply
+& <harness-timer-folder>/scripts/harness-timer.ps1 -ProjectPath <root> -Action Set -Topic e2e -IntervalDay <approved-days>
+& <harness-timer-folder>/scripts/harness-timer.ps1 -ProjectPath <root> -Action Set -Topic review -IntervalDay <approved-days>
+& <harness-timer-folder>/scripts/harness-timer.ps1 -ProjectPath <root> -Action Set -MonitorName <name> -IntervalDay <approved-days>
+& <harness-timer-folder>/scripts/harness-timer.ps1 -ProjectPath <root> -Action Set -Topic monitor -TestFlow <flow> -TestEnvironment <environment> -IntervalDay <approved-days>
+& <harness-timer-folder>/scripts/harness-timer.ps1 -ProjectPath <root> -Action Status
+& <harness-timer-folder>/scripts/harness-timer.ps1 -ProjectPath <root> -Topic review -InstanceMode Reuse -Apply
+& <harness-timer-folder>/scripts/harness-timer.ps1 -ProjectPath <root> -Topic review -InstanceMode New -InstanceName second-review -IntervalDay <approved-days> -Apply
 ```
 
 Append `-Apply` to execute an authorized Set/Disable/Resume after preview. With a single saved
@@ -191,7 +197,7 @@ Existing `-TestFlow` calls without `-Topic` still select `test` for compatibilit
 selects the E2E timer. Status is read-only. Disable affects future ticks without killing workers;
 resume enables the saved trigger without an immediate run or a new interval. Set creates or
 updates that target and schedules its first run one interval later. Zero is rejected; use
-`/harness-dev`, `/harness-review`, `/harness-test run`, or `/harness-monitor check` for immediate execution. Missed ticks coalesce and
+`/harness-work`, `/harness-review`, `/harness-work test run`, or `/harness-monitor check` for immediate execution. Missed ticks coalesce and
 overlapping instances are ignored.
 
 ## Boundaries
@@ -202,11 +208,11 @@ schedules can target the same purpose, but all script execution still shares the
 and each schedule retains IgnoreNew. A new schedule is not an independently writable task clone
 or automatic parallel-agent orchestration. Additional agents use the host's supported instance
 mechanism after the same reuse/new choice; concurrent writers need isolated workspaces.
-Set/resume honor `/harness-policy limits` and reject paused targets, including mandatory post-dev flows.
-Use `/harness-policy fallback` to investigate and explicitly resume a safety pause; timer actions and external
+Set/resume honor `/harness-project policy limits` and reject paused targets, including mandatory post-dev flows.
+Use `/harness-project policy fallback` to investigate and explicitly resume a safety pause; timer actions and external
 Windows task enabling never clear it. No worker/test command runs during timer preflight.
 
 Do not touch unrelated schedules, elevate, request secrets through chat, or configure credentials.
 If Windows requires privileges, report the blocker for the user to handle directly. Installing
-skills or requesting `/harness init` or `/harness-decision` alone never creates a schedule. `schedule-manager`
+skills or requesting `/harness-project init` or `/harness-decision` alone never creates a schedule. `schedule-manager`
 remains the general task administration tool.

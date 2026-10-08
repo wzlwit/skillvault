@@ -39,11 +39,11 @@ assets. Its global availability default describes a future explicit install; the
 repository-only. Upstream proprietary rights are separate from the reference's undeclared license.
 
 Suggested description: "Reference to Anthropic's PDF, Word, and Excel document skills for file
-processing; overlaps with harness-doc on document output and harness-report on workbook/report
+processing; overlaps with harness-write on document output and workbook/report
 validation. Upstream tools are not bundled and their terms apply."
 
-Installed recommendation: Coexist with `harness-doc` and `harness-report`; replace neither.
-The former owns evidence-grounded reader documentation, while the latter coordinates its declared
+Installed recommendation: Coexist with the `harness-write` doc and report actions; replace neither.
+The doc action owns evidence-grounded reader documentation, while the report action coordinates its declared
 report/query platforms. Neither becomes a PDF, DOCX, or XLSX engine by naming this toolkit.
 
 Standalone use: Worth trying in an environment permitted by the applicable Anthropic agreement,
@@ -118,8 +118,8 @@ checks remain in force.
 
 ### 1. Workbook Formula and Cache Acceptance
 
-- Target: `harness-report`, Resolve the Contract and Validate and Deliver in its
-  [authoring workflow](../../skills/planning/harness-report/references/workflow.md).
+- Target: `harness-write` report, Resolve the Contract and Validate and Deliver in its
+  [authoring workflow](../../skills/planning/harness-write/references/report.md).
 - Evidence and gap: The XLSX skill distinguishes formulas from cached values, and `recalc.py`
   demonstrates why a zero exit can accompany reported formula errors. Before this update, report
   guidance checked formulas, plotted data, and editable objects without naming this workbook-specific trap.
@@ -137,8 +137,8 @@ checks remain in force.
 
 ### 2. Paginated Document Visual Acceptance
 
-- Target: `harness-doc`, Validate and Deliver in its
-  [documentation workflow](../../skills/planning/harness-doc/references/workflow.md).
+- Target: `harness-write` doc, Validate and Deliver in its
+  [documentation workflow](../../skills/planning/harness-write/references/doc.md).
 - Evidence and gap: The DOCX skill requires rendering the written file and inspecting its pages;
   the PDF guide calls out unsupported glyphs in default fonts. Before this update, documentation
   checks covered facts, links, diagrams, and prose without explicitly checking the entire paginated artifact.
@@ -165,9 +165,9 @@ for 40 public and 30 project-installed skills; editor diagnostics and a read-onl
 found no blocking issues. These checks cover the instructions, not real-file processing quality
 or observed host triggering. Optional model and representative-document trials have not run.
 
-The existing managed `latest` global `harness-doc` and `harness-report` copies and project
-`harness-report` copy were refreshed through the guarded installer and verified against the
-current local checkout. The new reference and absent project `harness-doc` copy remain uninstalled.
+The existing managed `latest` global copies of the documentation and report topics and the project
+report-topic copy were refreshed through the guarded installer and verified against the
+current local checkout. The new reference and the absent project documentation-topic copy remain uninstalled.
 No user documents, upstream runtimes, provider settings, schedules, or publication were changed.
 
 ## Verification and Reconsideration

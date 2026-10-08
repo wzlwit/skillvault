@@ -1,10 +1,10 @@
 ---
 name: harness-monitor
-description: "Monitor work across approved source adapters, including ADO and documents; assess relevance, Auto-verify status, correlate explicit requirements, reconcile evidence, and expose verified subsets, or check health observations. Use /harness-monitor or /hn-monitor with list, declare, check, or accept. Overlaps with harness-test on checks, harness-task on intake, kpi-dashboard on metric contracts, and harness-comms on status and owner evidence; preserves deferred work and never launches development."
+description: "[declare|check|accept|auto] Monitor work across approved source adapters, including ADO and documents; assess relevance, Auto-verify status, correlate explicit requirements, reconcile evidence, and expose verified subsets, or check health observations. `auto` follows up a source's items or health incidents through an approved local-only worker flow on a schedule. Shorthand: /hn-monitor. Overlaps with harness-work on checks and intake, kpi-dashboard on metric contracts, harness-write on status and owner evidence, and dri on incidents; preserves deferred work and never launches development."
 metadata:
   author: wzlwit
-  version: "1.0.0"
-argument-hint: "[list|declare|check|accept] [<arguments>...]"
+  version: "1.1.0"
+argument-hint: "[list|declare|check|accept|auto] [<arguments>...]"
 ---
 
 # Harness Monitoring
@@ -35,6 +35,15 @@ unchanged; abbreviation adds no confirmation. This is conversational routing, no
   Unverified work stays visible. Scope terms find candidates but never establish relevance.
 - `accept <id>` previews intake through `-Action MonitorTask`; applying it needs the owner and reason.
   Candidate rows are proposals, not execution-approved tasks.
+- `auto` follows up a source or health monitor automatically. Bare `auto` lists each monitor's
+  standing intake, worker, limits, last check, and its tasks. `auto <name> --worker <flow> [--every
+  <duration>] [--max <n>] [--attempts <n>] [--setup-exit <code>...]` previews, then on the owner's
+  approval turns the intake on through `-Action MonitorAuto -Apply -Actor -Reason` and delegates the
+  `monitor <name>` schedule to `/harness-timer set project <duration>` (default `1h`). Each complete
+  `check <name>` then accepts what manual acceptance would, items or Unhealthy incidents, and runs
+  the declared local-only worker flow for up to `--max` of them. `auto <name> off` removes the intake
+  and disables that timer. Before turning auto on, read
+  [standing intake](./references/discovery.md#standing-intake); `check all` never takes items in.
 
 ## Boundaries
 
@@ -47,7 +56,7 @@ unchanged; abbreviation adds no confirmation. This is conversational routing, no
 - `sourceOwner` comes only from authoritative assignment or Owner metadata; unknown stays blank and
   is separate from execution ownership.
 - External ADO/document updates need separate per-source enablement and approval.
-- Discovery requires the colocated runtime's `monitor-discovery: 5` interface; this guide does not
+- Discovery requires the colocated runtime's `monitor-discovery: 7` interface; this guide does not
   upgrade an older runtime or supply authentication.
 - Apply `/rules apply` and project instructions. Preserve existing approvals, pauses, budgets, and
   deferrals. Service scope, ADO expansion, repository authority, coverage checkpoints, and

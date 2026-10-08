@@ -54,14 +54,14 @@ This adds no reliability guarantee for unknown failures or partially completed e
 
 ## Implementation and Verification
 
-The [fallback resolver](../../../skills/planning/harness/scripts/harness-policy.ps1)
+The [fallback resolver](../../../skills/planning/harness-runtime/scripts/harness-safety.ps1)
 fills omitted bounds and validates partial declarations. The
-[test-flow loop](../../../skills/planning/harness/scripts/harness-tests.ps1) is reused
-without a new execution path. The [policy fixture](../../../scripts/test-harness-policy.ps1)
+[test-flow loop](../../../skills/planning/harness-runtime/scripts/harness-tests.ps1) is reused
+without a new execution path. The [policy fixture](../../../scripts/test-harness-safety.ps1)
 covers defaults, persistence, opt-out, failed-step-only retries, invalid/unclassified exits,
 repeatability, stops, timeouts, shared budgets, and durable pauses using temporary state.
 
-The [fallback guide](../../../skills/planning/harness-policy/references/fallback.md)
+The [fallback guide](../../../skills/planning/harness-project/references/fallback.md)
 owns the declaration contract; the [current plan](../2026-09-15-harness-command-and-record-contracts.md#restrictions-and-fallback)
 links this decision. No live installation, policy, schedule, or automatic AI retry is authorized
 by the implementation. The interrupted grilling questions Q3 and Q4 were unanswered when this

@@ -30,8 +30,8 @@ pushes, and other side effects need an explicit request.
   SkillVault's own text that works by itself, not a copy of the upstream file and not a link-only
   reference. It already covers the upstream's newer points on shared intent and approval before
   implementation.
-- `harness-dev`, `harness-test`, `harness-review`, and `pr-review` overlap with plan execution,
-  review requests, and verification gates. `harness-dev` already treats review feedback as claims to
+- `harness-work` (run and test), `harness-review`, and `pr-review` overlap with plan execution,
+  review requests, and verification gates. `harness-work` already treats review feedback as claims to
   verify.
 - `rules` partly overlaps with verification before completion; see the proposal below.
 - `skillvault-authoring` overlaps with `writing-skills`. Upstream's release history shows a
@@ -80,13 +80,13 @@ continue" handling of plan conflicts differ from harness approvals.
 | Detail | Proposal |
 | --- | --- |
 | Target | `rules`, section "4. Verify proportionately" in `skills/core/rules/references/ai-principles.md`, changed through `/rules` management |
-| Evidence and gap | Upstream `verification-before-completion` at the reviewed revision requires running the proving command fresh and reading the full output, exit code, and failure count before any success claim. It lists an earlier run, a partial check, and an agent's own success report as not sufficient. Locally, rule 4 asks for the cheapest focused check, and the detailed guidance says to keep exit status and output, but nothing says what counts as proof of success. `harness-dev` covers only worker replies. |
+| Evidence and gap | Upstream `verification-before-completion` at the reviewed revision requires running the proving command fresh and reading the full output, exit code, and failure count before any success claim. It lists an earlier run, a partial check, and an agent's own success report as not sufficient. Locally, rule 4 asks for the cheapest focused check, and the detailed guidance says to keep exit status and output, but nothing says what counts as proof of success. `harness-work` covers only worker replies. |
 | Proposed change | Add one bullet: before claiming success, check the evidence from this change, meaning the command's exit status and full result, such as failure counts. Empty filtered output, an earlier run, or a tool's or agent's own success report is not proof; confirm the actual output, file, or diff. Checks stay proportionate: a focused check can still be enough. |
 | Expected benefit | Fewer false "done" reports caused by filtered logs, stale runs, or tools that report success without applying a change. |
 | Validation | Instruction review: a build whose filtered log is empty but whose exit code is 1 must be reported as failed; an edit reported as successful while the file is unchanged is not done. A focused test with exit code 0 and a passing count needs no extra full-suite run. |
 
 Considered, not proposed: a mandatory failing baseline for every skill edit (a policy SkillVault
-chose not to adopt); rules for receiving review feedback (already in `harness-dev`); updates to the
+chose not to adopt); rules for receiving review feedback (already in `harness-work`); updates to the
 `brainstorming` adaptation (already covered, and it is an external-source skill).
 
 ## Verification Limits

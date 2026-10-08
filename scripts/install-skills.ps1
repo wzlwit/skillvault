@@ -11,7 +11,7 @@ param(
     [string]$RequestedVersion = 'latest',
     [string]$SourceRepo = 'https://github.com/wzlwit/skillvault.git',
     [ValidateSet('default', 'adapt', 'origin')][string]$Variant = 'default',
-    [string]$UpstreamCachePath = (Join-Path $HOME '.copilot/skillvault-install-src'),
+    [string]$UpstreamCachePath = (Join-Path $HOME '.copilot/skillvault-cache/originals'),
     [switch]$Force,
     [switch]$ConfirmStopped
 )
@@ -74,7 +74,7 @@ foreach ($skillName in @($Name | Select-Object -Unique)) {
         }
 
         if ($resolvedScope -eq 'session') {
-            throw "Skill '$skillName' defaults to session scope, which copies no files. Use /sv-install with session scope, or pass -Scope project or -Scope global."
+            throw "Skill '$skillName' defaults to session scope, which copies no files. Use /skillvault-installation install with session scope, or pass -Scope project or -Scope global."
         }
 
         if ($resolvedScope -cnotin @('global', 'project')) {

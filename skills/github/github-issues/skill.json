@@ -3,7 +3,7 @@
   "title": "GitHub Issues",
   "version": null,
   "kind": "agent",
-  "description": "Find, draft, and update GitHub issues with repository-aware metadata and explicit authorization.",
+  "description": "Find, draft, create, or update GitHub issues. Use for bug reports, feature requests, issue triage, labels, assignees, milestones, and issue relationships in an explicitly identified repository.",
   "tags": ["github", "issues", "triage", "workflow"],
   "author": "GitHub contributors",
   "maintainer": "wzlwit",

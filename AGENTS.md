@@ -4,9 +4,9 @@ SkillVault is a catalog-driven repository for public, shareable Copilot skills.
 
 ## Layout
 
-- `catalog.json` is the compact lookup index for install/discovery.
-- `skills/core/` contains SkillVault management skills.
-- `skills/system/` contains OS/system utility skills.
+- `catalog.json` is the name-sorted lookup index for install and discovery; it lists every skill's path.
+- `skills/<category>/<skill>/` holds each skill bundle. `skills/core/` contains SkillVault management
+  skills, and `skills/system/` contains OS/system utility skills.
 - `templates/` contains reusable scaffolds.
 - `scripts/` contains repeatable automation. Use scripts or code when they make a repeated or error-prone task clearer, safer, or easier to rerun.
 
@@ -25,7 +25,7 @@ SkillVault is a catalog-driven repository for public, shareable Copilot skills.
 - Documentation location is separate from harness board/runtime storage. Do not relocate
   `.harness_sv`, CSV state/views, or run reports merely because documentation moves.
 - Harness-generated project artifacts default to `.harness_sv/` inside the root selected by
-  `/harness root` (`/hn root`), unless the user explicitly selects another destination. Use
+  `/harness-project root` (`/hn-project root`), unless the user explicitly selects another destination. Use
   `.harness_sv/docs/` for authored plans, decisions, and handoffs, `.harness_sv/definitions/` for
   declarations, and `.harness_sv/artifacts/` for local report/query outputs. Pass these defaults to
   delegated specialists. Existing project documents, installed skill bundles, application code,
@@ -52,9 +52,9 @@ SkillVault is a catalog-driven repository for public, shareable Copilot skills.
   Default/open views add one brief **Configuration When Needed** summary and source link for
   documented optional setup; `list all` expands that checklist. Closed/exact-ID views omit it.
   Do not count optional setup as open decisions, change statuses, or create records during display.
-- `/harness init` maintains this navigation section without invoking another `/init` workflow or
+- `/harness-project init` maintains this navigation section without invoking another `/init` workflow or
   replacing unrelated project instructions.
-- `/harness root` shows the selected parent root and `.harness_sv` paths; `/harness root <path>`
+- `/harness-project root` shows the selected parent root and `.harness_sv` paths; `/harness-project root <path>`
   selects that parent. First or missing selection prompts with the absolute current folder;
   no answer uses displayed `./` in session context only. Rejection/invalid paths never fall back.
   Use the read-only `Root` action; only this action permits omitted `-ProjectPath`. Reselection
@@ -68,14 +68,14 @@ SkillVault is a catalog-driven repository for public, shareable Copilot skills.
   are reused in place when the new directory is absent. `loc` remains a compatibility alias.
 - All harness actions derive their project path from the selected Root, including the displayed
   `./` fallback, without another location confirmation. The session supplies `-ProjectPath`
-  automatically. If no Root or explicit target exists, use `/harness root ./` once. A valid explicit
-  action path overrides that call only; `/harness root <path>` changes the session selection
+  automatically. If no Root or explicit target exists, use `/harness-project root ./` once. A valid explicit
+  action path overrides that call only; `/harness-project root <path>` changes the session selection
   independently of the optional data move. Invalid target paths never change Root or fall back silently.
-- `/harness init` and reconnects reuse Root. The session supplies `-ConfirmLocation` automatically
+- `/harness-project init` and reconnects reuse Root. The session supplies `-ConfirmLocation` automatically
   with the resolved path when initialization is requested; no second location prompt is needed.
   Scheduled initialization remains prohibited. Root selection alone requests no initialization,
   installation, workers, or schedules and does not bypass operation-specific approvals or denials.
-- `/harness root <new-parent>` and `/hn-root <new-parent>` require no move flag. For an initialized
+- `/harness-project root <new-parent>` (`/hn-project root <new-parent>`) requires no move flag. For an initialized
   previous harness, Yes or no answer after the displayed Move-default prompt previews and applies
   relocation unless an explicit instruction overrides it. The saved previous root is the source, not
   its new selection. A blocked or failed move leaves the valid new Root selected, reports that
@@ -97,13 +97,16 @@ Keep `catalog.json` simple and sorted by `name`. Each entry has only:
 ```json
 {
   "name": "skill-name",
-  "description": "Short purpose.",
+  "description": "The skill's one description, identical in skill.json and SKILL.md.",
   "path": "skills/<category>/<skill-name>",
   "version": "1.0.0"
 }
 ```
 
 Every public skill must appear in `catalog.json`. The catalog `name` and `version` must match the skill's `skill.json`.
+Each skill has one `description`, identical in `catalog.json`, `skill.json`, and the `SKILL.md`
+frontmatter (a reference without `SKILL.md` matches its manifest); change all three together.
+`validate-skill-files.mjs` enforces the match.
 
 The `version` field must be present in both files: use a non-empty string for a declared
 version, or explicit JSON `null` when unversioned. `latest` is an installation policy,
@@ -153,8 +156,8 @@ in `skill.json`, `catalog.json`, and the `SKILL.md` metadata together.
   - Install picks the adaptation by default; `install <skill> origin` installs the original, except
     for a renamed adaptation.
   `architecture-decision-records`, `brainstorming`, `differential-review`, `github-issues`,
-  `grilling`, `handoff`, `kpi-dashboard` (renamed from `kpi-dashboard-design`), `openapi-spec`
-  (renamed from `openapi-spec-generation`), `powerbi-modeling`, `rag-implementation`,
+  `grilling`, `handoff`, `kpi-dashboard` and `openapi-spec` (both renamed adaptations),
+  `powerbi-modeling`, `rag-implementation`,
   `supabase-postgres-best-practices`, and `webapp-testing` are adapted; `archify`, `humanizer`,
   `planning-with-files`, and `ppt-master` are references; `awesome-gamedev-agent-skills`,
   `graphify`, `humanizer-ch`, and `office-documents` are guides.
@@ -187,6 +190,11 @@ in `skill.json`, `catalog.json`, and the `SKILL.md` metadata together.
   placeholders, `[optional]` groups, `a|b` alternatives, and `...` for repeated arguments.
   For multi-action topics, keep the hint compact, such as `[list|run] [<arguments>...]`, and
   put exact action-specific forms in the body. The hint is display guidance, not a parser.
+- Start a multi-action topic's `description` with its `argument-hint` actions except the bare-default
+  `list`, such as `[run] Review ...` for `[list|run]`, in `SKILL.md`, `skill.json`, and
+  `catalog.json` alike. The `/` picker shows only the first ~80 characters of a description and
+  shows `argument-hint` only after a skill is picked. Don't repeat the actions in a later
+  "Use ... with ..." sentence; `validate-skill-files.mjs` enforces the leading group.
 - For supporting research, honor an explicit target first; otherwise search local, configured
   accessible internal, then external sources only as needed. Prefer authoritative external
   sources, never leak private terms/content in public queries, and report unavailable sources.
@@ -210,17 +218,20 @@ in `skill.json`, `catalog.json`, and the `SKILL.md` metadata together.
 ## Management Skills
 
 Registered names, folders, and dependencies use `skillvault-discovery`, `skillvault-installation`,
-`skillvault-refresh`, and `skillvault-authoring`. `/sv-*` remains conversational shorthand only,
-not a separate skill registration. Keep the full names visible in the slash-command picker;
-do not rename canonical topics to abbreviations or create duplicate alias bundles.
-`/skillvault-source` and `/sv-source` remain text routes to authoring, not registered bundles.
+and `skillvault-authoring`. `/sv-<topic>` remains conversational shorthand only, not a separate
+skill registration. Keep the full names visible in the slash-command picker; do not rename
+canonical topics to abbreviations or create duplicate alias bundles. Refresh is the
+`/skillvault-installation refresh` action. Retired SkillVault topic and command names stay retired;
+do not reintroduce them as routes. The installer's former-name map still retires installed copies
+under those names. See the
+[SkillVault topic consolidation ADR](docs/plans/decisions/2026-10-07-skillvault-topic-consolidation-adr.md).
 
 - `/skillvault-installation` lists installed skills. Its `install`, `update`, `uninstall`, and `list catalog`
   actions manage copies or inspect the catalog, never application code or SkillVault sources.
   Run its resolver in Install mode and use the verified `C:\repos\skillvault` checkout or an explicit
   `--repo` choice. Never auto-select a cache/session clone or implicitly clone, pull, or switch branches.
   Read the actual source catalog/bundles and show source and installation paths separately; missing
-  or invalid intended sources block installation. `/harness init` follows this for missing dependencies.
+  or invalid intended sources block installation. `/harness-project init` follows this for missing dependencies.
 - `/skillvault-discovery search`, `evaluate`, and `explain` find candidates, assess adoption, or explain
   usage without executing or installing the target skill. Evaluation alone has a narrow record-only
   write exception in the verified SkillVault checkout; search/explain remain read-only.
@@ -234,14 +245,18 @@ do not rename canonical topics to abbreviations or create duplicate alias bundle
   installs; installing is a separate `/skillvault-installation install` request.
 - `/skillvault-authoring remove` removes exact SkillVault source bundles and catalog entries after confirmation.
   Installed copies stay unchanged; use `/skillvault-installation uninstall` for those.
-- `/rules` shows guidance/actions. `/rules apply` supplies the compact four rules without edits;
-  `add`, `update`, and `remove` retain confirmed changes to the authoritative document; `modify` is an alias.
-- `/skillvault-refresh` inspects only. `run` has two steps: merge upstream changes into adapted
-  skills and push them to the SkillVault repository when permitted, then bring new commits to
-  the recorded checkout and managed global latest copies, merging local changes; conflicts wait
-  for the owner. Installed originals follow their upstream. Scheduling delegates to `/harness-timer set refresh`. Legacy `schedule` keeps its
-  explicit day semantics, including a one-day default for that compatibility request and `0` for
-  one run. Refresh never pushes the owner's own commits or commits in the owner's checkout.
+- `/rules` shows the four core rules, its actions, and the always-on copy's status. `/rules apply` (alias `/rules core`) supplies the compact four rules without edits;
+  `upsert` and `remove` retain confirmed changes: private Personal rules in
+  `~/.copilot/copilot-instructions.md` by default, the shared core only when the user says `core`;
+  `add`, `update`, and `modify` are aliases of `upsert`. `/rules` keeps a generated copy of the four
+  rules at the top of that file (owner decision, 2026-10-07); limits the harness can enforce belong
+  to `/hn-project policy`.
+- `/skillvault-installation refresh` runs once and has two steps: merge upstream changes into
+  adapted skills and push them to the SkillVault repository when permitted, then bring new commits
+  to the recorded checkout and managed global latest copies, merging local changes; conflicts wait
+  for the owner. Installed originals follow their upstream. Scheduling delegates to
+  `/harness-timer set refresh`. Refresh never pushes the owner's own commits or commits in the
+  owner's checkout; it is the one installation action that changes SkillVault sources.
 - `/skillvault-installation uninstall` removes exact displayed installed copies by index, range, keyword,
   or name after confirmation. Compatibility-only bundles are not bulk-install/refresh candidates.
 - `/skillvault-installation clean` finds skills that load twice (global and a project, or two global
@@ -267,24 +282,32 @@ Validation below. They do not authorize publication.
 
 ## Harness Skills
 
-Canonical names are `harness`, `harness-policy`, `harness-task`, `harness-dev`,
-`harness-review`, `harness-test`, `harness-monitor`, `harness-timer`, `harness-link`,
-`harness-report`, `harness-doc`, `harness-comms`, and `harness-decision`. Names, folders, and dependencies use `harness` or `harness-*`.
-`/hn` and `/hn-*` are conversational shorthand only; the first parameter selects a subcommand. See the
-[topic structure and diagram](docs/plans/2026-09-16-topic-skill-refactor.md).
+Canonical topic names are `harness-project`, `harness-work`, `harness-write`, `harness-review`,
+`harness-decision`, `harness-monitor`, and `harness-timer`; the shared runtime bundle
+`harness-runtime` is hidden from the `/` menu (`user-invocable: false`, `disable-model-invocation: true`)
+and is not a topic. No skill or folder keeps the old base name `harness`. Names, folders, and
+dependencies use `harness-*`.
+`/hn-*` is conversational shorthand only, with an exact suffix match (`/hn-<x>` means
+`/harness-<x>`); the first parameter selects a subcommand. See the
+[topic structure and diagram](docs/plans/2026-09-16-topic-skill-refactor.md) and the
+[topic consolidation ADR](docs/plans/decisions/2026-10-07-harness-topic-consolidation-adr.md).
 Use `/harness-<topic> [action1|action2|...] [<arguments>...]` command synopsis notation, not
-one registered skill per action. The top-level `/harness [list|root|init|migrate|context|clean]` owns
-project setup, explicit in-place layout migration, context, and history cleanup; no management topic is added.
-Bare multi-action topics default to read-only `list`, including `/harness-timer`. Use `/harness-dev run`
-and `/harness-review run` for explicit execution. Old full commands and shortcuts route to the
-matching action, not another registered picker entry. The shared runtime exposes `Clean` for
-history; existing execution action names stay unchanged.
-Keep canonical `harness`, `harness-*`, and `skillvault-*` topic folders. Do not create separate
-`hn-*` alias folders or restore the old action-per-skill bundles such as `harness-init`.
-Legacy commands remain text routes to topic subcommands. Installed-copy migration is separate.
+one registered skill per action. `/harness-project [list|root|init|migrate|context|clean|policy]`
+owns project setup, explicit in-place layout migration, context and its source registry, history
+cleanup, and runtime policy; no management topic is added.
+Bare multi-action topics default to read-only `list`, including `/harness-timer`, and a bare group
+(`policy`, `test`) lists, and a bare `context` shows its read-only briefing. Use `/harness-work run` and `/harness-review run` for explicit
+execution. The shared runtime exposes `Clean` for history; existing execution action names stay unchanged.
+Keep canonical `harness-*` and `skillvault-*` topic folders. Do not create separate
+`hn-*` alias folders or restore retired action-per-skill or topic bundles.
+Old topic and command names are retired (owner decision, 2026-10-07): do not accept, advertise, or
+reintroduce them as routes. Action aliases inside a current topic, such as `loc`, `now`, `next`,
+`eval`, and `expl`, are not old names and stay. The installer's former-name map only retires
+installed copies under old names. See the
+[old-name retirement ADR](docs/plans/decisions/2026-10-07-retire-old-names-adr.md).
 
-`harness-doc` owns full feature doc sets and focused onboarding/troubleshooting updates through
-read-only `list` and explicit `upsert`. It authors directly in the session without requiring a
+`harness-write upsert doc` owns full feature doc sets and focused onboarding/troubleshooting updates;
+bare `harness-write` lists. It authors directly in the session without requiring a
 controller or adding a runtime action. Reuse an existing approved task and its ownership/pause
 controls when applicable. Reader docs follow the explicit output or coding repository's documentation
 convention, with `docs/guides/<feature>/` as the fallback; task/run records remain controller-local.
@@ -294,13 +317,13 @@ Preserve technical content and stable headings; missing evidence or required che
 Document moves, tool installations, and publication retain separate approval. The
 [documentation ADR](docs/plans/decisions/2026-09-26-harness-documentation-adr.md) records these choices.
 
-`harness-comms` drafts stakeholder trackers, meeting invites, and email updates or thread replies
-through read-only `list`, read-only `slots`, and explicit `upsert <tracker|meeting|email>`. Like
-`harness-doc`, it works in the session without a controller or runtime action. It saves drafts only:
+`harness-write` also drafts stakeholder trackers, meeting invites, and email updates or thread replies
+through read-only `list`, read-only `slots`, and explicit `upsert <tracker|meeting|email>`, and
+likewise works in the session without a controller or runtime action. It saves drafts only:
 sending, inviting, sharing, link-permission changes, and deletion each need an explicit request.
 It re-reads before overwriting a draft the user may be editing and verifies every write by reading
 it back. Owners come from authoritative records or the user, never authorship alone. The bundled
-`rank-slots.ps1` ranks saved getSchedule data offline and is covered by `test-harness-comms.ps1`.
+`rank-slots.ps1` ranks saved getSchedule data offline and is covered by `test-harness-write.ps1`.
 Keep its public examples generic. The
 [communications ADR](docs/plans/decisions/2026-09-29-harness-communications-adr.md) records these choices.
 
@@ -308,7 +331,7 @@ New controllers use layout 2: authoritative `config/project.json`, `monitors.jso
 `policy.json`, and schedules when configured; generated `board/` views; `runtime/` state/locks;
 monthly readable history and a navigation-only README. Commands update the same declarations;
 direct edits activate after validation at the next operation, with stable in-flight configuration
-and live pause/stop controls. `/hn migrate` previews before approved apply; `init` never migrates.
+and live pause/stop controls. `/hn-project migrate` previews before approved apply; `init` never migrates.
 Preserve task/queue identities, evidence bytes, external boards, pauses, and schedule cadence.
 Custom adapters and snapshots stay in place for explicit path review, not implicit rewriting or
 deletion. Temporary originals are removed after success/rollback; incomplete recovery stays blocked.
@@ -345,36 +368,49 @@ preserve unrelated/customized/pinned skills and harness run evidence. Use isolat
 `SKILLVAULT_TRANSACTION_ROOT` values in fixtures. See the [current-copy-only ADR](docs/plans/decisions/2026-09-25-current-copy-only-installation-adr.md);
 the earlier [interface and baseline decisions](docs/plans/decisions/2026-09-24-recovery-compatibility-and-harness-baseline-adr.md) remain accepted.
 
-`harness-task` owns task intake, identity, readiness, and updates. `harness-dev` owns running and
-queuing work, reusing the same intake helper for ad-hoc requests. Do not add competing task stores.
+`harness-work upsert` owns task intake, identity, readiness, and updates. `harness-work run`
+and `queue` own running and queuing work, reusing the same intake helper for ad-hoc requests, and
+`harness-work` also owns goal-based sprints
+(`/harness-work sprint`): the user picks the goal and ready tasks, each runs through the development
+loop, the sprint review drafts status through `harness-write` (a PR through `pr-publish` only on
+request), and the retro proposes rule/skill changes. A sprint has no calendar time-box, ends when its
+tasks are done or blocked, and keeps its record in `.harness_sv/docs/sprints/`, not a second task
+store. Do not add competing task stores.
 Match source/scope/repository after meaning-preserving normalization, not fuzzy similarity or
 blanket case-folding. Explicitly revised completed work creates a linked `followUpOf` task;
 preserve the original evidence and same-repository workspace, restart validation, and do not
 inherit risk or auto-eligibility. Completed means verified in the assigned workspace, not integrated.
-`harness-timer clean` handles stale schedules only; `/harness clean [--policy <file>] [--apply]`
+`harness-timer clean` handles stale schedules only; `/harness-project clean [--policy <file>] [--apply]`
 owns retention settings and historical records/reports. Weekly maintenance invokes the same
 harness cleanup implementation, without changing the Saturday window or deletion protections.
 
 All harness skills default to global availability; explicit project installs remain supported.
 Project selection, configuration, boards, tests, and safety policies stay project-local. The
-shared PowerShell 7 runtime is bundled under `harness`; install it beside `harness-timer`
-in the same selected scope. Installing the skills does not initialize
+shared PowerShell 7 runtime is bundled under the hidden `harness-runtime` skill; install it beside the
+harness topics and `harness-timer` in the same selected scope. Installing the skills does not initialize
 project state or create a schedule. Missing runner allowances inherit the current session/parent,
 then maximum verified or native settings; do not require duplicate configuration or add arbitrary
 restrictions. Pass compatible non-secret context through `-RunnerContext`/`-RunnerContextPath`;
 explicit project/parent limits, denials, and read-only reviews remain enforced. Tests use
 temporary fixtures and fake agents/tasks, never the user's live schedules.
 The controller project may be a non-Git folder. Register existing local coding Git roots through
-`/harness-link`, then bind each task with `-RepositoryRef` (`-RepoRef`); keep requirements Source separate.
+`/harness-project context add`, then bind each task with `-RepositoryRef` (`-RepoRef`); keep requirements Source separate.
 Configuration, board, reports, locks, and relative policy roots stay controller-local. Current and
 worktree execution, validation, and reviews follow that task's selected repository. No implicit
 cloning, Git initialization, first-reference choice, permission expansion, or saved-task retargeting.
 Standalone review accepts a project-wide repository reference; task-linked tests reuse its workspace.
-`harness-test` declares shared test flows/environments for ad-hoc, timer, and post-dev validation.
+`harness-work test` declares shared test flows/environments for ad-hoc, timer, and development tests.
 Test-only runs do not require AI settings; scheduled targets require explicit environment approval.
+Only declared flows run in the loop, never tests the AI picks: `afterDev` runs with the first review
+pass and refuses `effects: external` flows; `afterReview` runs once on the clean reviewed code; checks
+that need a deployment, such as PPE online, run on demand or on a timer. A failed test returns to the
+developer as a fix round, and the same test failing right after a fix stops at `NeedsDecision`.
+`testing.unitTests` is `critical` (default) or `broad` for the developer and reviewers; `/harness-project
+policy set unit-tests` writes it, and `/harness-project context` shows how the project is tested. See the
+[real-tests ADR](docs/plans/decisions/2026-10-08-real-tests-in-development-loop-adr.md).
 `harness-monitor` supports work discovery from ADO backlogs/saved queries, local text folders,
 and normalized feeds from other approved adapters, alongside numeric JSON health observations.
-The `monitor-discovery: 5` and `harness-runtime: 4` interfaces are required for discovery. ADO requires an explicit
+The `monitor-discovery: 7` and `harness-runtime: 4` interfaces are required for discovery. ADO requires an explicit
 service scope, not broad BI keyword matching. `check` includes relevance assessment, AI model `auto`
 verification, evidence-backed local status reconciliation, and priority ranking. Auto is model
 selection mode, not Max or merely scheduling. Development retains its strongest permitted double-check.
@@ -384,7 +420,13 @@ outcomes. Source Closed, disappearance, and age alone are insufficient. External
 writes are separately enabled/approved per source, not provided by the built-in verifier. Source candidates preserve
 identity, revision, deferrals, and bounded evidence; partial/stale/failed reads cannot imply closure.
 Accepted postponed candidates enter the normal queue at source priority; postponement alone is not
-a block. Generic On-Hold labels mean reassess; explicit dependency blocks remain. Readiness/automatic-pickup gates remain. Checks never fix code or create tasks;
+a block. Generic On-Hold labels mean reassess; explicit dependency blocks remain. Readiness/automatic-pickup gates remain. Checks never fix code.
+They create tasks only for a source with a declared standing `intake` (owner decision by delegation,
+2026-10-08; see the [standing intake ADR](docs/plans/decisions/2026-10-08-monitor-standing-intake-adr.md)),
+which `/harness-monitor auto <name> --worker <flow>` turns on for a discovery source or a health
+monitor and `auto <name> off` removes: at the end of a complete named check it takes what manual
+acceptance would, then runs the declared worker flow, which must state `effects: "local"`, for up to
+`maxPerCheck` items. Worker tasks never enter development. Otherwise
 explicit acceptance uses existing task/reference helpers with Unknown risk and no auto-eligibility
 or task completion. Health collection stays separate from service health; repeated breaches reuse
 an incident and Unknown cannot record recovery. ADO read credentials remain outside definitions and
@@ -416,12 +458,12 @@ ownership through the decision. Revalidate completion against current proof; ver
 propose follow-ups without reopening history. Runtime coverage checkpoints resume on the next
 approved check without new budgets or schedules; ordinary deferral never clears safety pauses.
 See the [accepted source-agnostic monitoring ADR](docs/plans/decisions/2026-09-25-source-agnostic-monitoring-adr.md).
-`harness-report upsert` is a session-level authoring dispatcher, not another runner action or
-renderer. Reuse `harness-dev` for tracked local implementation and `kpi-dashboard` for
+`harness-write upsert report` is a session-level authoring dispatcher, not another runner action or
+renderer. Reuse `harness-work` for tracked local implementation and `kpi-dashboard` for
 metric/layout guidance; load only the selected platform specialist. Preserve artifact IDs/paths,
 distinguish design/created/validated/published outcomes, and keep monitoring/export handoff optional.
 `create` and `update` remain aliases for upsert; do not duplicate an ambiguous or inaccessible target.
-`harness-policy set limits` declares runtime boundaries; `harness-policy set fallback` declares bounded test retries
+`harness-project policy set limits` declares runtime boundaries; `harness-project policy set fallback` declares bounded test retries
 and failure thresholds and manages durable pauses. Bare policy commands inspect only; examples are not
 live declarations. Eligible named test steps default to one additional attempt after five seconds,
 but still require `repeatable: true` and explicitly classified transient exit codes. There are no
@@ -477,21 +519,41 @@ keep missing fixes pending and preserve budgets, pauses, failures, and permissio
 Local edits during either pass restart Review on the latest snapshot
 up to twice, keeping the pinned base and permissions; archive superseded findings and return Partial
 if edits persist. Worker failures and isolated PR snapshot changes do not retry. Fresh covers the
-whole selected repository; ordinary Review and development Critical stay change-scoped. Keep
+whole selected repository; ordinary Review stays change-scoped. Keep
 snapshot checks, restrictions, and budgets; insufficient coverage is blocked, not clean. Never
 widen to another repository or evade per-round limits. Fix-driven continuation has no fixed round
 count within existing approved limits. `--security` loads the installed differential-review methodology
-without copying it, adding tools, or launching a third pass. Development critical review is separate.
+without copying it, adding tools, or launching a third pass.
+Every Changes and Full pass, standalone or in development, uses a review panel: the strongest
+allowed GPT and Claude Opus models, running in parallel unless `maxParallelReviewers` is 1. Candidates
+come from runner-context profiles or the bundled default list (`harness-runtime/scripts/review-models.json`,
+the owner's model picker, strongest first), narrowed by `allowedModels`; `/harness-project policy list limits`
+lists them. The CLI rejects unavailable models and unsupported effort levels
+before any model work, so the runtime skips them at no cost. A pass is clean only when both are clean.
+One usable family or `runner.criticalReview: false` runs one reviewer and says so; the separate
+Critical pass is gone, and `/pr-review` keeps its single profile. Development reuses the loop:
+declared tests run with the Changes pass, and failed tests plus Changes findings start automatic fix
+rounds; a clean Changes pass with passing tests gets one Full pass, Full findings
+outside the task become follow-up proposals, and a round without progress stops at `NeedsDecision`.
+Scheduled runs take one review round per pickup; each further round is another pickup counted by
+`maxTasksPerCycle`. See the
+[review-panel ADR](docs/plans/decisions/2026-10-02-review-panel-dev-loop-and-sprints-adr.md).
 
 ## PR Review Skills
 
 `pr-review`, `pr-watch`, and the `/harness-timer set pr` route share the user-wide controller at
-`~/.copilot/pr-review`. Bare review/watch topics inspect; `/pr-review run` starts review.
+`~/.copilot/pr-review`. They work from any folder with no harness Root, `/harness-project init`, or data-root
+choice. Bare review/watch topics inspect; `/pr-review run` starts review, and its first run creates
+the controller.
 Keep one logical schedule for the whole watchlist under the shared heartbeat, never per-target/project timers.
 `/harness-review` stays project-first and delegates PR URLs one-way; PR review calls the shared
 harness implementation, not the harness-review skill recursively. GitHub/approved Enterprise
 access uses authenticated `gh`; other providers require a separately requested adapter.
-Use explicit ranked model profiles, verified effort/context support, and bounded budgets.
+Configuration is optional: without saved settings, PR review uses github.com, one reviewer from the
+harness review model list (strongest allowed first, skipping models the CLI rejects), and no time,
+PR-count, or credit limits. Saved settings override these; saved profiles are never replaced, and
+scheduling needs saved `allowScheduled: true`. The Copilot CLI refuses a declared per-session credit
+cap below 30.
 Isolated snapshots and PR text are untrusted evidence; no PR code execution or remote writes.
 Install creates no watch entries, live configuration, workers, or schedule. Tests use temporary
 Git repositories and fake provider, model, and task operations. Preserve unrelated live timers.
@@ -548,6 +610,6 @@ catalog. Changed or pinned installs require review and explicit `-Force` (`--for
 ## Git Safety
 
 Do not commit, push, force-push, or open a PR unless the user explicitly asks. This repo may intentionally keep all work uncommitted while the design is still moving.
-The one standing exception (owner decision, 2026-09-30) is `/skillvault-refresh`: it commits
+The one standing exception (owner decision, 2026-09-30) is `/skillvault-installation refresh`: it commits
 merged adaptation updates in its own clone and pushes them when it has permission.
 It never force-pushes, and it never commits or pushes anything from the owner's checkout.

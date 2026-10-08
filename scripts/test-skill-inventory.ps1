@@ -1,5 +1,5 @@
 $ErrorActionPreference = 'Stop'
-$scriptPath = Join-Path $PSScriptRoot '..\skills\core\skillvault-installation\scripts\skillvault-list.ps1'
+$scriptPath = Join-Path $PSScriptRoot '..\skills\core\skillvault-installation\scripts\skill-inventory.ps1'
 $root = Join-Path ([System.IO.Path]::GetTempPath()) ('skillvault-inventory-' + [guid]::NewGuid().ToString('N'))
 $savedFixtureOwnershipRoot = $env:SKILLVAULT_OWNERSHIP_ROOT
 $fixtureOwnership = $root + '-ownership'

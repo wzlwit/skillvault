@@ -1,8 +1,8 @@
 param([switch]$LayoutOnly)
 
 $ErrorActionPreference = 'Stop'
-. (Join-Path $PSScriptRoot '../skills/planning/harness/scripts/harness-move.ps1')
-. (Join-Path $PSScriptRoot '../skills/planning/harness/scripts/harness-runner.ps1')
+. (Join-Path $PSScriptRoot '../skills/planning/harness-runtime/scripts/harness-move.ps1')
+. (Join-Path $PSScriptRoot '../skills/planning/harness-runtime/scripts/harness-runner.ps1')
 function Get-ScheduledTask { param($TaskPath); @() }
 function Assert-MoveFailure {
     param([scriptblock]$Operation, [string]$Message)
@@ -16,7 +16,7 @@ $savedFixtureOwnershipRoot = $env:SKILLVAULT_OWNERSHIP_ROOT
 $env:SKILLVAULT_OWNERSHIP_ROOT = Join-Path $fixture 'runtime-ownership'
 try {
     if ($LayoutOnly) {
-        . (Join-Path $PSScriptRoot '../skills/planning/harness/scripts/harness-migration.ps1')
+        . (Join-Path $PSScriptRoot '../skills/planning/harness-runtime/scripts/harness-migration.ps1')
         New-Item -ItemType Directory -Path $fixture -Force | Out-Null
         $paths = Get-HarnessPaths $fixture -LayoutVersion 1
         $config = Initialize-Harness $paths
@@ -53,7 +53,7 @@ try {
         if ([IO.File]::ReadAllText($current.runs[0].report) -cne 'Immutable original run evidence' -or $current.tasks[0].lastReport -cne $current.runs[0].report -or
             (Test-Path $paths.State) -or (Test-Path $paths.Config) -or (Test-Path $report) -or -not (Test-Path (Join-Path $paths.Control 'state.before-custom.json'))) { throw 'Migration lost evidence, kept duplicate state, or deleted an unrelated snapshot.' }
         if ((Invoke-HarnessMigration $currentPaths -Apply).status -cne 'Current') { throw 'Repeated migration was not idempotent.' }
-        $public = & (Join-Path $PSScriptRoot '../skills/planning/harness/scripts/harness.ps1') -ProjectPath $fixture -Action Migrate | ConvertFrom-Json
+        $public = & (Join-Path $PSScriptRoot '../skills/planning/harness-runtime/scripts/harness.ps1') -ProjectPath $fixture -Action Migrate | ConvertFrom-Json
         if ($public.status -cne 'Current') { throw 'Public migration dispatch did not inspect the selected controller.' }
         $movedRoot = Join-Path $fixture 'moved-layout'
         New-Item -ItemType Directory -Path $movedRoot | Out-Null
@@ -193,9 +193,9 @@ try {
     if ([IO.File]::ReadAllText((Join-Path $workspace 'uncommitted.txt')) -cne 'Preserve this work') { throw 'Uncommitted work was not preserved.' }
     $movedFollowUp = Get-HarnessTask (Read-HarnessState $destination) $followUp.id
     if ($movedFollowUp.followUpOf -cne $task.id -or $movedFollowUp.workspace -cne $workspace -or $savedTask.snapshot -cne 'Original snapshot evidence') { throw 'Relocation broke a follow-up link, shared workspace, or original completion evidence.' }
-    $rootView = & (Join-Path $PSScriptRoot '../skills/planning/harness/scripts/harness.ps1') -Action Root -ProjectPath $newRoot | ConvertFrom-Json
+    $rootView = & (Join-Path $PSScriptRoot '../skills/planning/harness-runtime/scripts/harness.ps1') -Action Root -ProjectPath $newRoot | ConvertFrom-Json
     if ($rootView.executionRoot -ine $oldRoot -or $rootView.project -ine $newRoot) { throw 'Root inspection hid the retained coding target.' }
-    $contextView = & (Join-Path $PSScriptRoot '../skills/planning/harness/scripts/harness.ps1') -Action Context -ProjectPath $newRoot | ConvertFrom-Json
+    $contextView = & (Join-Path $PSScriptRoot '../skills/planning/harness-runtime/scripts/harness.ps1') -Action Context -ProjectPath $newRoot | ConvertFrom-Json
     if ($contextView.executionRoot -ine $oldRoot -or (Join-Path $oldRoot 'AGENTS.md') -inotIn $contextView.instructionCandidates) { throw 'Untargeted context inspection lost the original project instructions.' }
     $null = Invoke-HarnessGit $oldRoot @('worktree', 'remove', '--force', $workspace)
     $scheduledRoot = Join-Path $fixture 'scheduled'
@@ -214,7 +214,7 @@ try {
     New-Item -ItemType Directory -Path (Join-Path $scheduledRoot 'tests') | Out-Null
     Write-HarnessJson $scheduledPaths.Config $scheduledConfig
     Write-HarnessViews $scheduledPaths $scheduledConfig (Read-HarnessState $scheduledPaths)
-    $decisionHelper = Join-Path $PSScriptRoot '../skills/planning/harness-decision/scripts/harness-decide.ps1'
+    $decisionHelper = Join-Path $PSScriptRoot '../skills/planning/harness-decision/scripts/harness-decision.ps1'
     $null = & $decisionHelper -ProjectPath $scheduledRoot -Action Record -Question 'Keep the rule file?' -Choice 'Keep' -Owner Fixture -Reference (Join-Path $scheduledPaths.Control 'rules.md')
     $schedulerRoot = Join-Path $fixture 'scheduled registry'
     New-Item -ItemType Directory -Path $schedulerRoot | Out-Null

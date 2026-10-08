@@ -1,8 +1,9 @@
 
 # Rules Core
 
-For `/rules apply`, apply these rules to the current coding work without editing rule files.
-Global installation makes the guide available; it does not enable always-on injection.
+For `/rules apply` (or `/rules core`), apply these rules to the current coding work without editing rule files.
+`/rules` also keeps a generated copy of the numbered rules in `~/.copilot/copilot-instructions.md`,
+so every Copilot chat loads them; installing the skill alone does not write that file.
 
 1. **Use current evidence.** Inspect current code and authoritative documentation. Do not
    rely on grep hits, snippets, cached knowledge, or unsupported assertions without source

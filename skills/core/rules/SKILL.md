@@ -1,17 +1,18 @@
 ---
 name: rules
-description: "Apply or manage AI working rules. Use /rules list, apply, add, update, or remove. The apply action replaces /rules-core and supplies compact coding guidance without editing files; persistent rule changes require confirmation."
+description: "[apply|upsert|remove] Apply the four core working rules (also /rules core) to the current task without editing files, or manage AI rule documents; persistent rule changes require confirmation."
 metadata:
   author: wzlwit
-  version: "1.0.0"
-argument-hint: "[list|apply|add|update|remove] [<arguments>...]"
+  version: "2.0.0"
+argument-hint: "[list|apply|upsert|remove] [<arguments>...]"
 ---
 
 # Rules
 
 Route by the first subcommand or an unambiguous natural-language request. No arguments or `list`
-shows the compact rules and actions without changing files; `show`, `status`, and `help` are
-read-only aliases, and `modify` aliases `update`. Unknown keywords show help and never approve a rule.
+shows the four core rules, the actions, and the always-on copy's status without changing files;
+`show`, `status`, and `help` are
+read-only aliases, `core` aliases `apply`, and `add`, `update`, and `modify` alias `upsert`. Unknown keywords show help and never approve a rule.
 
 Action matching applies only to the explicit action token: exact canonical actions and documented
 aliases take precedence; otherwise exactly 3 or 4 leading letters may select one canonical action
@@ -23,16 +24,24 @@ unchanged; abbreviation adds no confirmation. This is conversational routing, no
 
 | Action | Load only this guidance |
 | --- | --- |
-| `apply` | [Core working rules](./references/core.md), applied to the current task without editing files |
-| `list` | Read current rules and available actions |
-| `add`, `update`, `remove` | [Rule management](./references/manage.md), with an authoritative target and confirmed edit |
+| `apply` (alias `core`) | [Core working rules](./references/core.md), applied to the current task without editing files |
+| `list` | Show the four [core working rules](./references/core.md), the actions, and the always-on status from the read-only [always-on helper](./scripts/always-on.ps1) check, without applying or editing anything |
+| `upsert`, `remove` | [Rule management](./references/manage.md): your private personal rules by default, the shared core rules only when you say `core`; confirmed edits only |
 
-- The old `/rules-core` command selects `apply`. The four core rules are maintained once in the
-  bundled reference; load the [detailed reference](./references/ai-principles.md) only for clarification.
-- Installation makes this skill available, not always-on instruction injection; for always-on rules,
-  use the host's global or project instructions without duplicating conflicting rule documents.
-  Harness coordinators pass core guidance and project instructions to workers, not the rule-editing
-  workflow.
+- The four core rules are maintained once in the bundled reference; load the
+  [detailed reference](./references/ai-principles.md) only for clarification.
+- **Always on.** `/rules` keeps a generated copy of the four rules at the top of
+  `~/.copilot/copilot-instructions.md`, which Copilot Agent Host and CLI sessions load in every chat;
+  the private Personal rules section follows it. Never hand-edit the generated block. Run the
+  [always-on helper](./scripts/always-on.ps1) without `-Apply` to report Missing, Unmanaged, InSync,
+  or Drifted; after a confirmed core change, or when the user confirms creating or repairing the
+  copy, rerun it with `-Apply`. It changes nothing outside the block. Installing the skill alone
+  writes nothing there. Harness coordinators still pass core guidance and project instructions to
+  workers, not the rule-editing workflow.
+- **Enforceable limits belong to policy.** A rule the harness can enforce, such as allowed models,
+  time or credit caps, reviewer concurrency, test retries, failure thresholds, or pauses, goes to
+  `/hn-project policy set limits` or `set fallback` with its matching field. Add a written rule only
+  if the user still wants one; a written rule never enforces anything.
 - Applying rules grants no tools, permissions, or new work.
 - Grilling may propose a reusable rule, but never edits the authoritative rule document, overrides a
   security requirement, or substitutes for tests and independent review. Persistent changes use the

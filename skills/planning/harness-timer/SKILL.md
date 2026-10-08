@@ -1,9 +1,9 @@
 ---
 name: harness-timer
-description: "Manage logical schedules under one user-wide heartbeat. Use /harness-timer or /hn-timer with list, set, disable, resume, clean, or migrate. Targets are project, pr, refresh, maintenance, or heartbeat settings. Bare invocation lists only. Overlaps with schedule-manager on task administration; owns SkillVault schedules. Maintenance delegates historical-data cleanup to harness."
+description: "[set|disable|resume|clean|migrate] Manage logical schedules under one user-wide heartbeat. Shorthand: /hn-timer. Targets are project, pr, refresh, maintenance, or heartbeat settings. Bare invocation lists only. Overlaps with schedule-manager on task administration; owns SkillVault schedules. Maintenance delegates historical-data cleanup to harness-project clean."
 metadata:
   author: wzlwit
-  version: "1.0.0"
+  version: "2.0.0"
 argument-hint: "[list|set|disable|resume|clean|migrate] [<arguments>...]"
 ---
 
@@ -42,8 +42,8 @@ Before status, disable, resume, or migration of a legacy OS timer, read
 Apply `/rules apply`, project instructions, Script Permissions and Agent Fallback, Runner
 Inheritance, and Reuse or New. Confirm missing matching-instance choices and work-schedule cadence.
 Keep PR and refresh as singleton targets and preserve named project instances. Legacy `project`,
-`pr`, `refresh`, topic/duration inputs, and `/pr-review-timer` route to `set`; they are not
-separate actions or OS schedulers.
+`pr`, `refresh`, and topic/duration inputs route to `set`; they are not separate actions or OS
+schedulers.
 
 ## Boundaries
 
@@ -54,7 +54,7 @@ separate actions or OS schedulers.
   catch-up outside that window. Wake and AI use follow the
   [conditional capability policy](./references/scheduler.md#conditional-capabilities); permission
   alone changes no live wake setting and starts no AI run.
-- History records and retention belong to `/harness clean`; timer `clean` owns only stale schedule
+- History records and retention belong to `/harness-project clean`; timer `clean` owns only stale schedule
   definitions and their scheduler receipts.
 - Existing OS timers and installed copies need separately previewed migration. PACS and unrelated
   schedules stay unchanged.

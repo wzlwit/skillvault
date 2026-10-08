@@ -1,10 +1,13 @@
 # ADR: Evidence-Grounded Feature Documentation
 
+> Topic and command names in this record were updated to the current topics on 2026-10-07; see the [old-name retirement ADR](./2026-10-07-retire-old-names-adr.md).
+
 - Date: 2026-09-26
 - Status: Accepted
 - Decision owner: Zhaolong Wang
 - Scope: Reader-facing feature doc sets, focused updates, source evidence, and final readability/validation.
 - Related: [Topic contracts](../2026-09-16-topic-skill-refactor.md) and [report authoring](2026-09-15-harness-report-authoring-adr.md).
+- Topic name superseded 2026-10-07: this topic is now `/harness-write upsert doc`; the decisions below stand. See the [topic consolidation ADR](./2026-10-07-harness-topic-consolidation-adr.md).
 
 ## Context
 
@@ -15,7 +18,7 @@ and queries. A separate documentation topic gives this work a clear authoring an
 
 ## Decisions
 
-1. Register one `harness-doc` skill, with `/hn-doc` as conversational shorthand. Bare invocation
+1. Register one `harness-write` skill, with `/hn-write` as conversational shorthand. Bare invocation
    and `list` inspect existing sets and actions. `upsert` creates or updates a resolved set/page;
    `create` and `update` are aliases. Do not add a second `feature-doc-set` bundle or runtime action.
 2. Support complete feature sets and focused updates. Use the seven-page outline as a default,
@@ -38,7 +41,7 @@ and queries. A separate documentation topic gives this work a clear authoring an
 
 ## Alternatives
 
-- Extending `harness-report` would mix reader guides with platform-specific dashboard/query work.
+- Extending the separate report topic would mix reader guides with platform-specific dashboard/query work.
 - Requiring harness initialization would add runtime setup to ordinary documentation requests.
 - Producing seven pages for every update would duplicate working documentation and expand scope.
 - Repeating a generic old/new table on every page would add little to glossaries and focused troubleshooting guides.
@@ -58,7 +61,7 @@ the normal selected-scope and guarded replacement procedure.
 
 ## References
 
-- [Skill entrypoint](../../../skills/planning/harness-doc/SKILL.md)
-- [Authoring workflow](../../../skills/planning/harness-doc/references/workflow.md)
-- [Page template](../../../skills/planning/harness-doc/references/doc-set.md)
+- [Skill entrypoint](../../../skills/planning/harness-write/SKILL.md)
+- [Authoring workflow](../../../skills/planning/harness-write/references/doc.md)
+- [Page template](../../../skills/planning/harness-write/references/doc-set.md)
 - [Current project plan](../2026-09-15-harness-command-and-record-contracts.md#documentation-authoring)

@@ -23,19 +23,26 @@ case handling, natural-language routing, full menus, and existing permissions/co
 unchanged. PowerShell argument parsing and installed copies are not changed by this source update.
 
 The command synopsis is `/harness-<topic> [action1|action2|...] [<arguments>...]`.
-The top-level `/harness [list|root|init|migrate|context|clean]` is the agreed project entrypoint;
-there is no `management` topic and actions do not become separate registered skills.
+The project entrypoint is `/harness-project [list|root|init|migrate|context|clean|policy]`;
+there is no `management` topic and actions do not become separate registered skills. On 2026-10-07
+the thirteen harness topics were consolidated into seven; see the
+[topic consolidation ADR](./decisions/2026-10-07-harness-topic-consolidation-adr.md).
 
-Harness topics register as `/harness` and `/harness-*` with matching folders and dependencies.
-`/hn-*` is only conversational shorthand for quick typing, and `/hn` selects `/harness`.
-For example, `/hn root` selects `/harness root`. No separate alias bundles are
-registered or installed. SkillVault management registers the full `skillvault-*` names;
-`/sv-*` is conversational shorthand only. The slash picker uses the full canonical names.
+Harness topics register as `/harness-*` with matching folders and dependencies: `harness-project`,
+`harness-work`, `harness-write`, `harness-review`, `harness-decision`, `harness-monitor`, and
+`harness-timer`. The shared `harness-runtime` bundle is hidden from the `/` menu.
+`/hn-*` is only conversational shorthand for quick typing; for example, `/hn-project root` selects
+`/harness-project root`. Retired topic and command names are not accepted; see the
+[old-name retirement ADR](./decisions/2026-10-07-retire-old-names-adr.md). No separate alias bundles are
+registered or installed. SkillVault management registers the full `skillvault-*` names:
+`skillvault-discovery`, `skillvault-installation`, and `skillvault-authoring`. `/sv-<topic>` is
+conversational shorthand only. The slash picker uses the full canonical names. Refresh is the
+`/skillvault-installation refresh` action; see the
+[SkillVault topic consolidation ADR](./decisions/2026-10-07-skillvault-topic-consolidation-adr.md).
 
 Skill authoring registers as `/skillvault-authoring [list|upsert|remove] [<arguments>...]`, with
 `/sv-authoring` shorthand. The name describes creating and maintaining skill bundles, not coding
-context or data sources. `/skillvault-source` and `/sv-source` retain the same actions as text
-compatibility routes; their former folders are not duplicate source registrations.
+context or data sources.
 
 ## Command Structure
 
@@ -45,31 +52,32 @@ flowchart LR
     ENTRY --> SV["SkillVault management"]
     ENTRY --> HN["Project harness"]
     ENTRY --> PR["Remote PR review"]
-    ENTRY --> RULES["rules<br/>list, apply, add, update, remove"]
+    ENTRY --> RULES["rules<br/>list, apply, upsert, remove"]
     ENTRY --> DOMAIN["Independent domain skills"]
     SV --> DISCOVER["skillvault-discovery<br/>list, search, evaluate, explain"]
-    SV --> INSTALL["skillvault-installation<br/>list, install, update, uninstall"]
+    SV --> INSTALL["skillvault-installation<br/>list, install, update, uninstall, clean, refresh"]
     SV --> AUTHORING["skillvault-authoring<br/>list, upsert, remove<br/>SkillVault repository only"]
-    SV --> REFRESH["skillvault-refresh<br/>list, run"]
-    HN --> PROJECT["harness<br/>list, root, init, context, clean"]
-    HN --> POLICY["harness-policy<br/>list, set, pause, stop, resume"]
-    HN --> WORK["harness-task, harness-link, harness-dev"]
-    HN --> CHECK["harness-review, harness-test, harness-monitor"]
-    HN --> OUTPUT["harness-doc, harness-comms, harness-report, harness-decision"]
+    HN --> PROJECT["harness-project<br/>list, root, init, migrate, context, clean, policy"]
+    HN --> WORK["harness-work<br/>list, upsert, run, queue, sprint, test"]
+    HN --> CHECK["harness-review, harness-monitor"]
+    HN --> OUTPUT["harness-write<br/>list, upsert doc, tracker, meeting, email, report; slots"]
+    HN --> DECIDE["harness-decision<br/>list, explain, record"]
     HN --> TIMER["harness-timer<br/>list, set, disable, resume, clean, migrate"]
+    HN -.-> RUNTIME["harness-runtime<br/>hidden shared runtime"]
     PR --> REVIEW["pr-review<br/>list, run, configure"]
     PR --> WATCH["pr-watch<br/>list, add, remove"]
     TIMER --> HEARTBEAT["One user-wide heartbeat<br/>project, PR, refresh, maintenance"]
-    REFRESH -->|Schedule ownership| TIMER
+    INSTALL -->|Refresh schedule ownership| TIMER
 ```
 
 The diagram shows logical command relationships, not nested directories. The heartbeat is
 implemented but source changes do not register or migrate live tasks. The standalone
 `schedule-manager` continues to administer explicitly selected Windows tasks outside the harness.
 
-Task records, identity, and updates belong to `harness-task`; `harness-dev` runs and queues work,
-reusing task intake for ad-hoc requests. `harness-timer` owns schedules and stale definitions.
-Historical records/reports and retention settings belong to `/harness clean`; the Saturday
+Task records, identity, and updates belong to `harness-work upsert`; `harness-work run|queue` runs
+and queues work, reusing task intake for ad-hoc requests, and `harness-work sprint` runs goal-based
+sprints over existing tasks without a second task store. `harness-timer` owns schedules and stale definitions.
+Historical records/reports and retention settings belong to `/harness-project clean`; the Saturday
 maintenance tick invokes that same cleanup implementation. Existing policies and retention
 protections are unchanged, and no additional maintenance topic is introduced.
 
@@ -79,16 +87,16 @@ also records whole-repository Fresh review, workspace-based completion, normaliz
 identity, and linked follow-ups for explicitly revised completed work. These source changes do
 not refresh installed copies or change live schedules.
 
-`harness-doc` provides session-level feature guides, onboarding, and troubleshooting. It uses
+`harness-write upsert doc` provides session-level feature guides, onboarding, and troubleshooting. It uses
 existing approved task context when applicable and does not require initialization or add a
 `harness.ps1` action. Humanizer edits prose before final validation; decision history remains
 with `architecture-decision-records`. See the
 [accepted documentation ADR](./decisions/2026-09-26-harness-documentation-adr.md).
 
-`harness-comms` drafts stakeholder trackers, meeting invites, and email updates or thread replies
-in the session, and `slots` ranks meeting times from saved free/busy data. It likewise needs no
-initialization or `harness.ps1` action, and it saves drafts only; sending, inviting, and sharing
-need explicit requests. See the
+`harness-write upsert tracker|meeting|email` drafts stakeholder trackers, meeting invites, and email
+updates or thread replies in the session, and `harness-write slots` ranks meeting times from saved
+free/busy data. It likewise needs no initialization or `harness.ps1` action, and it saves drafts
+only; sending, inviting, and sharing need explicit requests. See the
 [accepted communications ADR](./decisions/2026-09-29-harness-communications-adr.md).
 
 ## Folder Layout
@@ -115,8 +123,7 @@ skills/
 |   |-- rules/
 |   |-- skillvault-authoring/
 |   |-- skillvault-discovery/
-|   |-- skillvault-installation/
-|   `-- skillvault-refresh/
+|   `-- skillvault-installation/
 |-- github/
 |   |-- github-issues/
 |   |-- pr-publish/
@@ -126,19 +133,14 @@ skills/
   |-- brainstorming/
   |-- grilling/
   |-- handoff/
-  |-- harness/
-  |-- harness-comms/
   |-- harness-decision/
-  |-- harness-dev/
-  |-- harness-doc/
-  |-- harness-link/
   |-- harness-monitor/
-  |-- harness-policy/
-  |-- harness-report/
+  |-- harness-project/
   |-- harness-review/
-  |-- harness-task/
-  |-- harness-test/
+  |-- harness-runtime/
   |-- harness-timer/
+  |-- harness-work/
+  |-- harness-write/
   `-- planning-with-files/
 ```
 
@@ -149,14 +151,14 @@ keeping the executable filename. This cleanup does not retarget live schedules.
 
 ## Project Storage
 
-`/harness root` (`/hn root`) shows the selected root; `/harness root <path>` selects it. The
+`/harness-project root` (`/hn-project root`) shows the selected root; `/harness-project root <path>` selects it. The
 harness workspace is **`<root>/.harness_sv/`**, not a visible `harness/` folder and not the installed
 skill bundle. All harness-owned information and files default here unless the user explicitly
 specifies another destination. The following is the complete default artifact hierarchy:
 
 ```mermaid
 flowchart LR
-  ROOT["Root selected by /hn root"] --> STORE[".harness_sv/"]
+  ROOT["Root selected by /hn-project root"] --> STORE[".harness_sv/"]
   STORE --> CONFIG["config/<br/>authoritative domain declarations"]
   STORE --> STATE["runtime/<br/>state and schedule progress"]
   STORE --> BOARD["board/<br/>current, history, references, decisions"]
@@ -222,7 +224,7 @@ authorized operation. The diagram is not a request to create all folders during 
 Pass `.harness_sv` output destinations to delegated authoring skills explicitly. A user-selected
 destination or existing saved configuration takes precedence; preserve existing data and
 report any legacy paths instead of moving records or retargeting schedules automatically.
-Reader-facing `harness-doc` output follows the selected coding repository's documentation
+Reader-facing `harness-write` doc output follows the selected coding repository's documentation
 convention, or explicit output path, rather than this runtime hierarchy. Pass that destination
 explicitly when delegating documentation; any existing harness tracking remains controller-local.
 Application source, linked documents/repositories, installed skills, and existing host instruction
@@ -230,7 +232,7 @@ entrypoints remain separate. The user-wide PR/refresh controllers are not reloca
 `loc` aliases `root`. A verified legacy SkillVault controller at `.harness` is reused in place
 when `.harness_sv` is absent; unrelated `.harness` folders are not adopted.
 
-New controllers use this layout. `/hn migrate` previews and, after approval, converts an existing
+New controllers use this layout. `/hn-project migrate` previews and, after approval, converts an existing
 controller in place, preserving IDs, report contents, queues, and cadence while updating owned links.
 `init` never silently migrates. See the [accepted decision](./decisions/2026-09-25-declarative-harness-and-auto-verification-adr.md).
 Existing standalone decision registers retain their board location during first initialization.
@@ -241,7 +243,7 @@ renames. Topic-filtered CSVs are requested artifact snapshots, never extra canon
 `root <new-parent>` selects the valid new target, then asks whether to move an initialized
 previous harness; no move flag is required. Move is the displayed default, including no answer.
 Explicit answers or applicable user instructions take precedence; No or cancel leaves old data
-in place. `/hn-root <path>` follows the same workflow. The new Root stays selected either way.
+in place. `/hn-project root <path>` follows the same workflow. The new Root stays selected either way.
 A failed move is reported without undoing selection.
 Invalid targets do not change Root. Uninitialized sources and unchanged paths need no move prompt.
 Yes or the unanswered Move default previews and applies relocation from the saved previous root to a parent with no destination controller,
@@ -310,68 +312,49 @@ records the completed research; installing OMP or integrating its runtime has no
 
 ## Catalog Mapping
 
-Each pre-refactor skill appears once below. Independent specialists retain their scope and author
-metadata; only the three named action-suffix aliases change. Reference-only limits remain on
-Graphify, not on executable or authoring specialists; Archify, Humanizer, and Planning With Files
-now install their originals.
-New specialists map to their own canonical names without implying a previous installation.
+Every catalog skill registers under its own canonical name, and each topic folder registers one
+topic. The [harness topic consolidation ADR](./decisions/2026-10-07-harness-topic-consolidation-adr.md)
+and the [SkillVault topic consolidation ADR](./decisions/2026-10-07-skillvault-topic-consolidation-adr.md)
+record which retired topics the current topics and actions replaced. The installer's former-name
+map retires installed copies under those names; nothing else accepts them.
 
-| Former skill | Topic and action |
+| Skill | Command and actions |
 | --- | --- |
 | archify | archify |
 | architecture-decision-records | architecture-decision-records |
 | awesome-gamedev-agent-skills | awesome-gamedev-agent-skills |
 | brainstorming | brainstorming |
 | differential-review | differential-review |
+| dri | dri list, investigate |
 | github-issues | github-issues |
 | graphify | graphify |
 | grilling | grilling |
 | handoff | handoff |
-| harness-comms | harness-comms |
-| harness-context | harness context |
-| harness-decide | harness-decision |
-| harness-dev | harness-dev |
-| harness-doc | harness-doc upsert |
-| harness-fallback | harness-policy fallback |
-| harness-init | harness init |
-| harness-loc | harness loc |
-| harness-monitor | harness-monitor |
-| harness-ref | harness-link |
-| harness-report-create | harness-report upsert |
-| harness-restrict | harness-policy limits |
-| harness-review | harness-review |
-| harness-root | harness root |
-| harness-task | harness-task |
-| harness-test | harness-test |
-| harness-timer | harness-timer set project |
+| harness-decision | harness-decision list, explain, record |
+| harness-monitor | harness-monitor list, declare, check, accept, auto |
+| harness-project | harness-project list, root, init, migrate, context, clean, policy |
+| harness-review | harness-review list, run |
+| harness-timer | harness-timer list, set, disable, resume, clean, migrate |
+| harness-work | harness-work list, upsert, run, queue, sprint, test |
+| harness-write | harness-write list, upsert, slots |
 | humanizer | humanizer |
 | humanizer-ch | humanizer-ch |
-| jarvis-metrics-create | jarvis-metrics |
-| kpi-dashboard-design | kpi-dashboard |
+| jarvis-metrics | jarvis-metrics |
+| kpi-dashboard | kpi-dashboard |
 | office-documents | office-documents |
-| openapi-spec-generation | openapi-spec |
+| openapi-spec | openapi-spec |
 | planning-with-files | planning-with-files |
 | powerbi-modeling | powerbi-modeling |
 | ppt-master | ppt-master |
-| pr-publish | pr-publish |
-| pr-review | pr-review run |
-| pr-review-add | pr-watch add |
-| pr-review-list | pr-watch list |
-| pr-review-remove | pr-watch remove |
-| pr-review-timer | harness-timer set pr |
+| pr-publish | pr-publish list, preview, upsert |
+| pr-review | pr-review list, run, configure |
+| pr-watch | pr-watch list, add, remove |
 | rag-implementation | rag-implementation |
-| rules | rules list, add, update, remove |
-| rules-core | rules apply |
-| schedule-manager | schedule-manager |
-| skillvault-evaluate | skillvault-discovery evaluate |
-| skillvault-fresh | skillvault-refresh run; harness-timer set refresh |
-| skillvault-install | skillvault-installation install, update |
-| skillvault-key-points | skillvault-discovery explain |
-| skillvault-list | skillvault-installation list |
-| skillvault-remove | skillvault-authoring remove |
-| skillvault-search | skillvault-discovery search |
-| skillvault-uninstall | skillvault-installation uninstall |
-| skillvault-upsert | skillvault-authoring upsert |
+| rules | rules list, apply, upsert, remove |
+| schedule-manager | schedule-manager list, enable, disable, delete |
+| skillvault-authoring | skillvault-authoring list, upsert, remove |
+| skillvault-discovery | skillvault-discovery list, search, evaluate, explain |
+| skillvault-installation | skillvault-installation list, install, update, uninstall, clean, refresh |
 | supabase-postgres-best-practices | supabase-postgres-best-practices |
 | trading-signal-analysis | trading-signal-analysis |
 | webapp-testing | webapp-testing |
@@ -381,15 +364,16 @@ New specialists map to their own canonical names without implying a previous ins
 - `/skillvault-authoring` authors skill bundles and catalog entries in a verified SkillVault repository,
   never the working project's application source. Show source and working project separately;
   upsert never installs. Preserve the source resolver's existing selection rules.
-- `/rules apply` loads the compact rules without changing files. Add, modify, and remove use
-  the authoritative rules document and retain explicit approval. Workers receive core guidance
+- `/rules apply` loads the compact rules without changing files. Upsert and remove change private
+  Personal rules by default and the shared core only on request, always after explicit approval;
+  `/rules` keeps a generated always-on copy of the four rules. Workers receive core guidance
   explicitly; installing or mentioning a skill is not automatic context injection.
 - Grilling remains a human decision interview. Offer it for unresolved consequential choices,
   including choices found after development, not every review or monitor tick. Unattended
   workers report questions and defer dependent actions. Tests and independent reviews remain.
 - Keep complete runtime bundles colocated in the selected installation scope. Source contains
-  only the canonical topic folders, not duplicate shorthand wrappers. Old conversational
-  commands route to the matching action without broadening its authority.
+  only the canonical topic folders, not duplicate shorthand wrappers. Retired topic and command
+  names are not routes; installed-copy migration retires copies under former names.
 - Preserve controller roots, repository references, board/state/report paths, permissions,
   snapshot checks, review independence, time and credit limits, and existing timer cadences.
 - Default new harness-owned artifacts to `.harness_sv` inside the selected root; preserve explicit
@@ -404,88 +388,13 @@ bootstrap selection, canonical folders and conversational shortcuts, and affecte
 Use focused checks while editing, then one complete suite for this shared-runtime change. Installed-copy
 replacement and live scheduler activation require separate parity/OS checks; do not infer them from fixtures.
 
-### Current Result
-
-On 2026-09-23, the separately approved source-only cleanup retired the uncataloged
-`jarvis-metrics-create` duplicate after verifying an external recovery copy of both original files.
-The canonical `jarvis-metrics` guide already preserves the workflow and legacy command spelling;
-no content merge or catalog change was needed. The historical scope-audit link now targets that
-guide without changing its original label or assessment.
-
-The full [regression suite](../../scripts/test-all.ps1) passed: all 23 Node contracts, every
-PowerShell/Bash fixture group, catalog validation for 35 skills, resource validation for 30
-project-installed copies, and `git diff --check`. Installed copies, live schedules, Git staging,
-and publication were unchanged. The earlier Jarvis catalog blocker is resolved.
-
-### Earlier Results
-
-The following results are retained as history, not current validation blockers.
-
-The repository gate includes 19 Node contracts, namespace/legacy-controller fixtures, retention,
-duration/scheduler/migration fixtures, existing runtime and installer checks, catalog validation,
-and whitespace validation. Fixtures use fake workers/tasks and temporary controllers, not live AI
-or schedules. The source catalog contains 35 skills with no duplicate alias skill bundles.
-
-The obsolete harness directories identified by the naming contract have been backed up and
-removed through editor-aware file deletion. Focused checks pass for canonical-only names,
-command synopsis enums, history cleanup through the public harness command, schedule-only timer
-cleanup, and weekly delegation to the shared retention engine. The full source gate passed all
-19 Node contracts and every PowerShell/Bash fixture group, then stopped on the existing
-uncataloged `jarvis-metrics-create` bundle. That bundle remains outside the approved harness
-cleanup; a complete repository pass is not claimed. YAML/JSON/resource checks passed for all
-35 cataloged public and 30 project-installed skills. No live AI credential validation is implied.
-
-The accepted upsert/review/task refinements passed the same 19 contracts and all fixture groups.
-Coverage includes meaning-preserving task matching, idempotent linked follow-ups, preserved
-completion evidence, ancestor retention, shared-workspace relocation, and Fresh versus ordinary
-Review/Critical scope. The full gate still stops only at the existing uncataloged Jarvis bundle.
-
-The authoring rename passed all 19 Node contracts and every PowerShell/Bash fixture group,
-including the renamed source helpers and migration of both former authoring names with backup.
-YAML/JSON/resource validation passed for 35 public and 30 project-installed skills. Full catalog
-coverage still reports the same uncataloged Jarvis bundle; this rename did not remove it.
-
 ## Rollout Status
 
-The approved installation set remains 14 global topics and 30 current-project copies. Management
-topics in that rollout register as `skillvault-discovery`, `skillvault-installation`, `skillvault-refresh`, and
-the former `skillvault-source`, with `sv-*` only as conversational shortcuts. The naming correction updated
-7 global and 5 project copies, including affected dependencies, and retired 6 short-name
-registrations after backup. Excluded `.skillvault-backup-migration-*` directories are retained
-under both installation roots. The subsequent history-ownership update refreshed only the existing
-global/project `harness` and `harness-timer` copies plus project `harness-task` and `harness-dev`.
-Those six copies matched source content and metadata at version `1.0.0` at that rollout; no missing
-global topic was installed. The later accepted upsert/review/task changes are source-only and have
-not been refreshed into installed copies. The unrelated installed Jarvis difference is preserved.
-Unmanaged copies and other projects are untouched.
-
-The accepted `skillvault-authoring` rename is now implemented in source, including former-name
-compatibility and a tested installed-copy migration mapping. The earlier upsert, whole-repository
-Fresh review, workspace completion, normalized task identity, linked follow-ups, and reviewer-only
-continuation decisions are also implemented in source. Installed-copy migration remains separate;
-do not infer activation from these changes. Project-specific settings and deferred runtime adoption
-are not missing implementations of an accepted reusable contract.
-
-A read-only rollout preview selected four global copies (`harness`, `skillvault-authoring`,
-`skillvault-discovery`, `skillvault-installation`) and six current-project copies (`harness`,
-`harness-dev`, `harness-report`, `harness-review`, `harness-task`, `skillvault-installation`).
-It would back up and retire the former global `skillvault-source`. No explicit approval was
-provided for that exact replacement set, so installed copies remain unchanged. The earlier
-conditional staging request was blocked by full catalog validation at that time; nothing was
-staged in that run. The current cleanup does not authorize staging or publication.
-
-Saturday maintenance is enabled for 08:30-09:00 in the saved Eastern Standard Time zone,
-including its daylight-saving rules. The single owned heartbeat uses current-user Interactive
-logon, Limited privilege, weekly maintenance-only cadence, and no machine wake. Actual task
-settings were verified; pre-existing task definitions are unchanged. There are no registered
-project, PR, or refresh work jobs, and no cleanup was run during rollout. No legacy SkillVault
-OS task needed migration.
-
-After the history-ownership refresh, the live scheduler JSON and exact SkillVault/PACS task
-definitions still matched their pre-refresh snapshots. All 13 approved obsolete source directories
-remained absent, with their 25-file recovery copy retained outside skill discovery; see the
-[recovery outcome](../../review/harness-layout-recovery-2026-09-18.md#recovery-applied).
-
-No live root destination was supplied: the selected project remains uninitialized and unmoved.
-Oh My Pi remains deferred; project-specific models, permissions, work schedules, and monitoring
-targets are not invented. Source changes remain uncommitted and unpublished.
+Managed global and current-project copies are updated through `/skillvault-installation`, and
+[verify-installed-skills.ps1](../../scripts/verify-installed-skills.ps1) checks them against the checkout.
+Saturday maintenance is enabled for 08:30-09:00 in the saved Eastern Standard Time zone, including
+its daylight-saving rules. The single owned heartbeat uses current-user Interactive logon, Limited
+privilege, weekly maintenance-only cadence, and no machine wake. There are no registered project,
+PR, or refresh work jobs. No live root destination was supplied: the selected project remains
+uninitialized and unmoved. Oh My Pi remains deferred; project-specific models, permissions, work
+schedules, and monitoring targets are not invented.

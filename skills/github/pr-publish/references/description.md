@@ -20,16 +20,22 @@ Follow the repository's PR template: its headings, their order, and its instruct
 deleting options that don't apply. Remove its instruction text once a section is filled. Without a
 template, use Description, Current vs. to-be, Type of change, Checklist, and Test Validation Proof.
 
+The Current vs. to-be table is the description's only table, apart from tables the repository's
+template asks for. Write everything else as bullets: code changes, limits, checks, and which tests
+cover each row. Long cells in a path or command table wrap and are harder to read than a list.
+
 - **Description:** the issue link, then one to three sentences: what the base branch does today and
-  the fix chosen. Name a rejected alternative only when the issue proposed it. Add a short code map
-  (method or file to the rows it implements) and any limit or trade-off that changes what a reviewer
-  or deployer does. End with one sentence for legacy or non-blocking issues left out, after checking
-  that each is tracked.
+  the fix chosen. Name a rejected alternative only when the issue proposed it. Then the code changes
+  as bullets: one per file, folder, or method, saying what changed in one line, with the rows it
+  implements when that helps. Group files that change together, and leave longer explanations to
+  the design doc or issue. Add any limit or trade-off that changes what a reviewer or deployer does.
+  End with one sentence for legacy or non-blocking issues left out, after checking that each is tracked.
 - **Current vs. to-be:** the template's section, or a `### Current vs. to-be` heading under
   Description when the template has none. See the table rules below.
 - **Checklist:** tick only what was done. Keep a short reason beside an unticked item that applies.
-- **Test Validation Proof:** the head and base commits, the commands and counts from that head, and
-  a table naming the tests for each scenario row.
+- **Test Validation Proof:** the head and base commits, then one bullet per check with its command
+  and result from that head, then bullets naming the tests or checks behind each scenario row.
+  Rows that share their evidence can share a bullet.
 
 ## Scenario table
 
@@ -62,6 +68,7 @@ and link targets unchanged. Title: imperative mood, under 72 characters, saying 
 | `TemplateText` | Template instruction text was left in |
 | `ScenarioTable` | No scenario table with filled cells and no "No behavior change" |
 | `TableColumns` | A table row has a different number of cells than its header |
+| `ExtraTable` | A table outside Current vs. to-be that the repository template doesn't have; use bullets |
 | `Dash` | An em or en dash outside code |
 | `LinkRemoved` | A link target in the previous description is gone |
 | `UnknownTest` | A test name in Test Validation Proof isn't found in the repository |

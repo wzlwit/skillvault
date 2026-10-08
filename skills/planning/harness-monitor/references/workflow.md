@@ -25,19 +25,19 @@ numeric input or a work-discovery connector. Keep metric/filter/environment/wind
 ## Start Here
 
 1. Resolve the project and apply `/rules apply` and applicable instructions. Read the canonical
-   `harness` runtime guide and [declaration contract](monitoring.md).
+   `harness-runtime` guide and [declaration contract](monitoring.md).
 2. Choose discovery or health monitoring. For discovery, identify the exact source, topics,
    access method, and authoritative current status using its contract. For health, identify the
    existing query/export and healthy state; read its metric/filter and refresh semantics. Do not invent a threshold, source, credentials, or
-   scheduling permission. Use `/harness-link` for relevant dashboard/query links; do not create a second
+   scheduling permission. Use `/harness-project context add` for relevant dashboard/query links; do not create a second
    reference register or copy raw telemetry into the board.
 3. Require existing initialized harness state before declaration or checking. Missing state is
-   an `/harness init` prerequisite, not permission to initialize as a side effect. Read-only inspection
+   an `/harness-project init` prerequisite, not permission to initialize as a side effect. Read-only inspection
    works before initialization. Health checks need no AI; discovery verification uses model auto.
 
 ## Commands
 
-Use the shared `harness/scripts/harness.ps1` with the selected project root:
+Use the shared `harness-runtime/scripts/harness.ps1` with the selected project root:
 
 | Request | Helper action and behavior |
 | --- | --- |
@@ -46,6 +46,9 @@ Use the shared `harness/scripts/harness.ps1` with the selected project root:
 | `/harness-monitor check` or `check all` | `-Action Monitor -AllMonitors`; collect all configured sources, assess/verify, reconcile and audit one complete or Partial batch |
 | `/harness-monitor check <name>` | `-Action Monitor -MonitorName <name>`; collect, assess relevance, Auto-verify status, reconcile local outcomes, then rank proposals |
 | `/harness-monitor accept <id>` | `-Action MonitorTask -Id <id>`; preview a `C-...` discovery candidate or `I-...` incident for explicit intake |
+| `/harness-monitor auto` | `-Action MonitorAuto`; list each monitor's standing intake, worker, limits, last check, and worker tasks |
+| `/harness-monitor auto <name> --worker <flow> [--every <duration>] [--max <n>] [--attempts <n>] [--setup-exit <code>...]` | `-Action MonitorAuto -MonitorName <name> -Flow <flow> [-MaxPerCheck <n>] [-MaxAttempts <n>] [-SetupExitCode <code>...]`; preview, then apply with `-Apply -Actor -Reason`; then `/harness-timer set project <duration>` (default `1h`) for `monitor <name>` |
+| `/harness-monitor auto <name> off` | `-Action MonitorAuto -MonitorName <name> -Off`; preview, apply with `-Apply -Actor -Reason`, then `/harness-timer disable <id>` for that monitor's timer |
 
 Declaration and task intake preview unless `-Apply` is supplied. Show the exact definitions or
 proposal and require approval before applying with `-Actor <human-owner> -Reason <reason>`.
@@ -95,15 +98,15 @@ for source review, freshness, source priority, and actual blockers. Previously p
 the normal queue when accepted; postponement alone does not block them. The incident rules below remain specific
 to numeric health breaches; do not require an ADO item or document to be Unhealthy.
 
-Default response is `propose-task`; `report-only` suppresses proposals. Checks never create tasks
-automatically. One explicit `task <incident-id>` acceptance reuses `/harness-task` storage and `/harness-link`
+Default response is `propose-task`; `report-only` suppresses proposals. Checks create tasks
+automatically only for a discovery source with a declared [standing intake](discovery.md#standing-intake). One explicit `task <incident-id>` acceptance reuses `/harness-work` task storage and `/harness-project context add`
 evidence links, with an episode-specific source identity, so repeat acceptance returns the same task.
 Accept only an open proposal backed by a fresh latest Unhealthy observation. Stale or Unknown
 evidence requires another check. Existing linked task IDs remain available after recovery.
 
 New tasks are `verify`, risk Unknown, and `autoEligible: false`. Their purpose is to investigate
 and establish a cause, not to assume that a metric breach is a code defect. Do not invent a code
-scope, downgrade risk, enable automatic fixes, or launch `/harness-dev`. An accepted proposal does not
+scope, downgrade risk, enable automatic fixes, or launch `/harness-work`. An accepted proposal does not
 authorize execution. Later checks update incident evidence and its task reference, never the task's
 status or contract. Signal recovery alone does not complete an investigation or prove a fix worked.
 
@@ -135,7 +138,7 @@ Layout-2 definitions use `.harness_sv/config/monitors.json`; direct edits and de
 share that authoritative file. Latest observations, candidates, verification, and incident episodes
 use `runtime/state.json`'s `monitoring` object. Monthly Markdown evidence uses the runtime history
 directory and `board/history.csv` includes separate `monitor` and `health` columns. Legacy controllers
-retain their flat configuration/state paths until explicit `/hn migrate`. Keep raw
+retain their flat configuration/state paths until explicit `/hn-project migrate`. Keep raw
 telemetry in its owning source system and exported snapshots small; the collector saves only the
 selected metric/window/identity and configured links, not arbitrary extra JSON or raw parser errors.
 
@@ -153,7 +156,7 @@ Explicit topic-filtered exports use `current-<project>-<topic>.csv` under artifa
 Harness current-view procedure. They are requested snapshots, not automatically split per-source
 boards and not alternative authoritative queues.
 
-Reuse `/harness-policy limits` directory/launcher/environment controls and `/harness-policy fallback` durable pause and
+Reuse `/harness-project policy limits` directory/launcher/environment controls and `/harness-project policy fallback` durable pause and
 recovery actions. The current implementation shares the existing `testEnvironments` allowlist for
 monitor environment labels and uses the approved `pwsh` launcher. Those controls are not an OS
 sandbox, credentials boundary, or proof of the producer's data accuracy. Source paths and reference
@@ -163,10 +166,10 @@ provision credentials, or modify ADO.
 
 ## Related Work
 
-- `/harness-test` invokes project test flows; this skill consumes measurements and manages breach episodes.
-- `/harness-task` owns task intake, and `/harness-link` owns evidence links; this skill proposes their inputs.
-- `/harness-timer` owns schedules; `/harness-dev` owns separately authorized investigation/implementation.
-- `/harness-report` dispatches query/dashboard/report authoring to the selected platform workflow.
+- `/harness-work test` invokes project test flows; this skill consumes measurements and manages breach episodes.
+- `/harness-work` owns task intake, and `/harness-project context` owns evidence links; this skill proposes their inputs.
+- `/harness-timer` owns schedules; `/harness-work` owns separately authorized investigation/implementation.
+- `/harness-write` dispatches query/dashboard/report authoring to the selected platform workflow.
    It can prepare a verified JSON exporter only when requested; a report URL or completed design
    does not replace this skill's observation input or authorize monitor declaration/scheduling.
 - `kpi-dashboard` shares metric-definition work, focusing on formulas, units, time windows,

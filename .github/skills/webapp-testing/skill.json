@@ -3,7 +3,7 @@
   "title": "Web Application Testing",
   "version": null,
   "kind": "agent",
-  "description": "Verify local web application workflows with Playwright and browser evidence.",
+  "description": "Verify local web applications with Playwright. Use for browser regression checks, frontend interactions, UI failures, screenshots, and browser console diagnostics.",
   "tags": ["testing", "playwright", "browser", "regression"],
   "author": "Anthropic",
   "maintainer": "wzlwit",

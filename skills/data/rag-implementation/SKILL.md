@@ -58,7 +58,7 @@ Keep this design-only; identify the checks needed before running a prototype.
 
 ## Boundaries
 
-`harness-doc` still owns reader documentation; `skillvault-authoring` owns skill sources and their
+`harness-write` still owns reader documentation; `skillvault-authoring` owns skill sources and their
 comparative checks. This skill adds no harness action, runtime dependency, or automatic ingestion.
 
 ## Original

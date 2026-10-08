@@ -38,10 +38,10 @@ requiring confirmation. It reuses the indexed inventory behavior from `/skillvau
 Use the bundled list script for the actual deletion so selector behavior stays in one place:
 
 ```powershell
-~/.copilot/skills/skillvault-installation/scripts/skillvault-list.ps1 -Uninstall -Selector "2"
-~/.copilot/skills/skillvault-installation/scripts/skillvault-list.ps1 -Uninstall -Selector "1,3-5"
-~/.copilot/skills/skillvault-installation/scripts/skillvault-list.ps1 -Uninstall -Selector "web-design-guidelines"
-~/.copilot/skills/skillvault-installation/scripts/skillvault-list.ps1 -Uninstall -Selector "fresh" -Scope global
+~/.copilot/skills/skillvault-installation/scripts/skill-inventory.ps1 -Uninstall -Selector "2"
+~/.copilot/skills/skillvault-installation/scripts/skill-inventory.ps1 -Uninstall -Selector "1,3-5"
+~/.copilot/skills/skillvault-installation/scripts/skill-inventory.ps1 -Uninstall -Selector "web-design-guidelines"
+~/.copilot/skills/skillvault-installation/scripts/skill-inventory.ps1 -Uninstall -Selector "humanizer" -Scope global
 ```
 
 Use `-Force` only after the user explicitly confirms the selected matches should be deleted.

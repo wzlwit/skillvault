@@ -1,5 +1,7 @@
 # ADR: Declarative Harness Layout and Auto Verification
 
+> Topic and command names in this record were updated to the current topics on 2026-10-07; see the [old-name retirement ADR](./2026-10-07-retire-old-names-adr.md).
+
 - Date: 2026-09-25
 - Status: Accepted
 - Decision owner: Zhaolong Wang
@@ -26,7 +28,7 @@ and current requirements. Source status and age alone cannot establish those out
    and artifacts keep their own responsibility folders and existing explicit destinations.
 4. Name new reports with UTC timestamp, topic, and run ID. Explicit migration reorganizes owned
    existing reports and updates stored paths while preserving contents and identities.
-5. Add `/hn migrate` as an in-place layout/configuration conversion. Preview first; apply only
+5. Add `/hn-project migrate` as an in-place layout/configuration conversion. Preview first; apply only
    after approval. `init` reconnects without migration. Root relocation and OS-timer migration
    remain separate actions. Refuse active/unrecovered work and ambiguous/colliding storage.
 6. Discovery follows collection, service relevance, Auto status verification, local reconciliation,
@@ -72,7 +74,7 @@ The [source-agnostic monitoring decision](2026-09-25-source-agnostic-monitoring-
 partial-result visibility, evidence revalidation, related-source reconciliation, and resumable coverage.
 
 The [current plan](../2026-09-15-harness-command-and-record-contracts.md),
-[runtime contract](../../../skills/planning/harness/references/runtime.md), and
+[runtime contract](../../../skills/planning/harness-runtime/references/runtime.md), and
 [discovery contract](../../../skills/planning/harness-monitor/references/discovery.md) describe current behavior.
 Source validation uses isolated controllers and fake workers. Affected existing managed latest
 skill copies follow the repository's guarded synchronization instruction. No live controller

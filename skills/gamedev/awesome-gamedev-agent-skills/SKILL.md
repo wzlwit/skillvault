@@ -87,7 +87,7 @@ npx skills add gamedev-skills/awesome-gamedev-agent-skills
 The `skills` CLI is separately distributed code that chooses per-agent install paths; review its
 version and targets before an approved run. Claude Code can instead install the full plugin or only
 `router` plus one engine bundle. SkillVault does not manage these installs, and
-`/skillvault-refresh` updates only this reference.
+`/skillvault-installation refresh` updates only this reference.
 
 ## Source
 

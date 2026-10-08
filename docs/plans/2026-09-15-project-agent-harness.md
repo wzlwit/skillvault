@@ -1,5 +1,7 @@
 # Project agent harness: design review and revised plan
 
+> Topic and command names in this record were updated to the current topics on 2026-10-07; see the [old-name retirement ADR](./decisions/2026-10-07-retire-old-names-adr.md).
+
 ## Status and scope
 
 **Verdict: the original plan is a useful lifecycle sketch, but it is not ready for autonomous execution.** Keep the monitoring-to-remediation loop and Azure DevOps integration. Replace the agent-centric workflow with a durable controller, bounded workers, explicit evidence contracts, and externally enforced permissions.
@@ -555,8 +557,8 @@ No calendar or elapsed-time estimates are assigned. These are proposed deliverab
 | ID | Todo / deliverable | Depends on | Acceptance |
 |---|---|---|---|
 | `das-onboarding` | Define the first DAS service/repository slice and project pack | Owner decisions | Required IDs, owners, references, E2E scenario, and environment contracts are known or explicitly blocked |
-| `harness-policy` | Define autonomy, model/data scopes, approvals, budgets, retention, and safe-stop behavior | `das-onboarding` | Unauthorized operations are denied outside agent prompts; authority and storage boundaries are reviewable |
-| `harness-contracts` | Version task, skill, evidence, status, handoff, model-policy, and adapter schemas | `das-onboarding`, `harness-policy` | Missing/stale context, unsupported settings, and malformed results are rejected explicitly |
+| `harness-project policy` | Define autonomy, model/data scopes, approvals, budgets, retention, and safe-stop behavior | `das-onboarding` | Unauthorized operations are denied outside agent prompts; authority and storage boundaries are reviewable |
+| `harness-contracts` | Version task, skill, evidence, status, handoff, model-policy, and adapter schemas | `das-onboarding`, `harness-project policy` | Missing/stale context, unsupported settings, and malformed results are rejected explicitly |
 | `harness-controller` | Implement durable state, claims, idempotency, cancellation, and reconciliation | `harness-contracts` | Restart and duplicate-event scenarios do not create duplicate active work or uncontrolled repeated writes |
 | `harness-handoffs` | Implement task checkpoints, handoff rendering, history links, and resume verification | `harness-controller` | A fresh worker can reconcile and resume without losing changes, duplicating operations, or inheriting invalid authority |
 | `harness-model-routing` | Implement allowlists, maximum-power routing, scoped overrides, bulk selectors, and saved rules | `harness-controller` | Confirmed precedence and per-field inheritance hold; unsupported/disallowed combinations are blocked; bulk effects are previewed and acknowledged |

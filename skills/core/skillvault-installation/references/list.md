@@ -10,7 +10,7 @@ same index.
 - `scope` — optional scope filter: `all`, `global`, `project`, or `session`. Default: `all`.
    `all` lists global and discovered project skill folders. Use `session` explicitly for
    session-only skill folders when present.
-- A legacy `list uninstall <selector>` request, such as `/sv-list uninstall 2`, follows
+- `list uninstall <selector>`, such as `/skillvault-installation list uninstall 2`, follows
   [uninstall](uninstall.md).
 
 ## Behavior
@@ -37,9 +37,9 @@ Listing never changes files.
 ## Script
 
 ```powershell
-~/.copilot/skills/skillvault-installation/scripts/skillvault-list.ps1
-~/.copilot/skills/skillvault-installation/scripts/skillvault-list.ps1 -Scope project
-~/.copilot/skills/skillvault-installation/scripts/skillvault-list.ps1 -Scope session
+~/.copilot/skills/skillvault-installation/scripts/skill-inventory.ps1
+~/.copilot/skills/skillvault-installation/scripts/skill-inventory.ps1 -Scope project
+~/.copilot/skills/skillvault-installation/scripts/skill-inventory.ps1 -Scope session
 ```
 
 `-GlobalSkillsPath` selects an explicit fixture root for testing.

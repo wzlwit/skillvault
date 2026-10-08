@@ -16,13 +16,13 @@ param(
     [string]$SchedulerRoot = (Join-Path $HOME '.copilot/skillvault/scheduler'),
     [string]$DataRoot = (Join-Path $HOME '.copilot/pr-review'),
     [string]$GlobalSkillsPath = (Join-Path $HOME '.copilot/skills'),
-    [string]$CachePath = (Join-Path $HOME '.copilot/skillvault-fresh-src'),
+    [string]$CachePath = (Join-Path $HOME '.copilot/skillvault-cache/refresh'),
     [switch]$All,
     [switch]$Apply,
     [switch]$DeleteStale,
     [switch]$ConfirmStopped,
     [string]$RetireId,
-    [string]$RunnerPath = (Join-Path $PSScriptRoot '../../harness/scripts/harness.ps1')
+    [string]$RunnerPath = (Join-Path $PSScriptRoot '../../harness-runtime/scripts/harness.ps1')
 )
 
 . (Join-Path $PSScriptRoot 'harness-scheduler.ps1')
@@ -47,7 +47,7 @@ if ($Target -eq 'maintenance') {
 if ($Action -eq 'Clean') {
     if ($DefinitionPath) {
         if ($All -or -not $ProjectPath) { throw 'A retention policy requires one explicit project root.' }
-        & (Join-Path $PSScriptRoot '../../harness/scripts/harness.ps1') -ProjectPath $ProjectPath -Action Clean -DefinitionPath $DefinitionPath -Apply:$Apply
+        & (Join-Path $PSScriptRoot '../../harness-runtime/scripts/harness.ps1') -ProjectPath $ProjectPath -Action Clean -DefinitionPath $DefinitionPath -Apply:$Apply
         return
     }
     if (-not $All -and $Target -eq 'project' -and -not $ProjectPath) { throw 'Select a project or explicitly use All for cleanup.' }
@@ -101,7 +101,7 @@ if ($Id -and $Action -in @('Disable', 'Resume')) {
         $runnerIndex = [array]::IndexOf([string[]]$job.arguments, '-File')
         if ($runnerIndex -lt 0 -or -not (Test-Path -LiteralPath $job.arguments[$runnerIndex + 1] -PathType Leaf) -or (Get-HarnessScheduleHealth $job).status -ne 'Valid') { throw 'The saved refresh adapter or target is unavailable.' }
         if (-not (Get-Command Assert-SkillRuntimeCompatibility -ErrorAction SilentlyContinue)) { throw 'Update skillvault-installation and harness-timer before scheduling; compatibility interface v1 is required.' }
-        Assert-SkillRuntimeCompatibility -SkillPath (Split-Path -Parent (Split-Path -Parent $job.arguments[$runnerIndex + 1])) -Interface structured-refresh -Version 1 -Consumer harness-timer
+        Assert-SkillRuntimeCompatibility -SkillPath (Split-Path -Parent (Split-Path -Parent $job.arguments[$runnerIndex + 1])) -Interface structured-refresh -Version 2 -Consumer harness-timer
     }
     Set-HarnessScheduleEnabled $scheduler $Id ($Action -eq 'Resume') -Apply:$Apply -ConfirmStopped:$ConfirmStopped | ConvertTo-Json -Depth 25
     return
@@ -136,11 +136,11 @@ elseif ($Target -eq 'pr') {
     $definition = Invoke-PrReviewTimer (Get-PrReviewPaths $DataRoot) -Prepare -IntervalDays 1 -RunnerPath (Join-Path $scripts 'pr-review.ps1')
 }
 else {
-    $candidates = @((Join-Path $PSScriptRoot '../../skillvault-refresh/scripts/skillvault-fresh.ps1'), (Join-Path $PSScriptRoot '../../../core/skillvault-refresh/scripts/skillvault-fresh.ps1'))
+    $candidates = @((Join-Path $PSScriptRoot '../../skillvault-installation/scripts/skill-refresh.ps1'), (Join-Path $PSScriptRoot '../../../core/skillvault-installation/scripts/skill-refresh.ps1'))
     $runner = $candidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
     if (-not $runner -or -not (Test-Path -LiteralPath $GlobalSkillsPath -PathType Container)) { throw 'The global refresh installation and target must exist.' }
     if (-not (Get-Command Assert-SkillRuntimeCompatibility -ErrorAction SilentlyContinue)) { throw 'Update skillvault-installation and harness-timer before scheduling; compatibility interface v1 is required.' }
-    Assert-SkillRuntimeCompatibility -SkillPath (Split-Path -Parent (Split-Path -Parent $runner)) -Interface structured-refresh -Version 1 -Consumer harness-timer
+    Assert-SkillRuntimeCompatibility -SkillPath (Split-Path -Parent (Split-Path -Parent $runner)) -Interface structured-refresh -Version 2 -Consumer harness-timer
     $definition = [pscustomobject]@{ key = 'refresh'; kind = 'refresh'; directory = [IO.Path]::GetFullPath($GlobalSkillsPath); executable = (Get-Command pwsh).Source; arguments = @('-NoProfile', '-NonInteractive', '-File', [IO.Path]::GetFullPath($runner), '-RunOnce', '-GlobalSkillsPath', [IO.Path]::GetFullPath($GlobalSkillsPath), '-CachePath', [IO.Path]::GetFullPath($CachePath)); legacyTaskName = 'SkillVault Source Refresh'; legacyDescription = '' }
 }
 $legacy = @(Get-ScheduledTask -TaskPath '\' -ErrorAction Stop | Where-Object { $_.TaskName -ieq $definition.legacyTaskName })

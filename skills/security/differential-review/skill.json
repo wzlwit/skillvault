@@ -3,7 +3,7 @@
   "title": "Differential Security Review",
   "version": null,
   "kind": "agent",
-  "description": "Review reachable security regressions against a baseline; overlaps with harness-review and pr-review on code review, retaining a security-specific focus.",
+  "description": "Review security implications of code changes against a baseline. Use for security reviews of PRs, commits, uncommitted diffs, or removed validation; not for routine formatting or a claim of full-codebase audit coverage. Overlaps with harness-review and pr-review on code review; focuses on reachable security regressions.",
   "tags": [
     "security",
     "review",

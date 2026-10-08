@@ -1,9 +1,9 @@
 ---
 name: pr-review
-description: "Review a PR URL, repository, or user-wide watchlist. Use /pr-review list, run, configure, or explicit PR input. Overlaps with harness-review on general review and differential-review on security; owns remote selection and isolated evidence, while pr-watch manages targets."
+description: "[run|configure] Review a PR URL, repository, or user-wide watchlist; a PR URL alone also starts a review. Overlaps with harness-review on general review and differential-review on security; owns remote selection and isolated evidence, while pr-watch manages targets."
 metadata:
   author: wzlwit
-  version: "1.1.0"
+  version: "1.2.0"
 argument-hint: "[list|run|configure] [<arguments>...]"
 ---
 
@@ -11,7 +11,9 @@ argument-hint: "[list|run|configure] [<arguments>...]"
 
 Review GitHub or explicitly configured GitHub Enterprise targets. This topic, `pr-watch`, and
 `harness-timer pr` share one user-wide list and existing timer, independent of the working project.
-Creating, installing, explaining, or editing these skills starts no reviews or schedules.
+They work from any folder with no harness Root, `/harness-project init`, or data-root choice: the dispatcher
+always uses `~/.copilot/pr-review`. Creating, installing, explaining, or editing these skills starts
+no reviews or schedules.
 
 ## Dispatch
 
@@ -35,8 +37,9 @@ unchanged; abbreviation adds no confirmation. This is conversational routing, no
 ## Workflow
 
 Apply `/rules apply` and follow the [runtime and setup contract](references/runtime.md) with the
-bundled [dispatcher](scripts/pr-review.ps1) and sibling `harness` dependency. Missing tools, account
-access, model choices, or budgets require setup, not invented defaults.
+bundled [dispatcher](scripts/pr-review.ps1) and sibling `harness-runtime` dependency. No setup is needed:
+without saved settings, `run` uses github.com, the harness review model list, and no limits, and the
+first run creates the controller. Missing tools or account access are reported, not worked around.
 
 1. Resolve an explicit HTTPS PR/repository URL, or review the saved list for `/pr-review run`; an
    empty list is a no-op and an ad-hoc URL adds no watch entry. Map `--limit`, `--include-drafts`,
@@ -49,8 +52,10 @@ access, model choices, or budgets require setup, not invented defaults.
    the shared read-only reviewer and its at-most-two-pass contract, without invoking
    `/harness-review` recursively. Report concrete defects with triggering conditions, impact, and
    anchors.
-4. Use the strongest-first approved profile allowed by current restrictions, within time, credit, and
-   PR-count bounds. No model retry, automatic downgrade, or unlimited agents or context is implied.
+4. Use the first saved profile allowed by current restrictions, or by default the strongest allowed
+   model in the harness review list, skipping models and effort levels the CLI rejects before any
+   model work. Saved profiles are never replaced. Time, PR-count, and credit limits apply only when
+   saved. No unlimited agents or context is implied.
 5. Skip unchanged completed snapshots unless `--again` is explicit. Findings are a completed review,
    not a clean PR. Failed, blocked, stale, or incomplete attempts stay pending.
 6. Show findings first, then PR identity, settings, pass count, deferred work, blockers, and report
@@ -59,7 +64,8 @@ access, model choices, or budgets require setup, not invented defaults.
 ## Setup and Integration
 
 `/pr-review configure <file>` maps to `-Action Configure -DefinitionPath <file>`; add `-Apply` only after
-approval of that exact definition. Configuration enables no timer and runs no agents. Never copy
+approval of that exact definition. Configuration is optional and only overrides defaults; scheduling
+needs saved `allowScheduled: true`. It enables no timer and runs no agents. Never copy
 illustrative profiles, budgets, credentials, or another project's settings as live approvals.
 
 `/harness-review` stays project-first and delegates PR URLs here; this skill calls the shared review

@@ -3,7 +3,7 @@
   "title": "Supabase Postgres Best Practices",
   "version": null,
   "kind": "agent",
-  "description": "Review Postgres queries, schema, indexes, connections, and row-level security.",
+  "description": "Review Postgres SQL, schemas, migrations, query plans, indexes, connection pooling, locks, and row-level security. Use for Postgres-backed work; do not apply database-specific advice to SQL Server or other engines.",
   "tags": ["data", "postgres", "sql", "performance", "rls"],
   "author": "Supabase",
   "maintainer": "wzlwit",

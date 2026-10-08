@@ -1,7 +1,7 @@
-. (Join-Path $PSScriptRoot '../../harness/scripts/harness-store.ps1')
-. (Join-Path $PSScriptRoot '../../harness/scripts/harness-ownership.ps1')
-. (Join-Path $PSScriptRoot '../../harness/scripts/harness-duration.ps1')
-. (Join-Path $PSScriptRoot '../../harness/scripts/harness-maintenance.ps1')
+. (Join-Path $PSScriptRoot '../../harness-runtime/scripts/harness-store.ps1')
+. (Join-Path $PSScriptRoot '../../harness-runtime/scripts/harness-ownership.ps1')
+. (Join-Path $PSScriptRoot '../../harness-runtime/scripts/harness-duration.ps1')
+. (Join-Path $PSScriptRoot '../../harness-runtime/scripts/harness-maintenance.ps1')
 
 function Get-HarnessSchedulerPaths {
     param([string]$Root = (Join-Path $HOME '.copilot/skillvault/scheduler'))

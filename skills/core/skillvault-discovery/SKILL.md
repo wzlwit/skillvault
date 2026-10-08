@@ -1,9 +1,9 @@
 ---
 name: skillvault-discovery
-description: "Discover skills, evaluate candidates, and explain skills, tools, or products. Use /skillvault-discovery or /sv-discovery list, search, evaluate, or explain. Replaces skillvault-search, skillvault-evaluate, skillvault-key-points and /sv-search, /sv-evaluate, /sv-key-points. Evaluation saves a public-safe assessment unless chat-only; search and explanation are read-only. None installs, runs, or edits the target."
+description: "[search|evaluate|explain] Discover skills, evaluate candidates, and explain skills, tools, or products. Shorthand: /sv-discovery. Evaluation saves a public-safe assessment unless chat-only; search and explanation are read-only. None installs, runs, or edits the target."
 metadata:
   author: wzlwit
-  version: "1.0.0"
+  version: "2.0.0"
 argument-hint: "[list|search|evaluate|explain] [<arguments>...]"
 ---
 
@@ -32,8 +32,7 @@ unchanged; abbreviation adds no confirmation. This is conversational routing, no
 - Bare invocation, `list`, `help`, and `status` show actions and known catalog context without
   searching remote sources. Unknown actions show help.
 - The exact aliases `eval` -> `evaluate` and `expl` -> `explain` use the canonical procedures and
-  stay out of menus and registered names. Old full names and `/sv-*` or `/skv-*` spellings select
-  their matching action.
+  stay out of menus and registered names.
 - Load only the selected procedure. `evaluate` reuses verified search evidence and also
   [proposes improvements to existing skills](./references/evaluate.md#improve-existing-skills);
   implementing them needs the user's approval.

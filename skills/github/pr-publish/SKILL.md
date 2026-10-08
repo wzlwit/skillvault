@@ -1,9 +1,9 @@
 ---
 name: pr-publish
-description: "Create or update your own pull request: a description that follows the repository template, a current vs. to-be scenario table, tests named for each scenario, and draft or ready state. Use /pr-publish list, preview, or upsert. Overlaps with the GitHub Pull Requests extension's create-pull-request skill on opening PRs; use pr-publish when the PR needs the template, scenario table, and named tests, or to update an existing PR. Opens PRs through the VS Code create-pull-request tool when available, otherwise through gh; pr-review reviews PRs instead. Never pushes or writes to a PR without an explicit ask."
+description: "[preview|upsert] Create or update your own pull request: a description that follows the repository template, a current vs. to-be scenario table, tests named for each scenario, and draft or ready state. Overlaps with the GitHub Pull Requests extension's create-pull-request skill on opening PRs; use pr-publish when the PR needs the template, scenario table, and named tests, or to update an existing PR. Opens PRs through the VS Code create-pull-request tool when available, otherwise through gh; pr-review reviews PRs instead. Never pushes or writes to a PR without an explicit ask."
 metadata:
   author: wzlwit
-  version: "1.0.0"
+  version: "1.1.0"
 argument-hint: "[list|preview|upsert] [<arguments>...]"
 ---
 
@@ -42,8 +42,9 @@ unchanged; abbreviation adds no confirmation. This is conversational routing, no
   run on the current head. A search hit locates code; reading it decides a claim. Never claim an
   unrun check or tick a checklist item that wasn't done; give the reason next to an unticked one.
 - The repository's PR template decides the sections and their order. A bug fix or behavior change
-  gets a current vs. to-be scenario table with concrete example values and unchanged cases, and
-  names the tests for each row; otherwise write "No behavior change".
+  gets a current vs. to-be scenario table with concrete example values and unchanged cases;
+  otherwise write "No behavior change". That table is the description's only one: code changes,
+  checks, and the tests behind each row are bullets.
 - In an existing description, keep link targets, issue references, and code. The helper backs up
   the current title and description before replacing them.
 - A remote write needs an explicit ask: `upsert`, or a request such as "push and create a PR".

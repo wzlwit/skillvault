@@ -1,9 +1,9 @@
 ---
 name: skillvault-authoring
-description: "Author and maintain skill bundles and catalog entries in the SkillVault repository, not application source or installed copies. Use /skillvault-authoring or /sv-authoring list, upsert, or remove; create/update are upsert aliases. Accepts legacy /skillvault-source, /sv-source, skillvault-upsert, skillvault-remove and their shortcuts. Overlaps with VS Code's agent-customization skill on writing SKILL.md files; use this one only for skills in the SkillVault repository and its catalog. Never installs; use skillvault-installation to install the result."
+description: "[upsert|remove] Author and maintain skill bundles and catalog entries in the SkillVault repository, not application source or installed copies. Shorthand: /sv-authoring; create and update are upsert aliases. Overlaps with VS Code's agent-customization skill on writing SKILL.md files; use this one only for skills in the SkillVault repository and its catalog. Never installs; use skillvault-installation to install the result."
 metadata:
   author: wzlwit
-  version: "2.0.0"
+  version: "3.0.0"
 argument-hint: "[list|upsert|remove] [<arguments>...]"
 ---
 
@@ -31,9 +31,7 @@ unchanged; abbreviation adds no confirmation. This is conversational routing, no
   Unknown actions show help and are never treated as new skill names.
 - `create` and `update` alias `upsert`: edit a target present in the verified catalog and create it
   only when confirmed absent. An ambiguous or inaccessible target is not absent.
-- `/skillvault-source`, `/sv-source`, and legacy upsert/remove spellings, including `/sv-*` and
-  `/skv-*`, route here as text, not duplicate bundles. Installed-copy removal belongs to
-  `/skillvault-installation uninstall`.
+- Installed-copy removal belongs to `/skillvault-installation uninstall`.
 - Run the [read-only resolver](./scripts/resolve-source-repo.ps1) before writing and keep its verified
   selection order; never silently choose another checkout or change a Git remote.
 - Show the **SkillVault repository** and **working project** separately; `--repo` selects only the

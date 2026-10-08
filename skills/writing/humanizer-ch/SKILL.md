@@ -13,7 +13,7 @@ argument-hint: "[<text-or-file>] [<editing-goal>]"
 This original SkillVault reference points to a specialized Chinese critical-essay editing guide.
 The upstream focuses on argument density, authorial judgment, and academic register in essays,
 art reviews, exhibition writing, and theoretical commentary. It is not a general Chinese-language
-replacement for `humanizer` or the technical-document workflow in `harness-doc`.
+replacement for `humanizer` or the technical-document workflow in `harness-write`.
 
 ## Use and Limits
 

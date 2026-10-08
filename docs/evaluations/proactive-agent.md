@@ -56,7 +56,7 @@ The instructions describe:
 
 | Candidate idea | Current workflow and relevant boundary |
 | --- | --- |
-| Recover task context | [Harness context](../../skills/planning/harness/references/context.md) rechecks current instructions, selected task/workspace, blockers, process state, and evidence; old notes are not current authority |
+| Recover task context | [Harness context](../../skills/planning/harness-project/references/context.md) rechecks current instructions, selected task/workspace, blockers, process state, and evidence; old notes are not current authority |
 | Preserve continuation details | [Handoff](../../skills/planning/handoff/SKILL.md) captures decisions, unresolved questions, permissions, side effects, and the next action on explicit request, without another task store or transcript dump |
 | Periodic useful work | [Harness timers](../../skills/planning/harness-timer/SKILL.md) dispatch approved jobs under one heartbeat, preserving cadence, pauses, and ownership rather than starting work from an untouched backlog |
 | Learn and verify improvements | [Authoring](../../skills/core/skillvault-authoring/references/upsert.md) verifies causes, routes lessons to the existing owner, preserves edit approval, and provides focused or optional comparative/trigger checks |

@@ -65,8 +65,8 @@ A future guide could cover terminology, supported setup paths, workspace and per
 configuration, memory, diagnostics, and integration boundaries. Copying its scheduler or
 turn loop into a skill would not turn it into a drop-in SkillVault component.
 
-The installed [harness](../../skills/planning/harness/SKILL.md) already owns project selection
-and controller state; [harness-dev](../../skills/planning/harness-dev/SKILL.md) owns tracked
+The installed [harness](../../skills/planning/harness-project/SKILL.md) already owns project selection
+and controller state; [harness-work](../../skills/planning/harness-work/SKILL.md) owns tracked
 execution with required checks and independent review;
 [harness-review](../../skills/planning/harness-review/SKILL.md) owns the review workflow; and
 [harness-timer](../../skills/planning/harness-timer/SKILL.md) owns approved schedule dispatch.

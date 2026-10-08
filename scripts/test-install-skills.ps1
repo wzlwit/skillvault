@@ -247,7 +247,7 @@ try {
     Assert-True (Test-Path -LiteralPath (Join-Path $ownershipRoot ($lease.id + '.json'))) 'failed cleanup retains recoverable claim evidence'
     Clear-SkillOwnership -Id $lease.id -ConfirmStopped -Root $ownershipRoot
     Assert-True (@(Get-ChildItem -LiteralPath $ownershipRoot -File).Count -eq 0) 'released claims leave no stale ownership evidence'
-    $runtimeResources = @(Get-SkillRuntimeResources (Join-Path (Split-Path -Parent $PSScriptRoot) 'skills/planning/harness'))
+    $runtimeResources = @(Get-SkillRuntimeResources (Join-Path (Split-Path -Parent $PSScriptRoot) 'skills/planning/harness-runtime'))
     Assert-True (@($runtimeResources | Where-Object { $_.path -like '*SKILLVAULT-INSTALLATION' }).Count -eq 1) 'source runtime ownership includes its installer dependency exactly once'
     $legacyRoot = Join-Path $fixtureRoot 'legacy-runtime'
     $legacyRuntime = New-FixtureSkill -RepositoryRoot $legacyRoot -RelativePath harness -SkillName harness -Version '1.0.0' -DefaultScope global
@@ -413,7 +413,7 @@ try {
         $metadata = Get-Content -LiteralPath (Join-Path $target '.skillvault-install.json') -Raw | ConvertFrom-Json
         Assert-True ($metadata.scope -ceq $defaultScope -and $metadata.sourcePath -ceq $entry.path -and $metadata.installedVersion -ceq $entry.version) "default installation metadata matches '$($entry.name)'"
     }
-    $sharedDispatcher = Join-Path $catalogGlobalRoot 'harness/scripts/harness.ps1'
+    $sharedDispatcher = Join-Path $catalogGlobalRoot 'harness-runtime/scripts/harness.ps1'
     $secondProject = Join-Path $fixtureRoot 'second-catalog-project'
     New-Item -ItemType Directory -Path $secondProject | Out-Null
     $projectIds = @()
@@ -429,7 +429,7 @@ try {
             (Test-Path -LiteralPath (Join-Path $project '.harness_sv/config/project.json')) -and -not (Test-Path -LiteralPath (Join-Path $project '.harness_sv/config.json'))) 'runtime records stay in the selected fixture project'
         $projectIds += $projectConfig.projectId
     }
-    Assert-True ($projectIds[0] -cne $projectIds[1] -and -not (Test-Path -LiteralPath (Join-Path $catalogGlobalRoot '.harness_sv')) -and -not (Test-Path -LiteralPath (Join-Path $catalogGlobalRoot 'harness/.harness_sv'))) 'one global runtime preserves separate project identities and stores no runtime state in its installation'
+    Assert-True ($projectIds[0] -cne $projectIds[1] -and -not (Test-Path -LiteralPath (Join-Path $catalogGlobalRoot '.harness_sv')) -and -not (Test-Path -LiteralPath (Join-Path $catalogGlobalRoot 'harness-runtime/.harness_sv'))) 'one global runtime preserves separate project identities and stores no runtime state in its installation'
     Write-Output "Catalog default installation checks passed for $($catalogEntries.Count) skills; shared global runtime preserves two isolated fixture projects."
 
     $migrationGlobal = Join-Path $fixtureRoot 'migration-global'
@@ -440,18 +440,24 @@ try {
     '# Legacy fixture with preserved custom guidance' | Set-Content -LiteralPath (Join-Path $legacyFolder 'SKILL.md')
     (New-FixtureMetadata -SourcePath 'skills/public/planning/harness-root' -Scope global -Version '1.0.0') | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $legacyFolder '.skillvault-install.json')
     $migrationScript = Join-Path $catalogRepository 'skills/core/skillvault-installation/scripts/migrate-topics.ps1'
-    $fullNames = @('skillvault-authoring', 'skillvault-discovery', 'skillvault-installation', 'skillvault-refresh')
+    $fullNames = @('skillvault-authoring', 'skillvault-discovery', 'skillvault-installation')
     foreach ($fullName in $fullNames) {
         $shortName = if ($fullName -eq 'skillvault-authoring') { 'sv-source' } else { $fullName -replace '^skillvault-', 'sv-' }
         $catalogEntry = $catalogEntries | Where-Object name -CEQ $fullName
         $shortPath = New-FixtureSkill -RepositoryRoot $migrationGlobal -RelativePath $shortName -SkillName $shortName -Version $catalogEntry.version -DefaultScope global
         (New-FixtureMetadata -SourcePath "skills/public/core/$shortName" -Scope global -Version $catalogEntry.version) | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $shortPath '.skillvault-install.json')
     }
+    $formerRefreshNames = @('sv-refresh', 'skillvault-refresh')
+    foreach ($formerRefresh in $formerRefreshNames) {
+        $formerRefreshPath = New-FixtureSkill -RepositoryRoot $migrationGlobal -RelativePath $formerRefresh -SkillName $formerRefresh -Version '1.0.0' -DefaultScope global
+        (New-FixtureMetadata -SourcePath "skills/public/core/$formerRefresh" -Scope global -Version '1.0.0') | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $formerRefreshPath '.skillvault-install.json')
+    }
     $formerSourcePath = New-FixtureSkill -RepositoryRoot $migrationGlobal -RelativePath 'skillvault-source' -SkillName 'skillvault-source' -Version '1.0.0' -DefaultScope global
     (New-FixtureMetadata -SourcePath 'skills/public/core/skillvault-source' -Scope global -Version '1.0.0') | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $formerSourcePath '.skillvault-install.json')
     $legacyBefore = [IO.File]::ReadAllText((Join-Path $legacyFolder 'SKILL.md'))
     $namingPreview = & $migrationScript -ProjectPath $migrationProject -RepoPath $catalogRepository -Scope global -GlobalSkillsPath $migrationGlobal -Name $fullNames | ConvertFrom-Json
-    Assert-True ($namingPreview.preview -and $namingPreview.install.Count -eq 4 -and $namingPreview.retire.Count -eq 5 -and -not (Test-Path (Join-Path $migrationGlobal 'skillvault-installation'))) 'selected naming migration previews the four management topics and retires both former authoring names'
+    Assert-True ($namingPreview.preview -and $namingPreview.install.Count -eq 3 -and $namingPreview.retire.Count -eq 6 -and -not (Test-Path (Join-Path $migrationGlobal 'skillvault-installation'))) 'selected naming migration previews the three management topics and retires former authoring and refresh names'
+    Assert-True (@($namingPreview.retire | Where-Object { $_.oldName -in $formerRefreshNames -and $_.name -ceq 'skillvault-installation' }).Count -eq 2) 'former refresh folders map to skillvault-installation'
     Assert-True (Test-Throws { & $migrationScript -ProjectPath $migrationProject -RepoPath $catalogRepository -Scope global -GlobalSkillsPath $migrationGlobal -Name 'absent-skill' -Apply -Force }) 'unknown canonical migration names are rejected before writes'
     Assert-True (Test-Throws { & $migrationScript -ProjectPath $migrationProject -RepoPath $catalogRepository -Scope global -GlobalSkillsPath $migrationGlobal -Name $fullNames -Apply -Force }) 'legacy runtime migration requires explicit stopped-worker confirmation'
     Assert-True (-not (Test-Path (Join-Path $migrationGlobal 'skillvault-authoring'))) 'an unconfirmed transition writes no replacement'
@@ -462,6 +468,10 @@ try {
         Assert-True (-not (Test-Path (Join-Path $migrationGlobal $shortName)) -and (Test-Path (Join-Path $migrationGlobal "$fullName/SKILL.md"))) 'full names replace short registered folders'
     }
     Assert-True (-not (Test-Path -LiteralPath $formerSourcePath)) 'the former full authoring name is retired after replacements verify'
+    foreach ($formerRefresh in $formerRefreshNames) {
+        Assert-True (-not (Test-Path -LiteralPath (Join-Path $migrationGlobal $formerRefresh))) "the former refresh folder $formerRefresh is retired into skillvault-installation"
+    }
+    Assert-True (Test-Path -LiteralPath (Join-Path $migrationGlobal 'skillvault-installation/scripts/skill-refresh.ps1')) 'the installation copy carries the refresh script'
     Assert-True ([IO.File]::ReadAllText((Join-Path $legacyFolder 'SKILL.md')) -ceq $legacyBefore) 'a selected naming migration leaves unselected topics untouched'
     & (Join-Path $PSScriptRoot 'verify-installed-skills.ps1') -RepoRoot $catalogRepository -SkillsPath $migrationGlobal -Name $fullNames | Out-Null
     $repeatNaming = & $migrationScript -ProjectPath $migrationProject -RepoPath $catalogRepository -Scope global -GlobalSkillsPath $migrationGlobal -Name $fullNames | ConvertFrom-Json
@@ -473,9 +483,9 @@ try {
     Assert-True ($retireOnly.install.Count -eq 0 -and $retireOnly.retire.Count -eq 1 -and $retireOnly.backups.Count -eq 0 -and -not (Test-Path $shortPath)) 'a short-name duplicate is retired when the full-name copy is already current'
     Assert-True ([IO.File]::ReadAllText((Join-Path $migrationGlobal 'skillvault-installation/.skillvault-install.json')) -ceq $fullMetadata) 'retiring a duplicate does not rewrite the current full-name metadata'
     $migrationPreview = & $migrationScript -ProjectPath $migrationProject -RepoPath $catalogRepository -Scope global -GlobalSkillsPath $migrationGlobal | ConvertFrom-Json
-    Assert-True ($migrationPreview.preview -and $migrationPreview.retire[0].oldName -eq 'harness-root' -and -not (Test-Path (Join-Path $migrationGlobal 'harness'))) 'topic migration preview writes nothing and maps exact legacy names'
+    Assert-True ($migrationPreview.preview -and $migrationPreview.retire[0].oldName -eq 'harness-root' -and $migrationPreview.retire[0].name -eq 'harness-project' -and -not (Test-Path (Join-Path $migrationGlobal 'harness-runtime')) -and -not (Test-Path (Join-Path $migrationGlobal 'harness-project'))) 'topic migration preview writes nothing and maps exact legacy names'
     $migrationResult = & $migrationScript -ProjectPath $migrationProject -RepoPath $catalogRepository -Scope global -GlobalSkillsPath $migrationGlobal -Apply -Force -ConfirmStopped | ConvertFrom-Json
-    Assert-True (-not (Test-Path -LiteralPath $legacyFolder) -and (Test-Path (Join-Path $migrationGlobal 'harness/SKILL.md'))) 'approved migration replaces the legacy registration with the canonical topic'
+    Assert-True (-not (Test-Path -LiteralPath $legacyFolder) -and (Test-Path (Join-Path $migrationGlobal 'harness-project/SKILL.md')) -and (Test-Path (Join-Path $migrationGlobal 'harness-runtime/scripts/harness.ps1'))) 'approved migration replaces the legacy registration with the canonical topic and its runtime'
     Assert-True ($migrationResult.backups.Count -eq 0 -and -not (Test-Path $env:SKILLVAULT_TRANSACTION_ROOT)) 'migration leaves only the approved canonical copies'
 
     $scopedNames = @('skillvault-authoring', 'skillvault-installation')

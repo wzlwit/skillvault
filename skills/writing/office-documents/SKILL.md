@@ -1,6 +1,6 @@
 ---
 name: office-documents
-description: "Reference to Anthropic's PDF, Word, and Excel document skills for merging PDFs, cleaning spreadsheets, and document formatting. Use /office-documents to locate the relevant guidance. Overlaps with harness-doc on document output and harness-report on workbook/report validation; upstream tools are not bundled and their proprietary terms apply."
+description: "Reference to Anthropic's PDF, Word, and Excel document skills for merging PDFs, cleaning spreadsheets, and document formatting. Use /office-documents to locate the relevant guidance. Overlaps with harness-write on document output and workbook/report validation; upstream tools are not bundled and their proprietary terms apply."
 metadata:
   author: Anthropic, PBC
   maintainer: wzlwit
@@ -62,7 +62,7 @@ Written for SkillVault and maintained by wzlwit, with upstream attribution retai
 This original guide has no declared release version or license; upstream rights are recorded
 separately, not assigned to the reference by inference.
 
-`harness-doc` owns evidence-grounded reader documentation and checks requested paginated output.
-`harness-report` owns its declared report/query routes and workbook-backed figure validation.
+`harness-write upsert doc` owns evidence-grounded reader documentation and checks requested paginated output.
+`harness-write upsert report` owns its declared report/query routes and workbook-backed figure validation.
 Neither this reference nor those overlap notes add a renderer, a document-report route, a required
 dependency, or permission to install the upstream toolkit in another host.

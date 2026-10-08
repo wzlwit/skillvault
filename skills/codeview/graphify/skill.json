@@ -5,7 +5,7 @@
   "status": "public",
   "visibility": "public",
   "kind": "reference",
-  "description": "Reference guide to the upstream Graphify knowledge-graph skill; its CLI is not installed here.",
+  "description": "Reference guide to the upstream Graphify knowledge-graph skill; its CLI is not installed here. Use to locate authoritative Graphify guidance and its official install workflow.",
   "tags": ["knowledge-graph", "code-analysis", "reference", "graphify"],
   "author": "Graphify-Labs",
   "maintainer": "wzlwit",

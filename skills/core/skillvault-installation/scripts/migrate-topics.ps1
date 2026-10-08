@@ -27,7 +27,7 @@ foreach ($selectedName in $SelectedNames) {
     if ($selectedName -cnotin $catalog.name) { throw "Select an exact canonical catalog name: $selectedName" }
 }
 . (Join-Path $PSScriptRoot 'skill-files.ps1')
-. (Join-Path $PSScriptRoot 'skillvault-list.ps1') -ProjectPath $projectRoot -Scope $selectedScope -GlobalSkillsPath $globalRoot | Out-Null
+. (Join-Path $PSScriptRoot 'skill-inventory.ps1') -ProjectPath $projectRoot -Scope $selectedScope -GlobalSkillsPath $globalRoot | Out-Null
 $projectSkills = Join-Path $projectRoot '.github/skills'
 $installed = @($entries | Where-Object {
     $_.Managed -eq 'yes' -and ((Split-Path -Parent $_.Path) -ieq $globalRoot -or (Split-Path -Parent $_.Path) -ieq $projectSkills)

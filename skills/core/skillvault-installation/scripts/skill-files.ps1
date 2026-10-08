@@ -111,13 +111,17 @@ function Assert-SkillUpstreamFolder {
 function Get-SkillFormerNames {
     # Former SkillVault folder names mapped to the catalog names that replace them.
     @{
-        'harness-init' = 'harness'; 'harness-root' = 'harness'; 'harness-loc' = 'harness'; 'harness-context' = 'harness'; 'harness-management' = 'harness'
-        'harness-decide' = 'harness-decision'; 'harness-ref' = 'harness-link'; 'harness-report-create' = 'harness-report'
-        'harness-fallback' = 'harness-policy'; 'harness-restrict' = 'harness-policy'
+        'harness' = 'harness-project'; 'harness-init' = 'harness-project'; 'harness-root' = 'harness-project'; 'harness-loc' = 'harness-project'; 'harness-context' = 'harness-project'; 'harness-management' = 'harness-project'
+        'harness-decide' = 'harness-decision'; 'harness-ref' = 'harness-project'; 'harness-report-create' = 'harness-write'
+        'harness-fallback' = 'harness-project'; 'harness-restrict' = 'harness-project'
+        'harness-link' = 'harness-project'; 'harness-policy' = 'harness-project'
+        'harness-task' = 'harness-work'; 'harness-dev' = 'harness-work'; 'harness-test' = 'harness-work'
+        'harness-doc' = 'harness-write'; 'harness-comms' = 'harness-write'; 'harness-report' = 'harness-write'
         'sv-installation' = 'skillvault-installation'; 'sv-discovery' = 'skillvault-discovery'
-        'sv-refresh' = 'skillvault-refresh'; 'sv-source' = 'skillvault-authoring'; 'skillvault-source' = 'skillvault-authoring'
+        'sv-refresh' = 'skillvault-installation'; 'sv-source' = 'skillvault-authoring'; 'skillvault-source' = 'skillvault-authoring'
         'skillvault-install' = 'skillvault-installation'; 'skillvault-list' = 'skillvault-installation'; 'skillvault-uninstall' = 'skillvault-installation'
-        'skillvault-upsert' = 'skillvault-authoring'; 'skillvault-remove' = 'skillvault-authoring'; 'skillvault-fresh' = 'skillvault-refresh'
+        'skillvault-upsert' = 'skillvault-authoring'; 'skillvault-remove' = 'skillvault-authoring'; 'skillvault-fresh' = 'skillvault-installation'
+        'skillvault-refresh' = 'skillvault-installation'
         'skillvault-evaluate' = 'skillvault-discovery'; 'skillvault-search' = 'skillvault-discovery'; 'skillvault-key-points' = 'skillvault-discovery'
         'pr-review-add' = 'pr-watch'; 'pr-review-list' = 'pr-watch'; 'pr-review-remove' = 'pr-watch'; 'pr-review-timer' = 'harness-timer'
         'rules-core' = 'rules'; 'jarvis-metrics-create' = 'jarvis-metrics'; 'kpi-dashboard-design' = 'kpi-dashboard'; 'openapi-spec-generation' = 'openapi-spec'

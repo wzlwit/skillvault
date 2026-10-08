@@ -1,0 +1,32 @@
+{
+  "source": "Owner's VS Code model picker, 2026-10-02. IDs checked with Copilot CLI 1.0.91; claude-opus-5.5 and gpt-6-astra were confirmed by the CLI but fell outside the screenshot.",
+  "order": "Strongest first in each family: newest version first, then the Sol tier. The order below Sol within one version is a best guess; reorder to change the preference.",
+  "excluded": "Picker models shown with a warning (claude-opus-4.7, gpt-5.5, gpt-5.4, gpt-5.4-mini, gpt-5-mini) and the internal-only speed variant gpt-5.6-sol-fast.",
+  "families": [
+    {
+      "id": "gpt",
+      "label": "GPT",
+      "pattern": "gpt-*",
+      "models": [
+        "gpt-6.1-sol",
+        "gpt-6-sol",
+        "gpt-6-astra",
+        "gpt-6-luna",
+        "gpt-5.6-sol",
+        "gpt-5.6-terra",
+        "gpt-5.6-luna",
+        "gpt-5.3-codex"
+      ]
+    },
+    {
+      "id": "claude-opus",
+      "label": "Claude Opus",
+      "pattern": "claude-opus-*",
+      "models": [
+        "claude-opus-5.5",
+        "claude-opus-5",
+        "claude-opus-4.8"
+      ]
+    }
+  ]
+}

@@ -6,9 +6,9 @@
 - Evidence: the session's checkpoint summary, user requests, and tool-call metadata. Names, threads,
   dates, and other private content are left out of this record.
 - Version/revision: Not applicable
-- Skill recommendation: Upsert, implemented as [`harness-comms`](../../skills/planning/harness-comms/SKILL.md)
+- Skill recommendation: Upsert, implemented in [`harness-write`](../../skills/planning/harness-write/SKILL.md)
   per the [communications ADR](../plans/decisions/2026-09-29-harness-communications-adr.md)
-- Installed recommendation: Keep `workiq`; `harness-comms` coexists and delegates to it
+- Installed recommendation: Keep `workiq`; `harness-write` coexists and delegates to it
 
 ## Evidence
 
@@ -24,7 +24,7 @@ drafted a reply to the email thread with links. It made about 1,300 tool calls a
 - Invites with attendees: the Outlook web editor's **Save as draft**, then a read-back from the
   server to confirm nothing was sent.
 
-That session then proposed a skill, and after the owner approved it, built `harness-comms`.
+That session then proposed a skill, and after the owner approved it, built the communications workflow now in `harness-write`.
 
 ## Workflow Worth Keeping
 
@@ -56,12 +56,12 @@ UIs that change.
 Overlap: the installed `workiq` plugin skill owns Microsoft 365 mechanics (mail, calendar, free/busy,
 drafts) and says to prefer it for that data. The new skill should use it for every mail and calendar
 action and add only workflow, audience, and confirmation steps. No SkillVault skill covers mail,
-meetings, or Loop. `harness-link` can register the tracker or thread links; `harness-doc` owns
+meetings, or Loop. `harness-project context add` can register the tracker or thread links; the `harness-write` doc action owns
 documentation, not messages.
 
-Harness integration: the owner chose a harness topic, `/hn-comms`. Like `harness-doc`, it works in
+Harness integration: the owner chose a harness topic, now `/hn-write`. Like its doc action, it works in
 the session without an initialized harness or a runtime action. When a harness root is initialized,
-it offers to register the links with `harness-link`.
+it offers to register the links with `harness-project context add`.
 
 ## Risks
 
@@ -77,13 +77,13 @@ it offers to register the links with `harness-link`.
 
 ## Recommendation
 
-- Skill recommendation: `upsert`, implemented as `harness-comms` in `skills/planning`, default scope
+- Skill recommendation: `upsert`, implemented in `harness-write` in `skills/planning`, default scope
   `global`, as recorded in the [ADR](../plans/decisions/2026-09-29-harness-communications-adr.md).
   This record's earlier suggestion, a non-harness skill named `m365-coordination` without a script,
   is replaced by that decision.
 - Standalone use: worth reusing now; the approach worked when each visible action was confirmed.
 - Existing-skill improvements: None justified. This session's documentation lessons were already added
-  to `harness-doc` in commit 0e19c09, and `workiq` is an external plugin.
+  to the documentation workflow, now in `harness-write`, in commit 0e19c09, and `workiq` is an external plugin.
 
 ## Limits and Reconsideration
 

@@ -5,7 +5,7 @@
   "status": "public",
   "visibility": "public",
   "kind": "agent",
-  "description": "Explore ideas and compare designs before implementation; overlaps with grilling on questions and trade-offs, but focuses on developing alternatives.",
+  "description": "Brainstorm ideas, clarify requirements, compare approaches, and refine designs before implementation. Use for /brainstorming, \"brainstorm\", \"explore alternatives\", or \"help design this\". Overlaps with grilling on questions and trade-offs; focuses on developing alternatives collaboratively.",
   "tags": ["planning", "brainstorming", "design", "requirements", "alternatives"],
   "author": "Jesse Vincent",
   "maintainer": "wzlwit",

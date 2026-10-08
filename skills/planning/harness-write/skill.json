@@ -1,0 +1,116 @@
+{
+  "name": "harness-write",
+  "title": "Harness Writing",
+  "version": "1.0.0",
+  "kind": "agent",
+  "description": "[upsert|slots] Draft and update writing for people: evidence-grounded feature docs, onboarding, and troubleshooting guides; stakeholder trackers, meeting invites, and email updates or thread replies; and dashboards, reports, and queries; rank meeting slots offline. Shorthand: /hn-write; upsert takes doc|tracker|meeting|email|report. Overlaps with architecture-decision-records on rationale, harness-monitor on status and owner evidence, harness-work on report implementation, kpi-dashboard and jarvis-metrics on report design, and the office-documents and ppt-master references on document output. Drafts only: never sends, invites, shares, or publishes without explicit approval.",
+  "tags": [
+    "harness",
+    "documentation",
+    "communications",
+    "reports",
+    "dashboards",
+    "meetings",
+    "email"
+  ],
+  "author": "wzlwit",
+  "source": {
+    "repo": "skillvault",
+    "path": "skills/planning/harness-write"
+  },
+  "install": {
+    "global": true,
+    "project": true,
+    "session": true,
+    "defaultScope": "global",
+    "strategy": "copy"
+  },
+  "dependencies": [
+    "rules",
+    "humanizer",
+    "kpi-dashboard",
+    "harness-work",
+    "harness-project"
+  ],
+  "readme": "SKILL.md",
+  "inputs": [
+    {
+      "name": "action",
+      "required": false,
+      "type": "string",
+      "default": "list",
+      "enum": [
+        "list",
+        "upsert",
+        "slots"
+      ],
+      "description": "Omitted means read-only listing. Create and update are aliases for upsert."
+    },
+    {
+      "name": "kind",
+      "required": false,
+      "type": "string",
+      "enum": [
+        "doc",
+        "tracker",
+        "meeting",
+        "email",
+        "report"
+      ],
+      "description": "What upsert creates or updates; required unless clear from the conversation."
+    },
+    {
+      "name": "target",
+      "required": false,
+      "type": "string",
+      "description": "Feature or doc set, initiative, email purpose, or report artifact; required for upsert unless clear from the conversation."
+    },
+    {
+      "name": "audience",
+      "required": false,
+      "type": "string",
+      "enum": [
+        "internal",
+        "partner",
+        "public"
+      ],
+      "description": "Doc audience. Reuse the established audience or clarify it. Partner access does not imply public disclosure."
+    },
+    {
+      "name": "type",
+      "required": false,
+      "type": "string",
+      "enum": [
+        "powerbi",
+        "grafana",
+        "jarvis",
+        "web",
+        "query"
+      ],
+      "description": "Report platform. Infer only from an unambiguous request or existing artifact; otherwise ask."
+    },
+    {
+      "name": "thread",
+      "required": false,
+      "type": "string",
+      "description": "Exact subject of an existing mail thread: the reply-all target for email, and an attendee source for slots or meeting."
+    },
+    {
+      "name": "output",
+      "required": false,
+      "type": "string",
+      "description": "Explicit destination for a doc set or report. Otherwise reuse the coding repository's documentation convention, then docs/guides/<feature> when no convention exists."
+    }
+  ],
+  "examples": [
+    "/harness-write",
+    "/hn-write list",
+    "/hn-write upsert doc cache-refresh --audience partner",
+    "/hn-write upsert doc cache-refresh troubleshooting --audience internal",
+    "/hn-write upsert tracker release-readiness --workspace \"Team workspace\"",
+    "/hn-write upsert meeting release-readiness --at \"Fri 13:30\" --thread \"Release readiness follow-up\"",
+    "/hn-write upsert email status-update --thread \"Release readiness follow-up\"",
+    "/hn-write slots \"Release readiness follow-up\" --days tue,wed --duration 30m",
+    "/harness-write upsert report service-health --type grafana --output dashboards/service-health.json"
+  ]
+}

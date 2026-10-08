@@ -1,11 +1,11 @@
 {
   "name": "rules",
   "title": "Rules",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "status": "public",
   "visibility": "public",
   "kind": "instruction",
-  "description": "Apply or manage AI working rules. Use /rules list, apply, add, update, or remove. The apply action replaces /rules-core and supplies compact coding guidance without editing files; persistent rule changes require confirmation.",
+  "description": "[apply|upsert|remove] Apply the four core working rules (also /rules core) to the current task without editing files, or manage AI rule documents; persistent rule changes require confirmation.",
   "tags": [
     "core",
     "engineering",
@@ -37,8 +37,7 @@
       "enum": [
         "list",
         "apply",
-        "add",
-        "update",
+        "upsert",
         "remove"
       ],
       "description": "Primary action; omitted means read-only list. Compatibility aliases remain in SKILL.md. Operation-specific approvals still apply."

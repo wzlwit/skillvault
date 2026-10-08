@@ -6,7 +6,7 @@ Contents: Scope and Baseline; Review and Fresh Pass; Differential Security Revie
 General code review starts with the selected changes and uses a whole-repository Fresh pass when
 the first pass has no new findings. A request to discuss or edit this skill does not launch a reviewer.
 
-Before scripts, follow the installed `harness` runtime guide's Script Permissions and Agent
+Before scripts, follow the installed `harness-runtime` guide's Script Permissions and Agent
 Fallback procedure. Reuse approved access or request the missing command-scoped permission before
 execution. An attended agent fallback may review through authorized read-only tools with the same
 baseline, snapshot, independent-pass, and policy requirements. Missing coverage or unavailable
@@ -21,11 +21,11 @@ installation/setup; do not silently review the current branch instead. A local `
 does not override a remote PR's verified merge-base. The following steps govern local review.
 
 1. Resolve the project, apply `/rules apply` and applicable project instructions, and read the
-   canonical `harness` runtime guide. Follow Runner Inheritance and pass known compatible
+   canonical `harness-runtime` guide. Follow Runner Inheritance and pass known compatible
    session/parent context through `-RunnerContext` or `-RunnerContextPath`. Missing allowances
    use inherited or maximum verified/native settings, not a setup blocker or invented small cap.
    Explicit restrictions and read-only review permissions remain effective. Use the canonical
-   shared script, not an obsolete `hn-init` copy.
+   shared script, not an obsolete copy under a retired shortcut folder.
    For a separate local repository, map `--repo-ref <id>` to `-RepositoryRef` (alias `-RepoRef`)
    and keep `-ProjectPath` at the controller. Select an active project-wide reference to an
    existing local Git root. Do not pick the first reference, clone a URL, or confuse this option
@@ -58,9 +58,22 @@ Follow the runtime's Reuse or New procedure when selecting an additional reviewe
 Show matching agents and confirm **Reuse (singleton) or New?** unless already specified. Reuse
 means a compatible agent definition/profile, not a developer conversation or stale verdict.
 New reviewers stay read-only, keep the task/snapshot association, and retain separate evidence.
-The required Fresh pass remains part of the existing request and needs no extra instance prompt.
+The required Fresh pass and the panel's second reviewer are part of the existing request and need
+no extra instance prompt.
 
-1. Start an independent, read-only code reviewer on the current snapshot. Prioritize concrete
+Every pass uses the runtime's Review Panel: two independent read-only reviewers, the strongest
+allowed GPT model and the strongest allowed Claude Opus model. Candidates come from approved
+runner-context `profiles` or, by default, the harness's bundled model list (the owner's model picker,
+strongest first), narrowed by `allowedModels`. Each starts at the highest effort and long context; the
+CLI rejects an unavailable model or unsupported effort before any model work, and the runtime moves to
+the next choice at no cost. The two review the same pinned snapshot at the
+same time unless `maxParallelReviewers` is 1, which runs them one after the other. Their findings are
+merged; the pass is clean only when both are clean, blocked when either is blocked, and has no new
+findings only when neither reports one. When restrictions or availability leave one family, or
+`runner.criticalReview` is `false`, one reviewer runs and the result and report say why. A failed
+reviewer fails the pass after both finish; the other result stays in the report as evidence.
+
+1. Start the review panel on the current snapshot. Prioritize concrete
    correctness defects, behavioral regressions, error handling, and consequential missing tests.
    Read complete owning functions, relevant callers, and nearby tests. State the triggering
    scenario, broken contract, and impact rather than reporting a keyword match or speculative risk.
@@ -110,19 +123,20 @@ The required Fresh pass remains part of the existing request and needs no extra 
    supplies one checkpoint to its existing coordinator, not a new waiting daemon or fix loop.
 
 Here, **Fresh covers the whole selected repository**, not just the diff or its immediate callers.
-Ordinary Review and development's Critical pass retain their requested change scope. Preserve
+Ordinary Review retains its requested change scope; development runs use the same Changes and Full
+passes in their own fix loop. Preserve
 explicit user/parent restrictions and existing budgets; insufficient repository coverage is
 `blocked`, not `clean`. Do not access another repository, fetch remote material, or add workers
-to evade a limit. Fix-driven continuation uses the same approved review workflow, not simultaneous
-reviewers or repeated attempts on unchanged code. PR review keeps its verified isolated workspace
-and no-execution rules.
+to evade a limit. Fix-driven continuation uses the same approved review workflow, not reviewers
+beyond the panel or repeated attempts on unchanged code. PR review keeps its verified isolated
+workspace, single approved profile, and no-execution rules.
 
-Each script round uses up to two passes per snapshot, with at most six attempted sessions across
-two local restarts. That churn bound does not limit rounds resumed after completed fixes.
-Each session retains its explicit, inherited, and native time/credit limits;
+Each script round uses up to two passes per snapshot, each with up to two reviewer sessions, so at
+most 12 attempted sessions across two local restarts. That churn bound does not limit rounds
+resumed after completed fixes. Each session retains its explicit, inherited, and native time/credit limits;
 outer run/scheduler budgets and pauses are never increased or reset. A restart can consume extra
-sessions, not extra permission. `runner.criticalReview` still governs only the separate development
-review gate. No failed worker session gets an automatic retry.
+sessions, not extra permission. `runner.criticalReview: false` keeps one reviewer per pass, here and
+in development. No failed worker session gets an automatic retry.
 
 ## Differential Security Review
 
@@ -134,8 +148,8 @@ review gate. No failed worker session gets an automatic retry.
 Keep the general evidence-based principles above here. Reuse `differential-review` as a specialized
 sub-skill instead of copying its security methodology into a second maintained checklist.
 
-`/harness-review --security` adds that methodology to the same general review and any fresh pass, not
-an unbounded third worker. The shared helper's `-SecurityReview` loads the installed guide from
+`/harness-review --security` adds that methodology to every panel reviewer in the same general review
+and any fresh pass, not an extra worker. The shared helper's `-SecurityReview` loads the installed guide from
 the project first, then the global installation, and explicitly supplies its text to each worker.
 Merely naming or installing a skill is not context injection. Missing requested guidance blocks
 before a worker starts; resolve installation separately rather than silently skipping security.
@@ -164,8 +178,10 @@ CC-BY-SA-4.0 license; it is loaded, not copied into this bundle. `/dif-review` i
 & <harness-folder>/scripts/harness.ps1 -ProjectPath <root> -Action Review -BaseRef <verified-ref> -SecurityReview
 ```
 
-Show findings first, ordered by evidenced severity with current file/line anchors, then each pass's requested scope,
-controller, coding repository, baseline, security guidance source when used, attempted pass count, restart count, coverage gaps, and report path. Keep pre-existing issues separate from
+Show findings first, ordered by evidenced severity with current file/line anchors and the reviewers
+that reported them, then each pass's requested scope, controller, coding repository, baseline,
+security guidance source when used, reviewers and any one-reviewer note, attempted pass and session
+counts, restart count, coverage gaps, and report path. Keep pre-existing issues separate from
 introduced regressions. The shared state retains compact review comparison data in its existing
 run rows, with full evidence in board reports; there is no new issue tracker or status dashboard.
 Only the last stable attempt supplies current findings. Superseded attempts remain historical
@@ -175,8 +191,8 @@ findings. `nextPhase: Review` on a findings checkpoint tells the coordinator whe
 fixes; `Partial` uses the same phase once the snapshot settles. The run record carries these fields
 so a successful reviewer process is not mistaken for completion of unresolved work.
 
-Honor the run lock and `/harness-policy limits`/`/harness-policy fallback` gates. Do not fix code, change permissions,
+Honor the run lock and `/harness-project policy limits`/`/harness-project policy fallback` gates. Do not fix code, change permissions,
 publish comments, approve a PR, push, merge, change a schedule, or create a task implicitly.
 Reuse the existing authorized dev/proposal handoff for findings; that does not require another
-fixer or review request. Creating a separate `/harness-task` outside that handoff still requires
+fixer or review request. Creating a separate task through `/harness-work upsert` outside that handoff still requires
 the user's request or an existing explicit intake policy.

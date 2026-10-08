@@ -1,24 +1,22 @@
 {
   "name": "harness-timer",
   "title": "Harness Timer",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "ownershipProtocol": 1,
   "runtimeInterfaces": {
     "scheduler": 1
   },
   "requiredInterfaces": {
-    "harness": {
+    "harness-runtime": {
       "harness-runtime": 4
     },
     "skillvault-installation": {
-      "compatibility": 1
-    },
-    "skillvault-refresh": {
-      "structured-refresh": 1
+      "compatibility": 1,
+      "structured-refresh": 2
     }
   },
   "kind": "agent",
-  "description": "Manage logical schedules under one user-wide heartbeat. Use /harness-timer or /hn-timer with list, set, disable, resume, clean, or migrate. Targets are project, pr, refresh, maintenance, or heartbeat settings. Bare invocation lists only. Overlaps with schedule-manager on task administration; owns SkillVault schedules. Maintenance delegates historical-data cleanup to harness.",
+  "description": "[set|disable|resume|clean|migrate] Manage logical schedules under one user-wide heartbeat. Shorthand: /hn-timer. Targets are project, pr, refresh, maintenance, or heartbeat settings. Bare invocation lists only. Overlaps with schedule-manager on task administration; owns SkillVault schedules. Maintenance delegates historical-data cleanup to harness-project clean.",
   "tags": [
     "harness",
     "scheduling",
@@ -37,11 +35,10 @@
     "strategy": "copy"
   },
   "dependencies": [
-    "harness",
+    "harness-runtime",
     "rules",
     "pr-review",
-    "skillvault-installation",
-    "skillvault-refresh"
+    "skillvault-installation"
   ],
   "examples": [
     "/harness-timer",

@@ -1,5 +1,7 @@
 # ADR: Quiet Script Execution
 
+> Topic and command names in this record were updated to the current topics on 2026-10-07; see the [old-name retirement ADR](./2026-10-07-retire-old-names-adr.md).
+
 - Date: 2026-09-27
 - Status: Accepted
 - Decision owner: Zhaolong Wang
@@ -86,7 +88,7 @@ or popup reproduction was run during that audit. The findings below retain the p
 snapshot; the subsequently authorized fixes are recorded in Approved Remediation.
 
 1. **Shared child-process launches do not suppress console creation.**
-   [Invoke-HarnessProcess](../../../skills/planning/harness/scripts/harness-runner.ps1#L206)
+   [Invoke-HarnessProcess](../../../skills/planning/harness-runtime/scripts/harness-runner.ps1#L206)
    sets `UseShellExecute` to false and redirects output but leaves `CreateNoWindow` unset.
    The [.NET default is false](https://learn.microsoft.com/en-us/dotnet/api/system.diagnostics.processstartinfo.createnowindow).
    The [heartbeat's Execute path](../../../skills/planning/harness-timer/scripts/harness-heartbeat.ps1#L48)
@@ -96,7 +98,7 @@ snapshot; the subsequently authorized fixes are recorded in Approved Remediation
    a console executable started from that no-console worker can create a window. Capturing streams
    and waiting for exit do not replace a no-window launch setting.
 2. **Unattended refresh inherits interactive credential behavior.**
-   [Sync-Repo](../../../skills/core/skillvault-refresh/scripts/skillvault-fresh.ps1#L55)
+   [Sync-Repo](../../../skills/core/skillvault-installation/scripts/skill-refresh.ps1#L55)
    invokes Git fetch and clone using inherited credential settings. Its scheduler call supplies no
    noninteractive Git environment override. If a registered source requires authentication and
    usable credentials are unavailable, a configured helper can prompt or open a browser.
@@ -107,7 +109,7 @@ snapshot; the subsequently authorized fixes are recorded in Approved Remediation
 3. **Direct legacy timer actions omit window suppression.** The registration branches in
    [project timers](../../../skills/planning/harness-timer/scripts/harness-project-timer.ps1#L196),
    [PR timers](../../../skills/github/pr-review/scripts/pr-review-runner.ps1#L320), and
-   [refresh timers](../../../skills/core/skillvault-refresh/scripts/skillvault-fresh.ps1#L309)
+   [refresh timers](../../../skills/core/skillvault-installation/scripts/skill-refresh.ps1#L309)
    build direct PowerShell actions without a hidden-window option. These can open consoles when
    used in an interactive Windows session. The
    [canonical timer dispatcher](../../../skills/planning/harness-timer/scripts/harness-timer.ps1#L115)
@@ -149,8 +151,8 @@ The full repository gate passed: all 48 Node contracts, all fixture groups, cata
 validation for 41 public skills and 30 project copies, and whitespace checks. A pre-existing
 catalog-map omission for four reference entries was repaired separately before the successful run.
 
-The existing managed `latest` copies of `harness`, `harness-timer`, `pr-review`, and
-`skillvault-refresh` were previewed and refreshed in global and current-project scopes. All eight
+The existing managed `latest` copies of the harness runtime, `harness-timer`, `pr-review`, and
+the refresh topic were previewed and refreshed in global and current-project scopes. All eight
 copies passed source parity and dependency-interface checks; their installer companions already
 matched and were left unchanged. No missing, pinned, or unrelated installation was replaced.
 Existing OS task actions were not rewritten, enabled, disabled, or started; a live task-action

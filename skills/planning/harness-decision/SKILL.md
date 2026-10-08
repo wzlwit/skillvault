@@ -1,12 +1,12 @@
 ---
 name: harness-decision
-description: "List open harness decisions separately from optional configuration, filter closed/all decisions, explain one decision or question, or record a choice. Use /harness-decision or
-  /hn-decision with list, explain, or record; also accepts legacy /harness-decide
-  and /hn-decide. Overlaps with architecture-decision-records on history; owns
-  the compact bulletin, decision register, and read-only explanations."
+description: "[explain|record] List open harness decisions separately from optional
+  configuration, filter closed/all decisions, explain one decision or question, or record a choice.
+  Shorthand: /hn-decision. Overlaps with architecture-decision-records on history; owns the compact
+  bulletin, decision register, and read-only explanations."
 metadata:
   author: wzlwit
-  version: "1.0.0"
+  version: "2.0.0"
 argument-hint: "[list|explain|record] [<arguments>...]"
 ---
 
@@ -35,6 +35,6 @@ unchanged; abbreviation adds no confirmation. This is conversational routing, no
   configuration. Missing configuration is an open decision only when requested or enabled work needs
   a human choice that saved settings, inheritance, or defaults cannot resolve.
 - `record` follows the [decision procedure](./references/workflow.md). Unknown actions and `help` show
-  choices; legacy decide commands keep their explicit operation.
+  choices.
 - Apply `/rules apply` and project instructions. A grilling proposal is not an accepted decision;
   consequential rationale may use ADRs as authorized.

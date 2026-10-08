@@ -7,16 +7,18 @@ is read-only `list`. The following compatibility guidance does not authorize a s
 
 # SkillVault Refresh Schedule
 
-Delegate explicit refresh scheduling to the `skillvault-refresh` bundle's operation guide and existing
-`scripts/skillvault-fresh.ps1` helper. `schedule` uses its reviewed positive interval; the legacy
-one-day default applies only to an explicit request that omits it. `run` is a separate immediate
-refresh, never a zero-frequency schedule. Keep scope, pins, source ownership, and cache rules.
+The refresh itself is `/skillvault-installation refresh`; its operation guide
+(`skillvault-installation/references/refresh.md`) and the bundled
+`scripts/skill-refresh.ps1` helper live in the installed `skillvault-installation` skill.
+`set refresh` uses a reviewed duration; an immediate refresh is
+`/skillvault-installation refresh`, never a zero-frequency schedule. Keep scope, pins, source
+ownership, and cache rules. A refresh schedule saved before the helper moved keeps its cadence;
+run `set refresh <duration>` once to point it at the moved helper.
 
 `status` reads the existing `SkillVault Source Refresh` Windows task without invoking the
 refresh script, which would otherwise configure a schedule. `disable` or `resume` uses the
 existing schedule-manager procedure for that exact task after the required confirmation;
 it neither changes cadence nor performs an immediate refresh. Show absence without creating it.
 
-There is no central-heartbeat migration here. This guide calls the refresh owner directly;
-`skillvault-refresh schedule` does not route back through harness-timer. Never change unrelated timers,
-install missing dependencies, or invoke setup or grilling during a scheduled tick.
+Never change unrelated timers, install missing dependencies, or invoke setup or grilling during a
+scheduled tick.

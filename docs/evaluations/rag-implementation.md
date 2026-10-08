@@ -34,7 +34,7 @@ MIT also permits a properly attributed adaptation, but a runnable adaptation wou
 the example repairs and task-specific verification below. Do not import the whole plugin or add
 its cloud providers merely to make this guide available.
 
-Installed recommendation: **Coexist; replace nothing.** `harness-doc` owns reader documentation
+Installed recommendation: **Coexist; replace nothing.** `harness-write` owns reader documentation
 and evidence handling, not an application's retriever. `skillvault-authoring` owns skill creation
 and comparative checks, not deployment of a RAG system. Their existing workflows are complementary.
 
@@ -117,7 +117,7 @@ Windows compatibility, or Chinese/multilingual benchmark was run in this evaluat
   comparison requires no retrieval dataset or extra model calls.
 
 This was **the only native improvement applied**. The current
-[documentation workflow](../../skills/planning/harness-doc/references/workflow.md) already requires
+[documentation workflow](../../skills/planning/harness-write/references/doc.md) already requires
 source/revision/section traceability, complete governing-section reads, extraction caveats, and
 Draft outcomes for missing essential evidence. No additional documentation change is justified by
 the citation lesson alone. RAG-specific example fixes belong in a future adaptation, not unrelated

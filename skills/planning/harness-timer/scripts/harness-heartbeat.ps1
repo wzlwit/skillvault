@@ -8,7 +8,7 @@ param(
     [bool]$Enabled = $true
 )
 
-. (Join-Path $PSScriptRoot '../../harness/scripts/harness-ownership.ps1')
+. (Join-Path $PSScriptRoot '../../harness-runtime/scripts/harness-ownership.ps1')
 $runtimeOwnership = $null
 $runtimeUncertain = $false
 try {
@@ -30,13 +30,13 @@ if ($Action -eq 'Execute') {
     $runnerOwnership = $null
     try {
         if ((Get-HarnessScheduleHealth $job).status -ne 'Valid') { throw 'Scheduled target is unavailable or retired.' }
-        . (Join-Path $PSScriptRoot '../../harness/scripts/harness-runner.ps1')
+        . (Join-Path $PSScriptRoot '../../harness-runtime/scripts/harness-runner.ps1')
         $arguments = @($job.arguments)
         if ($job.kind -ceq 'refresh') {
             $runnerIndex = [array]::IndexOf([string[]]$arguments, '-File')
             if ($runnerIndex -lt 0 -or $runnerIndex + 1 -ge $arguments.Count) { throw 'Refresh requires an exact script adapter.' }
             $runnerBundle = Split-Path -Parent (Split-Path -Parent $arguments[$runnerIndex + 1])
-            $runnerOwnership = Enter-SkillRuntimeOwnership -SkillPath $runnerBundle -Owner @{ scheduler = $SchedulerRoot; role = 'refresh adapter'; run = $RunId } -InterfaceVersion 1 -RequiredInterface structured-refresh -RequiredVersion 1 -Consumer harness-timer
+            $runnerOwnership = Enter-SkillRuntimeOwnership -SkillPath $runnerBundle -Owner @{ scheduler = $SchedulerRoot; role = 'refresh adapter'; run = $RunId } -InterfaceVersion 1 -RequiredInterface structured-refresh -RequiredVersion 2 -Consumer harness-timer
             $arguments += @('-ResultJson', '-OwnerProcessId', [string]$PID)
             if ($job.refreshRetry) {
                 New-Item -ItemType Directory -Path $paths.Receipts -Force | Out-Null

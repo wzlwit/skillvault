@@ -1,0 +1,39 @@
+{
+  "name": "harness-runtime",
+  "title": "Harness Runtime",
+  "version": "2.0.0",
+  "ownershipProtocol": 1,
+  "runtimeInterfaces": {
+    "harness-runtime": 4,
+    "monitor-discovery": 7,
+    "development-tests": 1
+  },
+  "requiredInterfaces": {
+    "skillvault-installation": {
+      "compatibility": 1
+    }
+  },
+  "kind": "agent",
+  "description": "Shared PowerShell 7 runtime for the harness topics: the harness.ps1 entry point, the runtime guide, and the default review model list. Not invoked directly; use harness-project (setup, context, policy), harness-work, harness-write, harness-review, harness-decision, harness-monitor, or harness-timer.",
+  "tags": [
+    "harness",
+    "runtime"
+  ],
+  "author": "wzlwit",
+  "source": {
+    "repo": "skillvault",
+    "path": "skills/planning/harness-runtime"
+  },
+  "install": {
+    "global": true,
+    "project": true,
+    "session": true,
+    "defaultScope": "global",
+    "strategy": "copy"
+  },
+  "dependencies": [
+    "rules",
+    "skillvault-installation"
+  ],
+  "readme": "SKILL.md"
+}

@@ -1,33 +1,36 @@
 # User-Wide PR Review Runtime
 
-Contents: Storage and Dependencies; Approved Configuration; One Timer; Pauses, Recovery, and
+Contents: Storage and Dependencies; Optional Configuration; One Timer; Pauses, Recovery, and
 Results.
 
 ## Storage and Dependencies
 
 The default controller root is `~/.copilot/pr-review`, not the current repository and not an
-installed skill folder. PR review, watchlist actions, and the PR timer route share it across projects:
+installed skill folder. PR review, watchlist actions, and the PR timer route share it across projects;
+no harness Root, initialization, or `-DataRoot` choice is needed:
 
 | Path under the root | Purpose |
 | --- | --- |
 | `watchlist.json` | Exact PR/repository entries, stable W- IDs, repository filters |
-| `.harness/config.json` | Explicit PR settings and shared runner/restriction/fallback settings |
-| `.harness/state.json` | Shared review runs, durable pauses, PR result history, and the review in progress |
+| `.harness_sv/config/` | Optional saved PR settings and shared runner/restriction/fallback settings (a legacy `.harness/` controller keeps its files) |
+| `.harness_sv/runtime/state.json` | Shared review runs, durable pauses, PR result history, and the review in progress |
 | `reports/pr/` | PR-level status, verified revisions, findings, and engine evidence links |
 | `reports/history/` | Shared review evidence and snapshots |
 | `workspaces/` | Isolated fetched PR checkouts retained for evidence |
 
-List, results, and removal previews do not initialize storage. Add creates only the watchlist. Explicit
-configuration initializes the dedicated controller, never the source/target project's harness.
+List, results, and removal previews do not initialize storage. Add creates only the watchlist. The
+first review run or explicit configuration initializes the dedicated controller, never the
+source/target project's harness.
 Removal only unregisters the selected watch; it does not delete reports, checkouts, or remote PRs.
 There is no implicit retention cleanup. `-DataRoot` exists for isolated tests or an explicitly
 approved relocation of the one controller, not automatic project-specific lists/timers.
 
 Use PowerShell 7, Git, authenticated `gh`, and an approved Copilot CLI supporting prompt stdin,
 `--context`, `--reasoning-effort`, `--no-custom-instructions`, the existing read-only tool flags,
-and finite credit limits. Install `harness` beside `pr-review` and make Rules Core available
-globally or through `runner.rulesPath`. Install `differential-review` globally when security mode
-is requested. No tool installation, login, connector setup, or permission widening is automatic.
+and `--max-ai-credits` (minimum 30 when a cap is declared). Install `harness-runtime` beside `pr-review`
+and make Rules Core available globally or through `runner.rulesPath`. Install `differential-review`
+globally when security mode is requested. No tool installation, login, connector setup, or
+permission widening is automatic.
 
 The dispatcher is `scripts/pr-review.ps1` in the installed `pr-review` bundle. In examples below,
 `$review` means its verified absolute path. Do not point a persistent task at an ephemeral copy.
@@ -46,23 +49,28 @@ An enabled timer reads the current list on each tick, so a newly added entry bec
 then. Adding does not run it immediately. Unknown/removed GitHub hosts are blocked by the saved
 host allowlist; URLs cannot contain credentials, query strings, or non-HTTPS endpoints.
 
-## Approved Configuration
+## Optional Configuration
 
-Use one JSON definition with only `runner` and `prReview`, preview it, then apply the exact
-approved contents. This replaces only those documented settings, not restrictions, fallback,
-history, or pauses. Configuring is not approval to enable scheduling or to start work.
+Nothing needs configuring before `run`. Without saved settings, PR review uses:
 
-Illustrative structure only: model and numbers below are not defaults, verified availability,
+| Setting | Default |
+| --- | --- |
+| `profiles` | The harness review model list (`harness-runtime/scripts/review-models.json`), strongest first |
+| `githubHosts` | `github.com` |
+| `maxPullRequests`, `maxCycleMinutes`, `maxCycleCredits` | No limit; per-entry discovery limits still apply |
+| `allowScheduled` | `false`; set it to `true` before timer setup |
+| `securityReview` | `false`; ad-hoc `-SecurityReview` can request it per run |
+
+To override any of these, use a JSON definition with `runner`, `prReview`, or both, preview it, then
+apply the exact approved contents. Every field is optional; omitted fields keep their defaults. A
+supplied `prReview` replaces the saved one; an omitted `prReview` keeps it. Restrictions, fallback,
+history, and pauses are unchanged. Configuring is not approval to enable scheduling or to start work.
+
+Illustrative structure only: the model and numbers below are not defaults, verified availability,
 or authorization. Choose them with the owner before writing/applying a real definition.
 
 ```json
 {
-  "runner": {
-    "command": "copilot",
-    "maxMinutes": 15,
-    "maxCredits": 5,
-    "rulesPath": null
-  },
   "prReview": {
     "profiles": [
       {
@@ -71,12 +79,8 @@ or authorization. Choose them with the owner before writing/applying a real defi
         "contexts": ["default", "long_context"]
       }
     ],
-    "githubHosts": ["github.com"],
     "maxPullRequests": 5,
-    "maxCycleMinutes": 60,
-    "maxCycleCredits": 25,
-    "allowScheduled": false,
-    "securityReview": false
+    "allowScheduled": true
   }
 }
 ```
@@ -86,30 +90,33 @@ or authorization. Choose them with the owner before writing/applying a real defi
 & $review -Action Configure -DefinitionPath <approved-file> -Apply
 ```
 
-- `profiles` is strongest-first, not sorted by model name. Verify account access and the actual
-  per-model supported choices in the attended host/CLI before declaring them. There is no
-  hardcoded universal model ranking or assumption that every model supports `max`/long context.
-- Select the first approved model allowed by `restrictions.allowedModels`; choose the highest
-  effort and context in its declared supported/approved sets intersected with current CLI help.
-  General CLI choices alone do not prove per-model support. A provider/model failure blocks;
-  there is no automatic switch to another model. Show the selected settings before execution.
+- Saved `profiles` are strongest-first, not sorted by model name. Verify account access and the
+  actual per-model supported choices in the attended host/CLI before declaring them. The first
+  profile allowed by `restrictions.allowedModels` runs at the highest effort and context in its
+  declared sets intersected with current CLI help. A saved profile is never replaced: a
+  provider/model failure blocks that review.
+- Default models follow the harness Review Panel rules, as one reviewer: `allowedModels` narrows
+  the list, each model starts at `max` effort and `long_context`, and a model or effort the CLI
+  rejects before any model work is skipped at no cost. The PR report shows the requested model and,
+  when different, the model and effort that actually reviewed. If no listed model starts, the
+  review fails with the models tried. `Unchanged` compares the requested settings.
 - Effort order is max, xhigh, high, medium, low, minimal, none. Context order is long_context,
   default. Large evidence is streamed through stdin; workers read complete relevant code.
   Context tier is a request, not a fabricated exact token count or assurance of adequate coverage.
-- Missing/null runner values inherit the current controller settings. With no existing per-agent
-  limits, `maxMinutes`/`maxCredits` use the declared cycle budgets; preview shows `effectiveRunner`.
-  Empty/blank and `None`/`Max` placeholders follow the same rule. Empty model allowance lists
-  add no restriction; concrete lists still filter the declared profiles.
-  The cycle/profile declaration remains explicit, so inheritance does not make PR collection unbounded.
+- Missing/null runner values inherit the current controller settings. With no per-agent limits,
+  `maxMinutes` uses `maxCycleMinutes` and `maxCredits` uses `maxCycleCredits` when those are saved;
+  preview shows `effectiveRunner`. Empty/blank and `None`/`Max` placeholders count as omitted.
+  Empty model allowance lists add no restriction; concrete lists still filter the profiles.
 - `runner.maxMinutes`/`maxCredits` bound each session. Restrictions can only tighten them.
-  `maxCycleMinutes` also bounds collection/fetch subprocesses and reserves time for both passes.
-  `maxCycleCredits` reserves at most two per-session ceilings per reviewed PR; it is a conservative
-  CLI ceiling allocation, not measured provider usage, account balance, or a daily quota.
-- `maxPullRequests` bounds new/repeated review attempts per cycle. Each repository's list entry
-  separately limits discovery (default five, maximum 100), ordered by recent updates. Explicit
+  A saved `maxCycleMinutes` also bounds collection/fetch subprocesses and reserves time for both
+  passes. A saved `maxCycleCredits` reserves at most two per-session ceilings per reviewed PR; it is a
+  conservative CLI ceiling allocation, not measured provider usage, account balance, or a daily
+  quota. Each session's share must stay at least 30 AI credits, the CLI minimum, or that review is blocked.
+- A saved `maxPullRequests` bounds new/repeated review attempts per cycle. Each repository's list
+  entry separately limits discovery (default five, maximum 100), ordered by recent updates. Explicit
   PRs and repository results deduplicate. Open PRs are selected; closed/merged targets are
   reported without launching reviewers. Explicit PR URLs can select drafts.
-- `allowScheduled` must be explicitly true before timer setup. `securityReview` chooses the saved
+- `allowScheduled` must be saved as true before timer setup. `securityReview` chooses the saved
   methodology for list/timer runs; ad-hoc `-SecurityReview` can request it without changing settings.
 - Enterprise hosts require explicit `githubHosts` entries and an existing authenticated `gh`
   account on each host. There is no implicit host/account discovery or Azure DevOps adapter.
@@ -152,7 +159,7 @@ No tick invokes setup, changes model permissions, registers another timer, or pu
 
 ## Pauses, Recovery, and Results
 
-Use the existing `harness/scripts/harness.ps1` with `-ProjectPath <controller-root>` and
+Use the existing `harness-runtime/scripts/harness.ps1` with `-ProjectPath <controller-root>` and
 the `Restrict`, `Fallback`, or `Recover` actions described by those installed skills. The target
 is `review`; `project` pauses also apply. Show the explicit controller path so it is not confused
 with the user's current repository. Do not initialize or modify an unrelated project to resume

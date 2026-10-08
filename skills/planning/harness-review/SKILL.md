@@ -1,19 +1,20 @@
 ---
 name: harness-review
-description: "Review current-project changes with a whole-repository Fresh pass when no new findings appear, automatically restarting when local files change. Use /harness-review or /hn-review
-  with list, run, or explicit review options. Overlaps with pr-review on
-  general review and differential-review on security; PR URLs delegate to
-  pr-review."
+description: "[run] Review current-project changes with two independent reviewers per pass, GPT
+  and Claude Opus, and a whole-repository Fresh pass when no new findings appear, automatically
+  restarting when local files change. Shorthand: /hn-review; explicit scope or options also start a
+  review. Overlaps with pr-review on general review and differential-review on security; PR URLs
+  delegate to pr-review."
 metadata:
   author: wzlwit
-  version: "1.0.0"
+  version: "2.0.0"
 argument-hint: "[list|run] [<arguments>...]"
 ---
 
 # Harness Review
 
-`/harness-review` reviews current-project changes and adds a whole-repository Fresh pass when no new
-findings appear. PR URLs delegate to `pr-review`.
+`/harness-review` reviews current-project changes with two independent reviewers per pass and adds a
+whole-repository Fresh pass when no new findings appear. PR URLs delegate to `pr-review`.
 `/hn-review` is conversational shorthand for the same topic and subcommands, not a separate skill or folder.
 
 Action matching applies only to the explicit action token: exact canonical actions and documented
@@ -27,7 +28,7 @@ unchanged; abbreviation adds no confirmation. This is conversational routing, no
 - Bare invocation, `list`, `status`, and `help` show review results and actions without launching a
   reviewer. `run`, explicit scope/options, or a PR URL follows the
   [review procedure](./references/workflow.md). Unknown actions show help.
-- Apply `/rules apply` and project instructions, then the `harness` runtime's Script Permissions and
+- Apply `/rules apply` and project instructions, then the `harness-runtime` guide's Script Permissions and
   Agent Fallback, Runner Inheritance, and Reuse or New procedures.
 - The coordinator repeats Changes -> Full until no supported unfixed issues remain: findings go
   through the existing dev/proposal workflow, and review resumes after fixes without a new request.
@@ -35,6 +36,13 @@ unchanged; abbreviation adds no confirmation. This is conversational routing, no
   access, or validation leave it pending or blocked.
 - Keep snapshots, read-only permissions, and up to two passes per snapshot. Inadequate coverage is
   blocked, not clean. Local edits restart review up to twice; continued edits return `Partial`.
+- Each pass has two independent read-only reviewers: the strongest allowed GPT and Claude Opus
+  models from the bundled default list (or approved runner-context profiles), at the highest effort
+  the CLI accepts, running at the same time unless `maxParallelReviewers` is 1. `/harness-project policy list
+  limits` lists the models; `allowedModels` narrows them. Unavailable models are
+  skipped at no cost. A pass is clean only when both are clean and blocked when either is.
+  With one usable family, or `runner.criticalReview: false`, one reviewer runs and the result says
+  so. PR review keeps its single approved profile.
 - Security guidance joins the same passes, not an extra pass. Existing budgets, limits, and
   pause/stop requests apply; no permissions are added. Do not add a fixer or busy-loop on unchanged code.
 - Use `/grilling` in the attended coordinator only for a consequential design or risk choice;

@@ -393,5 +393,7 @@ those tags with it.
 
 ## Safety
 
-- Public SkillVault skills live under `skills/`; keep descriptions short.
+- Public SkillVault skills live under `skills/`; keep each skill's description concise and identical
+  in `SKILL.md`, `skill.json`, and `catalog.json`, and start a multi-action topic's description with
+  its `argument-hint` actions except `list`, such as `[run] Review ...`.
 - Never write secrets into generated skill files.

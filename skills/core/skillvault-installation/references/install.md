@@ -16,7 +16,7 @@ in SkillVault; that workflow never installs, so install the result here afterwar
 Parse these from the user's invocation text as positional arguments:
 
 - `skillName` — a full name or case-insensitive name fragment. Select every matching catalog name,
-  even when one is an exact match: `harness` selects the base skill and all `harness-*` topics.
+  even when one is an exact match: `harness` selects every `harness-*` skill, including `harness-runtime`.
   Use `--exact <skillName>` when only one exact catalog entry is intended.
 - `folderName` — a catalog path fragment such as `skills/planning`, selecting the skills in that
   folder. A bare category word first follows name matching; use the path when that word also
@@ -185,7 +185,7 @@ and operation first, then re-resolve the explicit path. Never overwrite another 
    - An original records the upstream instead: `sourceType: upstream`, the upstream `sourceRepo`
      and `sourcePath`, its `version` as `requestedVersion`, and the fetched Git tree as
      `sourceRevision`.
-    `/skillvault-refresh` uses this metadata for managed global `latest` installs only.
+    `/skillvault-installation refresh` uses this metadata for managed global `latest` installs only.
     Upstream links in other skills or guides describe provenance only; they do not authorize
     replacing that skill with upstream content.
 6. For `session`, read the resolved skill's `SKILL.md` or `README.md`, follow it for the current
@@ -201,7 +201,7 @@ A skill from another repository is either a reference or an adapted skill. Both 
 and `version`: `latest` (the default branch), a tag, or a full commit.
 
 - A reference (`kind: reference`, `install.strategy: upstream`) keeps only `skill.json`, with no
-  `SKILL.md`. Installing it fetches the original into `~/.copilot/skillvault-install-src/`
+  `SKILL.md`. Installing it fetches the original into `~/.copilot/skillvault-cache/originals/`
   (`-UpstreamCachePath` overrides it) and copies the upstream folder as-is, adding only install
   metadata. Its `SKILL.md` frontmatter `name` must equal the catalog name.
 - An adapted skill (`install.strategy: adapted`) keeps SkillVault's adaptation under the original's
@@ -213,7 +213,7 @@ and `version`: `latest` (the default branch), a tag, or a full commit.
   default and the original with `origin`. A renamed adaptation has no `origin` variant; the
   installer refuses it because the original's name differs. It must not be installed alongside the
   original, so before installing either, check for the other under its own name and ask which to
-  keep. `/skillvault-refresh` merges later upstream changes into
+  keep. `/skillvault-installation refresh` merges later upstream changes into
   the adaptation automatically. Upstream content is never copied into the repository without a
   license file from the upstream repository.
 
@@ -297,9 +297,9 @@ For an explicitly requested topic-layout migration, `update --topics` uses the b
 [migration helper](../scripts/migrate-topics.ps1). Preview exact current-project/global targets,
 canonical mappings, same-scope dependencies, and retired names; apply with `-Apply -Force` only after
 approval. `-Name <canonical-names>` limits it to selected topics and required siblings, leaving
-identical copies unchanged. Former `sv-*` names map to full `skillvault-*` registrations, while their
-short spellings stay conversational. Former `skillvault-source` and `sv-source` bundles map to
-`skillvault-authoring` without refreshing unrelated topics. Successful migration discards temporary
+identical copies unchanged. Copies installed under a former topic name map to the current topic
+that took over their actions, using the installer's former-name map. Migration
+retires those copies without refreshing unrelated topics. Successful migration discards temporary
 originals and changes no schedules or other projects. It never copies a reference or replaces an
 installed original (`UpstreamOriginal`); install those with `install`.
 

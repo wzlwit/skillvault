@@ -14,7 +14,7 @@ tools, persistent execution, subagents, and TypeScript extensions. Its documente
 RPC, and SDK interfaces make it a candidate worker backend, not a drop-in Copilot skill.
 
 Value is high as a standalone runtime and medium as an incremental addition to this setup.
-Development, delegation, and review overlap with `harness-dev` and `harness-review`; those skills
+Development, delegation, and review overlap with `harness-work` and `harness-review`; those skills
 also own task tracking, workspace selection, approval boundaries, validation, and evidence.
 Keep them. A future focused guidance skill could teach OMP setup, model routing, and extensions,
 but must not claim to bundle or install the application.

@@ -1,6 +1,6 @@
 $ErrorActionPreference = 'Stop'
-. (Join-Path $PSScriptRoot '..\skills\planning\harness\scripts\harness-store.ps1')
-. (Join-Path $PSScriptRoot '..\skills\planning\harness\scripts\harness-runner.ps1')
+. (Join-Path $PSScriptRoot '..\skills\planning\harness-runtime\scripts\harness-store.ps1')
+. (Join-Path $PSScriptRoot '..\skills\planning\harness-runtime\scripts\harness-runner.ps1')
 $fixtureRoot = Join-Path ([System.IO.Path]::GetTempPath()) ('harness-tests-' + [guid]::NewGuid().ToString('N'))
 $savedFixtureOwnershipRoot = $env:SKILLVAULT_OWNERSHIP_ROOT
 $env:SKILLVAULT_OWNERSHIP_ROOT = Join-Path $fixtureRoot 'runtime-ownership'
@@ -50,7 +50,7 @@ try {
     Write-HarnessJson $paths.Config $config
     $definitionFile = Join-Path $fixtureRoot 'test-definition.json'
     $settings | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $definitionFile -Encoding UTF8
-    $dispatcher = Join-Path $PSScriptRoot '..\skills\planning\harness\scripts\harness.ps1'
+    $dispatcher = Join-Path $PSScriptRoot '..\skills\planning\harness-runtime\scripts\harness.ps1'
     $beforeState = [System.IO.File]::ReadAllText($paths.State)
     $null = & $dispatcher -ProjectPath $fixtureRoot -Action TestConfig -DefinitionPath 'test-definition.json'
     $beforeConfig = [System.IO.File]::ReadAllText($paths.Config)
@@ -59,6 +59,20 @@ try {
     @{ afterDev = @(@{ flow = 'missing' }) } | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $definitionFile -Encoding UTF8
     Assert-TestFlowFailure { & $dispatcher -ProjectPath $fixtureRoot -Action TestConfig -DefinitionPath 'test-definition.json' } 'Unknown afterDev'
     if ([System.IO.File]::ReadAllText($paths.Config) -cne $beforeConfig) { throw 'Invalid test declarations changed configuration.' }
+    $externalFlow = [pscustomobject]@{ name = 'ppe-smoke'; method = 'Smoke test against a shared environment'; defaultEnvironment = 'localPPE'; maxMinutes = 1; effects = 'external'; steps = @([pscustomobject]@{ name = 'smoke'; executable = 'pwsh'; arguments = @('-NoProfile', '-Command', 'exit 0') }) }
+    @{ flows = @($externalFlow); afterDev = @(@{ flow = 'ppe-smoke' }) } | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $definitionFile -Encoding UTF8
+    Assert-TestFlowFailure { & $dispatcher -ProjectPath $fixtureRoot -Action TestConfig -DefinitionPath 'test-definition.json' } 'cannot run before review is clean'
+    @{ unitTests = 'everything' } | ConvertTo-Json | Set-Content -LiteralPath $definitionFile -Encoding UTF8
+    Assert-TestFlowFailure { & $dispatcher -ProjectPath $fixtureRoot -Action TestConfig -DefinitionPath 'test-definition.json' } 'critical or broad'
+    if ([System.IO.File]::ReadAllText($paths.Config) -cne $beforeConfig) { throw 'A refused external afterDev flow or unit-test level changed configuration.' }
+    @{ flows = @($externalFlow); afterReview = @(@{ flow = 'ppe-smoke' }); unitTests = 'broad' } | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $definitionFile -Encoding UTF8
+    $declared = & $dispatcher -ProjectPath $fixtureRoot -Action TestConfig -DefinitionPath 'test-definition.json' | ConvertFrom-Json
+    if (@($declared.afterReview).Count -ne 1 -or $declared.unitTests -cne 'broad' -or @($declared.flows).Count -ne 2 -or @($declared.afterDev).Count -ne 0) { throw 'afterReview and unitTests were not merged into the test declarations.' }
+    $context = & $dispatcher -ProjectPath $fixtureRoot -Action Context | ConvertFrom-Json
+    if ($context.testing.unitTests -cne 'broad' -or $context.testing.afterReview[0].flow -cne 'ppe-smoke' -or $context.testing.afterReview[0].environment -cne 'localPPE' -or $context.testing.afterReview[0].effects -cne 'external' -or $context.testing.onDemand[0].flow -cne 'smoke' -or $context.testing.note) { throw 'Context did not show how the project is tested.' }
+    if ((& $dispatcher -ProjectPath $fixtureRoot -Action Restrict | ConvertFrom-Json).unitTests -cne 'broad') { throw 'The policy view did not show the unit-test level.' }
+    [System.IO.File]::WriteAllText($paths.Config, $beforeConfig)
+    if ((& $dispatcher -ProjectPath $fixtureRoot -Action Context | ConvertFrom-Json).testing.note -notmatch 'No declared test flow runs during development') { throw 'Context did not say that no declared test runs during development.' }
     $savedDispatcherCheck = $env:CHECK_DISPATCHER_OWNERSHIP
     try {
         $env:CHECK_DISPATCHER_OWNERSHIP = '1'

@@ -26,5 +26,4 @@ Examples:
 /skillvault-authoring upsert https://github.com/twpayne/chezmoi publish
 ```
 
-`/skillvault-source` and `/sv-source` remain compatibility routes. Publishing is separate:
-this skill does not commit, push, or open a PR unless explicitly asked.
+Publishing is separate: this skill does not commit, push, or open a PR unless explicitly asked.

@@ -40,11 +40,11 @@ Creating or invoking this skill does not authorize commits, pushes, or remote de
 
 ## Script
 
-Use the [bundled removal script](../scripts/skillvault-remove.ps1), which requires the sibling
+Use the [bundled removal script](../scripts/skill-remove.ps1), which requires the sibling
 `skillvault-installation` skill's shared file helpers. Preview is the default:
 
 ```powershell
-~/.copilot/skills/skillvault-authoring/scripts/skillvault-remove.ps1 -Name architecture-decision-records -RepoRoot C:\repos\skillvault
+~/.copilot/skills/skillvault-authoring/scripts/skill-remove.ps1 -Name architecture-decision-records -RepoRoot C:\repos\skillvault
 ```
 
 After explicit confirmation, repeat with `-Force`. For multiple names, pass a PowerShell

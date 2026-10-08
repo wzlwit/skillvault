@@ -1,10 +1,10 @@
 ---
 name: jarvis-metrics
-description: Design Jarvis metrics and dashboards from existing Geneva/MDM metrics, Kusto queries, or logs. Use for /jarvis-metrics, legacy /jarvis-metrics-create, Jarvis dashboard creation, metric-source selection, pre-aggregation, dimensions, monitors, and CDS-style success/failure reporting. Overlaps with kpi-dashboard on dashboard/metric design and harness-report on Jarvis authoring; owns Jarvis metric-source plumbing and widget configuration rather than general dispatch or layout guidance.
+description: Design Jarvis metrics and dashboards from existing Geneva/MDM metrics, Kusto queries, or logs. Use for /jarvis-metrics, Jarvis dashboard creation, metric-source selection, pre-aggregation, dimensions, monitors, and CDS-style success/failure reporting. Overlaps with kpi-dashboard on dashboard/metric design and harness-write on Jarvis authoring; owns Jarvis metric-source plumbing and widget configuration rather than general dispatch or layout guidance.
 argument-hint: '<signal-or-monitoring-goal>'
 metadata:
   author: wzlwit
-  version: "1.0.0"
+  version: "2.0.0"
 ---
 
 # Jarvis Metrics and Dashboards
@@ -133,7 +133,7 @@ When values look wrong, use its diagnosis table before changing configuration.
 - `kpi-dashboard` owns platform-agnostic KPI selection, metric contracts, and layout for business
   dashboards. This skill owns Jarvis's metric-source choice (Geneva/MDM, Kusto-to-Metrics, or
   Logs-to-Metrics) and its pre-aggregation, widgets, layers, and monitors.
-- `harness-report` coordinates artifact identity, capability checks, and delivery validation
+- `harness-write` coordinates artifact identity, capability checks, and delivery validation
   across platforms. Its `--type jarvis` route selects this guide; a Jarvis-bound query-only request
   can use `--type query` with the relevant source guidance, without creating a dashboard or
   converted metric. Pass back the agreed signal, stable artifact destination/ID, source bindings,

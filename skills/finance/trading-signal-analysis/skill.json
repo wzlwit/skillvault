@@ -3,7 +3,7 @@
   "title": "Trading Signal Analysis",
   "version": null,
   "kind": "agent",
-  "description": "Evaluate historical trading signals, target-hit rates, and matched-peer differences without look-ahead bias.",
+  "description": "Evaluate historical trading approaches, price patterns, or screenshots through signal-outcome studies. Use for historical backtesting, target-hit and endpoint-close rates, matched-peer benchmarks, percentage-point differences, and lookback, target, or follow-up sensitivity. Keep research distinct from profit claims and trade advice.",
   "tags": ["finance", "research", "backtesting", "signals", "benchmarks"],
   "author": "wzlwit",
   "license": null,

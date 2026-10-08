@@ -1,5 +1,7 @@
 # ADR: Harness Command and Record Contracts
 
+> Topic and command names in this record were updated to the current topics on 2026-10-07; see the [old-name retirement ADR](./2026-10-07-retire-old-names-adr.md).
+
 - Date: 2026-09-15
 - Status: Partially superseded (original status: Proposed)
 - Decision owner: Zhaolong Wang
@@ -48,7 +50,7 @@ Keep the choices and rationale here; maintain workflow details in the linked pla
 | Global ADR and Graphify guides, with project overrides | Reuse guides across projects without changing where their outputs belong or implying a bundled Graphify CLI. | [Missing Skill Installation](../2026-09-15-harness-command-and-record-contracts.md#missing-skill-installation) |
 | Separate ADR history and current plans | Preserve reasons and superseded choices while authorized plan updates reflect accepted outcomes. | [Plans and Records](../2026-09-15-harness-command-and-record-contracts.md#plans-and-records) |
 | Project documentation under its established root, with `docs/` as the fallback | Reuse `doc/` or `docs/` conventions rather than create parallel roots; this repository now keeps plans and their ADRs under `docs/`. Runtime boards and skill-owned files are separate. | [Plans and Records](../2026-09-15-harness-command-and-record-contracts.md#plans-and-records) |
-| No-argument `/hn-decide` shows open decisions first, then recent decisions | Put choices needing the owner's attention before recent outcomes, without changing decision state. | [Decision Bulletin](../2026-09-15-harness-command-and-record-contracts.md#decision-bulletin) |
+| No-argument `/hn-decision` shows open decisions first, then recent decisions | Put choices needing the owner's attention before recent outcomes, without changing decision state. | [Decision Bulletin](../2026-09-15-harness-command-and-record-contracts.md#decision-bulletin) |
 | Canonical `harness-*` names with `/hn-*` shortcuts | Follow the full-name/short-trigger convention without duplicate skill installations. | [Command Contracts](../2026-09-15-harness-command-and-record-contracts.md#command-contracts) |
 | Shared declared test flows and environments for ad-hoc, timer, and post-dev runs | Reuse one test definition and executor across triggers while keeping environment identity and evidence explicit. | [Test Flows](../2026-09-15-harness-command-and-record-contracts.md#test-flows) |
 | Separate restriction and fallback commands over existing runtime state | Distinguish permitted boundaries from failure responses; inspect by default, require explicit policy changes, and preserve safety pauses across timer/recovery operations. This selects no live thresholds. | [Restrictions and Fallback](../2026-09-15-harness-command-and-record-contracts.md#restrictions-and-fallback) |
@@ -63,7 +65,7 @@ Only their proposal status is superseded; the original wording below remains his
 
 The shared coordinator, unified development/verification/fix executor, independent reviewer,
 `now`/`next` scheduling, and development's critical-review policy remain proposed in the working
-plan. The [local runtime](../../../skills/planning/harness/references/runtime.md) now provides
+plan. The [local runtime](../../../skills/planning/harness-runtime/references/runtime.md) now provides
 the command implementations and single-machine state handling. It does not accept the owner's
 per-project workspace/model/permission choices or create a live timer. No `/adr` alias is added.
 

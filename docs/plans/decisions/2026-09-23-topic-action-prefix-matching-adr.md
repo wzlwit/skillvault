@@ -1,5 +1,7 @@
 # ADR: Topic Action Prefix Matching
 
+> Topic and command names in this record were updated to the current topics on 2026-10-07; see the [old-name retirement ADR](./2026-10-07-retire-old-names-adr.md).
+
 - Date: 2026-09-23
 - Status: Accepted
 - Decision owner: Zhaolong Wang
@@ -61,7 +63,10 @@ Action examples:
 | `skillvault-discovery` | `exp` or `expl` | `explain` |
 | `skillvault-installation` | `ins` or `inst` | `install` |
 | `skillvault-installation` | `upd` or `upda` | `update` |
-| `harness-dev` | `que` or `queu` | `queue` |
+| `harness-work` | `que` or `queu` | `queue` |
+
+The `harness-work` row replaced the former development topic's row when the topics were consolidated on 2026-10-07; see the
+[topic consolidation ADR](./2026-10-07-harness-topic-consolidation-adr.md).
 
 For a future menu containing both `declare` and `decline`, `dec` and `decl` would be ambiguous.
 An exact existing alias would still take precedence; otherwise the user must choose.

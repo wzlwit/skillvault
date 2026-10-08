@@ -1,8 +1,8 @@
 param([switch]$LayoutOnly)
 
 $ErrorActionPreference = 'Stop'
-. (Join-Path $PSScriptRoot '../skills/planning/harness/scripts/harness-store.ps1')
-. (Join-Path $PSScriptRoot '../skills/planning/harness/scripts/harness-maintenance.ps1')
+. (Join-Path $PSScriptRoot '../skills/planning/harness-runtime/scripts/harness-store.ps1')
+. (Join-Path $PSScriptRoot '../skills/planning/harness-runtime/scripts/harness-maintenance.ps1')
 $fixture = Join-Path ([IO.Path]::GetTempPath()) ('sv-retention-' + [guid]::NewGuid().ToString('N'))
 $savedFixtureOwnershipRoot = $env:SKILLVAULT_OWNERSHIP_ROOT
 $env:SKILLVAULT_OWNERSHIP_ROOT = Join-Path $fixture 'runtime-ownership'
@@ -32,7 +32,7 @@ try {
     $config = Initialize-Harness $paths
     $defaults = Get-HarnessMaintenancePolicy $config
     if ($defaults.maxEntries -ne 5000 -or $defaults.maxAge -ne '90d' -or $defaults.enabled -or $null -ne $defaults.maxEntriesPerTopic) { throw 'Retention defaults changed or auto-enabled cleanup.' }
-    $dispatcher = Join-Path $PSScriptRoot '../skills/planning/harness/scripts/harness.ps1'
+    $dispatcher = Join-Path $PSScriptRoot '../skills/planning/harness-runtime/scripts/harness.ps1'
     $policyFile = Join-Path $fixture 'retention.json'
     Write-HarnessJson $policyFile ([pscustomobject]@{ maxEntries = 2; maxAge = '90d'; pinnedRunIds = @('pinned') })
     $configBefore = [IO.File]::ReadAllText($paths.Config)

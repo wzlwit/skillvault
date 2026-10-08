@@ -125,13 +125,27 @@ function Test-PrPublishBody {
     $lines = $text -split "`n"
     $inFence = $false
     $tableWidth = $null
+    $heading = ''
+    # A table whose header row the repository template already has is the template's, not an extra one.
+    $templateTables = @()
+    $previousLine = ''
+    foreach ($templateLine in (($Template -replace "`r`n", "`n") -split "`n")) {
+        if ($templateLine -match '^\s*\|' -and $previousLine -notmatch '^\s*\|') { $templateTables += ($templateLine.Trim() -replace '\s+', ' ') }
+        $previousLine = $templateLine
+    }
     for ($index = 0; $index -lt $lines.Count; $index++) {
         $line = $lines[$index]
         if ($line -match '^\s*```') { $inFence = -not $inFence; continue }
         if ($inFence) { continue }
+        if ($line -match '^#{1,6}\s+(.+?)\s*$') { $heading = $Matches[1].Trim() }
         if ($line -match '^\s*\|') {
             $width = @(Get-PrPublishCells $line).Count
-            if ($null -eq $tableWidth) { $tableWidth = $width }
+            if ($null -eq $tableWidth) {
+                $tableWidth = $width
+                if ($heading -notmatch '(?i)^Current vs\.? to-be' -and ($line.Trim() -replace '\s+', ' ') -cnotin $templateTables) {
+                    $findings.Add([pscustomobject]@{ code = 'ExtraTable'; message = "Line $($index + 1) starts a table outside Current vs. to-be; write it as bullets." })
+                }
+            }
             elseif ($width -ne $tableWidth) { $findings.Add([pscustomobject]@{ code = 'TableColumns'; message = "Line $($index + 1) has $width cells; its table header has $tableWidth." }) }
         }
         else { $tableWidth = $null }

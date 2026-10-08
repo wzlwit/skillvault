@@ -1,10 +1,13 @@
 # ADR: Upsert and Harness Work Contracts
 
+> Topic and command names in this record were updated to the current topics on 2026-10-07; see the [old-name retirement ADR](./2026-10-07-retire-old-names-adr.md).
+
 - Date: 2026-09-18
 - Status: Accepted
 - Decision owner: Zhaolong Wang
 - Scope: Source authoring actions, standalone Fresh review, task identity, completion, and follow-ups.
 - Resolves: The Fresh-scope question in the [earlier harness ADR](./2026-09-15-harness-command-and-record-contracts-adr.md#still-proposed). Earlier accepted permission and ownership boundaries remain.
+- Superseded in part: The [October 2 review-panel ADR](./2026-10-02-review-panel-dev-loop-and-sprints-adr.md) removes development's Critical pass and adds the Full pass to development runs. Standalone Fresh scope and the other decisions here remain.
 
 ## Context
 
@@ -15,7 +18,7 @@ through grilling and then authorized source, documentation, and test implementat
 
 ## Decision
 
-1. Advertise `upsert` for `skillvault-source` and `harness-report`. Keep `create` and `update` as
+1. Advertise `upsert` for `skillvault-authoring` and `harness-write`. Keep `create` and `update` as
    aliases with the same semantics. Update an identified existing target or create a confirmed
    missing target; ambiguous identity or unavailable access is not absence. Existing source,
    installation, publication, and overwrite boundaries remain.

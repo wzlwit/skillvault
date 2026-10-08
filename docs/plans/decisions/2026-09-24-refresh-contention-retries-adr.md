@@ -59,13 +59,13 @@ pending retry fields during an idle, approved transition; it must not reinterpre
 
 ## Implementation and Verification
 
-The [refresh runner](../../../skills/core/skillvault-refresh/scripts/skillvault-fresh.ps1) reports
+The [refresh runner](../../../skills/core/skillvault-installation/scripts/skill-refresh.ps1) reports
 structured retry targets and terminal outcomes. The
 [heartbeat](../../../skills/planning/harness-timer/scripts/harness-heartbeat.ps1) passes scoped
 retry plans and records receipts; the [scheduler](../../../skills/planning/harness-timer/scripts/harness-scheduler.ps1)
 owns attempt counts, deadlines, slot release, and regular cadence.
 
-The existing [refresh fixture](../../../scripts/test-skillvault-fresh.ps1) checks target/source
+The existing [refresh fixture](../../../scripts/test-skill-refresh.ps1) checks target/source
 binding, self/parent exclusions, recovery/legacy gates, mixed results, and scoped success. The
 [scheduler fixture](../../../scripts/test-harness-scheduler.ps1) uses simulated time and fake tasks
 for the full 1/10/30 sequence, exhaustion, disable behavior, independent jobs between attempts,

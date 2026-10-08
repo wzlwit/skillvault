@@ -20,7 +20,7 @@ installation and execution separate; do not vendor its converter, assets, or ful
 part of that reference. Unlike a screenshot-to-slide wrapper, the inspected source has native
 PowerPoint chart/workbook construction and theme-font handling.
 
-Installed recommendation: Coexist with the existing `harness-report` and `kpi-dashboard` skills;
+Installed recommendation: Coexist with the existing `harness-write` report action and `kpi-dashboard`;
 replace neither. Standalone use: Worth an explicitly approved trial using a representative template
 and non-sensitive material. Actual PowerPoint editing, font fidelity, and rendering remain untested
 in this assessment.
@@ -29,7 +29,7 @@ Harness integration: Defer execution integration. The current report dispatcher 
 Grafana, Jarvis, web, and query routes, not a declared PPTX route. A reference does not add a renderer,
 controller action, data access, or permission to install dependencies.
 
-The approved [PPT Master reference](../../skills/writing/ppt-master/SKILL.md) now lives in
+The approved [PPT Master reference](../../skills/writing/ppt-master/skill.json) now lives in
 `skills/writing/ppt-master`, kind `reference`, with an explicit null version distinct from the
 upstream 6.6.0 version. It retains Hugo He's attribution and the reviewed source revision. The
 global availability default describes a future explicitly requested install; this entry remains
@@ -101,14 +101,14 @@ establish that every newly requested font will be installed or embedded automati
 
 ## Existing-Skill Improvements
 
-The current [report workflow](../../skills/planning/harness-report/references/workflow.md) already
+The current [report workflow](../../skills/planning/harness-write/references/report.md) already
 preserves requested formats, validates plotted data, and limits fallback. The
 [KPI guide](../../skills/data/kpi-dashboard/SKILL.md) already reuses design systems and verifies metric
 semantics. The following are narrower additions, not reasons to replace those workflows.
 
 ### 1. Explicit Editability Acceptance
 
-- Target: `harness-report`, Resolve the Contract and Validate and Deliver.
+- Target: `harness-write` report, Resolve the Contract and Validate and Deliver.
 - Evidence and gap: PPT Master's shape-versus-native-object exports demonstrate why "editable" is
   ambiguous. Existing report checks cover native formats and visual behavior but do not explicitly
   distinguish editable text/shapes, data-backed charts/tables, and inherited template objects.
@@ -141,7 +141,7 @@ semantics. The following are narrower additions, not reasons to replace those wo
 
 On 2026-09-27, explicit approval added the original reference entry and applied both improvements:
 
-- `harness-report` now resolves required object types/editing actions and requires representative
+- The `harness-write` report action now resolves required object types/editing actions and requires representative
   edit/save/reopen evidence for delivered editable artifacts. Image-only and design-only work retain
   their existing scope; no PPTX route or renderer was added.
 - `kpi-dashboard` now records supplied brand/template authority, exact values, font requirements,
@@ -154,7 +154,7 @@ Edit Data versus shapes, image/design-only exclusions, official palette versus s
 and unavailable required fonts. These are instruction checks, not executed presentation or model
 benchmarks; actual host trigger selection and output quality remain unverified.
 
-The existing managed `latest` global/project `harness-report` copies and project `kpi-dashboard` copy
+The existing managed `latest` global/project report-topic copies and project `kpi-dashboard` copy
 were refreshed through the guarded installer and verified against the current local checkout. The
 new `ppt-master` reference and the absent global KPI copy were not installed. No upstream tools,
 providers, schedules, or publication were activated.

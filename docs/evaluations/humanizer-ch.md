@@ -16,7 +16,7 @@ argument density, authorial judgment, and a disciplined academic voice.
 Value: Medium for that specialized writing task; limited incremental value for engineering guides.
 Fit: A genre-specific editing skill, not a general Chinese translation of Humanizer or an AI detector.
 
-Installed recommendation: Keep the existing `humanizer` reference and `harness-doc` workflow.
+Installed recommendation: Keep the existing `humanizer` reference and `harness-write` doc workflow.
 Skill recommendation: Add an original reference-only entry, as explicitly selected by the user on
 2026-09-27. Importing the upstream package remains deferred until its license is clarified. The
 reference does not replace the general Humanizer or become the default technical-document pass.
@@ -61,7 +61,7 @@ official or promotional prose, product descriptions, and general popular-science
 
 ## Comparison With Current Guidance
 
-The [local Humanizer reference](../../skills/writing/humanizer/SKILL.md) preserves facts, links,
+The [local Humanizer reference](../../skills/writing/humanizer/skill.json) preserves facts, links,
 and intended voice and requires reading the authoritative upstream rules before rewriting.
 It does not bundle those rules or install another runtime.
 
@@ -76,7 +76,7 @@ For the substantive comparison, the base `blader/humanizer` instructions were re
   sentence as an automatic defect.
 - Separates pasted-text, file, and embedded output modes, keeping only final prose in authored files.
 
-[Harness documentation](../../skills/planning/harness-doc/references/workflow.md#humanizer-pass)
+[Harness documentation](../../skills/planning/harness-write/references/doc.md#humanizer-pass)
 adds a neutral technical voice, frozen headings/anchors, preservation of facts and qualifications,
 and post-edit validation of evidence, links, terms, and diagrams. Its requirements are deliberately
 different from the candidate's complete-essay rewrite and three-part conversational output.
@@ -126,7 +126,7 @@ No upstream rewriting rules, examples, scripts, or Codex UI files were copied.
 
 The entry includes an original Chinese invocation example, requires reading the selected upstream
 instructions before an authorized rewrite, and preserves project/file permissions and genre limits.
-The existing Humanizer reference declares the overlap. `harness-doc` retains its current dependency
+The existing Humanizer reference declares the overlap. `harness-write` retains its current dependency
 and technical-preservation workflow; no automatic Chinese-language substitution was introduced.
 
 Four focused instruction/metadata contracts passed, including reference-only packaging, unknown

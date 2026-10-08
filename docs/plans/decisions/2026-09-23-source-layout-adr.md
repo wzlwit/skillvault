@@ -1,5 +1,7 @@
 # ADR: Flattened Skill Source Layout
 
+> Topic and command names in this record were updated to the current topics on 2026-10-07; see the [old-name retirement ADR](./2026-10-07-retire-old-names-adr.md).
+
 - Date: 2026-09-23
 - Status: Accepted
 - Decision owner: Zhaolong Wang
@@ -63,13 +65,13 @@ authorizes discarding local changes or rewriting accepted decision history.
 
 The [source validator](../../../scripts/validate-skill-files.mjs) checks the three-part catalog
 path and reads templates from the repository root. The
-[refresh helper](../../../skills/core/skillvault-refresh/scripts/skillvault-fresh.ps1) implements
-the catalog-confirmed relocation, covered by the [refresh fixture](../../../scripts/test-skillvault-fresh.ps1).
+[refresh helper](../../../skills/core/skillvault-installation/scripts/skill-refresh.ps1) implements
+the catalog-confirmed relocation, covered by the [refresh fixture](../../../scripts/test-skill-refresh.ps1).
 
 During implementation on 2026-09-23, all 23 Node instruction tests and all PowerShell/Bash
 fixture groups in the [regression suite](../../../scripts/test-all.ps1) passed. Catalog/manifest
 source-path agreement, PowerShell syntax, and rebased local links were also checked. The full
-suite then stopped on the pre-existing uncataloged `jarvis-metrics-create` bundle; this was not
+suite then stopped on the pre-existing uncataloged duplicate Jarvis bundle; this was not
 a clean full-suite result. That bundle and existing Jarvis whitespace were preserved, not
 cleaned up under the directory-move request.
 
@@ -83,7 +85,7 @@ or unrelated catalog cleanup. The later authorization below is limited to the li
 
 After the source move, the owner accepted updating both affected installed scopes with complete
 local bundles and backups. The owner then explicitly confirmed applying the six-copy rollout,
-including replacing global `skillvault-source` with `skillvault-authoring` and retiring the old
+including replacing the former global authoring topic with `skillvault-authoring` and retiring the old
 folder after verification. This fulfills the separate-approval requirement above; it does not
 retroactively expand the original source-only decision.
 
@@ -92,9 +94,9 @@ retroactively expand the original source-only decision.
 | Skill | Version | Approved destinations |
 | --- | --- | --- |
 | `skillvault-installation` | 1.1.0 | Global and current workspace |
-| `skillvault-refresh` | 1.0.0 | Global and current workspace |
+| Refresh topic, now `skillvault-installation refresh` | 1.0.0 | Global and current workspace |
 | `skillvault-discovery` | 1.0.0 | Global only |
-| `skillvault-authoring` | 1.0.0 | Global only, replacing `skillvault-source` |
+| `skillvault-authoring` | 1.0.0 | Global only, replacing the former authoring topic |
 
 Global destinations are `~/.copilot/skills/<name>/`; workspace destinations are
 `<SkillVault-checkout>/.github/skills/<name>/`. All selected originals were managed `latest`
@@ -107,7 +109,7 @@ contents, including unpublished edits, not a claim of parity with the remote bra
   patches would be smaller but leave locally divergent bundles; full replacement also brings
   pending source improvements and overwrites any installed-copy edits in the selected targets.
 - Retiring the verified, backed-up legacy authoring folder avoids duplicate registered entries.
-  `/skillvault-source` and `/sv-source` remain compatibility text commands in the new guide.
+  The former authoring commands remained compatibility text commands in the new guide until 2026-10-07.
 - A catalog-wide refresh was not selected: unrelated skills and other projects were outside
   the approved target set.
 

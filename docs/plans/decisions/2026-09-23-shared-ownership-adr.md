@@ -72,7 +72,7 @@ The shared [ownership helper](../../../skills/core/skillvault-installation/scrip
 uses process-held claim locks and a short registry mutex. The default registry is
 `~/.copilot/skillvault/ownership`; explicitly isolated environments use a common
 `SKILLVAULT_OWNERSHIP_ROOT`. Fixtures supply temporary roots rather than touching live claims.
-The [harness adapter](../../../skills/planning/harness/scripts/harness-ownership.ps1) binds claims
+The [harness adapter](../../../skills/planning/harness-runtime/scripts/harness-ownership.ps1) binds claims
 to controller, role, task, workspace, and snapshot evidence. Controller/scheduler recovery retains
 its existing pause and stopped-worker requirements.
 
