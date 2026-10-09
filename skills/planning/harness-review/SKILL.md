@@ -7,7 +7,7 @@ description: "[run] Review current-project changes with two independent reviewer
   delegate to pr-review."
 metadata:
   author: wzlwit
-  version: "2.0.0"
+  version: "3.0.0"
 argument-hint: "[list|run] [<arguments>...]"
 ---
 
@@ -36,9 +36,21 @@ unchanged; abbreviation adds no confirmation. This is conversational routing, no
   access, or validation leave it pending or blocked.
 - Keep snapshots, read-only permissions, and up to two passes per snapshot. Inadequate coverage is
   blocked, not clean. Local edits restart review up to twice; continued edits return `Partial`.
+- `run [--broad]` sets the review level, mapped to `-ReviewLevel`. The default, `critical`, reports
+  only what blocks merging the change or completing its task, and its Full pass looks only for what the
+  change breaks elsewhere. `--broad` reports every issue with evidence, including minor and
+  pre-existing ones, and its Full pass audits the whole repository.
+  Either level keeps the loop going until it finds nothing more; a PR URL passes the level to
+  `pr-review`. Review Levels in the runtime guide defines both.
 - Each pass has two independent read-only reviewers: the strongest allowed GPT and Claude Opus
-  models from the bundled default list (or approved runner-context profiles), at the highest effort
-  the CLI accepts, running at the same time unless `maxParallelReviewers` is 1. `/harness-project policy list
+  models from the bundled default list (or approved runner-context profiles), now `gpt-6-astra` and
+  `claude-opus-5.5`, at `max` effort or the highest the CLI accepts, running at the same time unless
+  `maxParallelReviewers` is 1. The session's or project's own model never replaces them. When the
+  session runs the reviewers as its own sub-agents, it sets each one's model and `max` effort
+  explicitly instead of leaving the host's default. It starts them in the background as read-only
+  general-purpose agents, never the Code Review agent type, whose launch switches the whole chat so
+  that switching back stops every running agent. It then ends its turn and reads each result as it
+  arrives, so it can answer the user meanwhile. `/harness-project policy list
   limits` lists the models; `allowedModels` narrows them. Unavailable models are
   skipped at no cost. A pass is clean only when both are clean and blocked when either is.
   With one usable family, or `runner.criticalReview: false`, one reviewer runs and the result says

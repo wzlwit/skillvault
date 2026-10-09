@@ -1,8 +1,8 @@
 # Local Harness Runtime
 
 Contents: Root Inheritance; Configuration and State; Layout Migration; Artifact Storage; Runner
-Inheritance; Review Panel; Folder Controllers and Coding Repositories; Commands; History Cleanup;
-Restrictions and Fallback; Reuse or New; Script Permissions and Agent Fallback; Worker Output;
+Inheritance; Review Panel (Review Levels); Folder Controllers and Coding Repositories; Commands; History Cleanup;
+Restrictions and Fallback; Ask Once; Reuse or New; Script Permissions and Agent Fallback; Worker Output;
 Evidence and Recovery; Timers; Test Flows; Monitoring; Report Authoring.
 
 The runtime uses PowerShell 7, Git, and the Copilot CLI; scheduled operation uses Windows Task
@@ -87,7 +87,8 @@ rollback; interrupted updates keep a pending marker.
 
 ## Layout Migration
 
-`/hn-project migrate` (or `/harness-project migrate`) previews in-place conversion; approved `--apply` maps to:
+`/hn-project migrate` (or `/harness-project migrate`) shows the in-place conversion and asks once
+([Ask Once](#ask-once); it holds without an answer); a yes maps to:
 
 ```powershell
 & <harness-folder>/scripts/harness.ps1 -ProjectPath <root> -Action Migrate -Apply
@@ -220,11 +221,13 @@ validation unverified until it runs; missing configuration never yields a false 
 ## Review Panel
 
 Every Changes and Full pass in `/harness-review` and development runs uses two independent read-only
-reviewers: the strongest allowed GPT model and the strongest allowed Claude Opus model. Each family
-takes its candidates in this order: runner-context `profiles` in that family, then an explicit runner
-model in that family, then the bundled default list `scripts/review-models.json`. That list holds the
-owner's model-picker models, strongest first, as Copilot CLI IDs. Every `allowedModels` restriction
-filters all three sources. Default candidates start at `max` effort and `long_context`; profiles use
+reviewers: the strongest allowed GPT model and the strongest allowed Claude Opus model, each at `max`
+effort. Each family takes its candidates in this order: runner-context `profiles` in that family,
+then the bundled default list `scripts/review-models.json`. That list holds the owner's ranking,
+strongest first, as Copilot CLI IDs; `gpt-6-astra` leads the GPT family. The runner's own model,
+whether from the project or the session, never replaces a listed model: it reviews only when
+restrictions allow no profile or listed model in its family. Every `allowedModels` restriction
+filters all of these. Default candidates start at `max` effort and `long_context`; profiles use
 their declared efforts and contexts.
 
 - Inspect the list with `/harness-project policy list limits` or `Context`: each family
@@ -237,10 +240,18 @@ their declared efforts and contexts.
   accepts any context tier, so context needs no fallback.
 - If no model of a family is available, that reviewer is dropped and the result and report say "Only
   one reviewer ran" with the models tried. If neither family has one, the runner's own model (or
-  `auto`) reviews alone. Restrictions that exclude a family, or `runner.criticalReview: false`, also
-  leave one reviewer and say why.
-- An explicit runner model, and `/pr-review`'s approved profile (`-RunnerProfile` callers get one
-  reviewer), are never replaced: a CLI rejection fails that pass.
+  `auto`) reviews alone. Restrictions that exclude a family leave one reviewer and say why.
+  `runner.criticalReview: false` also keeps one reviewer: the strongest allowed one, GPT first.
+- `/pr-review`'s approved profile (`-RunnerProfile` callers get one reviewer), and a runner model that
+  reviews because nothing listed is allowed, are never replaced: a CLI rejection fails that pass.
+- When the session runs the reviewers itself as sub-agents, the attended agent fallback, it sets each
+  sub-agent's model explicitly to its family's first allowed profile or listed model, with reasoning
+  effort `max`, or the highest the host accepts, and long context. It never leaves the model to the
+  host's default or uses the session's own model. It starts them in the background as general-purpose
+  agents told to stay read-only, never the host's Code Review agent type: launching that type switches
+  the whole chat to it, and when the host switches the chat back, every agent still running in the
+  chat stops. It then ends its turn and reads each result when that reviewer finishes, instead of
+  waiting inside a turn, so it can answer the user meanwhile.
 - The reviewers run at the same time on the same pinned snapshot, inside the existing run lock.
   `maxParallelReviewers: 1` in `/harness-project policy limits` runs them one after the other.
 - Findings are merged by exact file, line, and message, and record which reviewers reported them. A
@@ -249,6 +260,33 @@ their declared efforts and contexts.
   other result stays in the report, and nothing retries automatically after model work starts.
 - Run records list the models and efforts; reports name each reviewer with its effort, context, and
   skipped choices. Fixtures point `SKILLVAULT_REVIEW_MODELS` at a temporary list instead of the bundle.
+
+### Review Levels
+
+Every reviewer works at one level (owner decision, 2026-10-08):
+
+| Level | Reports | Full pass |
+| --- | --- | --- |
+| `critical` (default) | Only what blocks merging the change or completing its task: a defect or regression the change introduces; the change not achieving its purpose, such as the task's issue left unfixed; a security, permission, or data-loss risk; a broken public contract, or a caller, consumer, or configuration the change breaks; a crash or unhandled error on a realistic path; or a missing unit test the declared `unitTests` level calls for. Rated P1 or P2. | Reads the whole repository, but only to find what the change breaks or leaves inconsistent: callers, other copies of the changed logic, configuration, contracts, and tests |
+| `broad` | Every issue the reviewer can support with evidence, rated P1 (blocks merging), P2 (should be fixed), or P3 (minor): also edge cases, performance, maintainability such as duplicated or inconsistent logic, documentation that no longer matches the code, test gaps, and pre-existing issues | Audits the whole repository, including code the change does not touch |
+
+- Critical never reports style, naming, refactoring ideas, performance without a concrete failure,
+  speculative risks, or pre-existing issues the change neither causes nor depends on. A severe
+  pre-existing security or data-loss issue noticed in passing goes in the reviewer's summary, not the
+  findings, so it never starts a fix round.
+- Every reported finding keeps the loop going, at either level: the loop ends when the current level
+  finds nothing more. Findings must still be supported by evidence; broad is not permission to
+  speculate.
+- `Review -ReviewLevel broad` selects broad for one standalone review; `/pr-review` passes its own
+  level, from a per-run option or its saved `reviewLevel`. Development runs always review at
+  `critical`, and the dispatcher rejects `-ReviewLevel` on other actions. Run records, reports, and
+  results show the level.
+- A standalone review compares only with earlier reviews at the same level, so a critical review never
+  rechecks findings from a broad one. Reviews recorded before levels existed reported every finding and
+  compare as `broad`.
+- The level is separate from `runner.criticalReview`, which only decides whether the panel's second
+  reviewer runs. The runtime provides interface `review-levels` 1; `harness-review` and `pr-review`
+  require it.
 
 ## Folder Controllers and Coding Repositories
 
@@ -344,11 +382,11 @@ harness skills locate this same dependency instead of duplicating storage and ex
 | `UpdateTask` | Exact `-Id` and supplied fields; revised completed requirements create a linked task; never update an active task contract or retarget an allocated task |
 | `Ref` | List references, upsert `-Source`/`-Note` with optional task `-Id`, or remove exact `-RemoveId` |
 | `Dev` | Existing `-Id`, ad-hoc fields, or `-FollowUpOf`; shares task update/intake, then optional `-Mode now` or queue-only `next`; runs the development review loop |
-| `Review` | Review ahead/working changes with optional `-RepositoryRef`, `-Scope`, `-BaseRef`, and `-SecurityReview`; each pass uses the review panel, with one whole-repository Fresh pass when no new findings appear |
+| `Review` | Review ahead/working changes with optional `-RepositoryRef`, `-Scope`, `-BaseRef`, `-SecurityReview`, and `-ReviewLevel critical\|broad` (default `critical`; see [Review Levels](#review-levels)); each pass uses the review panel, with one whole-repository Fresh pass when no new findings appear |
 | `TestConfig` | Import explicit `-DefinitionPath` JSON declarations without executing commands |
-| `Test` | List declarations, or run `-Flow` with optional `-TestEnvironment`, task `-Id`, and timer `-Scheduled` |
+| `Test` | List declarations and `pendingDefinitions`, or run `-Flow` with optional `-TestEnvironment`, task `-Id`, and timer `-Scheduled` |
 | `MonitorConfig` | Preview a `-DefinitionPath` declaration; apply with explicit `-Apply`, human `-Actor`, and `-Reason` |
-| `Monitor` | Show saved monitors/proposals, or check one `-MonitorName`, optionally timer `-Scheduled` |
+| `Monitor` | Show saved monitors/proposals and `pendingDefinitions`, or check one `-MonitorName`, optionally timer `-Scheduled` |
 | `Monitor -AllMonitors` | Check every configured source, report per-source coverage, and fail closed on an incomplete aggregate |
 | `MonitorTask` | Preview an exact incident `-Id` proposal; explicit Apply/Actor/Reason accepts it as a manual-only investigation task |
 | `MonitorAuto` | Without `-MonitorName`, list every monitor's standing intake, worker, limits, last check, and worker tasks. With `-MonitorName` and `-Flow <worker>` (optional `-TestEnvironment`, `-MaxPerCheck`, `-MaxAttempts`, `-SetupExitCode`), preview turning its intake on, or apply with `-Apply -Actor -Reason`, which also sets `allowScheduled`; `-Off` removes the intake. Attended only; scheduling stays with `harness-timer` |
@@ -373,15 +411,16 @@ work stays queued for another explicit or scheduled run.
 
 ## History Cleanup
 
-`/harness-project clean` owns history retention. Reuse the selected Root and preview before applying:
+`/harness-project clean` owns history retention. Reuse the selected Root, show what would be pruned,
+and ask once ([Ask Once](#ask-once); it holds without an answer); a yes runs `-Apply`:
 
 ```powershell
 & <harness-folder>/scripts/harness.ps1 -ProjectPath <selected-root> -Action Clean
 & <harness-folder>/scripts/harness.ps1 -ProjectPath <selected-root> -Action Clean -Apply
 ```
 
-`/harness-project clean --policy <file>` previews a retention declaration (mapped to `-DefinitionPath`; relative
-paths resolve against Root); add `--apply` only for approved settings. Declaring policy runs no
+`/harness-project clean --policy <file>` shows a retention declaration (mapped to `-DefinitionPath`; relative
+paths resolve against Root) and asks once; a yes saves it, and without an answer nothing changes. Declaring policy runs no
 cleanup and enables no maintenance, and cleanup selects one controller, not every registered project.
 Weekly maintenance calls the same `harness-maintenance.ps1` implementation; the timer chooses only
 when. `/harness-timer clean` handles stale schedules only.
@@ -425,6 +464,36 @@ persist a project stop/pause, and an interrupted run needs reconciliation and re
 pause on its known target, or on the project when the target cannot be identified. These responses
 come from execution, not from installing or displaying a policy. Safety pauses are distinct from
 cooperative task checkpoints, and read-only context, status, and decision views stay available.
+
+## Ask Once
+
+A topic command that changes saved harness state runs as one request, with no separate preview
+command (owner decisions, 2026-10-08):
+
+1. **Act at once** when the request names exactly what to change, and show what changed:
+   `/harness-monitor accept <id>`, and `/harness-timer set` with its target and duration (`set
+   maintenance` needs none) and no Reuse or New choice, `disable <id>`, or `resume <id>`. Everything
+   else, and any of these when something had to be drafted, resolved, or chosen, takes the next steps.
+2. Show what will change: the resolved target with its current and new values, or the drafted file.
+3. Ask once with the host's question tool: **Save now** or **Hold**, or the action's own words such as
+   **Turn on**. A request that already says save, including `--apply`, is the answer; `--hold`, or
+   asking to hold, keeps everything unchanged until the owner says save.
+4. With no answer, including a question tool that reports the owner unavailable:
+   - **Save after 1 minute** for monitor and test `declare`. They update a declaration and run nothing
+     by themselves. First say in the reply that it saves in 1 minute unless told to hold, then wait
+     1 minute and save if no other reply has arrived; the Reason notes that it was saved without an
+     answer.
+   - **Hold** for every other change: it starts, stops, or resumes scheduled or automatic work, such as
+     `auto`, changes limits or failure policy, clears a pause, moves or migrates data, or deletes
+     records. Nothing changes; the owner can answer later or run the command again.
+5. A follow-up that starts unattended work, such as a timer after a monitor declaration, is offered in
+   the reply with its exact command, without waiting; it starts only on a yes, which may come later.
+
+The requesting owner is the Actor and the request is the Reason. An explicit `pause` or `stop` applies
+at once, Root's move prompt keeps its Move default, and an unanswered Reuse or New choice changes
+nothing. The scripts keep their preview-without-`-Apply` behavior; this governs how topics ask. The
+`/harness-monitor` and `/harness-work test` lists show `pendingDefinitions`: files under
+`definitions/` that differ from the saved declarations, such as held drafts.
 
 ## Reuse or New
 
@@ -508,6 +577,14 @@ requires exactly one JSON object with no prose or Markdown fences. Text transpor
 nor guarantees the model complies. The CLI's `--output-format json` means JSONL events, one object per
 line, not the harness schema; supporting it would need a separate tested event parser.
 
+The whole prompt goes to the CLI on standard input as UTF-8, with no `--prompt` argument: a prompt
+argument fails once a large diff passes the 32,767-character Windows command-line limit, and the CLI
+ignores standard input when `--prompt` is given. When the CLI is a script shim such as npm's
+`copilot.ps1`, the PowerShell wrapper would decode its input with the console code page and lose
+characters outside it, so the text crosses as Base64 and the wrapper pipes it to the script as UTF-8.
+Each argument is a quoted literal, so a rule such as `--allow-tool=shell(npm run test:*)` isn't split
+at its colon.
+
 Development returns `outcome` (`ready`, `unsupported`, `already-fixed`, `stale`, `needs-decision`, or
 `blocked`) and a non-empty string `summary`. Each Review and Fresh reviewer returns `verdict` (`clean`,
 `findings`, or `blocked`), a non-empty string `summary`, and a `findings` array: empty for clean, and
@@ -581,8 +658,8 @@ workers, and uses the same Review Panel as development.
 
 `pr-review` owns remote PR selection and its one user-wide watchlist and timer, and
 `/harness-review <PR-URL>` delegates there. Its dispatcher calls `Invoke-HarnessReview` from its own
-controller with an explicit workspace, comparison commit, expected head, collected evidence, and
-approved runner profile; target repositories are not initialized. Isolated PR reviews stay pinned and
+controller with an explicit workspace, comparison commit, expected head, collected evidence, review
+level, and approved runner profile; target repositories are not initialized. Isolated PR reviews stay pinned and
 fail on snapshot changes, and complete PR snapshots do not exclude source paths named like harness
 records. No PR scripts, hooks, builds, tests, or remote publication are authorized.
 
@@ -612,8 +689,8 @@ credentials out of the worker environment.
 ## Timers
 
 `harness-timer` owns schedule commands, cadence, instances, maintenance, and schedule migration; keep
-it beside `harness-runtime` in the same install scope. Bare `/harness-timer` lists only, and changes preview
-until `-Apply`. One current-user heartbeat owns OS timer changes. Layout-2 project declarations live in
+it beside `harness-runtime` in the same install scope. Bare `/harness-timer` lists only, and changes follow
+[Ask Once](#ask-once): one question, and nothing changes without an answer. One current-user heartbeat owns OS timer changes. Layout-2 project declarations live in
 `config/schedules.json`; progress and active claims live in `runtime/schedules.json` under
 `runtime/locks/schedules.lock`; the central registry and latest job receipts live in
 `~/.copilot/skillvault/scheduler`. Legacy flat files stay in place until migration, and installing or
@@ -635,8 +712,10 @@ history work to [History Cleanup](#history-cleanup).
 `harness-work` owns `testing.environments`, `testing.flows`, `testing.afterDev`, `testing.afterReview`,
 and `testing.unitTests`. The shared `harness-tests.ps1` executor stays in this bundle so manual tests,
 timers, and development tests behave the same. Configurations without `testing` keep their legacy
-validation commands, and initialization starts with empty test definitions. Declaring runs nothing,
-and `afterDev` refuses a flow whose `effects` is `external`. Runs preflight directories, variable
+validation commands, and initialization starts with empty test definitions. Declaring runs nothing.
+An `external` flow in `afterDev` is accepted with a warning: `TestConfig` returns `warnings` (never
+saved), the `Context` testing summary repeats them, and a Validate run that executed one sets the
+task's `testsNote`. Runs preflight directories, variable
 names, commands, and positive budgets, and environment overrides reach only the child process; a
 round whose tests cannot start starts no reviewers either. `afterDev` flows run with the first review
 pass and `afterReview` flows after a clean Full pass, as described under

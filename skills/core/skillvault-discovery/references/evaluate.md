@@ -6,7 +6,7 @@ Safety; Evaluation Record.
 
 This skill reviews a URL or existing SkillVault skill before creating or updating any skill
 bundle files. It helps the user decide whether an upsert is worthwhile and saves a compact
-public-safe evaluation record by default. `--chat-only` disables that record write.
+public-safe evaluation record by default; asking for chat only skips that record.
 It also checks for useful improvements to existing skills, independently of candidate adoption.
 Use `/skillvault-discovery explain` for principles and step-by-step usage without an adoption recommendation.
 
@@ -17,7 +17,7 @@ Use `/skillvault-discovery explain` for principles and step-by-step usage withou
   - Skill name: inspect the local SkillVault catalog entry and skill folder.
 - `[location]` — optional explicit local path or source URL for a named skill. When supplied,
    evaluate this location directly instead of following the default name lookup flow.
-- `--chat-only` - return the assessment without writing a record.
+- Chat only, asked in plain words - return the assessment without writing a record.
 - `--repo <path>` - explicit verified SkillVault checkout for the record, not the candidate source.
 
 ## Reuse Inspected Evidence
@@ -70,6 +70,10 @@ installation, execution, integration, or replacement.
    - Is it broadly reusable or too project-specific?
    - Is it better as a skill, prompt, instruction, script, or no customization?
    - Does it overlap with an existing skill?
+   - Was something like it evaluated before? Search the other records in `docs/evaluations/` for the
+     same purpose or capabilities and read the related ones. Say how this candidate compares with
+     each earlier verdict and whether that record's reconsider condition is now met. Leave those
+     records unchanged; revisiting one means evaluating its source again.
    - Do the supported agent/platform, required tools, and access fit this request?
    Read any relevant installed counterpart before recommending replacement, including for a
    direct URL. State `keep`, `coexist`, `replace <name>`, or `skip`, with the reason. These are
@@ -141,6 +145,7 @@ Purpose: ...
 Value: high/medium/low
 Fit: skill/prompt/instruction/script/skip
 Overlap: ...
+Earlier evaluations: ... (or None related)
 Installed recommendation: keep/coexist/replace <name>/skip
 Risks: ...
 Standalone use: ... (when relevant)
@@ -174,7 +179,7 @@ not minimum install/star thresholds or proof of safety.
 ## Evaluation Record
 
 For every completed `upsert`, `defer`, or `skip` assessment, save one Markdown record under
-`docs/evaluations/<candidate>.md` in the verified SkillVault checkout, unless `--chat-only` is
+`docs/evaluations/<candidate>.md` in the verified SkillVault checkout, unless chat only is
 requested. This is a narrow record-only exception to read-only evaluation, not skill authoring.
 Use the sibling `skillvault-installation/scripts/resolve-source-repo.ps1` in Upsert mode with the original
 working project and optional explicit RepoPath. Accept only a verified resolved repository; do
@@ -185,7 +190,8 @@ Match an existing record by canonical source URL and reuse its filename. Normali
 to lowercase hyphen-separated words; include the source owner when two candidates share a name.
 Read before updating and preserve unrelated notes. Keep the latest assessment in place, including
 date, canonical source, verified version/revision or Unknown, purpose/audience, capabilities,
-value/fit, actual overlap, installed recommendation, risks, skill recommendation/rationale,
+value/fit, actual overlap, related earlier evaluations and how this candidate compares, installed
+recommendation, risks, skill recommendation/rationale,
 separate standalone-use and harness-integration recommendations when relevant, verification limits,
 existing-skill improvement proposals with their targets/evidence/checks or the None justified/Unverified conclusion,
 and when to reconsider. Search candidates alone do not require records. Backfill only completed

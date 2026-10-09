@@ -293,7 +293,7 @@ operation; current-copy maintenance never rewrites Git history, runs workers, or
 
 ## Topic Layout Migration
 
-For an explicitly requested topic-layout migration, `update --topics` uses the bundled
+For an explicitly requested topic-layout migration, `update` uses the bundled
 [migration helper](../scripts/migrate-topics.ps1). Preview exact current-project/global targets,
 canonical mappings, same-scope dependencies, and retired names; apply with `-Apply -Force` only after
 approval. `-Name <canonical-names>` limits it to selected topics and required siblings, leaving

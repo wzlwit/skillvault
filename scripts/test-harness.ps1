@@ -49,6 +49,19 @@ function Test-HarnessProcessBehavior {
     $largeInput = 'Fixture input ' * 8000
     $inputResult = Invoke-HarnessProcess -Executable pwsh -Arguments @('-NoProfile', '-NonInteractive', '-Command', '[Console]::Out.Write([Console]::In.ReadToEnd().Length)') -Directory $Directory -MaxMinutes 1 -InputText $largeInput
     if ($inputResult.ExitCode -ne 0 -or [int]$inputResult.Output -ne $largeInput.Length) { throw 'Large worker standard input was truncated or blocked.' }
+    # The Copilot CLI is often an npm .ps1 shim. Its prompt goes on standard input, larger than any command line,
+    # and must keep characters outside the console code page; the shim's exit code must still reach the runner.
+    $shim = Join-Path $Directory 'stdin-shim.ps1'
+    [IO.File]::WriteAllLines($shim, @(
+        '$text = @($input) -join "`n"'
+        '[pscustomobject]@{ arguments = @($args); text = $text } | ConvertTo-Json -Compress -Depth 3 -EscapeHandling EscapeNonAscii'
+        'exit 3'
+    ))
+    $shimText = "Check $([char]0x4E2D)$([char]0x6587) caf$([char]0xE9) $([char]0x2014) $([char]0x2713) $([char]0xD83D)$([char]0xDE80)`nnext line`n" + ('d' * 40000)
+    $shimArguments = @('-C', 'C:\dir with space', '--model', 'gpt-fixture', '-File', '--', '', '-C:inline', '--%', "it's", '$(Get-Date)', '--allow-tool=shell(npm run test:*)')
+    $shimResult = Invoke-HarnessProcess -Executable $shim -Arguments $shimArguments -Directory $Directory -MaxMinutes 1 -InputText $shimText
+    $shimEcho = $shimResult.Output | ConvertFrom-Json
+    if ($shimResult.ExitCode -ne 3 -or $shimEcho.text -cne $shimText -or (@($shimEcho.arguments) -join '|') -cne ($shimArguments -join '|')) { throw 'A script launcher lost standard input that is longer than a command line, characters outside the console code page, its arguments, or its exit code.' }
     $timedProbe = '$started = [DateTime]::UtcNow.Ticks; Start-Sleep -Milliseconds 1500; [Console]::Out.Write(("{0}:{1}:{2}" -f "NAME", $started, [DateTime]::UtcNow.Ticks))'
     $group = @(Invoke-HarnessProcessGroup -Launches @(
         @{ Executable = 'pwsh'; Arguments = @('-NoProfile', '-NonInteractive', '-Command', $timedProbe.Replace('NAME', 'first')); Directory = $Directory; MaxMinutes = 1 }
@@ -603,7 +616,7 @@ try {
         $script:agentInput = $InputText
         $script:processDirectories += $Directory
         $output = $script:agentOutput
-        if ($script:phaseResponses -and ($Arguments -join "`n") -match 'Phase: Develop') { $output = '{"outcome":"ready","summary":"Referenced fixture ready"}' }
+        if ($script:phaseResponses -and "$InputText" -match 'Phase: Develop') { $output = '{"outcome":"ready","summary":"Referenced fixture ready"}' }
         [pscustomobject]@{ ExitCode = $script:agentExitCode; Output = $output; Error = $script:agentError; TimedOut = $false }
     }
     $developmentResult = Invoke-HarnessAgent $paths $config $task $fixtureRoot 'Develop' 'fixture-snapshot'
@@ -612,7 +625,8 @@ try {
     $streamIndex = [Array]::IndexOf($script:agentArguments, '--stream')
     if ($formatIndex -lt 0 -or $script:agentArguments[$formatIndex + 1] -cne 'text' -or $streamIndex -lt 0 -or $script:agentArguments[$streamIndex + 1] -cne 'off') { throw 'The single-envelope parser requires silent text output with streaming explicitly off, not CLI JSONL events.' }
     if ($developmentResult.outcome -cne 'ready' -or $developmentResult.summary -cne 'Fixture implementation ready') { throw 'Development output did not round-trip through the actual envelope parser.' }
-    if (($script:agentArguments -join "`n") -notmatch 'preserve all user decisions') { throw 'Worker did not receive Rules Core.' }
+    if ($script:agentInput -notmatch 'preserve all user decisions') { throw 'Worker did not receive Rules Core.' }
+    if ($script:agentArguments -contains '--prompt' -or $script:agentInput -notmatch 'Phase: Develop' -or ($script:agentArguments -join "`n") -match 'preserve all user decisions') { throw 'The worker prompt was put on the command line instead of standard input.' }
     $nativeConfig = $config | ConvertTo-Json -Depth 20 | ConvertFrom-Json
     $nativeConfig.runner = [pscustomobject]@{ command = 'copilot'; rulesPath = $ruleFile; model = 'Max'; workspaceMode = 'None'; maxMinutes = 'Max'; maxCredits = 'None'; allowedTools = @(); availableTools = 'None' }
     $nativeConfig | Add-Member -NotePropertyName restrictions -NotePropertyValue ([pscustomobject]@{ allowedModels = @(); allowedTools = ''; availableTools = @(' '); maxAgentCredits = 'Max' }) -Force
@@ -622,7 +636,7 @@ try {
     [IO.File]::WriteAllText((Join-Path $gitProject 'AGENTS.md'), 'Referenced repository convention fixture.')
     [IO.File]::WriteAllText((Join-Path $otherGitProject 'AGENTS.md'), 'Other coding repository convention fixture.')
     $null = Invoke-HarnessAgent $folderPaths $config $folderWorktreeTask $folderWorktree Develop 'referenced-worktree-snapshot'
-    if ($script:agentArguments[1] -ine $folderWorktree -or ($script:agentArguments -join "`n") -notmatch 'Controller convention fixture' -or ($script:agentArguments -join "`n") -notmatch 'Referenced repository convention fixture') { throw 'A referenced worktree worker lost its controller or coding repository instructions.' }
+    if ($script:agentArguments[1] -ine $folderWorktree -or $script:agentInput -notmatch 'Controller convention fixture' -or $script:agentInput -notmatch 'Referenced repository convention fixture') { throw 'A referenced worktree worker lost its controller or coding repository instructions.' }
     $folderContext = & $dispatcher -ProjectPath $folderProject -Action Context -Id $folderWorktreeTask.id | ConvertFrom-Json
     if ($folderContext.project -cne $folderProject -or $folderContext.repository.id -cne $repoReference.id -or $folderContext.instructionCandidates -notcontains (Join-Path $gitProject 'AGENTS.md')) { throw 'Task context did not distinguish the controller and selected coding repository.' }
     $script:agentOutput = '{"verdict":"clean","summary":"Fixture clean","findings":[]}'
@@ -632,7 +646,7 @@ try {
     $config.runner | Add-Member -NotePropertyName contextTier -NotePropertyValue long_context
     $prTask = [pscustomobject]@{ id = ''; kind = 'verify'; untrustedInput = $true; reviewWorkspace = $gitProject }
     $null = Invoke-HarnessAgent $paths $config $prTask $gitProject Review 'large-pr-snapshot'
-    if ($script:agentArguments[1] -cne $paths.Project -or $script:agentArguments -notcontains '--no-custom-instructions' -or $script:agentArguments -notcontains 'long_context' -or $script:agentInput -notmatch 'untrusted review evidence' -or $script:agentInput -notmatch 'large-pr-snapshot' -or $script:agentArguments[3] -match 'large-pr-snapshot') { throw 'PR review lost trusted launch, context tier, or streamed untrusted evidence.' }
+    if ($script:agentArguments[1] -cne $paths.Project -or $script:agentArguments -notcontains '--no-custom-instructions' -or $script:agentArguments -notcontains 'long_context' -or $script:agentInput -notmatch 'untrusted review evidence' -or $script:agentInput -notmatch 'large-pr-snapshot' -or ($script:agentArguments -join "`n") -match 'large-pr-snapshot') { throw 'PR review lost trusted launch, context tier, or streamed untrusted evidence.' }
     if ($script:agentInput -match 'Referenced repository convention fixture') { throw 'Untrusted PR repository instructions were injected as trusted worker rules.' }
     $config.runner.PSObject.Properties.Remove('contextTier')
     $config | Add-Member -NotePropertyName restrictions -NotePropertyValue ([pscustomobject]@{ deniedTools = @('url'); maxAgentCredits = 0.5 })
@@ -671,14 +685,22 @@ try {
     'Fixture security methodology: verify the actor and reachable impact.' | Set-Content -LiteralPath (Join-Path $securityDirectory 'SKILL.md') -Encoding UTF8
     $securityContext = Get-HarnessReviewSecurityContext $paths
     $null = Invoke-HarnessAgent $paths $config $task $fixtureRoot Fresh 'fixture-snapshot' -ReviewGuidance $securityContext.content
-    if (($script:agentArguments -join "`n") -notmatch 'Fixture security methodology' -or ($script:agentArguments -join "`n") -notmatch 'one fresh full-scope pass' -or $script:agentArguments -notcontains '--deny-tool=shell') { throw 'Fresh security review lost its supplied methodology, fresh instruction, or read-only permissions.' }
-    $freshPrompt = $script:agentArguments[3]
+    if ($script:agentInput -notmatch 'Fixture security methodology' -or $script:agentInput -notmatch 'one fresh full-scope pass' -or $script:agentArguments -notcontains '--deny-tool=shell') { throw 'Fresh security review lost its supplied methodology, fresh instruction, or read-only permissions.' }
+    $freshPrompt = $script:agentInput
     if ($freshPrompt -notmatch 'whole selected repository, including unchanged code' -or $freshPrompt -notmatch 'return blocked' -or $freshPrompt -match 'in the requested change set\.' -or $task.scope -cne 'fixture.txt') { throw 'Fresh retained a change-only contract, lost its coverage gate, or mutated the original task scope.' }
     if (-not $task.id -or $freshPrompt -notmatch 'outsideTaskScope' -or $freshPrompt -notmatch 'follow-up proposals instead of task work') { throw 'A tracked task Full pass cannot separate findings outside the task scope.' }
     $null = Invoke-HarnessAgent $paths $config ([pscustomobject]@{ id = ''; title = 'Standalone review'; scope = 'Current changes'; kind = 'verify' }) $fixtureRoot Fresh 'fixture-snapshot'
-    if ($script:agentArguments[3] -match 'outsideTaskScope') { throw 'Standalone Full review asked for task-scope labels without a tracked task.' }
+    if ($script:agentInput -match 'outsideTaskScope') { throw 'Standalone Full review asked for task-scope labels without a tracked task.' }
     $null = Invoke-HarnessAgent $paths $config $task $fixtureRoot Review 'fixture-snapshot'
-    if ($script:agentArguments[3] -notmatch 'in the requested change set\.' -or $script:agentArguments[3] -match 'changeScope identifies the first pass' -or $script:agentArguments -notcontains '--deny-tool=shell') { throw 'Ordinary review widened its scope or permissions.' }
+    if ($script:agentInput -notmatch 'in the requested change set\.' -or $script:agentInput -match 'changeScope identifies the first pass' -or $script:agentArguments -notcontains '--deny-tool=shell') { throw 'Ordinary review widened its scope or permissions.' }
+    if ($script:agentInput -notmatch 'Review level critical: find only what blocks merging' -or $script:agentInput -notmatch 'Rate each P1 or P2' -or $script:agentInput -match 'Review level broad') { throw 'A review without a level did not default to critical.' }
+    if ($freshPrompt -notmatch 'Review level critical' -or $freshPrompt -notmatch 'At level critical, use that coverage to find what the change breaks' -or $freshPrompt -match 'At level broad') { throw 'A critical Full pass did not focus on what the change breaks.' }
+    $broadTask = $task | Select-Object *
+    $broadTask | Add-Member -NotePropertyName reviewLevel -NotePropertyValue 'broad' -Force
+    $null = Invoke-HarnessAgent $paths $config $broadTask $fixtureRoot Fresh 'fixture-snapshot'
+    if ($script:agentInput -notmatch 'Review level broad: find every issue' -or $script:agentInput -notmatch 'At level broad, audit the whole repository' -or $script:agentInput -match 'Review level critical') { throw 'A broad Full pass did not ask for every issue across the repository.' }
+    $broadTask.reviewLevel = 'deep'
+    Assert-HarnessFailure { Invoke-HarnessAgent $paths $config $broadTask $fixtureRoot Review 'fixture-snapshot' } 'critical or broad'
     Assert-HarnessFailure { Invoke-HarnessAgent $paths $config $task $fixtureRoot Critical 'fixture-snapshot' } 'Critical'
     $null = Invoke-HarnessAgent $paths $config $task $fixtureRoot Review 'fixture-snapshot' -Reviewer ([pscustomobject]@{ family = 'gpt'; model = 'gpt-fixture'; effort = 'xhigh'; context = 'long_context' })
     $modelIndex = [Array]::IndexOf($script:agentArguments, '--model')
@@ -689,7 +711,7 @@ try {
     $fixTask | Add-Member -NotePropertyName reviewFindings -NotePropertyValue @([pscustomobject]@{ file = 'fixture.txt'; line = 1; severity = 'P2'; message = 'Fixture fix-round finding' }) -Force
     $script:agentOutput = '{"outcome":"ready","summary":"Fixture fix ready"}'
     $null = Invoke-HarnessAgent $paths $config $fixTask $fixtureRoot Develop 'fixture-snapshot'
-    if ($script:agentArguments[3] -notmatch 'Review fix round' -or $script:agentArguments[3] -notmatch 'Fixture fix-round finding' -or $script:agentArguments[3] -notmatch 'return needs-decision') { throw 'A fix-round developer did not receive the review findings and the decision path.' }
+    if ($script:agentInput -notmatch 'Review fix round' -or $script:agentInput -notmatch 'Fixture fix-round finding' -or $script:agentInput -notmatch 'return needs-decision') { throw 'A fix-round developer did not receive the review findings and the decision path.' }
     $script:agentOutput = '{"verdict":"findings","summary":"Fixture scope label","findings":[{"file":"fixture.txt","line":1,"message":"Labelled finding","outsideTaskScope":"yes"}]}'
     Assert-HarnessFailure { Invoke-HarnessAgent $paths $config $task $fixtureRoot Fresh 'fixture-snapshot' } 'outsideTaskScope must be true or false'
     $script:agentOutput = '{"verdict":"clean","summary":"Fixture clean","findings":[]}'
@@ -697,7 +719,7 @@ try {
     $recheckTask | Add-Member -NotePropertyName recheckFindings -NotePropertyValue @([pscustomobject]@{ file = 'unchanged.txt'; line = 2; severity = 'P2'; message = 'Earlier unresolved fixture issue' })
     foreach ($reviewPhase in @('Review', 'Fresh')) {
         $null = Invoke-HarnessAgent $paths $config $recheckTask $fixtureRoot $reviewPhase 'fixture-snapshot'
-        if ($script:agentArguments[3] -notmatch 'Earlier unresolved fixture issue' -or $script:agentArguments[3] -notmatch 'not trusted conclusions' -or $script:agentArguments[3] -notmatch 'including issues outside the latest diff' -or $script:agentArguments -notcontains '--deny-tool=write') { throw 'A continued reviewer lost prior issues, current-evidence rechecking, or read-only permissions.' }
+        if ($script:agentInput -notmatch 'Earlier unresolved fixture issue' -or $script:agentInput -notmatch 'not trusted conclusions' -or $script:agentInput -notmatch 'including issues outside the latest diff' -or $script:agentArguments -notcontains '--deny-tool=write') { throw 'A continued reviewer lost prior issues, current-evidence rechecking, or read-only permissions.' }
     }
     $script:agentOutput = '{"verdict":"findings","summary":"Fixture malformed finding","findings":[{"file":"fixture.txt","line":0,"message":"No valid anchor"}]}'
     Assert-HarnessFailure { Invoke-HarnessAgent $paths $config $task $fixtureRoot Review '' } 'positive line number'
@@ -708,7 +730,7 @@ try {
         if ($parsedResult.summary -cne 'Parsed final response') { throw "The $phase worker did not return its parsed result." }
         if ($phase -eq 'Develop') {
             $null = Invoke-HarnessAgent $commandPaths $config $followUp $fixtureRoot $phase 'follow-up-fixture'
-            if (($script:agentArguments -join "`n") -notmatch 'Completed task evidence') { throw 'The follow-up developer did not receive the prior completion evidence.' }
+            if ($script:agentInput -notmatch 'Completed task evidence') { throw 'The follow-up developer did not receive the prior completion evidence.' }
         }
         foreach ($emptyOutput in @('', " `r`n ")) {
             $script:agentOutput = $emptyOutput
@@ -769,10 +791,12 @@ try {
     function Get-HarnessSnapshot { param($Paths, $Config, $Workspace, $BaseRef); '{"head":"fixture-head","base":"fixture-head","diff":"","untracked":[]}' }
     $script:phases = @()
     $script:reviewGuidance = @()
+    $script:reviewTaskLevels = @()
     function Invoke-HarnessAgent {
         param($Paths, $Config, $Task, $Workspace, $Phase, $Snapshot, $ReviewGuidance)
         $script:phases += $Phase
         if ($ReviewGuidance) { $script:reviewGuidance += $ReviewGuidance }
+        if ($Phase -ne 'Develop') { $script:reviewTaskLevels += (Get-HarnessReviewLevel $Task) }
         if ($Phase -eq 'Develop') { return [pscustomobject]@{ outcome = 'ready'; summary = 'Fixture ready' } }
         [pscustomobject]@{ verdict = 'clean'; summary = 'Fixture clean'; findings = @() }
     }
@@ -803,6 +827,13 @@ try {
     if (@((Read-HarnessState $paths).runs).Count -ne $beforeMissingGuide -or $script:reviewGuidance.Count -ne 2) { throw 'Unavailable requested security guidance started a review or silently fell back to general review.' }
     $securityContext.content | Set-Content -LiteralPath $securityContext.path -Encoding UTF8
     Assert-HarnessFailure { & $dispatcher -ProjectPath $fixtureRoot -Action Status -SecurityReview } 'only to the independent Review'
+    Assert-HarnessFailure { & $dispatcher -ProjectPath $fixtureRoot -Action Status -ReviewLevel broad } 'ReviewLevel applies only'
+    if ($review.reviewLevel -cne 'critical' -or [IO.File]::ReadAllText($review.report) -notmatch 'Review level: critical' -or @($script:reviewTaskLevels | Where-Object { $_ -cne 'critical' }).Count) { throw 'Development and standalone reviews did not default to the critical level.' }
+    $broadReview = Invoke-HarnessReview $paths -ReviewLevel broad
+    $broadRun = @((Read-HarnessState $paths).runs | Where-Object { $_.report -ceq $broadReview.report })
+    if ($broadReview.reviewLevel -cne 'broad' -or $broadReview.passes -ne 2 -or $broadReview.previousReport -or $broadRun.Count -ne 1 -or $broadRun[0].review.reviewLevel -cne 'broad' -or ($script:reviewTaskLevels[-2..-1] -join ',') -cne 'broad,broad') { throw 'A broad review reused critical history or did not reach both passes and the run record.' }
+    $criticalAgain = Invoke-HarnessReview $paths
+    if ($criticalAgain.previousReport -cne $review.report) { throw 'A critical review did not compare with the earlier critical review, or compared with the broad one.' }
     $reviewFinding = [pscustomobject]@{ file = 'fixture.txt'; line = 1; severity = 'P2'; message = 'Supported fixture defect' }
     function Invoke-HarnessAgent {
         param($Paths, $Config, $Task, $Workspace, $Phase, $Snapshot)
@@ -993,7 +1024,21 @@ try {
         }
         if ((@($bundledList.families.id) -join ',') -cne 'gpt,claude-opus') { throw 'The bundled review list lost its GPT or Claude Opus family.' }
         $bundledPanel = Get-HarnessReviewPanel (Resolve-HarnessRunnerConfig $config)
-        if (($bundledPanel.reviewers.model -join ',') -cne 'gpt-6.1-sol,claude-opus-5.5' -or ($bundledPanel.reviewers.effort -join ',') -cne 'max,max' -or ($bundledPanel.reviewers.context -join ',') -cne 'long_context,long_context' -or ($bundledPanel.reviewers.source -join ',') -cne 'default,default' -or -not $bundledPanel.parallel -or $bundledPanel.note) { throw 'Without profiles, the panel did not use the top bundled GPT and Claude Opus models at max effort and long context.' }
+        if (($bundledPanel.reviewers.model -join ',') -cne 'gpt-6-astra,claude-opus-5.5' -or ($bundledPanel.reviewers.effort -join ',') -cne 'max,max' -or ($bundledPanel.reviewers.context -join ',') -cne 'long_context,long_context' -or ($bundledPanel.reviewers.source -join ',') -cne 'default,default' -or -not $bundledPanel.parallel -or $bundledPanel.note) { throw 'Without profiles, the panel did not use the top bundled GPT and Claude Opus models at max effort and long context.' }
+        # A session or project often runs on a weaker model; it must not replace the strongest listed reviewer.
+        $weakRunnerConfig = $config | ConvertTo-Json -Depth 20 | ConvertFrom-Json
+        $weakRunnerConfig.runner.model = 'gpt-5.6-sol'
+        $weakRunnerConfig.runner | Add-Member -NotePropertyName reasoningEffort -NotePropertyValue 'high' -Force
+        $weakRunnerPanel = Get-HarnessReviewPanel (Resolve-HarnessRunnerConfig $weakRunnerConfig)
+        if (($weakRunnerPanel.reviewers.model -join ',') -cne 'gpt-6-astra,claude-opus-5.5' -or ($weakRunnerPanel.reviewers.effort -join ',') -cne 'max,max' -or ($weakRunnerPanel.reviewers.source -join ',') -cne 'default,default') { throw 'A weaker runner or session model replaced the strongest listed GPT reviewer.' }
+        $customRunnerConfig = $config | ConvertTo-Json -Depth 20 | ConvertFrom-Json
+        $customRunnerConfig.runner.model = 'gpt-custom-runner'
+        $customRunnerPanel = Get-HarnessReviewPanel (Resolve-HarnessRunnerConfig $customRunnerConfig ([pscustomobject]@{ restrictions = [pscustomobject]@{ allowedModels = @('gpt-custom-runner', 'claude-opus-5.5') } }))
+        if (($customRunnerPanel.reviewers.model -join ',') -cne 'gpt-custom-runner,claude-opus-5.5') { throw 'When restrictions allow no listed GPT model, the allowed runner model did not review.' }
+        $singleBundledConfig = $weakRunnerConfig | ConvertTo-Json -Depth 20 | ConvertFrom-Json
+        $singleBundledConfig.runner.criticalReview = $false
+        $singleBundledPanel = Get-HarnessReviewPanel (Resolve-HarnessRunnerConfig $singleBundledConfig)
+        if (@($singleBundledPanel.reviewers).Count -ne 1 -or $singleBundledPanel.reviewers[0].model -cne 'gpt-6-astra' -or $singleBundledPanel.reviewers[0].effort -cne 'max') { throw 'One reviewer did not use the strongest listed model at max effort.' }
         $narrowedPanel = Get-HarnessReviewPanel (Resolve-HarnessRunnerConfig $config ([pscustomobject]@{ restrictions = [pscustomobject]@{ allowedModels = @('fixture-model', 'gpt-6-sol', 'claude-opus-5') } }))
         $gptListing = $narrowedPanel.families | Where-Object family -CEQ 'gpt'
         if (($narrowedPanel.reviewers.model -join ',') -cne 'gpt-6-sol,claude-opus-5' -or @($gptListing.models | Where-Object allowed).model -cne 'gpt-6-sol' -or @($gptListing.models).Count -ne @(($bundledList.families | Where-Object id -CEQ 'gpt').models).Count) { throw 'allowedModels did not narrow the bundled list or the listing lost excluded models.' }
@@ -1022,13 +1067,13 @@ try {
     $singleReviewerConfig = $config | ConvertTo-Json -Depth 20 | ConvertFrom-Json
     $singleReviewerConfig.runner.criticalReview = $false
     $singlePanel = Get-HarnessReviewPanel (Resolve-HarnessRunnerConfig $singleReviewerConfig ([pscustomobject]@{ profiles = $panelProfiles }))
-    if (@($singlePanel.reviewers).Count -ne 1 -or $singlePanel.reviewers[0].model -cne 'fixture-model' -or $singlePanel.note -notmatch 'criticalReview is false') { throw 'An explicit criticalReview false did not keep one reviewer.' }
+    if (@($singlePanel.reviewers).Count -ne 1 -or $singlePanel.reviewers[0].model -cne 'gpt-fixture-2' -or $singlePanel.note -notmatch 'criticalReview is false') { throw 'An explicit criticalReview false did not keep one reviewer, the strongest allowed one.' }
     $prPanel = Get-HarnessReviewPanel (Resolve-HarnessRunnerConfig $config ([pscustomobject]@{ profiles = $panelProfiles })) -RunnerProfile ([pscustomobject]@{ model = 'pr-model' })
     if (@($prPanel.reviewers).Count -ne 1 -or $prPanel.note) { throw 'PR review gained a second reviewer.' }
     $explicitOpusConfig = $config | ConvertTo-Json -Depth 20 | ConvertFrom-Json
     $explicitOpusConfig.runner.model = 'claude-opus-explicit'
     $mixedPanel = Get-HarnessReviewPanel (Resolve-HarnessRunnerConfig $explicitOpusConfig ([pscustomobject]@{ profiles = @($panelProfiles[1]) }))
-    if (($mixedPanel.reviewers.model -join ',') -cne 'gpt-fixture-2,claude-opus-explicit') { throw 'An explicit Claude Opus runner model was not used for its family.' }
+    if (($mixedPanel.reviewers.model -join ',') -cne 'gpt-fixture-2,claude-opus-explicit') { throw 'A Claude Opus runner model did not review when the list had no Claude Opus model.' }
     $panelCalls = [System.Collections.Generic.List[object]]::new()
     $panelVerdicts = @{ 'gpt-fixture-2' = 'clean'; 'claude-opus-fixture-2' = 'findings' }
     function Get-HarnessSnapshot { param($Paths, $Config, $Workspace, $BaseRef); '{"head":"panel-head","base":"panel-head","diff":"","untracked":[]}' }
@@ -1121,11 +1166,9 @@ try {
         if ($runnerOnly.status -cne 'clean' -or (@($runnerOnly.reviewers).model -join ',') -cne 'fixture-model' -or @($fallback.Calls | Where-Object { $_ -like 'fixture-model:*' }).Count -ne 2) { throw 'When no listed model was available, the runner model did not review alone.' }
         $fallback.Calls.Clear()
         $fallback.Unavailable = @('fixture-model')
-        $strictConfig = $config | ConvertTo-Json -Depth 20 | ConvertFrom-Json
-        $strictConfig.runner.criticalReview = $false
-        Write-HarnessJson $paths.Config $strictConfig
-        $strictReview = Invoke-HarnessReview $paths -Scope 'Explicit runner fixture'
-        if ($strictReview.status -cne 'Failed' -or ($fallback.Calls -join ',') -cne 'fixture-model:high' -or [IO.File]::ReadAllText($strictReview.report) -notmatch 'was not started') { throw 'An explicitly configured reviewer the CLI rejected was replaced instead of failing.' }
+        $runnerOnlyContext = [pscustomobject]@{ restrictions = [pscustomobject]@{ allowedModels = @('fixture-model') } }
+        $strictReview = Invoke-HarnessReview $paths -Scope 'Explicit runner fixture' -RunnerContext $runnerOnlyContext
+        if ($strictReview.status -cne 'Failed' -or ($fallback.Calls -join ',') -cne 'fixture-model:high' -or [IO.File]::ReadAllText($strictReview.report) -notmatch 'was not started') { throw 'A runner reviewer the CLI rejected was replaced instead of failing.' }
         Write-HarnessJson $paths.Config $config
         $listedProfile = { [pscustomobject]@{ model = 'gpt-a'; effort = 'max'; context = 'long_context'; options = @([pscustomobject]@{ model = 'gpt-a'; efforts = @('max', 'high'); context = 'long_context' }, [pscustomobject]@{ model = 'claude-opus-b'; efforts = @('max'); context = 'long_context' }) } }
         $listedPanel = Get-HarnessReviewPanel (Resolve-HarnessRunnerConfig $config) -RunnerProfile (& $listedProfile)
@@ -1275,13 +1318,13 @@ try {
         $repeatOutcome = Invoke-HarnessCycle $paths
         $repeatSaved = Get-HarnessTask (Read-HarnessState $paths) $repeatTask.id
         if ($repeatOutcome.status -cne 'NeedsDecision' -or ($testLoop.Calls -join ',') -cne 'Develop,test:unit,Review,Develop,test:unit,Review' -or $repeatSaved.phase -cne 'Develop' -or [IO.File]::ReadAllText($repeatOutcome.report) -notmatch 'same test still fails') { throw 'The same test failing right after a fix round did not stop for a decision.' }
-        $developPrompt = [string](New-HarnessAgentLaunch -Paths $paths -Config $testLoopConfig -Task $repeatSaved -Workspace $fixtureRoot -Phase Develop -Snapshot 'prompt-snapshot').Process.Arguments[3]
-        $reviewPrompt = [string](New-HarnessAgentLaunch -Paths $paths -Config $testLoopConfig -Task $repeatSaved -Workspace $fixtureRoot -Phase Review -Snapshot 'prompt-snapshot').Process.Arguments[3]
+        $developPrompt = [string](New-HarnessAgentLaunch -Paths $paths -Config $testLoopConfig -Task $repeatSaved -Workspace $fixtureRoot -Phase Develop -Snapshot 'prompt-snapshot').Process.InputText
+        $reviewPrompt = [string](New-HarnessAgentLaunch -Paths $paths -Config $testLoopConfig -Task $repeatSaved -Workspace $fixtureRoot -Phase Review -Snapshot 'prompt-snapshot').Process.InputText
         if ($developPrompt -notmatch 'Unit tests: cover new and changed behavior' -or $developPrompt -notmatch 'Findings with source "test"' -or $developPrompt -notmatch 'never weaken, skip, or delete a test' -or $developPrompt -notmatch 'while the first review runs: unit \(local\)' -or $developPrompt -notmatch 'after a clean review: ppe-smoke \(local\)' -or $reviewPrompt -notmatch 'Report missing unit-test coverage') { throw 'The broad unit-test level, the planned tests, or the failed-test instructions did not reach the prompts.' }
         $criticalConfig = $testLoopConfig | ConvertTo-Json -Depth 20 | ConvertFrom-Json
         $criticalConfig.testing.PSObject.Properties.Remove('unitTests')
-        $criticalDevelop = [string](New-HarnessAgentLaunch -Paths $paths -Config $criticalConfig -Task $repeatSaved -Workspace $fixtureRoot -Phase Develop -Snapshot 'prompt-snapshot').Process.Arguments[3]
-        $criticalReview = [string](New-HarnessAgentLaunch -Paths $paths -Config $criticalConfig -Task $repeatSaved -Workspace $fixtureRoot -Phase Fresh -Snapshot 'prompt-snapshot').Process.Arguments[3]
+        $criticalDevelop = [string](New-HarnessAgentLaunch -Paths $paths -Config $criticalConfig -Task $repeatSaved -Workspace $fixtureRoot -Phase Develop -Snapshot 'prompt-snapshot').Process.InputText
+        $criticalReview = [string](New-HarnessAgentLaunch -Paths $paths -Config $criticalConfig -Task $repeatSaved -Workspace $fixtureRoot -Phase Fresh -Snapshot 'prompt-snapshot').Process.InputText
         if ($criticalDevelop -notmatch 'only where they protect critical behavior' -or $criticalDevelop -match 'cover new and changed behavior' -or $criticalReview -notmatch 'only when it leaves critical behavior unprotected') { throw 'The default critical unit-test level did not reach the developer and reviewers.' }
         $testLoop.Calls.Clear()
         $testLoop.Fail = @{ smoke = 2 }
@@ -1318,6 +1361,16 @@ try {
         $null = Queue-HarnessTask $paths $sharedTask.id 'now'
         $attendedShared = Invoke-HarnessCycle $paths
         if ($attendedShared.status -cne 'Completed' -or ($testLoop.Calls -join ',') -cne 'Develop,test:unit,Review,Fresh,test:unit,Review,Fresh,test:smoke') { throw 'An attended run did not test and review the changed code before the after-review test.' }
+        $testLoop.Calls.Clear()
+        $externalDevConfig = $testLoopConfig | ConvertTo-Json -Depth 20 | ConvertFrom-Json
+        $externalDevConfig.testing.afterDev = @([pscustomobject]@{ flow = 'unit'; environment = 'local' }, [pscustomobject]@{ flow = 'ppe-smoke'; environment = 'local' })
+        $externalDevConfig.testing.afterReview = @()
+        Write-HarnessJson $paths.Config $externalDevConfig
+        $externalDevTask = Add-HarnessTask -Paths $paths -Title 'External afterDev flow' -Description 'Runs before review with a warning' -Scope 'external.txt' -Acceptance 'The run notes the external flow' -Kind fix -Risk Low
+        $null = Queue-HarnessTask $paths $externalDevTask.id 'now'
+        $externalDevOutcome = Invoke-HarnessCycle $paths
+        $externalDevRun = @((Read-HarnessState $paths).runs | Where-Object { $_.taskId -ceq $externalDevTask.id -and $_.phase -ceq 'Validate' })[0]
+        if ($externalDevOutcome.status -cne 'Completed' -or ($testLoop.Calls -join ',') -cne 'Develop,test:unit,test:smoke,Review,Fresh' -or (Get-HarnessTask (Read-HarnessState $paths) $externalDevTask.id).testsNote -cne 'External flows ran before review was clean: ppe-smoke.' -or [IO.File]::ReadAllText($externalDevRun.report) -notmatch 'Tests note: External flows ran before review was clean: ppe-smoke') { throw "An external afterDev flow did not run before review with a note in the task and report: $($testLoop.Calls -join ',')" }
         Remove-Item Env:SKILLVAULT_INLINE_VALIDATION
         try {
             $overlapRoot = Join-Path $fixtureRoot 'overlap'

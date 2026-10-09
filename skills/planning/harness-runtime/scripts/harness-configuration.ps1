@@ -245,3 +245,70 @@ function Write-HarnessProjectSchedules {
         elseif (-not (Test-Path -LiteralPath $pending)) { Remove-Item -LiteralPath $temporary -Recurse -Force }
     }
 }
+
+# Canonical JSON with sorted keys, so two declarations compare equal whatever their key order.
+function ConvertTo-HarnessCanonicalJson {
+    param($Value)
+    $sort = {
+        param($Item)
+        if ($Item -is [System.Collections.IDictionary]) {
+            $ordered = [ordered]@{}
+            foreach ($key in @($Item.Keys | Sort-Object)) { $ordered[[string]$key] = & $sort $Item[$key] }
+            return $ordered
+        }
+        if ($Item -is [System.Management.Automation.PSCustomObject]) {
+            $ordered = [ordered]@{}
+            foreach ($property in @($Item.PSObject.Properties | Sort-Object Name)) { $ordered[$property.Name] = & $sort $property.Value }
+            return $ordered
+        }
+        if ($Item -is [array]) { return , @(foreach ($element in $Item) { & $sort $element }) }
+        $Item
+    }
+    ConvertTo-Json -InputObject (& $sort $Value) -Depth 30 -Compress
+}
+
+# Declaration files under definitions/ that differ from the saved monitor or test declarations: a held
+# draft, or a file that later edits have passed. Read-only; saving one goes through its declare command.
+function Get-HarnessPendingDefinitions {
+    param($Paths, $Config, [ValidateSet('monitoring', 'testing')][string]$Domain)
+    $root = Join-Path $Paths.Control 'definitions'
+    if (-not (Test-Path -LiteralPath $root -PathType Container)) { return }
+    foreach ($helper in @(@{ command = 'Get-HarnessMonitorSettings'; file = 'harness-monitor.ps1' }, @{ command = 'Get-HarnessUnitTestLevel'; file = 'harness-tests.ps1' })) {
+        if (-not (Get-Command $helper.command -ErrorAction SilentlyContinue)) { . (Join-Path $PSScriptRoot $helper.file) }
+    }
+    foreach ($file in @(Get-ChildItem -LiteralPath $root -Recurse -File -Filter '*.json' | Sort-Object FullName)) {
+        try { $definition = [IO.File]::ReadAllText($file.FullName) | ConvertFrom-Json -NoEnumerate }
+        catch { continue }
+        if ($definition -isnot [System.Management.Automation.PSCustomObject]) { continue }
+        $sections = @($definition.PSObject.Properties.Name)
+        $changes = @()
+        if ($Domain -eq 'monitoring') {
+            if ('monitors' -cnotin $sections) { continue }
+            $saved = @((Get-HarnessMonitorSettings $Config).monitors)
+            foreach ($monitor in @($definition.monitors | Where-Object { $_ -and $_.name })) {
+                $current = @($saved | Where-Object { $_.name -ceq $monitor.name }) | Select-Object -First 1
+                if (-not $current) { $changes += "new monitor $($monitor.name)" }
+                elseif ((ConvertTo-HarnessCanonicalJson $current) -cne (ConvertTo-HarnessCanonicalJson $monitor)) { $changes += "changed monitor $($monitor.name)" }
+            }
+        }
+        else {
+            if ('monitors' -cin $sections -or -not @($sections | Where-Object { $_ -cin @('environments', 'flows', 'afterDev', 'afterReview', 'unitTests') }).Count) { continue }
+            $saved = Get-HarnessTestSettings $Config
+            foreach ($section in @('environments', 'flows')) {
+                $kind = $section.TrimEnd('s')
+                foreach ($item in @($definition.$section | Where-Object { $_ -and $_.name })) {
+                    $current = @($saved.$section | Where-Object { $_.name -ceq $item.name }) | Select-Object -First 1
+                    if (-not $current) { $changes += "new $kind $($item.name)" }
+                    elseif ((ConvertTo-HarnessCanonicalJson $current) -cne (ConvertTo-HarnessCanonicalJson $item)) { $changes += "changed $kind $($item.name)" }
+                }
+            }
+            foreach ($section in @('afterDev', 'afterReview')) {
+                if ($section -cin $sections -and (ConvertTo-HarnessCanonicalJson @($definition.$section | Where-Object { $null -ne $_ })) -cne (ConvertTo-HarnessCanonicalJson @(Get-HarnessTestHooks $Config $section))) { $changes += "changed $section" }
+            }
+            if ('unitTests' -cin $sections -and [string]$definition.unitTests -cne (Get-HarnessUnitTestLevel $Config)) { $changes += 'changed unitTests' }
+        }
+        if ($changes.Count) {
+            [pscustomobject]@{ file = [IO.Path]::GetRelativePath($Paths.Project, $file.FullName).Replace('\', '/'); changes = @($changes) }
+        }
+    }
+}

@@ -4,7 +4,7 @@ Search installed skills, local catalogs, accessible internal sources, the offici
 catalog, and external sources for a requested capability. Results include source provenance and
 links. Bare invocation lists known context/actions without remote searches. Search and explanation
 are read-only; completed evaluations save a public-safe record in the verified SkillVault checkout
-under `docs/evaluations/` unless `--chat-only` is requested. No target skill or installed copy is modified.
+under `docs/evaluations/` unless chat only is requested. No target skill or installed copy is modified.
 
 Exact actions and documented aliases take priority, including `eval` and `expl`. Otherwise,
 exactly 3 or 4 leading letters select one matching canonical action in this topic: `eva` selects

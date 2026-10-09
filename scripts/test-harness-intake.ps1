@@ -146,7 +146,7 @@ exit [int]$code
     if ($paused.work.status -cne 'Paused' -or @($paused.work.ran).Count -or (Get-HarnessTask (Read-HarnessState $paths) T-006).status -cne 'Queued') { throw 'Work ran while its worker target was paused.' }
     $null = Resume-HarnessTarget -Paths $paths -Target 'test:work:local' -Actor 'fixture-owner' -Reason 'Fixture resume' -ConfirmStopped
 
-    # `check all` batches collect and propose only.
+    # All-source checks collect and propose only.
     $logCount = @(Get-Content $workLog).Count
     $batch = Invoke-HarnessMonitorBatch $paths
     if (@(Get-Content $workLog).Count -ne $logCount -or $batch.work) { throw 'A batch check ran standing work.' }

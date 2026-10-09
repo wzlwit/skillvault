@@ -1,9 +1,9 @@
 {
   "name": "harness-monitor",
   "title": "Harness Monitor",
-  "version": "1.1.0",
+  "version": "2.0.0",
   "kind": "agent",
-  "description": "[declare|check|accept|auto] Monitor work across approved source adapters, including ADO and documents; assess relevance, Auto-verify status, correlate explicit requirements, reconcile evidence, and expose verified subsets, or check health observations. `auto` follows up a source's items or health incidents through an approved local-only worker flow on a schedule. Shorthand: /hn-monitor. Overlaps with harness-work on checks and intake, kpi-dashboard on metric contracts, harness-write on status and owner evidence, and dri on incidents; preserves deferred work and never launches development.",
+  "description": "[declare|check|accept|auto] Monitor work across approved source adapters, including ADO and documents; assess relevance, Auto-verify status, correlate explicit requirements, reconcile evidence, and expose verified subsets, or check health observations. `declare` drafts or reuses a monitor's declaration file and saves it; `auto` follows up a source's items or health incidents through an approved local-only worker flow on a schedule. Shorthand: /hn-monitor. Overlaps with harness-work on checks and intake, kpi-dashboard on metric contracts, harness-write on status and owner evidence, and dri on incidents; preserves deferred work and never launches development.",
   "requiredInterfaces": {
     "harness-runtime": {
       "harness-runtime": 4,
@@ -42,7 +42,8 @@
   "examples": [
     "/harness-monitor",
     "/harness-monitor list",
-    "/harness-monitor declare",
+    "/harness-monitor declare design-concerns",
+    "/harness-monitor declare design-concerns --hold",
     "/harness-monitor check",
     "/harness-monitor check design-concerns",
     "/harness-monitor accept C-001",

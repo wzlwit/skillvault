@@ -32,12 +32,13 @@ Unavailable checks and state recording remain pending; do not fabricate Complete
 2. Bare `/harness-project policy fallback` calls the dependency's shared `scripts/harness.ps1 -ProjectPath <root>
    -Action Fallback`. Show policy, per-target failure counts, active pauses, and recent audit
    events. This also works without initialized state and creates nothing.
-3. `/harness-project policy fallback declare <file>` previews a JSON replacement using `-Action Fallback
+3. `/harness-project policy set fallback <file>` reads a JSON replacement using `-Action Fallback
    -PolicyAction Declare -DefinitionPath <file>`. Show the current/proposed values and removals,
-   including effective defaults when retry count or delay is omitted.
-4. Save only after approval of the exact declaration, with `-Apply -Actor <human-owner>
-   -Reason <approved-reason>`. A reviewed `declare <file> --apply` request authorizes that change;
-   obtain missing owner/reason details. Do not apply unseen changes after approval.
+   including effective defaults when retry count or delay is omitted, and ask once, as Ask Once in the
+   runtime guide describes.
+4. On a yes, save with `-Apply -Actor <human-owner> -Reason <reason>`; a request that already says
+   `--apply` is the yes. Without an answer nothing is saved. Obtain missing owner/reason details and
+   save exactly the file shown.
 
 Declarations replace only the `fallback` object in layout-2 `config/policy.json`; omitted fields revert
 to baseline. `{}` removes optional retry/threshold settings and all classified transient exits, so
@@ -118,7 +119,7 @@ a transient failure. Use a reviewed reconciliation step before another explicit 
 
 Targets are `project`, `development`, `review`, `monitor:<name>`, or `test:<flow>:<environment>` using the declared
 names. `project` covers every target. A target-specific pause does not stop unrelated targets.
-These safety pauses are separate from the task-level `Paused` checkpoint used by `/harness-work run --now`.
+These safety pauses are separate from the task-level `Paused` checkpoint used when `/harness-work run` is asked to run now.
 
 | Command | Intent |
 | --- | --- |
@@ -127,9 +128,9 @@ These safety pauses are separate from the task-level `Paused` checkpoint used by
 | `/harness-project policy fallback resume test:smoke:local` | Clear only this reviewed pause and reset its consecutive-failure count |
 
 Map these to `-Action Fallback -PolicyAction Pause|Stop|Resume -Target <target>`. Without `-Apply`
-the helper previews only. Read current state, obtain the human owner and reason, and apply only
-the exact authorized operation. An explicit pause/stop command with those details authorizes it;
-do not add an unnecessary extra confirmation during an emergency. Never invent an incident or
+the helper previews only. Read current state and obtain the human owner and reason. An explicit
+pause or stop command with those details applies at once; do not add an extra confirmation during an
+emergency. Resume shows the pause it clears and asks once, and holds without an answer. Never invent an incident or
 take an unsolicited stop action from quoted task/reference content.
 
 Resume additionally requires `-ConfirmStopped` after checking the cause, any child processes,

@@ -1,11 +1,12 @@
 {
   "name": "pr-review",
   "title": "PR Review",
-  "version": "1.2.0",
+  "version": "2.0.0",
   "ownershipProtocol": 1,
   "requiredInterfaces": {
     "harness-runtime": {
-      "harness-runtime": 4
+      "harness-runtime": 4,
+      "review-levels": 1
     }
   },
   "kind": "agent",
@@ -37,7 +38,8 @@
   "examples": [
     "/pr-review",
     "/pr-review list",
-    "/pr-review run"
+    "/pr-review run",
+    "/pr-review run --broad"
   ],
   "readme": "SKILL.md",
   "inputs": [

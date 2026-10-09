@@ -26,7 +26,7 @@ confirmed absent. Do not treat missing access or ambiguous identity as proof of 
    or metric conversion.
 - `--output` selects the project-relative or explicit absolute artifact path. For a remote item,
   obtain its exact workspace/folder and stable item ID separately; a display name is not enough.
-- `--design-only` requests a specification, not a working artifact. It needs no harness runtime
+- A request for a design only gets a specification, not a working artifact. It needs no harness runtime
   initialization or live data connection; mark unverified schema/calculations as assumptions.
 
 These are conversational inputs described to the session agent, not a shell parser or typed API.
@@ -35,8 +35,8 @@ Do not pass these switches to `harness.ps1`; that runtime has no ReportCreate ac
 ```text
 /harness-write
 /harness-write upsert report service-health --type grafana --output dashboards/service-health.json
-/harness-write upsert report sales-summary --type powerbi --design-only
-/harness-write upsert report service-health --type jarvis --design-only
+/harness-write upsert report sales-summary --type powerbi
+/harness-write upsert report service-health --type jarvis, design only
 /harness-write upsert report operations --type web
 /harness-write upsert report error-rate --type query --output queries/error-rate.sql
 ```

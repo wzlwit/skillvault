@@ -3,7 +3,7 @@ name: pr-watch
 description: "[add|remove] Manage the single user-wide PR review watchlist. Watchlist changes do not run reviews or change schedules; pr-review owns execution and review results, and harness-timer owns its logical schedule."
 metadata:
   author: wzlwit
-  version: "2.0.0"
+  version: "3.0.0"
 argument-hint: "[list|add|remove] [<arguments>...]"
 ---
 

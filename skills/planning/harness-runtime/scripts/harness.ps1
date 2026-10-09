@@ -23,6 +23,7 @@ param(
     [switch]$UseWorkingChanges,
     [string]$BaseRef,
     [switch]$SecurityReview,
+    [ValidateSet('critical', 'broad')][string]$ReviewLevel,
     [switch]$ConfirmStopped,
     [switch]$ConfirmLocation,
     [string]$Flow,
@@ -63,6 +64,7 @@ if ($guardsExecution) {
 . (Join-Path $PSScriptRoot 'harness-runner.ps1')
 if (($Move -or $PSBoundParameters.ContainsKey('DestinationPath')) -and $Action -ne 'Root') { throw 'Move and DestinationPath apply only to Root.' }
 if ($SecurityReview -and $Action -ne 'Review') { throw 'SecurityReview applies only to the independent Review action.' }
+if ($ReviewLevel -and $Action -ne 'Review') { throw 'ReviewLevel applies only to the independent Review action; the development loop reviews at the critical level.' }
 if ($ConfirmLocation -and $Action -ne 'Init') { throw 'ConfirmLocation applies only to Init.' }
 if ($AllMonitors -and ($Action -ne 'Monitor' -or $MonitorName)) { throw 'AllMonitors requires Monitor without a single MonitorName.' }
 if (($Off -or $PSBoundParameters.ContainsKey('MaxPerCheck') -or $PSBoundParameters.ContainsKey('MaxAttempts') -or $PSBoundParameters.ContainsKey('SetupExitCode')) -and $Action -ne 'MonitorAuto') { throw 'Off, MaxPerCheck, MaxAttempts, and SetupExitCode apply only to MonitorAuto.' }
@@ -200,7 +202,9 @@ switch ($Action) {
     'Test' {
         if (-not $Flow) {
             if ($TestEnvironment -or $Id -or $Scheduled) { throw 'Select a test flow before supplying run options.' }
-            Get-HarnessTestSettings $config | ConvertTo-Json -Depth 15
+            $testView = Get-HarnessTestSettings $config | Select-Object -Property *
+            $testView | Add-Member -NotePropertyName pendingDefinitions -NotePropertyValue @(Get-HarnessPendingDefinitions $paths $config testing) -Force
+            $testView | ConvertTo-Json -Depth 15
             return
         }
         $result = Invoke-HarnessTests -Paths $paths -Flow $Flow -Environment $TestEnvironment -TaskId $Id -Scheduled:$Scheduled -RunnerContext $RunnerContext
@@ -288,7 +292,7 @@ switch ($Action) {
         finally { $runLock.Dispose() }
     }
     'Review' {
-        $result = Invoke-HarnessReview -Paths $paths -Scope $(if ($Scope) { $Scope } else { 'Current changes' }) -BaseRef $BaseRef -SecurityReview:$SecurityReview -RepositoryRef $RepositoryRef -RunnerContext $RunnerContext
+        $result = Invoke-HarnessReview -Paths $paths -Scope $(if ($Scope) { $Scope } else { 'Current changes' }) -BaseRef $BaseRef -SecurityReview:$SecurityReview -ReviewLevel $(if ($ReviewLevel) { $ReviewLevel } else { 'critical' }) -RepositoryRef $RepositoryRef -RunnerContext $RunnerContext
         $result | ConvertTo-Json -Depth 10
         if ($result.status -in @('Failed', 'NeedsRecovery', 'blocked')) { throw "Independent review $($result.status). Inspect its recorded outcome and report." }
     }

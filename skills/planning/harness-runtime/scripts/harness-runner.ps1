@@ -213,11 +213,23 @@ function Start-HarnessProcess {
     $start.RedirectStandardOutput = $true
     $start.RedirectStandardError = $true
     $start.RedirectStandardInput = $PSBoundParameters.ContainsKey('InputText')
+    if ($start.RedirectStandardInput) { $start.StandardInputEncoding = [System.Text.UTF8Encoding]::new($false) }
+    $argumentsInCommand = $false
     if ($command.Source -match '\.(ps1|cmd|bat)$') {
         $start.FileName = (Get-Command pwsh -ErrorAction Stop).Source
         $start.ArgumentList.Add('-NoProfile')
         $start.ArgumentList.Add('-NonInteractive')
-        if ($command.Source.EndsWith('.ps1')) {
+        if ($start.RedirectStandardInput) {
+            # The wrapper decodes its input with the console code page, which loses characters outside it, so the
+            # text crosses as Base64 and the wrapper pipes it on as UTF-8. Each argument is a quoted literal, so
+            # PowerShell passes it unchanged instead of reading it as a parameter.
+            $call = foreach ($item in @($command.Source) + @($Arguments)) { "'" + [System.Management.Automation.Language.CodeGeneration]::EscapeSingleQuotedStringContent([string]$item) + "'" }
+            $start.ArgumentList.Add('-Command')
+            $start.ArgumentList.Add('$text = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String((@($input) -join ''''))); $text | & ' + ($call -join ' ') + '; exit $LASTEXITCODE')
+            $InputText = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($InputText))
+            $argumentsInCommand = $true
+        }
+        elseif ($command.Source.EndsWith('.ps1')) {
             $start.ArgumentList.Add('-File')
             $start.ArgumentList.Add($command.Source)
         }
@@ -227,7 +239,7 @@ function Start-HarnessProcess {
             $start.ArgumentList.Add($command.Source)
         }
     }
-    foreach ($argument in $Arguments) { $start.ArgumentList.Add([string]$argument) }
+    if (-not $argumentsInCommand) { foreach ($argument in $Arguments) { $start.ArgumentList.Add([string]$argument) } }
     foreach ($name in $EnvironmentVariables.Keys) { $start.Environment[$name] = [string]$EnvironmentVariables[$name] }
     foreach ($name in @('NODE_OPTIONS', 'VSCODE_INSPECTOR_OPTIONS')) { $null = $start.Environment.Remove($name) }
     if (-not $InheritPermissions) {
@@ -437,7 +449,8 @@ function New-HarnessAgentLaunch {
     }
     if ($Phase -ne 'Develop') {
         $reviewSubject = if ($Phase -eq 'Fresh') { 'the whole selected repository, including unchanged code' } else { 'the requested change set' }
-        $contract = 'Read-only independent code review. Return JSON only: {"verdict":"clean|findings|blocked","summary":"...","findings":[{"file":"...","line":1,"severity":"P1|P2|P3","message":"Concrete defect, triggering scenario, and impact"}]}. Prioritize correctness, regressions, error handling, and consequential test gaps in ' + $reviewSubject + '. Read complete owning functions, relevant callers, and tests before concluding. Report every currently supported finding, including previously reported issues; do not filter to new findings. Distinguish introduced regressions from pre-existing issues. A clean verdict requires an empty findings array and adequate coverage; missing evidence or access is blocked, not clean. Do not edit files or execute commands.'
+        $reviewLevel = Get-HarnessReviewLevel $Task
+        $contract = 'Read-only independent code review. Return JSON only: {"verdict":"clean|findings|blocked","summary":"...","findings":[{"file":"...","line":1,"severity":"P1|P2|P3","message":"Concrete defect, triggering scenario, and impact"}]}. ' + (Get-HarnessReviewLevelRule $reviewLevel $reviewSubject) + ' Read complete owning functions, relevant callers, and tests before concluding. Report every currently supported finding at this level, including previously reported issues that still qualify; do not filter to new findings. Distinguish introduced regressions from pre-existing issues. A clean verdict requires an empty findings array and adequate coverage; missing evidence or access is blocked, not clean. Do not edit files or execute commands.'
     }
     if ($Phase -in @('Review', 'Fresh')) { $contract += ' ' + (Get-HarnessUnitTestRule $Config Review) }
     if ($Phase -eq 'Verify') {
@@ -447,6 +460,8 @@ function New-HarnessAgentLaunch {
     if ($Phase -eq 'Fresh') {
         $previousEvidence = ''
         $contract += ' This is the one fresh full-scope pass. Rebuild your understanding from current sources across the whole selected repository without relying on earlier review conclusions. The changeScope identifies the first pass, not the boundary of Fresh coverage. Inspect the repository structure, source, configuration, and tests beyond the diff. Preserve explicit user and parent restrictions and existing budgets; do not add passes, access another repository, or fetch remote content. If adequate repository coverage cannot be achieved, report the missing coverage and return blocked.'
+        $contract += $(if ($reviewLevel -ceq 'broad') { ' At level broad, audit the whole repository, including pre-existing issues in code the change does not touch.' }
+            else { ' At level critical, use that coverage to find what the change breaks or leaves inconsistent elsewhere: callers and consumers, other copies of the changed logic, configuration, contracts, and tests. Do not audit code the change does not affect.' })
         if ($Task.id) {
             $contract += ' This pass reviews tracked task ' + $Task.id + '. Add "outsideTaskScope":true to a finding only when it is a pre-existing issue that this task neither caused nor must fix under its changeScope and acceptance; those findings become follow-up proposals instead of task work. Omit the field or set it to false for every other finding.'
         }
@@ -480,20 +495,18 @@ $previousEvidence
 Recorded code snapshot:
 $Snapshot
 "@
-    $arguments = @('-C', $launchDirectory, '--prompt', $prompt, '--silent', '--no-ask-user', '--no-auto-update', '--no-remote', '--no-remote-export', '--model', $model, '--output-format', 'text', '--stream', 'off')
+    # The CLI reads the whole prompt from standard input. A --prompt argument would hit the Windows command-line
+    # limit on large diffs, and the CLI ignores standard input when --prompt is given.
+    $arguments = @('-C', $launchDirectory, '--silent', '--no-ask-user', '--no-auto-update', '--no-remote', '--no-remote-export', '--model', $model, '--output-format', 'text', '--stream', 'off')
     if ($model -eq 'auto' -and $Phase -ne 'Verify') { $arguments += @('--auto-tier', 'intelligence') }
     elseif ($effort -ne 'auto') { $arguments += @('--reasoning-effort', $effort) }
     if ($null -ne $credits) { $arguments += @('--max-ai-credits', $credits.ToString([Globalization.CultureInfo]::InvariantCulture)) }
-    $inputParameters = @{}
+    $inputParameters = @{ InputText = $prompt }
     if ($contextTier) {
         if ($contextTier -notin @('default', 'long_context')) { throw 'Unsupported context tier.' }
         $arguments += @('--context', [string]$contextTier)
     }
-    if ($Task.untrustedInput) {
-        $arguments[3] = 'Review the complete task and snapshot supplied on standard input. Return the requested JSON only.'
-        $arguments += '--no-custom-instructions'
-        $inputParameters.InputText = $prompt
-    }
+    if ($Task.untrustedInput) { $arguments += '--no-custom-instructions' }
     if (-not $readOnly) {
         foreach ($permission in $permissionRules) { $arguments += "--allow-tool=$permission" }
         if ($tools.Count -gt 0) { $arguments += '--available-tools=' + ($tools -join ',') }
@@ -628,6 +641,23 @@ function Get-HarnessUnitTestRule {
     'Report a missing unit test only when it leaves critical behavior unprotected: the defect being fixed, data loss, security or permissions, public contracts, or a known regression.'
 }
 
+# A review task without a level is critical. Only an explicit standalone or PR review asks for broad.
+function Get-HarnessReviewLevel {
+    param($Task)
+    $level = [string]$Task.reviewLevel
+    if (-not $level) { return 'critical' }
+    if ($level -cnotin @('critical', 'broad')) { throw 'The review level must be critical or broad.' }
+    $level
+}
+
+function Get-HarnessReviewLevelRule {
+    param([ValidateSet('critical', 'broad')][string]$Level, [string]$Subject)
+    if ($Level -ceq 'broad') {
+        return "Review level broad: find every issue you can support with evidence in $Subject. Cover correctness, regressions, error handling, edge cases, security, performance, maintainability such as duplicated or inconsistent logic, documentation that no longer matches the code, and test gaps, including pre-existing issues. Rate each P1 (blocks merging), P2 (should be fixed), or P3 (minor)."
+    }
+    "Review level critical: find only what blocks merging the change or completing its task in $Subject. Report a defect or regression the change introduces; the change not achieving its purpose, such as the task's issue left unfixed; a security, permission, or data-loss risk; a broken public contract, or a caller, consumer, or configuration the change breaks; a crash or unhandled error on a realistic path; or a missing unit test that the unit-test rule in these instructions calls for. Rate each P1 or P2. Do not report style, naming, refactoring ideas, performance without a concrete failure, speculative risks, or pre-existing issues the change neither causes nor depends on. If you notice a severe pre-existing security or data-loss issue, mention it in summary, not in findings."
+}
+
 function Get-HarnessTestPlanSentence {
     param($Config)
     $summary = Get-HarnessTestingSummary $Config
@@ -712,10 +742,6 @@ function Get-HarnessReviewPanel {
         }
         else { $reviewers = @($primary) }
     }
-    elseif ($Config.runner.criticalReview -eq $false) {
-        $reviewers = @($primary)
-        $note = 'Only one reviewer ran: runner.criticalReview is false.'
-    }
     else {
         $missing = @()
         foreach ($family in $families) {
@@ -727,14 +753,20 @@ function Get-HarnessReviewPanel {
             $defaultOptions = @(foreach ($model in @($family.models)) {
                 if (Test-HarnessModelAllowed $Config $model) { [pscustomobject]@{ model = $model; efforts = @($order); context = 'long_context' } }
             })
+            # The strongest listed model reviews at max effort. The runner's own model, often the session's,
+            # reviews only when restrictions allow no listed model in its family.
             if ($profileOptions.Count) { $reviewers += New-HarnessReviewer -Family $family.id -Label $family.label -Source 'profile' -Options $profileOptions -Fallback $true }
-            elseif ($primary.family -eq $family.id -and (Test-HarnessModelAllowed $Config $primaryModel)) { $reviewers += $primary }
             elseif ($defaultOptions.Count) { $reviewers += New-HarnessReviewer -Family $family.id -Label $family.label -Source 'default' -Options $defaultOptions -Fallback $true }
+            elseif ($primary.family -eq $family.id -and (Test-HarnessModelAllowed $Config $primaryModel)) { $reviewers += $primary }
             elseif (@($family.models).Count -or @($Config.runnerProfiles | Where-Object { $_.model -is [string] -and $_.model -like $family.pattern }).Count) { $missing += "restrictions allow no $($family.label) model" }
             else { $missing += "no $($family.label) model in the review list" }
         }
         if ($reviewers.Count -eq 0) { $reviewers = @($primary) }
-        if ($missing.Count) { $note = "Only one reviewer ran ($($reviewers[0].model)): $($missing -join '; ')." }
+        if ($Config.runner.criticalReview -eq $false) {
+            $reviewers = @($reviewers | Select-Object -First 1)
+            $note = 'Only one reviewer ran: runner.criticalReview is false.'
+        }
+        elseif ($missing.Count) { $note = "Only one reviewer ran ($($reviewers[0].model)): $($missing -join '; ')." }
     }
     $limit = Get-HarnessExecutionLimit $Config maxParallelReviewers $null
     [pscustomobject]@{ reviewers = @($reviewers); parallel = ($reviewers.Count -gt 1 -and ($null -eq $limit -or $limit -ge $reviewers.Count)); note = $note; maxParallel = $limit; primary = $primary; families = @($listing) }
@@ -1268,7 +1300,7 @@ function Invoke-HarnessCycle {
                             Save-HarnessValidationOutcomes $Paths $config $validation
                             if ($validation.failureKind) { $failureKind = $validation.failureKind }
                             $testsRun = @(Get-HarnessTestsRun $validation)
-                            $testsNote = if (-not @(Get-HarnessTestHooks $config afterDev).Count -and -not @(Get-HarnessTestHooks $config afterReview).Count) { 'No declared test flow ran; only the repository''s own tests ran. Declare real tests with /harness-work test declare.' } else { '' }
+                            $testsNote = if (-not @(Get-HarnessTestHooks $config afterDev).Count -and -not @(Get-HarnessTestHooks $config afterReview).Count) { 'No declared test flow ran; only the repository''s own tests ran. Declare real tests with /harness-work test declare.' } else { Get-HarnessExternalRunNote $config $validation }
                         }
                         if ($roundError) { throw $roundError }
                         if ($testable -and $pass.failure) { throw $pass.failure }
@@ -1407,7 +1439,7 @@ function Invoke-HarnessCycle {
 function Invoke-HarnessReview {
     param($Paths, [string]$Scope = 'Current changes', [string]$BaseRef, [switch]$SecurityReview,
         [string]$Workspace, [string]$ExpectedHead, [string]$ReviewGuidance, [switch]$UntrustedInput, $RunnerProfile, [hashtable]$GitEnvironment,
-        [Alias('RepoRef')][string]$RepositoryRef, $RunnerContext)
+        [Alias('RepoRef')][string]$RepositoryRef, $RunnerContext, [ValidateSet('critical', 'broad')][string]$ReviewLevel = 'critical')
     if ($RepositoryRef -and $Workspace) { throw 'Select either a repository reference or a separately verified review workspace, not both.' }
     $config = Read-HarnessConfig $Paths
     $executionRoot = Get-HarnessExecutionRoot $config
@@ -1451,17 +1483,19 @@ function Invoke-HarnessReview {
         $securityContext = if ($SecurityReview) { Get-HarnessReviewSecurityContext $Paths } else { $null }
         $gitContext = if ($GitEnvironment) { [pscustomobject]@{ Environment = $GitEnvironment; Paths = $Paths; Config = $config } } else { $null }
         $baseline = Resolve-HarnessReviewBaseline ([pscustomobject]@{ Project = $Workspace }) $BaseRef -GitContext $gitContext
-        $task = [pscustomobject]@{ id = ''; title = 'Independent code review'; scope = $Scope; kind = 'verify'; acceptance = 'Report evidenced findings against the recorded snapshot.'; untrustedInput = [bool]$UntrustedInput; reviewWorkspace = $Workspace; repositoryRef = $RepositoryRef; repositoryRoot = $repositoryRoot }
+        $task = [pscustomobject]@{ id = ''; title = 'Independent code review'; scope = $Scope; kind = 'verify'; acceptance = 'Report evidenced findings against the recorded snapshot.'; untrustedInput = [bool]$UntrustedInput; reviewWorkspace = $Workspace; repositoryRef = $RepositoryRef; repositoryRoot = $repositoryRoot; reviewLevel = $ReviewLevel }
         $snapshot = Get-HarnessSnapshot $Paths $config $Workspace $baseline.commit -IncludeAllFiles:$UntrustedInput -GitContext $gitContext -RepositoryRoot $repositoryRoot
         if ($ExpectedHead -and ($snapshot | ConvertFrom-Json).head -cne $ExpectedHead) { throw 'Review workspace HEAD does not match the verified PR head.' }
         $ownership = Enter-HarnessOwnership -Paths $Paths -Role review -Workspace $Workspace -Mode Read -Snapshot $snapshot
         if ((Get-HarnessSnapshot $Paths $config $Workspace $baseline.commit -IncludeAllFiles:$UntrustedInput -GitContext $gitContext -RepositoryRoot $repositoryRoot) -cne $snapshot) { throw 'Review inputs changed while acquiring checkout ownership.' }
         $guidance = @($securityContext.content, $ReviewGuidance | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }) -join "`n"
+        # Reviews recorded before review levels reported every finding, so they compare as broad.
         $previousReview = @($state.runs | Where-Object {
             $_.phase -eq 'Review' -and -not $_.taskId -and $_.status -in @('clean', 'findings') -and
             [string]$_.review.repositoryRef -ceq $RepositoryRef -and (-not $RepositoryRef -or $_.review.repositoryRoot -ieq $repositoryRoot) -and
             $_.review.scope -ceq $Scope -and $_.review.baseline.reference -ceq $baseline.reference -and
-            $_.review.baseline.commit -ceq $baseline.commit -and [bool]$_.review.securityReview -eq [bool]$SecurityReview
+            $_.review.baseline.commit -ceq $baseline.commit -and [bool]$_.review.securityReview -eq [bool]$SecurityReview -and
+            $(if ($_.review.reviewLevel) { [string]$_.review.reviewLevel } else { 'broad' }) -ceq $ReviewLevel
         }) | Select-Object -Last 1
         $previousKeys = @(foreach ($finding in $previousReview.review.findings) { Get-HarnessFindingKey $finding })
         $task | Add-Member -NotePropertyName recheckFindings -NotePropertyValue @($previousReview.review.findings | Where-Object { $null -ne $_ })
@@ -1542,7 +1576,7 @@ function Invoke-HarnessReview {
         $newFindings = @($findings | Where-Object { (Get-HarnessFindingKey $_) -cnotin $previousKeys })
         $reviewComplete = $status -eq 'clean' -and $findings.Count -eq 0 -and @($results | Where-Object phase -EQ 'Fresh').Count -eq 1
         $nextPhase = if ($status -in @('findings', 'Partial')) { 'Review' } else { '' }
-        $report = "# Independent review`n`n## Findings`n`n" + (ConvertTo-Json -InputObject @($findings) -Depth 15) + "`n`n## Review`n`nScope: $Scope`nStatus: $status`nBaseline: $($baseline.reference)`nBase commit: $($baseline.commit)`nBaseline selection: $($baseline.selection)`nSecurity guide: $($securityContext.path)`nNew finding count: $($newFindings.Count)`nPrevious comparable report: $($previousReview.report)`nFailure kind: $kind`nError: $failure`n`nNewness uses exact file/line/message comparison, not semantic issue tracking. Earlier reports remain evidence; absence in this report does not mark an earlier issue resolved.`n`n## Passes`n`n" + (ConvertTo-Json -InputObject @($results) -Depth 15) + "`n`n## Snapshot`n`n$snapshot`n"
+        $report = "# Independent review`n`n## Findings`n`n" + (ConvertTo-Json -InputObject @($findings) -Depth 15) + "`n`n## Review`n`nScope: $Scope`nReview level: $ReviewLevel`nStatus: $status`nBaseline: $($baseline.reference)`nBase commit: $($baseline.commit)`nBaseline selection: $($baseline.selection)`nSecurity guide: $($securityContext.path)`nNew finding count: $($newFindings.Count)`nPrevious comparable report: $($previousReview.report)`nFailure kind: $kind`nError: $failure`n`nNewness uses exact file/line/message comparison, not semantic issue tracking. Earlier reports remain evidence; absence in this report does not mark an earlier issue resolved.`n`n## Passes`n`n" + (ConvertTo-Json -InputObject @($results) -Depth 15) + "`n`n## Snapshot`n`n$snapshot`n"
         $report += "`nHarness project: $($Paths.Project)`nRepository reference: $RepositoryRef`nRepository root: $repositoryRoot`nWorkspace: $Workspace`nFresh scope when triggered: Whole selected repository`n"
         $report += "`nReviewers: $(@($panel.reviewers | ForEach-Object { "$($_.model) ($($_.effort), $(if ($_.context) { $_.context } else { 'native context' }))" }) -join ' + ')`nParallel reviewers: $($panel.parallel)`nReviewer note: $($panel.note)`n"
         $report += "`nReview complete: $reviewComplete`nNext phase after fixes: $nextPhase`n"
@@ -1555,11 +1589,11 @@ function Invoke-HarnessReview {
             $run.status = $status
             $run.finishedAt = [datetimeoffset]::UtcNow.ToString('o')
             $run.exitCode = if ($kind -eq 'Success') { '0' } else { '1' }
-            $run | Add-Member -NotePropertyName review -NotePropertyValue ([pscustomobject]@{ scope = $Scope; baseline = $baseline; repositoryRef = $RepositoryRef; repositoryRoot = $repositoryRoot; securityReview = [bool]$SecurityReview; findings = @($findings); newFindingCount = $newFindings.Count; passes = $passes; sessions = $sessions; reviewers = @($panel.reviewers); parallelReviewers = $panel.parallel; reviewerNote = $panel.note; restarts = $restarts; complete = $reviewComplete; nextPhase = $nextPhase })
+            $run | Add-Member -NotePropertyName review -NotePropertyValue ([pscustomobject]@{ scope = $Scope; baseline = $baseline; repositoryRef = $RepositoryRef; repositoryRoot = $repositoryRoot; securityReview = [bool]$SecurityReview; reviewLevel = $ReviewLevel; findings = @($findings); newFindingCount = $newFindings.Count; passes = $passes; sessions = $sessions; reviewers = @($panel.reviewers); parallelReviewers = $panel.parallel; reviewerNote = $panel.note; restarts = $restarts; complete = $reviewComplete; nextPhase = $nextPhase })
             if ($kind -ne 'Interrupted') { $saved.active = $null }
             if ($kind -ne 'PolicyPaused') { Register-HarnessPolicyOutcome $saved $config review $runId $kind "Independent review $status. Report: $reportPath" }
         }
-        [pscustomobject]@{ status = $status; report = $reportPath; passes = $passes; sessions = $sessions; reviewers = @($panel.reviewers); parallelReviewers = $panel.parallel; reviewerNote = $panel.note; restarts = $restarts; baseline = $baseline; repositoryRef = $RepositoryRef; repositoryRoot = $repositoryRoot; securityGuide = $securityContext.path; findings = @($findings); newFindingCount = $newFindings.Count; previousReport = $previousReview.report; complete = $reviewComplete; nextPhase = $nextPhase }
+        [pscustomobject]@{ status = $status; report = $reportPath; reviewLevel = $ReviewLevel; passes = $passes; sessions = $sessions; reviewers = @($panel.reviewers); parallelReviewers = $panel.parallel; reviewerNote = $panel.note; restarts = $restarts; baseline = $baseline; repositoryRef = $RepositoryRef; repositoryRoot = $repositoryRoot; securityGuide = $securityContext.path; findings = @($findings); newFindingCount = $newFindings.Count; previousReport = $previousReview.report; complete = $reviewComplete; nextPhase = $nextPhase }
     }
     catch {
         if ($_.Exception.Data['SkillOwnershipStatus'] -and -not $executionStarted) { return [pscustomobject]@{ status = $_.Exception.Data['SkillOwnershipStatus']; owner = $_.Exception.Data['SkillOwnershipOwner']; message = $_.Exception.Message } }

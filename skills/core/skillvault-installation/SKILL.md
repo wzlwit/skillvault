@@ -3,7 +3,7 @@ name: skillvault-installation
 description: "[install|update|uninstall|clean|refresh] Manage installed SkillVault copies and keep them current. Shorthand: /sv-installation. List defaults to installed copies; list catalog inspects sources; clean finds skills that load twice or conflict and shows overlaps, which skillvault-discovery evaluate can judge. Refresh merges upstream changes into adapted skills when push is permitted, then brings new commits to the local checkout and managed global latest copies; scheduling delegates to harness-timer set refresh. Edits no SkillVault source or application code except refresh's adaptation merges; skillvault-authoring owns skill authoring."
 metadata:
   author: wzlwit
-  version: "2.0.0"
+  version: "3.0.0"
 argument-hint: "[list|install|update|uninstall|clean|refresh] [<arguments>...]"
 ---
 
@@ -64,5 +64,5 @@ skill, including the `harness-runtime` bundle; use `install --exact harness-proj
   It preserves pins, unrelated installs, recorded sources, and failure isolation; dependency checks
   and rollback follow [runtime compatibility](./references/refresh.md#runtime-compatibility).
 
-An explicitly requested `update --topics` follows [topic-layout migration](./references/install.md#topic-layout-migration),
+An explicitly requested topic-layout migration follows [topic-layout migration](./references/install.md#topic-layout-migration),
 which also retires installed copies under former names.

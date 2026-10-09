@@ -1,9 +1,9 @@
 ---
 name: harness-monitor
-description: "[declare|check|accept|auto] Monitor work across approved source adapters, including ADO and documents; assess relevance, Auto-verify status, correlate explicit requirements, reconcile evidence, and expose verified subsets, or check health observations. `auto` follows up a source's items or health incidents through an approved local-only worker flow on a schedule. Shorthand: /hn-monitor. Overlaps with harness-work on checks and intake, kpi-dashboard on metric contracts, harness-write on status and owner evidence, and dri on incidents; preserves deferred work and never launches development."
+description: "[declare|check|accept|auto] Monitor work across approved source adapters, including ADO and documents; assess relevance, Auto-verify status, correlate explicit requirements, reconcile evidence, and expose verified subsets, or check health observations. `declare` drafts or reuses a monitor's declaration file and saves it; `auto` follows up a source's items or health incidents through an approved local-only worker flow on a schedule. Shorthand: /hn-monitor. Overlaps with harness-work on checks and intake, kpi-dashboard on metric contracts, harness-write on status and owner evidence, and dri on incidents; preserves deferred work and never launches development."
 metadata:
   author: wzlwit
-  version: "1.1.0"
+  version: "2.0.0"
 argument-hint: "[list|declare|check|accept|auto] [<arguments>...]"
 ---
 
@@ -22,28 +22,40 @@ read-only bare default, and each procedure's arguments, permissions, and confirm
 unchanged; abbreviation adds no confirmation. This is conversational routing, not script argument parsing.
 
 - Bare invocation, `list`, `status`, and `help` show saved definitions, observations, incidents,
-  candidates, and actions. Unknown actions show help. Legacy `task` maps to `accept`.
+  candidates, `pendingDefinitions` (declaration files that differ from what's saved, such as held
+  drafts), and actions. Unknown actions show help. Legacy `task` maps to `accept`.
 - `declare`, `check`, and `accept` follow the [monitoring procedure](./references/workflow.md). Use
   [work discovery](./references/discovery.md) for ADO, folders, and adapter feeds, and
-  [health observations](./references/monitoring.md) for numeric metrics. A request to watch a source
-  prepares a declaration preview; it never silently initializes, schedules, or starts work.
-- `check` and `check all` cover every configured source (`-AllMonitors`); `check <name>` is scoped
+  [health observations](./references/monitoring.md) for numeric metrics.
+- `declare <name>|<file> [--hold]` saves a monitor's declaration. It uses the given file or the
+  declaration file under `.harness_sv/definitions/` that names the monitor, or drafts
+  `monitor-<name>.json` there from the request. It shows the change and asks to save; with no answer
+  it saves after 1 minute. `--hold`, or asking to hold, saves nothing until you say save. After
+  saving, the reply offers a timer (every `1h` by default) with its exact
+  `/harness-timer set project <duration> monitor <name>` command, without waiting; a yes, now or
+  later, starts it. Declaring never initializes the project or runs a check.
+- `check` covers every configured source (`-AllMonitors`); `check <name>` is scoped
   and never proves that all sources passed. Partial or unverified results cannot yield a successful
   aggregate pickup list; `verifiedSubset` stays separate and labeled.
 - `check` assesses service relevance, verifies status with AI model `auto` (model selection, not Max
   or scheduling), and reconciles evidence. Only Relevant, verified unfinished work becomes a proposal;
   Unverified work stays visible. Scope terms find candidates but never establish relevance.
-- `accept <id>` previews intake through `-Action MonitorTask`; applying it needs the owner and reason.
+- `accept <id>` accepts the candidate or incident at once through `-Action MonitorTask -Apply`, since
+  the id names it, and shows the resulting task, as Ask Once in the runtime guide describes.
   Candidate rows are proposals, not execution-approved tasks.
 - `auto` follows up a source or health monitor automatically. Bare `auto` lists each monitor's
   standing intake, worker, limits, last check, and its tasks. `auto <name> --worker <flow> [--every
-  <duration>] [--max <n>] [--attempts <n>] [--setup-exit <code>...]` previews, then on the owner's
-  approval turns the intake on through `-Action MonitorAuto -Apply -Actor -Reason` and delegates the
-  `monitor <name>` schedule to `/harness-timer set project <duration>` (default `1h`). Each complete
+  <duration>]` shows the change and asks once. It takes up to 2 items per check with 2 attempts each
+  unless the request names other limits or setup exit codes, which map to `-MaxPerCheck`,
+  `-MaxAttempts`, and `-SetupExitCode`. On a yes it turns the intake on through
+  `-Action MonitorAuto -Apply -Actor -Reason` and delegates the
+  `monitor <name>` schedule to `/harness-timer set project <duration>` (default `1h`); without an
+  answer it holds, because it starts automatic work. Each complete
   `check <name>` then accepts what manual acceptance would, items or Unhealthy incidents, and runs
-  the declared local-only worker flow for up to `--max` of them. `auto <name> off` removes the intake
-  and disables that timer. Before turning auto on, read
-  [standing intake](./references/discovery.md#standing-intake); `check all` never takes items in.
+  the declared local-only worker flow for up to the per-check limit of them. `auto <name> off`
+  removes the intake and disables that timer. Before turning auto on, read
+  [standing intake](./references/discovery.md#standing-intake); a `check` of all sources never takes
+  items in.
 
 ## Boundaries
 

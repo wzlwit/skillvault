@@ -3,7 +3,7 @@ name: pr-review
 description: "[run|configure] Review a PR URL, repository, or user-wide watchlist; a PR URL alone also starts a review. Overlaps with harness-review on general review and differential-review on security; owns remote selection and isolated evidence, while pr-watch manages targets."
 metadata:
   author: wzlwit
-  version: "1.2.0"
+  version: "2.0.0"
 argument-hint: "[list|run|configure] [<arguments>...]"
 ---
 
@@ -42,8 +42,10 @@ without saved settings, `run` uses github.com, the harness review model list, an
 first run creates the controller. Missing tools or account access are reported, not worked around.
 
 1. Resolve an explicit HTTPS PR/repository URL, or review the saved list for `/pr-review run`; an
-   empty list is a no-op and an ad-hoc URL adds no watch entry. Map `--limit`, `--include-drafts`,
-   `--again`, and `--security` to `-Limit`, `-IncludeDrafts`, `-Again`, and `-SecurityReview`.
+   empty list is a no-op and an ad-hoc URL adds no watch entry. Map `--broad` to `-ReviewLevel broad`,
+   and plain requests to the other parameters: a PR count to `-Limit`, including drafts to
+   `-IncludeDrafts`, reviewing an unchanged PR again to `-Again`, a security review to
+   `-SecurityReview`, and a critical review when `broad` is saved to `-ReviewLevel critical`.
 2. The helper uses the already configured `gh` account, deduplicates targets, verifies base/head
    identity, and collects paginated discussion, reviews, inline comments, and thread resolution
    state. Missing coverage blocks that review.
@@ -51,12 +53,15 @@ first run creates the controller. Missing tools or account access are reported, 
    merge-base; never switch the user's branch or initialize a target repository's harness. Reuse
    the shared read-only reviewer and its at-most-two-pass contract, without invoking
    `/harness-review` recursively. Report concrete defects with triggering conditions, impact, and
-   anchors.
+   anchors. By default the review level is `critical`: only what blocks merging the PR. `--broad`, or
+   a saved `reviewLevel: broad`, reports every issue with evidence, including minor and pre-existing
+   ones; a per-run option changes no saved setting.
 4. Use the first saved profile allowed by current restrictions, or by default the strongest allowed
    model in the harness review list, skipping models and effort levels the CLI rejects before any
    model work. Saved profiles are never replaced. Time, PR-count, and credit limits apply only when
    saved. No unlimited agents or context is implied.
-5. Skip unchanged completed snapshots unless `--again` is explicit. Findings are a completed review,
+5. Skip unchanged completed snapshots unless the user asks to review them again; a broad result also
+   covers a later critical request. Findings are a completed review,
    not a clean PR. Failed, blocked, stale, or incomplete attempts stay pending.
 6. Show findings first, then PR identity, settings, pass count, deferred work, blockers, and report
    paths. `Bounded`/`Partial` is not an all-list clean result; omission never resolves old findings.

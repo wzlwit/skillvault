@@ -69,10 +69,11 @@ must report initialization as pending rather than manufacture runtime configurat
    New controllers use authoritative `config/` domain files, generated `board/` views, `runtime/`
    state/locks, monthly `history/`, and a short README linking those locations inside `.harness_sv`.
    The canonical board defaults to `current-<project-slug>.csv`; its persisted `currentFileName`
-   is resolved centrally. `init --current-file <name>` can select a safe filename for a new controller.
+   is resolved centrally. `init` takes a safe board filename for a new controller when the request
+   names one (`-CurrentFileName`).
    Existing controllers keep their previous filename; reconnect never renames it or creates topic copies.
    Preserve a saved explicit board location without moving records. Reconnect never migrates an
-   existing controller; `/hn-project migrate` separately previews and applies a requested conversion.
+   existing controller; `/hn-project migrate` separately shows a requested conversion and applies it after one question.
 4. Read the installed Graphify guide and authoritative upstream instructions. Generate or
    refresh architecture context only if its runtime is available and configured. The SkillVault
    entry is reference-only; do not install its CLI, hooks, or upstream plugin without approval.

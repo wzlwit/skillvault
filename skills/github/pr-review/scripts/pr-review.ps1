@@ -7,6 +7,7 @@ param(
     [switch]$Again,
     [switch]$Scheduled,
     [switch]$SecurityReview,
+    [ValidateSet('critical', 'broad')][string]$ReviewLevel,
     [string]$DefinitionPath,
     [switch]$Apply,
     [ValidateSet('Status', 'Set', 'Disable', 'Resume')][string]$TimerAction = 'Set',
@@ -32,6 +33,10 @@ switch ($Action) {
         $definition = Get-Content -LiteralPath $DefinitionPath -Raw | ConvertFrom-Json -NoEnumerate
         Set-PrReviewConfiguration $paths $definition -Apply:$Apply | ConvertTo-Json -Depth 20
     }
-    'Review' { Invoke-PrReviewRun $paths -Url $Url -Limit $Limit -IncludeDrafts:$IncludeDrafts -Again:$Again -Scheduled:$Scheduled -SecurityReview:$SecurityReview | ConvertTo-Json -Depth 20 }
+    'Review' {
+        $levelOption = @{}
+        if ($ReviewLevel) { $levelOption.ReviewLevel = $ReviewLevel }
+        Invoke-PrReviewRun $paths -Url $Url -Limit $Limit -IncludeDrafts:$IncludeDrafts -Again:$Again -Scheduled:$Scheduled -SecurityReview:$SecurityReview @levelOption | ConvertTo-Json -Depth 20
+    }
     'Timer' { Invoke-PrReviewTimer $paths -Action $TimerAction -IntervalDays $IntervalDays -Apply:$Apply -RunnerPath (Join-Path $PSScriptRoot 'pr-review.ps1') | ConvertTo-Json -Depth 15 }
 }

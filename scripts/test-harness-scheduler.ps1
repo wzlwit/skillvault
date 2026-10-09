@@ -24,6 +24,14 @@ if (Test-HarnessMaintenanceWindow ([datetimeoffset]'2026-09-19T08:45:00Z') UTC '
 Write-Output 'Scheduler duration checks passed: fixed/calendar cadence, coalescing, and Saturday maintenance window.'
 
 . (Join-Path $PSScriptRoot '../skills/planning/harness-timer/scripts/harness-scheduler.ps1')
+# PowerShell 7 reads a saved 'o' timestamp back as a UTC DateTime; a running worker must still be recognized after that.
+$self = Get-Process -Id $PID
+$started = $self.StartTime.ToUniversalTime().ToString('o')
+$roundTripped = [pscustomobject]@{ processId = $PID; processStartedAt = $started } | ConvertTo-Json | ConvertFrom-Json
+$movedStart = [pscustomobject]@{ processId = $PID; processStartedAt = $self.StartTime.ToUniversalTime().AddSeconds(-5).ToString('o') } | ConvertTo-Json | ConvertFrom-Json
+if (-not (Test-HarnessScheduledProcess $roundTripped) -or -not (Test-HarnessScheduledProcess ([pscustomobject]@{ processId = $PID; processStartedAt = $started }))) { throw 'A running worker looked dead after its start time was saved and read back.' }
+if ((Test-HarnessScheduledProcess $movedStart) -or (Test-HarnessScheduledProcess ([pscustomobject]@{ processId = [int]::MaxValue; processStartedAt = $started }))) { throw 'A reused process ID or a missing process counted as the running worker.' }
+Write-Output 'Live-worker checks passed: a saved start time read back from JSON matches the running worker; a different start time or a missing process does not.'
 $syncHeartbeat = ${function:Sync-HarnessHeartbeat}
 $fixture = Join-Path ([IO.Path]::GetTempPath()) ('sv-scheduler-' + [guid]::NewGuid().ToString('N'))
 $savedFixtureOwnershipRoot = $env:SKILLVAULT_OWNERSHIP_ROOT

@@ -1,9 +1,11 @@
 
 # Rules Core
 
-For `/rules apply` (or `/rules core`), apply these rules to the current coding work without editing rule files.
-`/rules` also keeps a generated copy of the numbered rules in `~/.copilot/copilot-instructions.md`,
-so every Copilot chat loads them; installing the skill alone does not write that file.
+`/rules apply` puts these rules and the [extra rules](extra.md) into effect: globally by default,
+through a generated block in `~/.copilot/copilot-instructions.md` that every Copilot chat loads, in a
+project, or for the current chat only. `/rules core` (`/rules apply core`) puts only these four.
+Another skill that says to apply `/rules apply` means following them in that work, without editing
+files; installing the skill alone writes nothing.
 
 1. **Use current evidence.** Inspect current code and authoritative documentation. Do not
    rely on grep hits, snippets, cached knowledge, or unsupported assertions without source

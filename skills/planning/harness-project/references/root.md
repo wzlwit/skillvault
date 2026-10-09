@@ -47,8 +47,9 @@ Read Root/Board/Status/Context's `current` path or the generated README; consume
 `current.csv`. An existing config with no `currentFileName` still resolves to `current.csv`.
 New initialization may explicitly supply `-CurrentFileName`; reconnect refuses a different name.
 
-`/harness-project root --current-file current-service.csv` previews a rename in the selected controller.
-Add `--apply` only for an approved rename. The session maps these options to the existing Board
+A request to rename the board file, such as to `current-service.csv`, shows the rename in the selected
+controller and asks once; a yes, or `--apply` in the request, renames it, and without an answer
+nothing changes. The session maps the request to the existing Board
 action, not Root path selection, and never changes board directory and filename in the same call:
 
 ```powershell
@@ -64,8 +65,9 @@ The board ownership marker records the published filename, not a second editable
 Changing the declaration alone does not move files: finish the guarded Board rename before the next
 projection. Review custom external scripts or documents separately; the helper does not rewrite them.
 
-`/harness-project root --view provisioning --monitors ado-provisioning,design-provisioning` previews an
-explicit filtered snapshot. Map the named monitors exactly to `-ViewMonitors`; the topic is a label,
+A request for a filtered view, such as `provisioning` with the monitors `ado-provisioning` and
+`design-provisioning`, shows an explicit filtered snapshot and asks once before writing it. Map the
+topic to `-ViewTopic` and the named monitors exactly to `-ViewMonitors`; the topic is a label,
 not an inferred semantic filter. Applying uses the same canonical rows/schema and writes only the
 selected monitors to `artifacts/board-views/current-<project>-<topic>.csv`:
 

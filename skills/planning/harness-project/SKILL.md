@@ -3,7 +3,7 @@ name: harness-project
 description: "[root|init|migrate|context|clean|policy] Set up and steer a harness project: show status, select or move its root, initialize, migrate layout, show context and register its sources and coding repositories, clean history, and set limits and failure policy, including pause, stop, and resume. Shorthand: /hn-project. Context summaries overlap with handoff. Owns retention; harness-timer schedules maintenance. Bare invocation only lists."
 metadata:
   author: wzlwit
-  version: "1.0.0"
+  version: "2.0.0"
 argument-hint: "[list|root|init|migrate|context|clean|policy] [<arguments>...]"
 ---
 
@@ -31,12 +31,12 @@ reads limits.
 | `list` | Show the selected root, saved status, and actions |
 | `root [<path>]` | [Show or change the root; prompted moves default to Yes after initialization](./references/root.md) |
 | `init` | [Initialize or reconnect](./references/init.md) |
-| `migrate [--apply]` | Preview or apply an in-place layout migration: Layout Migration in the runtime guide |
+| `migrate` | Convert the layout in place after one question: Layout Migration in the runtime guide |
 | `context [<task>]`, `context add\|remove` | [Show rules, plans, decisions, registered sources, and how the project is tested; add or remove URLs, files, folders, and coding repositories](./references/context.md) |
-| `clean [--policy <file>] [--apply]` | Preview historical-data cleanup or configure retention: History Cleanup in the runtime guide |
+| `clean [--policy <file>]` | Show historical-data cleanup or a retention change and ask once: History Cleanup in the runtime guide |
 | `policy list [limits\|fallback]` | Read limits, failure settings, durable pauses, and the unit-test level; `limits` also lists the review models |
-| `policy set limits <file>` | [Restrictions](./references/limits.md), using its Declare preview/apply procedure |
-| `policy set fallback <file>` | [Failure policy](./references/fallback.md), using its Declare preview/apply procedure |
+| `policy set limits <file>` | [Restrictions](./references/limits.md): show the replacement and ask once |
+| `policy set fallback <file>` | [Failure policy](./references/fallback.md): show the replacement and ask once |
 | `policy set unit-tests <critical\|broad>` | Set how much unit testing the developer adds and reviewers expect, through the test declarations |
 | `policy pause\|stop\|resume` | [Target controls](./references/fallback.md#pause-stop-and-resume) |
 
@@ -51,9 +51,9 @@ installed beside this skill in the same scope.
   an initialized root prompts to move its data, with **Yes: Move** as the default; the new Root stays
   selected either way. Invalid paths leave Root unchanged and never fall back. The
   [root guide](./references/root.md) owns the prompt, the `loc --root` and `loc --board` forms, and
-  [current-view names](./references/root.md#current-view-names), including `root --current-file`
-  renames and `root --view` exports.
-- `migrate` converts a layout in place after preview and approval; `init` never migrates. It is not
+  [current-view names](./references/root.md#current-view-names), including renaming the board file
+  and exporting a filtered view.
+- `migrate` converts a layout in place after one question; `init` never migrates. It is not
   Root relocation or cleanup.
 - `clean` owns retained run records and reports, not schedules, skill folders, application files, or
   worktrees. `/harness-timer` owns cadence and stale schedules.
@@ -69,9 +69,11 @@ installed beside this skill in the same scope.
 - Limits and failure handling remain separate configuration objects. `policy limits` or
   `policy fallback` without a declaration selects `policy list`, and the old `declare <file>` form
   selects `policy set`; remaining arguments and runtime PolicyAction names are unchanged. Limits do
-  not clear pauses; resume does not restart or requeue work. Preview persistent changes and obtain
-  the required owner, reason, and confirmation. Explicit emergency stop authority is not delayed by
-  an interview. The detailed guides own field contracts; examples are not accepted settings.
+  not clear pauses; resume does not restart or requeue work. Changes follow Ask Once in the runtime
+  guide: one request, one question with the required owner and reason. Policy, `resume`, `migrate`,
+  and `clean` hold without an answer, and `--apply` in the request is the answer. An explicit pause or
+  stop applies at once, never delayed by an interview. The detailed guides own field contracts;
+  examples are not accepted settings.
 - `policy set unit-tests <level>` writes `{"unitTests": "<level>"}` to
   `.harness_sv/definitions/unit-tests.json` and applies it with `/harness-work test declare`, which
   owns the setting; `critical` is the default. It changes what the developer adds and what reviewers

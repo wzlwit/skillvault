@@ -27,12 +27,16 @@ rules compact, and do not copy incident narratives, confidence scores, or privat
 
 ## Confirmed Edit Procedure
 
-1. Choose the target. An explicit location wins, and a project-specific rule belongs in that
-   project's instructions. Otherwise use the private **Personal rules** section of
-   `~/.copilot/copilot-instructions.md`, after the generated core block; create the file first with
-   the [always-on helper](../scripts/always-on.ps1) if it is missing. Change the shared four core
-   rules only when the user says `core`. Personal and work-specific rules never go to SkillVault.
-   Ask if the target is still unclear; never create a second competing rules file.
+1. Choose the target. An explicit location wins. `global`, the default, is the private
+   **Personal rules** section of `~/.copilot/copilot-instructions.md`, after the generated block;
+   create the file first with the [always-on helper](../scripts/always-on.ps1) if it is missing.
+   `project` is the current project's instructions: the **Project rules** section of
+   `.github/copilot-instructions.md`, or the file where the project already keeps its instructions,
+   such as AGENTS.md. The SkillVault library changes only when the user names it: `extra` edits the
+   [extra rules](./extra.md), one bullet per rule, and `core` the four core rules, both in the
+   verified SkillVault checkout. The library is public, so a rule that needs private or work-specific
+   details, such as internal system, customer, or person names, paths, or IDs, stays `global` or
+   `project`. Ask if the target is still unclear; never create a second competing rules file.
 2. Read the complete governing section and current rules before proposing a change.
 3. Check for duplication, conflict, weakened requirements, and the appropriate existing rule.
    Preserve explicit security requirements. If the rule is a limit the harness can enforce, say
@@ -42,9 +46,12 @@ rules compact, and do not copy incident narratives, confidence scores, or privat
    compact guidance that must remain synchronized.
 5. Wait for explicit confirmation unless the current request already approves the exact text.
 6. Apply only the confirmed change. Keep numbering, style, and detailed guidance consistent.
-7. For a `core` change, edit the [compact core](./core.md) in the verified SkillVault checkout, which
-   is public: no private or project details. Publishing needs a separate request. Then update the
-   installed `rules` copy and regenerate the always-on block with the helper's `-Apply`.
+7. For an `extra` or `core` change, edit the [extra rules](./extra.md) or the [compact core](./core.md)
+   in the verified SkillVault checkout, which is public: no private or project details. Then update
+   the installed `rules` copy and rerun the helper with `-Apply` for each scope where the rules are
+   applied, starting with global; each block keeps its set. Committing and publishing need separate
+   requests; another machine gets the change after it is pushed, its `rules` copy is updated, and
+   `/rules apply` runs there.
 8. Validate the changed Markdown and any affected catalog/manifest. Report changed files and
    anything deliberately excluded from the compact core.
 

@@ -47,7 +47,32 @@ function Get-HarnessTestingSummary {
         })
         environments = @(foreach ($environment in @($settings.environments | Where-Object { $null -ne $_ })) { [pscustomobject]@{ name = [string]$environment.name; allowScheduled = [bool]$environment.allowScheduled } })
         note = $(if (-not $withReview.Count -and -not $afterReview.Count) { 'No declared test flow runs during development; the harness runs runner.validationCommands or the repository test entry (scripts/test-all.ps1, then npm test). Declare real tests with /harness-work test declare.' } else { '' })
+        warnings = @(Get-HarnessTestWarnings $settings)
     }
+}
+
+function Get-HarnessExternalFlowNames {
+    param($Settings, [string[]]$Names)
+    $external = @($Settings.flows | Where-Object { $null -ne $_ -and $_.effects -ceq 'external' } | ForEach-Object { [string]$_.name })
+    @($Names | Where-Object { $_ -and $_ -in $external } | Select-Object -Unique)
+}
+
+# An external flow in afterDev is allowed, but it runs on code that review has not passed yet.
+function Get-HarnessTestWarnings {
+    param($Settings)
+    $names = @($Settings.afterDev | Where-Object { $null -ne $_ } | ForEach-Object { [string]$_.flow })
+    foreach ($name in @(Get-HarnessExternalFlowNames $Settings $names)) {
+        "Flow $name declares external effects, and afterDev runs it on code that review has not passed yet, at the same time as the first review. Keep it there if that is intended, or move it to afterReview to run it only on reviewed code."
+    }
+}
+
+# The run-report note for external afterDev flows that ran before review was clean.
+function Get-HarnessExternalRunNote {
+    param($Config, $Validation)
+    $names = @($Validation.flows | Where-Object { $null -ne $_ } | ForEach-Object { [string]$_.flow })
+    $ran = @(Get-HarnessExternalFlowNames (Get-HarnessTestSettings $Config) $names)
+    if (-not $ran.Count) { return '' }
+    "External flows ran before review was clean: $($ran -join ', ')."
 }
 
 function Assert-HarnessTestName {
@@ -78,7 +103,7 @@ function Assert-HarnessTestSettings {
     foreach ($flow in $Settings.flows) {
         Assert-HarnessTestName $flow.name
         if ($flowNames.ContainsKey($flow.name)) { throw "Duplicate test flow: $($flow.name)" }
-        $flowNames[$flow.name] = [string]$flow.effects
+        $flowNames[$flow.name] = $true
         if (-not $environmentNames.ContainsKey([string]$flow.defaultEnvironment)) { throw "Unknown default environment for flow $($flow.name)." }
         $minutes = [double]$flow.maxMinutes
         if ($minutes -le 0 -or [double]::IsNaN($minutes) -or [double]::IsInfinity($minutes)) { throw "Test flow $($flow.name) requires a positive maxMinutes budget." }
@@ -94,8 +119,6 @@ function Assert-HarnessTestSettings {
         foreach ($hook in @($Settings.$stage | Where-Object { $null -ne $_ })) {
             if (-not $flowNames.ContainsKey([string]$hook.flow)) { throw "Unknown $stage test flow: $($hook.flow)" }
             if ($hook.environment -and -not $environmentNames.ContainsKey([string]$hook.environment)) { throw "Unknown $stage environment: $($hook.environment)" }
-            # afterDev runs on code that review has not passed yet, so it may not reach other systems.
-            if ($stage -ceq 'afterDev' -and $flowNames[[string]$hook.flow] -ceq 'external') { throw "Flow $($hook.flow) declares external effects, so it cannot run before review is clean. List it in afterReview, or run it on demand or on a timer." }
         }
     }
 }
@@ -134,7 +157,9 @@ function Set-HarnessTestSettings {
             Assert-HarnessTestSettings $settings
             $config | Add-Member -NotePropertyName testing -NotePropertyValue $settings -Force
             Write-HarnessConfig $Paths $config
-            $settings
+            $saved = $settings | Select-Object -Property *
+            $saved | Add-Member -NotePropertyName warnings -NotePropertyValue @(Get-HarnessTestWarnings $settings) -Force
+            $saved
         }
         finally { $lock.Dispose() }
     }

@@ -32,7 +32,7 @@ the project, or start workers. Situations below are usage guidance, not implicit
 
 ## Declare
 
-`/harness-project policy limits declare <file>` reads and previews a JSON declaration; it does not save it.
+`/harness-project policy set limits <file>` reads the JSON declaration and asks once before saving it.
 For a prose request, inspect the actual runner/test configuration, clarify the intended boundaries,
 and author the requested declaration at an explicit project path. Do not choose live thresholds
 from this guide or copy permissions from task descriptions.
@@ -41,10 +41,11 @@ from this guide or copy permissions from task descriptions.
 & <harness-folder>/scripts/harness.ps1 -ProjectPath <root> -Action Restrict -PolicyAction Declare -DefinitionPath <file>
 ```
 
-Show the full current/proposed policy, removals, and affected commands. After the user approves that
-exact change, rerun with `-Apply -Actor <human-owner> -Reason <approved-reason>`. An explicit
-`/harness-project policy limits declare <file> --apply` authorizes that reviewed declaration; obtain a missing owner
-or reason rather than inventing one. Do not apply unseen file changes after approval.
+Show the full current/proposed policy, removals, and affected commands, then ask once, as Ask Once in
+the runtime guide describes. On a yes, rerun with `-Apply -Actor <human-owner> -Reason <reason>`; a
+request that already says `--apply` is the yes. Without an answer nothing is saved, because limits
+are permission boundaries. Obtain a missing owner or reason rather than inventing one, and save
+exactly the file shown.
 
 The declaration **replaces only** `config/policy.json`'s `restrictions` object in layout 2; it does not merge
 omitted fields. Omission removes that additional restriction, and `{}` explicitly clears the

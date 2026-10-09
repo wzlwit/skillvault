@@ -103,7 +103,11 @@ function Test-PrPublishBody {
     $findings = [Collections.Generic.List[object]]::new()
     $text = ($Body -replace "`r`n", "`n").TrimStart([char]0xFEFF)
     $sections = Get-PrPublishSections $text
-    if ($Template) {
+    # An update keeps the existing description as written, so style checks cover only text it adds or changes.
+    $keeping = -not [string]::IsNullOrWhiteSpace($PreviousBody)
+    $previousLines = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    if ($keeping) { foreach ($previousLine in (($PreviousBody -replace "`r`n", "`n") -split "`n")) { $null = $previousLines.Add($previousLine.Trim()) } }
+    if ($Template -and -not $keeping) {
         $templateText = $Template -replace "`r`n", "`n"
         foreach ($heading in @(Get-PrPublishSections $templateText | Where-Object heading | ForEach-Object heading)) {
             if (-not @($sections | Where-Object { $_.heading -ieq $heading }).Count) { $findings.Add([pscustomobject]@{ code = 'MissingSection'; message = "Missing template section '$heading'." }) }
@@ -137,19 +141,20 @@ function Test-PrPublishBody {
         $line = $lines[$index]
         if ($line -match '^\s*```') { $inFence = -not $inFence; continue }
         if ($inFence) { continue }
+        $unchanged = $keeping -and $previousLines.Contains($line.Trim())
         if ($line -match '^#{1,6}\s+(.+?)\s*$') { $heading = $Matches[1].Trim() }
         if ($line -match '^\s*\|') {
             $width = @(Get-PrPublishCells $line).Count
             if ($null -eq $tableWidth) {
                 $tableWidth = $width
-                if ($heading -notmatch '(?i)^Current vs\.? to-be' -and ($line.Trim() -replace '\s+', ' ') -cnotin $templateTables) {
+                if (-not $unchanged -and $heading -notmatch '(?i)^Current vs\.? to-be' -and ($line.Trim() -replace '\s+', ' ') -cnotin $templateTables) {
                     $findings.Add([pscustomobject]@{ code = 'ExtraTable'; message = "Line $($index + 1) starts a table outside Current vs. to-be; write it as bullets." })
                 }
             }
-            elseif ($width -ne $tableWidth) { $findings.Add([pscustomobject]@{ code = 'TableColumns'; message = "Line $($index + 1) has $width cells; its table header has $tableWidth." }) }
+            elseif ($width -ne $tableWidth -and -not $unchanged) { $findings.Add([pscustomobject]@{ code = 'TableColumns'; message = "Line $($index + 1) has $width cells; its table header has $tableWidth." }) }
         }
         else { $tableWidth = $null }
-        if (($line -replace '`[^`]*`', '') -match '[\u2013\u2014]') { $findings.Add([pscustomobject]@{ code = 'Dash'; message = "Line $($index + 1) has an em or en dash outside code." }) }
+        if (-not $unchanged -and ($line -replace '`[^`]*`', '') -match '[\u2013\u2014]') { $findings.Add([pscustomobject]@{ code = 'Dash'; message = "Line $($index + 1) has an em or en dash outside code." }) }
     }
     if ($PreviousBody) {
         foreach ($target in @([regex]::Matches($PreviousBody, '\]\(([^)\s]+)\)|<(https?://[^>\s]+)>') | ForEach-Object { if ($_.Groups[1].Success) { $_.Groups[1].Value } else { $_.Groups[2].Value } } | Select-Object -Unique)) {
@@ -157,7 +162,7 @@ function Test-PrPublishBody {
         }
     }
     if ($RepositoryPath) {
-        $proof = @($sections | Where-Object { $_.heading -match '(?i)^Test Validation Proof' }) | Select-Object -First 1
+        $proof = @($sections | Where-Object { $_.heading -match '(?i)^(Test Validation Proof|Validation)\b' }) | Select-Object -First 1
         $names = @([regex]::Matches((@($proof.lines) -join "`n"), '`([A-Za-z_][A-Za-z0-9_]*_[A-Za-z0-9_]+)`') | ForEach-Object { $_.Groups[1].Value } | Select-Object -Unique)
         foreach ($name in $names) {
             $null = & git -C $RepositoryPath grep -F -q -e $name 2>$null
@@ -179,9 +184,55 @@ function Invoke-PrPublishCheck {
     $live = if ($status.pullRequest) { Get-PrPublishLiveBody $status } else { $null }
     if (-not $BodyFile -and -not $live) { throw 'No open pull request for this branch; supply -BodyFile to check a draft.' }
     $body = if ($BodyFile) { [IO.File]::ReadAllText((Resolve-Path -LiteralPath $BodyFile).Path) } else { $live.body }
-    $previous = if ($PreviousBodyFile) { [IO.File]::ReadAllText((Resolve-Path -LiteralPath $PreviousBodyFile).Path) } elseif ($BodyFile -and $live) { $live.body } else { $null }
+    # The live description is the text an update keeps, including when it is checked on its own.
+    $previous = if ($PreviousBodyFile) { [IO.File]::ReadAllText((Resolve-Path -LiteralPath $PreviousBodyFile).Path) } elseif ($live) { $live.body } else { $null }
     $template = if ($status.template) { [IO.File]::ReadAllText($status.template) } else { $null }
     [pscustomobject]@{ checked = $(if ($BodyFile) { $BodyFile } else { $live.url }); template = $status.template; findings = (Test-PrPublishBody $body -Template $template -PreviousBody $previous -RepositoryPath $status.root) }
+}
+
+# Adds the Current vs. to-be section, or replaces the existing one, and keeps every other line as written.
+function Set-PrPublishScenarioTable {
+    param([AllowEmptyString()][string]$Body, [Parameter(Mandatory = $true)][string]$Table)
+    $newline = if ($Body -match "`r`n") { "`r`n" } else { "`n" }
+    $lines = [Collections.Generic.List[string]]::new()
+    $existing = ($Body -replace "`r`n", "`n").TrimStart([char]0xFEFF).TrimEnd()
+    if ($existing) { foreach ($line in ($existing -split "`n")) { $lines.Add($line) } }
+    $content = @(($Table -replace "`r`n", "`n").TrimStart([char]0xFEFF).Trim() -split "`n")
+    if ($content[0] -match '^#{1,6}\s+Current vs\.? to-be') { $content = @((@($content | Select-Object -Skip 1) -join "`n").Trim() -split "`n") }
+    if (-not ($content -join '').Trim()) { throw 'The table file has no scenario table or "No behavior change" line.' }
+    $start = -1
+    $end = $lines.Count
+    $level = 0
+    $topHeadings = [Collections.Generic.List[int]]::new()
+    $inFence = $false
+    for ($index = 0; $index -lt $lines.Count; $index++) {
+        if ($lines[$index] -match '^\s*```') { $inFence = -not $inFence; continue }
+        if ($inFence -or $lines[$index] -notmatch '^(#{1,6})\s+(.+?)\s*$') { continue }
+        $headingLevel = $Matches[1].Length
+        if ($start -ge 0 -and $end -eq $lines.Count -and $headingLevel -le $level) { $end = $index }
+        if ($start -lt 0 -and $Matches[2] -match '(?i)^Current vs\.? to-be') { $start = $index; $level = $headingLevel }
+        if ($headingLevel -le 2) { $topHeadings.Add($index) }
+    }
+    if ($start -ge 0) {
+        $lines.RemoveRange($start + 1, $end - $start - 1)
+        $lines.InsertRange($start + 1, [string[]](@('') + $content + @('')))
+        $operation = 'Replaced'
+    }
+    else {
+        $section = [string[]](@('### Current vs. to-be', '') + $content)
+        # With sections, the table closes the first one, as a subsection of the summary; otherwise it follows the text.
+        if ($topHeadings.Count -ge 2) {
+            $at = $topHeadings[1]
+            while ($at -gt 0 -and -not $lines[$at - 1].Trim()) { $lines.RemoveAt($at - 1); $at-- }
+            $lines.InsertRange($at, [string[]](@('') + $section + @('')))
+        }
+        else {
+            if ($lines.Count) { $lines.Add('') }
+            $lines.AddRange($section)
+        }
+        $operation = 'Added'
+    }
+    [pscustomobject]@{ body = ((($lines -join "`n").TrimEnd() + "`n") -replace "`n", $newline); operation = $operation }
 }
 
 function ConvertTo-PrPublishComparable {
@@ -189,60 +240,70 @@ function ConvertTo-PrPublishComparable {
     ($Text -replace "`r`n", "`n").TrimStart([char]0xFEFF).Trim()
 }
 
+# Creates the branch's pull request or updates its open one. -TableFile adds or replaces only the
+# Current vs. to-be section, in -BodyFile or else in the live description, so nothing else changes.
+# A new pull request always opens ready for review, and an open one keeps its draft state.
 function Publish-PrPublishPullRequest {
-    param([string]$RepositoryPath = (Get-Location).Path, [string]$Title, [string]$BodyFile, [string]$Base, [switch]$Draft, [switch]$Ready, [switch]$Apply)
-    if ($Draft -and $Ready) { throw 'Choose -Draft or -Ready, not both.' }
+    param([string]$RepositoryPath = (Get-Location).Path, [string]$Title, [string]$BodyFile, [string]$TableFile, [string]$Base, [switch]$Apply)
     $status = Get-PrPublishStatus $RepositoryPath -Base $Base
     if ($status.base -and $status.branch -ceq $status.base) { throw "The current branch is the base branch '$($status.base)'; publish from a feature branch." }
-    $body = $null; $bodyPath = $null
-    if ($BodyFile) {
-        $body = [IO.File]::ReadAllText((Resolve-Path -LiteralPath $BodyFile).Path).TrimStart([char]0xFEFF)
-        $bodyPath = Join-Path ([IO.Path]::GetTempPath()) ('pr-publish-body-' + [guid]::NewGuid().ToString('N') + '.md')
-        [IO.File]::WriteAllText($bodyPath, $body, [Text.UTF8Encoding]::new($false))
+    $pull = $status.pullRequest
+    $live = if ($pull) { Get-PrPublishLiveBody $status } else { $null }
+    $body = if ($BodyFile) { [IO.File]::ReadAllText((Resolve-Path -LiteralPath $BodyFile).Path).TrimStart([char]0xFEFF) } elseif ($TableFile -and $live) { $live.body } else { $null }
+    if ($TableFile) {
+        if ($null -eq $body) { throw 'A new pull request needs -BodyFile with its description.' }
+        $body = (Set-PrPublishScenarioTable $body ([IO.File]::ReadAllText((Resolve-Path -LiteralPath $TableFile).Path))).body
+    }
+    if (-not $pull) {
+        if (-not $Title -or $null -eq $body) { throw 'A new pull request needs -Title and -BodyFile.' }
+        if (-not $status.base) { throw 'Supply -Base; the remote default branch is unknown.' }
+        if (-not $status.pushed) { throw 'Push the branch so its upstream matches HEAD before creating the pull request.' }
+    }
+    $changeTitle = [bool]($Title -and (-not $live -or $Title -cne $live.title))
+    $changeBody = $null -ne $body -and (-not $live -or (ConvertTo-PrPublishComparable $live.body) -cne (ConvertTo-PrPublishComparable $body))
+    $plan = [pscustomobject]@{ operation = $(if ($pull) { 'Update' } else { 'Create' }); number = $pull.number; head = $status.branch; base = $status.base; title = $changeTitle; body = $changeBody; draft = $(if ($pull) { $pull.draft } else { $false }) }
+    if (-not $Apply) {
+        $plan | Add-Member -NotePropertyName preview -NotePropertyValue $true
+        if ($null -ne $body) {
+            $previewRoot = Join-Path ([IO.Path]::GetTempPath()) 'pr-publish'
+            New-Item -ItemType Directory -Path $previewRoot -Force | Out-Null
+            $previewPath = Join-Path $previewRoot ('preview-{0}-{1}-{2}-{3}.md' -f $status.host, $status.owner, $status.repository, ($status.branch -replace '[^A-Za-z0-9._-]', '-'))
+            [IO.File]::WriteAllText($previewPath, $body, [Text.UTF8Encoding]::new($false))
+            $template = if ($status.template) { [IO.File]::ReadAllText($status.template) } else { $null }
+            $plan | Add-Member -NotePropertyMembers @{ bodyFile = $previewPath; findings = (Test-PrPublishBody $body -Template $template -PreviousBody $live.body -RepositoryPath $status.root) }
+        }
+        return $plan
     }
     $pulls = "repos/$($status.owner)/$($status.repository)/pulls"
-    $pull = $status.pullRequest
+    $bodyPath = $null
     $backup = $null
     try {
+        if ($changeBody) {
+            $bodyPath = Join-Path ([IO.Path]::GetTempPath()) ('pr-publish-body-' + [guid]::NewGuid().ToString('N') + '.md')
+            [IO.File]::WriteAllText($bodyPath, $body, [Text.UTF8Encoding]::new($false))
+        }
         if (-not $pull) {
-            if (-not $Title -or -not $bodyPath) { throw 'A new pull request needs -Title and -BodyFile.' }
-            if (-not $status.base) { throw 'Supply -Base; the remote default branch is unknown.' }
-            if (-not $status.pushed) { throw 'Push the branch so its upstream matches HEAD before creating the pull request.' }
-            $plan = [pscustomobject]@{ operation = 'Create'; head = $status.branch; base = $status.base; title = $Title; draft = [bool]$Draft }
-            if (-not $Apply) { $plan | Add-Member -NotePropertyName preview -NotePropertyValue $true; return $plan }
-            $created = ConvertFrom-Json -InputObject (Invoke-PrPublishGh @('api', '--hostname', $status.host, '-X', 'POST', $pulls, '-f', "title=$Title", '-f', "head=$($status.branch)", '-f', "base=$($status.base)", '-F', "body=@$bodyPath", '-F', "draft=$(([bool]$Draft).ToString().ToLowerInvariant())"))
+            $created = ConvertFrom-Json -InputObject (Invoke-PrPublishGh @('api', '--hostname', $status.host, '-X', 'POST', $pulls, '-f', "title=$Title", '-f', "head=$($status.branch)", '-f', "base=$($status.base)", '-F', "body=@$bodyPath", '-F', 'draft=false'))
             $number = $created.number
-            $expectedDraft = [bool]$Draft
         }
         else {
-            $changeDraft = ($Draft -and -not $pull.draft) -or ($Ready -and $pull.draft)
-            $plan = [pscustomobject]@{ operation = 'Update'; number = $pull.number; url = $pull.url; title = [bool]($Title -and $Title -cne $pull.title); body = [bool]$bodyPath
-                draft = $(if ($changeDraft) { [bool]$Draft } else { $pull.draft }) }
-            if (-not $Apply) { $plan | Add-Member -NotePropertyName preview -NotePropertyValue $true; return $plan }
             $number = $pull.number
-            if ($plan.title -or $plan.body) {
-                $current = Get-PrPublishLiveBody $status
+            if ($changeTitle -or $changeBody) {
                 $backupRoot = Join-Path ([IO.Path]::GetTempPath()) 'pr-publish'
                 New-Item -ItemType Directory -Path $backupRoot -Force | Out-Null
                 $backup = Join-Path $backupRoot ('{0}-{1}-{2}-{3}-{4:yyyyMMddHHmmss}.md' -f $status.host, $status.owner, $status.repository, $number, (Get-Date))
-                [IO.File]::WriteAllText($backup, "Title: $($current.title)`n`n$($current.body)", [Text.UTF8Encoding]::new($false))
+                [IO.File]::WriteAllText($backup, "Title: $($live.title)`n`n$($live.body)", [Text.UTF8Encoding]::new($false))
                 $fields = @()
-                if ($plan.title) { $fields += @('-f', "title=$Title") }
-                if ($plan.body) { $fields += @('-F', "body=@$bodyPath") }
+                if ($changeTitle) { $fields += @('-f', "title=$Title") }
+                if ($changeBody) { $fields += @('-F', "body=@$bodyPath") }
                 $null = Invoke-PrPublishGh (@('api', '--hostname', $status.host, '-X', 'PATCH', "$pulls/$number") + $fields)
             }
-            if ($changeDraft) {
-                $mutation = if ($Draft) { 'convertPullRequestToDraft' } else { 'markPullRequestReadyForReview' }
-                $query = 'query=mutation($id:ID!){' + $mutation + '(input:{pullRequestId:$id}){pullRequest{isDraft}}}'
-                $null = Invoke-PrPublishGh @('api', 'graphql', '--hostname', $status.host, '-f', $query, '-f', "id=$($pull.nodeId)")
-            }
-            $expectedDraft = $plan.draft
         }
-        $live = Get-PrPublishLiveBody ([pscustomobject]@{ host = $status.host; owner = $status.owner; repository = $status.repository; pullRequest = [pscustomobject]@{ number = $number } })
-        if ($Title -and $live.title -cne $Title) { throw "Read-back title differs on pull request $number." }
-        if ($bodyPath -and (ConvertTo-PrPublishComparable $live.body) -cne (ConvertTo-PrPublishComparable $body)) { throw "Read-back description differs on pull request $number." }
-        if ($live.draft -ne $expectedDraft) { throw "Read-back draft state differs on pull request $number." }
-        [pscustomobject]@{ operation = $plan.operation; number = $number; url = $live.url; base = $live.base; head = $live.head; draft = $live.draft; backup = $backup }
+        $after = Get-PrPublishLiveBody ([pscustomobject]@{ host = $status.host; owner = $status.owner; repository = $status.repository; pullRequest = [pscustomobject]@{ number = $number } })
+        if ($Title -and $after.title -cne $Title) { throw "Read-back title differs on pull request $number." }
+        if ($null -ne $body -and (ConvertTo-PrPublishComparable $after.body) -cne (ConvertTo-PrPublishComparable $body)) { throw "Read-back description differs on pull request $number." }
+        if ($after.draft -ne $plan.draft) { throw "Read-back draft state differs on pull request $number." }
+        [pscustomobject]@{ operation = $plan.operation; number = $number; url = $after.url; base = $after.base; head = $after.head; draft = $after.draft; backup = $backup }
     }
     finally { if ($bodyPath) { Remove-Item -LiteralPath $bodyPath -Force -ErrorAction SilentlyContinue } }
 }

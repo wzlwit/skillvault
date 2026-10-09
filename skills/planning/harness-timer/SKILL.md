@@ -3,7 +3,7 @@ name: harness-timer
 description: "[set|disable|resume|clean|migrate] Manage logical schedules under one user-wide heartbeat. Shorthand: /hn-timer. Targets are project, pr, refresh, maintenance, or heartbeat settings. Bare invocation lists only. Overlaps with schedule-manager on task administration; owns SkillVault schedules. Maintenance delegates historical-data cleanup to harness-project clean."
 metadata:
   author: wzlwit
-  version: "2.0.0"
+  version: "3.0.0"
 argument-hint: "[list|set|disable|resume|clean|migrate] [<arguments>...]"
 ---
 
@@ -24,15 +24,21 @@ unchanged; abbreviation adds no confirmation. This is conversational routing, no
 | Action | Outcome |
 | --- | --- |
 | `list [<target>]` | Show known schedules, cadence, results, and recovery state |
-| `set <target> [<duration>]` | Preview or apply an approved schedule, maintenance window, or heartbeat baseline |
-| `disable <id>` | Disable future ticks; do not kill the active worker |
-| `resume <id>` | Reenable the saved cadence after prerequisite and recovery checks |
-| `clean` | Preview stale schedules; apply only the approved schedule changes |
-| `migrate <target>` | Preview and replace one exact legacy OS timer, preserving cadence and enabled state |
+| `set <target> [<duration>]` | Set a schedule, maintenance window, or heartbeat baseline; at once when fully specified, otherwise after one question |
+| `disable <id>` | Disable future ticks at once; do not kill the active worker |
+| `resume <id>` | Reenable the saved cadence at once after prerequisite and recovery checks |
+| `clean` | Show stale schedules and change only the ones approved |
+| `migrate <target>` | Replace one exact legacy OS timer after one question, preserving cadence and enabled state |
 
 Bare invocation, `list`, `status`, and `help` are read-only: they show schedules and actions without
 selecting work, prompting for setup, initializing a project, or registering a timer. Unknown actions
-show choices. Follow the [scheduler contract](./references/scheduler.md) for the selected action.
+show choices. Every change follows Ask Once in the `harness-runtime` guide. A request that names
+exactly what to change acts at once and reports the result: `set` with its target and duration
+(`set maintenance` has a fixed window and needs none) when no matching schedule needs a Reuse or New
+choice, and `disable <id>` or `resume <id>` for one exact id. Anything else, such as a missing duration,
+a Reuse or New choice, every schedule at once, recovering an uncertain worker, `clean`, or `migrate`, shows the
+resolved schedule and asks once; without an answer nothing changes, and `--apply` in the request is
+the answer. Follow the [scheduler contract](./references/scheduler.md) for the selected action.
 Before setting or resuming a project target, read [project preflight](./references/project.md).
 Before status, disable, resume, or migration of a legacy OS timer, read
 [PR timer](./references/pr.md) or [refresh timer](./references/refresh.md) for that target.

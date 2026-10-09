@@ -933,6 +933,11 @@ test('monitor discovery declares supported sources and a compatible runtime', ()
   assert.ok(intake && intake.mode === 'auto' && typeof intake.worker.flow === 'string' && intake.approvedBy && intake.reason, 'standing intake example names its worker and approval');
   assert.ok(Number.isInteger(intake.maxPerCheck) && intake.maxPerCheck >= 1 && intake.maxPerCheck <= 20);
   assert.match(guide, /effects: "local"/);
+  const commands = fs.readFileSync(path.join(directory, 'references/workflow.md'), 'utf8');
+  assert.match(commands, /^### Declare\r?$/m);
+  assert.match(commands, /wait 1 minute, and save if no other reply has arrived/);
+  assert.match(commands, /do not wait for an answer/);
+  assert.match(commands, /Without\s+a yes, start no timer/);
   assert.ok(guide.includes('"type": "json-feed"'));
 });
 
@@ -1099,6 +1104,7 @@ test('harness review panel and development loop share one runtime contract', () 
   assert.match(panel.replace(/\s+/g, ' '), /before any model work/);
   const list = parseJson(fs.readFileSync(path.join(planning, 'harness-runtime/scripts/review-models.json'), 'utf8'), 'review-models.json');
   assert.deepEqual(list.families.map(family => family.id), ['gpt', 'claude-opus']);
+  assert.equal(list.families[0].models[0], 'gpt-6-astra', 'The owner ranks gpt-6-astra as the strongest GPT reviewer');
   for (const family of list.families) {
     const prefix = family.pattern.replace(/\*$/, '');
     assert.ok(family.models.length > 0, `Empty ${family.label} review list`);
@@ -1153,6 +1159,64 @@ test('real tests share the development-tests interface, test stages, and the uni
   assert.match(flows, /^## When Tests Run\r?$/m);
   for (const field of ['"afterReview"', '"unitTests"', '"effects": "external"']) assert.ok(flows.includes(field), `The example declaration lacks ${field}`);
   assert.match(read('skills/planning/harness-project/SKILL.md'), /^\| `policy set unit-tests <critical\\\|broad>` \|/m);
+});
+
+test('review levels default to critical and both review entry points require them', () => {
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const read = relative => fs.readFileSync(path.join(root, relative), 'utf8');
+  const runtime = parseJson(read('skills/planning/harness-runtime/skill.json'), 'harness-runtime/skill.json');
+  assert.equal(runtime.runtimeInterfaces['review-levels'], 1);
+  const guide = read('skills/planning/harness-runtime/references/runtime.md');
+  const levels = guide.split(/^### Review Levels\r?$/m)[1]?.split(/^## /m)[0] ?? '';
+  assert.ok(levels, 'The runtime guide defines the review levels');
+  assert.match(levels, /^\| `critical` \(default\) \|/m);
+  assert.match(levels, /^\| `broad` \|/m);
+  for (const consumer of ['skills/planning/harness-review', 'skills/github/pr-review']) {
+    const manifest = parseJson(read(`${consumer}/skill.json`), `${consumer}/skill.json`);
+    assert.equal(manifest.requiredInterfaces['harness-runtime']['review-levels'], 1, `${consumer} must require review levels`);
+    assert.match(read(`${consumer}/SKILL.md`), /--broad/, `${consumer} must document --broad`);
+  }
+  assert.match(read('skills/github/pr-review/references/runtime.md'), /^\| `reviewLevel` \| `critical`/m);
+});
+
+test('pr-publish has no options, keeps existing descriptions, and follows create-pull-request', () => {
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const read = relative => fs.readFileSync(path.join(root, relative), 'utf8');
+  const publish = read('skills/github/pr-publish/references/publish.md');
+  const update = publish.split(/^## Update\r?$/m)[1]?.split(/^## /m)[0] ?? '';
+  assert.match(update, /-TableFile/, 'Updates send only the table');
+  const create = publish.split(/^## Create\r?$/m)[1]?.split(/^## /m)[0] ?? '';
+  assert.match(create, /`draft: false`/, 'A new PR opens ready for review');
+  const rules = read('skills/github/pr-publish/references/description.md');
+  const headings = [...rules.matchAll(/^## (.+?)\r?$/gm)].map(match => match[1]);
+  for (const heading of ['Keep an existing description', 'Write a new description']) assert.ok(headings.includes(heading), `Description rules lost ${heading}`);
+  const fresh = rules.split(/^## Write a new description\r?$/m)[1]?.split(/^## /m)[0] ?? '';
+  assert.ok(fresh.includes('`create-pull-request`'), 'New descriptions follow create-pull-request');
+  for (const file of ['SKILL.md', 'skill.json', 'references/publish.md', 'references/description.md']) {
+    assert.doesNotMatch(read(`skills/github/pr-publish/${file}`), /--(draft|ready|copilot)\b/, `${file} advertises an option`);
+  }
+  assert.doesNotMatch(read('skills/github/pr-publish/scripts/pr-publish.ps1'), /\[switch\]\$(Draft|Ready)\b/);
+});
+
+test('harness topics share the Ask Once approval pattern', () => {
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const read = relative => fs.readFileSync(path.join(root, relative), 'utf8');
+  const runtime = read('skills/planning/harness-runtime/references/runtime.md');
+  const section = runtime.split(/^## Ask Once\r?$/m)[1]?.split(/^## /m)[0] ?? '';
+  assert.ok(section, 'The runtime guide owns the Ask Once section');
+  const actAtOnce = section.match(/^1\. \*\*Act at once\*\*[\s\S]*?(?=^2\. )/m)?.[0] ?? '';
+  assert.ok(actAtOnce, 'Fully specified commands act at once');
+  for (const command of ['accept <id>', 'disable <id>', 'resume <id>']) assert.ok(actAtOnce.includes(command), `${command} acts at once`);
+  assert.doesNotMatch(actAtOnce, /`auto`/, 'auto keeps asking');
+  assert.match(section, /Save after 1 minute\*\* for monitor and test `declare`\./);
+  assert.match(section, /\*\*Hold\*\* for every other change/);
+  assert.match(section, /without waiting; it starts only on a yes/);
+  assert.match(section, /explicit `pause` or `stop` applies\s+at once/);
+  assert.match(read('skills/planning/harness-timer/SKILL.md'), /acts at once/, 'Timer commands act at once when fully specified');
+  for (const topic of ['harness-monitor', 'harness-work', 'harness-project', 'harness-timer']) {
+    assert.match(read(`skills/planning/${topic}/SKILL.md`), /Ask Once/, `${topic} must follow the shared pattern`);
+  }
+  assert.doesNotMatch(read('skills/planning/harness-project/SKILL.md'), /\[--apply\]/, 'Synopses need no --apply step');
 });
 
 test('handoff preserves explicit invocation, global default, and upstream attribution', () => {
@@ -1314,6 +1378,12 @@ test('topic map covers canonical skills and rules apply stays separate from auth
   assert.equal([...core.matchAll(/^\d\. \*\*/gm)].length, 4);
   assert.match(rules, /apply[\s\S]*without editing files/);
   assert.match(management, /Wait for explicit confirmation/);
+  assert.ok(fs.existsSync(path.join(rulesRoot, 'references/extra.md')), 'Extra rules need their repository file');
+  assert.match(rules, /\]\(\.\/references\/extra\.md\)/);
+  assert.match(fs.readFileSync(path.join(rulesRoot, 'scripts/always-on.ps1'), 'utf8'), /extra\.md/);
+  assert.match(rules, /`core` aliases `apply core`/);
+  assert.match(rules, /another skill says to apply `\/rules apply`, it means `session`[\s\S]*never writes files/);
+  assert.match(management, /The SkillVault library changes only when the user names it/);
   const runner = fs.readFileSync(path.join(root, 'skills/planning/harness-runtime/scripts/harness-runner.ps1'), 'utf8');
   assert.match(runner, /rules\/references\/core\.md/);
   assert.doesNotMatch(runner, /rules\/references\/manage\.md/);
@@ -1335,6 +1405,7 @@ test('multi-action topics default to list and keep aliases out of primary menus'
     assert.equal(action.default, 'list', entry.name);
     assert.deepEqual(action.enum, guide['argument-hint'].match(/^\[([^\]]+)\]/)[1].split('|'), entry.name);
     assert.equal(action.enum.length, new Set(action.enum).size, entry.name);
+    assert.ok(!(action.enum.includes('upsert') && ['add', 'update', 'create'].some(alias => action.enum.includes(alias))), `${entry.name} advertises an upsert alias as a separate action`);
     const routing = instructions.replace(/\s+/g, ' ');
     for (const rule of [
       /Action matching applies only to the explicit action token/,
@@ -1363,7 +1434,7 @@ test('multi-action topics default to list and keep aliases out of primary menus'
     }
   }
   const evaluation = fs.readFileSync(path.join(root, 'skills/core/skillvault-discovery/references/evaluate.md'), 'utf8');
-  assert.match(evaluation, /--chat-only/);
+  assert.match(evaluation, /chat only/i);
   assert.match(evaluation, /docs\/evaluations\//);
   assert.match(evaluation, /Do not change\s+target skills/);
 });

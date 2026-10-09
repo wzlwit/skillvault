@@ -11,21 +11,24 @@ is required. No install, bare command, preview, or source edit enables a live sc
 
 | Command | Mapping |
 | --- | --- |
-| `list` | `-Action List -ProjectPath <selected-root>`; `--all` explicitly lists all registered projects |
+| `list` | `-Action List -ProjectPath <selected-root>`; a request for every project lists all registered projects |
 | `list heartbeat` | `-Action List -Target heartbeat`; read the user-wide baseline without inspecting OS tasks |
 | `set heartbeat [<duration>]` | `-Action Set -Target heartbeat -Interval <duration>`; settings only, preview unless approved with `-Apply` |
 | `set project <duration>` | `-Action Set -Target project -ProjectPath <root> -Interval <duration>` |
 | `set pr <duration>` | `-Action Set -Target pr -Interval <duration>`; one whole-watchlist target |
 | `set refresh <duration>` | `-Action Set -Target refresh -Interval <duration>`; one global latest-copy target |
 | `set maintenance` | `-Action Set -Target maintenance`; enable the Saturday window only on apply |
-| `disable <id>` / `resume <id>` | `-Action Disable|Resume -Id <id>` within the selected project, or explicit `-All` |
-| `clean` | `-Action Clean -ProjectPath <root>`; preview stale schedules, never run-history deletion |
-| `clean --retire <id>` | `-Action Clean -RetireId <id>`; explicitly retire and disable one selected schedule |
-| `clean --delete-stale` | `-DeleteStale`; removal remains previewed until approved with `-Apply` |
+| `disable <id>` / `resume <id>` | `-Action Disable|Resume -Id <id>` within the selected project; a request for every schedule maps to `-All` |
+| `clean` | `-Action Clean -ProjectPath <root>`; preview stale schedules, never run-history deletion. A request to retire one schedule maps to `-RetireId <id>`, which retires and disables it; a request to delete stale schedules maps to `-DeleteStale`, previewed until approved with `-Apply` |
 | `migrate <target>` | `-Action Migrate -Target project|pr|refresh`; inspect one exact legacy OS task |
 
-`--apply` maps to `-Apply` after the user has approved the displayed targets or the saved automatic
-maintenance policy. `status` and `help` alias read-only `list`. An explicit old topic/duration
+Each change follows Ask Once in the `harness-runtime` guide. A fully specified request runs with
+`-Apply` at once and reports the result: `set <target> <duration>`, or `set maintenance`, when no
+matching schedule needs a Reuse or New choice, and `disable <id>` or `resume <id>` for one exact id.
+Otherwise show the resolved targets and ask once: a missing duration, a Reuse or New choice, every
+schedule at once, recovering an uncertain worker, `clean`, and `migrate`. `--apply` maps to `-Apply` on a yes, or when
+the request already says `--apply` or the saved automatic maintenance policy applies; without an
+answer nothing changes. `status` and `help` alias read-only `list`. An explicit old topic/duration
 setup request routes to `set`; bare `/hn-timer` no longer requests setup. Do not invent a duration
 when a new work schedule has none. Legacy `-IntervalDay` values still mean fixed days.
 
@@ -231,7 +234,7 @@ configured; these permissions alone reconfigure no live task and launch no AI pr
 
 Stale means a verified removed declaration or explicitly retired job, not idle, disabled,
 overdue, failed authentication, an unavailable drive, or an empty backlog. Confirm ownership;
-disable first and retain a 30-day grace. `--delete-stale --apply` explicitly approves deletion.
+disable first and retain a 30-day grace. Deleting them needs an explicit request and a yes.
 Automatic maintenance may disable verified stale jobs and prune eligible history but never deletes
 OS task definitions. Reappearing declarations reset stale age without silently re-enabling work.
 

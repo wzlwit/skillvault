@@ -63,49 +63,49 @@
     "name": "harness-decision",
     "description": "[explain|record] List open harness decisions separately from optional configuration, filter closed/all decisions, explain one decision or question, or record a choice. Shorthand: /hn-decision. Overlaps with architecture-decision-records on history; owns the compact bulletin, decision register, and read-only explanations.",
     "path": "skills/planning/harness-decision",
-    "version": "2.0.0"
+    "version": "3.0.0"
   },
   {
     "name": "harness-monitor",
-    "description": "[declare|check|accept|auto] Monitor work across approved source adapters, including ADO and documents; assess relevance, Auto-verify status, correlate explicit requirements, reconcile evidence, and expose verified subsets, or check health observations. `auto` follows up a source's items or health incidents through an approved local-only worker flow on a schedule. Shorthand: /hn-monitor. Overlaps with harness-work on checks and intake, kpi-dashboard on metric contracts, harness-write on status and owner evidence, and dri on incidents; preserves deferred work and never launches development.",
+    "description": "[declare|check|accept|auto] Monitor work across approved source adapters, including ADO and documents; assess relevance, Auto-verify status, correlate explicit requirements, reconcile evidence, and expose verified subsets, or check health observations. `declare` drafts or reuses a monitor's declaration file and saves it; `auto` follows up a source's items or health incidents through an approved local-only worker flow on a schedule. Shorthand: /hn-monitor. Overlaps with harness-work on checks and intake, kpi-dashboard on metric contracts, harness-write on status and owner evidence, and dri on incidents; preserves deferred work and never launches development.",
     "path": "skills/planning/harness-monitor",
-    "version": "1.1.0"
+    "version": "2.0.0"
   },
   {
     "name": "harness-project",
     "description": "[root|init|migrate|context|clean|policy] Set up and steer a harness project: show status, select or move its root, initialize, migrate layout, show context and register its sources and coding repositories, clean history, and set limits and failure policy, including pause, stop, and resume. Shorthand: /hn-project. Context summaries overlap with handoff. Owns retention; harness-timer schedules maintenance. Bare invocation only lists.",
     "path": "skills/planning/harness-project",
-    "version": "1.0.0"
+    "version": "2.0.0"
   },
   {
     "name": "harness-review",
     "description": "[run] Review current-project changes with two independent reviewers per pass, GPT and Claude Opus, and a whole-repository Fresh pass when no new findings appear, automatically restarting when local files change. Shorthand: /hn-review; explicit scope or options also start a review. Overlaps with pr-review on general review and differential-review on security; PR URLs delegate to pr-review.",
     "path": "skills/planning/harness-review",
-    "version": "2.0.0"
+    "version": "3.0.0"
   },
   {
     "name": "harness-runtime",
     "description": "Shared PowerShell 7 runtime for the harness topics: the harness.ps1 entry point, the runtime guide, and the default review model list. Not invoked directly; use harness-project (setup, context, policy), harness-work, harness-write, harness-review, harness-decision, harness-monitor, or harness-timer.",
     "path": "skills/planning/harness-runtime",
-    "version": "2.0.0"
+    "version": "3.0.0"
   },
   {
     "name": "harness-timer",
     "description": "[set|disable|resume|clean|migrate] Manage logical schedules under one user-wide heartbeat. Shorthand: /hn-timer. Targets are project, pr, refresh, maintenance, or heartbeat settings. Bare invocation lists only. Overlaps with schedule-manager on task administration; owns SkillVault schedules. Maintenance delegates historical-data cleanup to harness-project clean.",
     "path": "skills/planning/harness-timer",
-    "version": "2.0.0"
+    "version": "3.0.0"
   },
   {
     "name": "harness-work",
     "description": "[upsert|run|queue|sprint|test] Add or update tasks; run or queue development, verification, and fixes with the two-reviewer review loop; run goal-based sprints; and declare or run reusable tests. Shorthand: /hn-work. Overlaps with harness-monitor on intake and checks, harness-review on code review, and harness-write on report implementation; sprints can draft status through harness-write. Bare invocation only lists; work starts only with an explicit verb.",
     "path": "skills/planning/harness-work",
-    "version": "1.0.0"
+    "version": "2.0.0"
   },
   {
     "name": "harness-write",
     "description": "[upsert|slots] Draft and update writing for people: evidence-grounded feature docs, onboarding, and troubleshooting guides; stakeholder trackers, meeting invites, and email updates or thread replies; and dashboards, reports, and queries; rank meeting slots offline. Shorthand: /hn-write; upsert takes doc|tracker|meeting|email|report. Overlaps with architecture-decision-records on rationale, harness-monitor on status and owner evidence, harness-work on report implementation, kpi-dashboard and jarvis-metrics on report design, and the office-documents and ppt-master references on document output. Drafts only: never sends, invites, shares, or publishes without explicit approval.",
     "path": "skills/planning/harness-write",
-    "version": "1.0.0"
+    "version": "2.0.0"
   },
   {
     "name": "humanizer",
@@ -163,21 +163,21 @@
   },
   {
     "name": "pr-publish",
-    "description": "[preview|upsert] Create or update your own pull request: a description that follows the repository template, a current vs. to-be scenario table, tests named for each scenario, and draft or ready state. Overlaps with the GitHub Pull Requests extension's create-pull-request skill on opening PRs; use pr-publish when the PR needs the template, scenario table, and named tests, or to update an existing PR. Opens PRs through the VS Code create-pull-request tool when available, otherwise through gh; pr-review reviews PRs instead. Never pushes or writes to a PR without an explicit ask.",
+    "description": "[preview|upsert] Create or update your own pull request with a current vs. to-be scenario table. A new PR gets a short description in the style of the GitHub Pull Requests extension's create-pull-request skill and opens ready for review; an existing PR keeps its description and gets only the table. Overlaps with that skill on opening PRs and uses its VS Code tool when available, otherwise gh; pr-review reviews PRs instead. Never pushes or writes to a PR without an explicit ask.",
     "path": "skills/github/pr-publish",
-    "version": "1.1.0"
+    "version": "2.0.0"
   },
   {
     "name": "pr-review",
     "description": "[run|configure] Review a PR URL, repository, or user-wide watchlist; a PR URL alone also starts a review. Overlaps with harness-review on general review and differential-review on security; owns remote selection and isolated evidence, while pr-watch manages targets.",
     "path": "skills/github/pr-review",
-    "version": "1.2.0"
+    "version": "2.0.0"
   },
   {
     "name": "pr-watch",
     "description": "[add|remove] Manage the single user-wide PR review watchlist. Watchlist changes do not run reviews or change schedules; pr-review owns execution and review results, and harness-timer owns its logical schedule.",
     "path": "skills/github/pr-watch",
-    "version": "2.0.0"
+    "version": "3.0.0"
   },
   {
     "name": "rag-implementation",
@@ -187,9 +187,9 @@
   },
   {
     "name": "rules",
-    "description": "[apply|upsert|remove] Apply the four core working rules (also /rules core) to the current task without editing files, or manage AI rule documents; persistent rule changes require confirmation.",
+    "description": "[apply|upsert|remove] Put the core and extra rules, or only the four core rules with /rules core, into effect globally (default), in a project, or for this chat; add or change your own global or project rules. The SkillVault rule library changes only when you name extra or core, and persistent rule changes require confirmation.",
     "path": "skills/core/rules",
-    "version": "2.0.0"
+    "version": "3.0.0"
   },
   {
     "name": "schedule-manager",
@@ -207,13 +207,13 @@
     "name": "skillvault-discovery",
     "description": "[search|evaluate|explain] Discover skills, evaluate candidates, and explain skills, tools, or products. Shorthand: /sv-discovery. Evaluation saves a public-safe assessment unless chat-only; search and explanation are read-only. None installs, runs, or edits the target.",
     "path": "skills/core/skillvault-discovery",
-    "version": "2.0.0"
+    "version": "3.0.0"
   },
   {
     "name": "skillvault-installation",
     "description": "[install|update|uninstall|clean|refresh] Manage installed SkillVault copies and keep them current. Shorthand: /sv-installation. List defaults to installed copies; list catalog inspects sources; clean finds skills that load twice or conflict and shows overlaps, which skillvault-discovery evaluate can judge. Refresh merges upstream changes into adapted skills when push is permitted, then brings new commits to the local checkout and managed global latest copies; scheduling delegates to harness-timer set refresh. Edits no SkillVault source or application code except refresh's adaptation merges; skillvault-authoring owns skill authoring.",
     "path": "skills/core/skillvault-installation",
-    "version": "2.0.0"
+    "version": "3.0.0"
   },
   {
     "name": "supabase-postgres-best-practices",

@@ -42,6 +42,7 @@ The dispatcher is `scripts/pr-review.ps1` in the installed `pr-review` bundle. I
 & $review -Action Remove -Selector W-001
 & $review -Action Remove -Selector W-001 -Apply
 & $review -Action Review -Url https://github.com/owner/repository/pull/123
+& $review -Action Review -Url https://github.com/owner/repository/pull/123 -ReviewLevel broad
 & $review -Action Review
 ```
 
@@ -60,6 +61,7 @@ Nothing needs configuring before `run`. Without saved settings, PR review uses:
 | `maxPullRequests`, `maxCycleMinutes`, `maxCycleCredits` | No limit; per-entry discovery limits still apply |
 | `allowScheduled` | `false`; set it to `true` before timer setup |
 | `securityReview` | `false`; ad-hoc `-SecurityReview` can request it per run |
+| `reviewLevel` | `critical`: report only what blocks merging the PR; `broad` reports every issue with evidence. Ad-hoc `-ReviewLevel` can choose either per run |
 
 To override any of these, use a JSON definition with `runner`, `prReview`, or both, preview it, then
 apply the exact approved contents. Every field is optional; omitted fields keep their defaults. A
@@ -101,7 +103,8 @@ or authorization. Choose them with the owner before writing/applying a real defi
   when different, the model and effort that actually reviewed. If no listed model starts, the
   review fails with the models tried. `Unchanged` compares the requested settings.
 - Effort order is max, xhigh, high, medium, low, minimal, none. Context order is long_context,
-  default. Large evidence is streamed through stdin; workers read complete relevant code.
+  default. The whole prompt, evidence included, goes to the CLI on standard input, so its size isn't
+  limited by the command line; workers read complete relevant code.
   Context tier is a request, not a fabricated exact token count or assurance of adequate coverage.
 - Missing/null runner values inherit the current controller settings. With no per-agent limits,
   `maxMinutes` uses `maxCycleMinutes` and `maxCredits` uses `maxCycleCredits` when those are saved;
@@ -118,6 +121,12 @@ or authorization. Choose them with the owner before writing/applying a real defi
   reported without launching reviewers. Explicit PR URLs can select drafts.
 - `allowScheduled` must be saved as true before timer setup. `securityReview` chooses the saved
   methodology for list/timer runs; ad-hoc `-SecurityReview` can request it without changing settings.
+- `reviewLevel` chooses the review level for list/timer runs (Review Levels in the harness runtime
+  guide); ad-hoc `-ReviewLevel critical|broad` (`--broad`, or a plain request for critical) chooses
+  it for one run without changing settings, and timer ticks take no override. Results and reports
+  record the level.
+  `Unchanged` treats an earlier broad review of the same snapshot as covering a critical request;
+  results saved before levels existed count as broad.
 - Enterprise hosts require explicit `githubHosts` entries and an existing authenticated `gh`
   account on each host. There is no implicit host/account discovery or Azure DevOps adapter.
 - An authenticated `gh` read uses only fixed REST GET endpoints and a fixed GraphQL query.

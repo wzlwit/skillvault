@@ -1,18 +1,18 @@
 ---
 name: rules
-description: "[apply|upsert|remove] Apply the four core working rules (also /rules core) to the current task without editing files, or manage AI rule documents; persistent rule changes require confirmation."
+description: "[apply|upsert|remove] Put the core and extra rules, or only the four core rules with /rules core, into effect globally (default), in a project, or for this chat; add or change your own global or project rules. The SkillVault rule library changes only when you name extra or core, and persistent rule changes require confirmation."
 metadata:
   author: wzlwit
-  version: "2.0.0"
+  version: "3.0.0"
 argument-hint: "[list|apply|upsert|remove] [<arguments>...]"
 ---
 
 # Rules
 
-Route by the first subcommand or an unambiguous natural-language request. No arguments or `list`
-shows the four core rules, the actions, and the always-on copy's status without changing files;
-`show`, `status`, and `help` are
-read-only aliases, `core` aliases `apply`, and `add`, `update`, and `modify` alias `upsert`. Unknown keywords show help and never approve a rule.
+Route by the first subcommand or an unambiguous natural-language request, such as "add a rule: ...".
+No arguments or `list` shows the core and extra rules, the actions, and where they are applied
+without changing files; `show`, `status`, and `help` are
+read-only aliases, `core` aliases `apply core`, and `add`, `update`, and `modify` alias `upsert`. Unknown keywords show help and never approve a rule.
 
 Action matching applies only to the explicit action token: exact canonical actions and documented
 aliases take precedence; otherwise exactly 3 or 4 leading letters may select one canonical action
@@ -24,20 +24,28 @@ unchanged; abbreviation adds no confirmation. This is conversational routing, no
 
 | Action | Load only this guidance |
 | --- | --- |
-| `apply` (alias `core`) | [Core working rules](./references/core.md), applied to the current task without editing files |
-| `list` | Show the four [core working rules](./references/core.md), the actions, and the always-on status from the read-only [always-on helper](./scripts/always-on.ps1) check, without applying or editing anything |
-| `upsert`, `remove` | [Rule management](./references/manage.md): your private personal rules by default, the shared core rules only when you say `core`; confirmed edits only |
+| `apply [core] [global\|project\|session]` | Put the [core rules](./references/core.md) and [extra rules](./references/extra.md), or only the core rules with `core`, into effect: `global` (default), `project`, or `session` |
+| `list` | Show the core and extra rules, the actions, and the global and current project status from the read-only [always-on helper](./scripts/always-on.ps1) check, without changing anything |
+| `upsert`, `remove` | [Rule management](./references/manage.md): your own rules, `global` (default) or `project`; the SkillVault library only when you say `extra` or `core`; confirmed edits only |
 
-- The four core rules are maintained once in the bundled reference; load the
-  [detailed reference](./references/ai-principles.md) only for clarification.
-- **Always on.** `/rules` keeps a generated copy of the four rules at the top of
-  `~/.copilot/copilot-instructions.md`, which Copilot Agent Host and CLI sessions load in every chat;
-  the private Personal rules section follows it. Never hand-edit the generated block. Run the
-  [always-on helper](./scripts/always-on.ps1) without `-Apply` to report Missing, Unmanaged, InSync,
-  or Drifted; after a confirmed core change, or when the user confirms creating or repairing the
-  copy, rerun it with `-Apply`. It changes nothing outside the block. Installing the skill alone
-  writes nothing there. Harness coordinators still pass core guidance and project instructions to
-  workers, not the rule-editing workflow.
+- **The library** is the four core rules in [core.md](./references/core.md) and the extra rules in
+  [extra.md](./references/extra.md), one bullet each, in the public SkillVault repository; load the
+  [detailed reference](./references/ai-principles.md) only for clarification. `apply`, `upsert`, and
+  `remove` never change the library unless the user names `extra` or `core`.
+- **Scopes.** `global` is a generated block at the top of `~/.copilot/copilot-instructions.md`, which
+  Copilot Agent Host and CLI sessions load in every chat on this machine; the private Personal rules
+  section follows it. `project` is the same block at the top of the current project's
+  `.github/copilot-instructions.md`, followed by its Project rules; that file is usually committed and
+  shared with the team. `session` applies the rules to the current chat without editing files.
+- **Applying.** For `global` or `project`, run the [always-on helper](./scripts/always-on.ps1) with
+  `-Scope`, `-Set all` or `-Set core`, and `-Apply`, then report the target, set, and status. An
+  explicit `/rules apply` or `/rules core` approves rewriting that generated block, which records its
+  set so later repairs keep it; nothing outside the block changes. Without `-Apply` the helper only
+  reports Missing, Unmanaged, InSync, or Drifted. Never hand-edit the block, and installing the skill
+  alone writes nothing.
+- **Other skills.** When another skill says to apply `/rules apply`, it means `session`: follow the
+  core and extra rules in that work. It never writes files. Harness coordinators still pass core
+  guidance and project instructions to workers, not the rule-editing workflow.
 - **Enforceable limits belong to policy.** A rule the harness can enforce, such as allowed models,
   time or credit caps, reviewer concurrency, test retries, failure thresholds, or pauses, goes to
   `/hn-project policy set limits` or `set fallback` with its matching field. Add a written rule only

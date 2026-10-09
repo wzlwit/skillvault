@@ -3,7 +3,7 @@ name: skillvault-discovery
 description: "[search|evaluate|explain] Discover skills, evaluate candidates, and explain skills, tools, or products. Shorthand: /sv-discovery. Evaluation saves a public-safe assessment unless chat-only; search and explanation are read-only. None installs, runs, or edits the target."
 metadata:
   author: wzlwit
-  version: "2.0.0"
+  version: "3.0.0"
 argument-hint: "[list|search|evaluate|explain] [<arguments>...]"
 ---
 

@@ -1,7 +1,12 @@
 {
   "name": "harness-review",
   "title": "Harness Review",
-  "version": "2.0.0",
+  "version": "3.0.0",
+  "requiredInterfaces": {
+    "harness-runtime": {
+      "review-levels": 1
+    }
+  },
   "kind": "agent",
   "description": "[run] Review current-project changes with two independent reviewers per pass, GPT and Claude Opus, and a whole-repository Fresh pass when no new findings appear, automatically restarting when local files change. Shorthand: /hn-review; explicit scope or options also start a review. Overlaps with pr-review on general review and differential-review on security; PR URLs delegate to pr-review.",
   "tags": [
@@ -28,7 +33,8 @@
   "examples": [
     "/harness-review",
     "/harness-review list",
-    "/harness-review run"
+    "/harness-review run",
+    "/harness-review run --broad"
   ],
   "readme": "SKILL.md",
   "inputs": [

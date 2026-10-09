@@ -175,6 +175,12 @@ Append `-Apply` to execute an authorized Set/Disable/Resume after preview. With 
 cadence, Set can omit `-IntervalDay`. `-Flow` and `-Environment` alias the two Test parameters.
 Existing `-TestFlow` calls without `-Topic` still select `test` for compatibility.
 
+The text forms below are legacy, kept for old OS timers and their migration. For current schedules
+use `/harness-timer set project <duration> <target>`, `list`, and `disable <id>` or `resume <id>`
+from the [scheduler contract](scheduler.md); for example,
+`/harness-timer set project 1h monitor service-health`. The legacy `set` forms still work, with the
+number in days.
+
 ```text
 /harness-timer
 /harness-timer 0.5

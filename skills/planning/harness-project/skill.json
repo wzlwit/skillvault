@@ -1,7 +1,7 @@
 {
   "name": "harness-project",
   "title": "Harness Project",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "requiredInterfaces": {
     "harness-runtime": {
       "development-tests": 1
@@ -65,14 +65,13 @@
       "name": "current-file",
       "required": false,
       "type": "string",
-      "description": "Canonical current-<project>.csv filename. Init accepts it for a new controller; root with this option previews an explicit rename through Board. Existing files change only on approved --apply."
+      "description": "Canonical current-<project>.csv filename. Init accepts it for a new controller; root with this option shows an explicit rename through Board and asks once. Existing files change only after a yes."
     }
   ],
   "examples": [
     "/harness-project",
     "/harness-project list",
     "/harness-project root",
-    "/harness-project root --current-file current-service.csv",
     "/harness-project clean",
     "/hn-project migrate",
     "/harness-project root C:\\controllers\\project",

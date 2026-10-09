@@ -5,9 +5,9 @@ Contents: Observation Format; Episode and Task Contract; Helper Examples.
 This is the numeric health-monitor contract. For work candidates from ADO, local folders, or
 other source adapters, use [discovery declarations](discovery.md) with `kind: discovery` instead.
 
-Import only a `monitors` array with `/harness-monitor declare <file>`. This is a preview; save the
-reviewed declaration with explicit approval, owner, and reason. The example's names, values, and
-paths are illustrative, not installed configuration or recommendations for a real service.
+Save a `monitors` array with `/harness-monitor declare <name>|<file>`, which shows the change and
+asks to save, saving after 1 minute without an answer unless you hold it. The example's names, values,
+and paths are illustrative, not installed configuration or recommendations for a real service.
 
 ```json
 {
@@ -120,6 +120,7 @@ Apply reviewed declarations or task acceptance with `-Apply -Actor <owner> -Reas
 reads saved values only. Accepting a task still requires fresh Unhealthy evidence at that time;
 inspection may show an older pending proposal without authorizing intake.
 
-For scheduling, the timer helper uses `-MonitorName service-health -IntervalDay <days>`; preview
-before Apply. Its task identity is `SkillVault Harness <project-id> Monitor <name>`, separate from
-existing `Topic monitor <flow> <environment>` command-flow timers. Fallback uses `monitor:<name>`.
+For scheduling, `/harness-timer set project <duration> monitor service-health` maps to the timer's
+`-Action Set -Target project -Interval <duration> -MonitorName service-health`; preview before Apply.
+It is separate from existing `Topic monitor <flow> <environment>` command-flow timers, and the older
+`-IntervalDay <days>` form still works. Fallback uses `monitor:<name>`.

@@ -29,7 +29,8 @@ descriptions, and the names invited the use of topics that are gone.
    for `upsert` are not separate names. They never appear as skills, folders, or menu entries.
    *Amended 2026-10-07:* at the owner's request, `/rules core` is an alias of `/rules apply`, and bare
    `/rules` shows the four core rules, because the retired separate command had been the visible
-   way to find them.
+   way to find them. *Amended 2026-10-08:* `/rules core` is now short for `/rules apply core`, which
+   applies only the four core rules; `/rules apply` adds the extra rules.
 3. **Retirement mechanisms stay.** The installer's former-name map, the bootstrap installers' legacy
    lists, the ownership check for older runtimes, and the fixtures that test them keep old names so
    that copies installed under them are found and retired. *Amended 2026-10-07:* older ADRs, review

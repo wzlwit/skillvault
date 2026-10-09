@@ -9,13 +9,19 @@ the first pass has no new findings. A request to discuss or edit this skill does
 Before scripts, follow the installed `harness-runtime` guide's Script Permissions and Agent
 Fallback procedure. Reuse approved access or request the missing command-scoped permission before
 execution. An attended agent fallback may review through authorized read-only tools with the same
-baseline, snapshot, independent-pass, and policy requirements. Missing coverage or unavailable
+baseline, snapshot, independent-pass, and policy requirements. When it runs the reviewers as
+sub-agents, it sets each one's model explicitly to its family's first allowed model in the bundled
+list (`gpt-6-astra` and `claude-opus-5.5` today), with reasoning effort `max` and long context, never
+the host's default or the session's own model. It starts them in the background as read-only
+general-purpose agents, never the Code Review agent type, then ends its turn and reads each result
+as it arrives; Review Panel in the runtime guide explains why. Missing coverage or unavailable
 recording stays explicit; do not turn script unavailability into permission to edit or run PR code.
 
 ## Scope and Baseline
 
 For an explicit PR URL, load `pr-review` and delegate to its verified remote-snapshot workflow
-before initializing or running a project review. Preserve a requested `--security` mode. Its
+before initializing or running a project review. Preserve a requested security review and
+`--broad` level. Its
 shared helper does not invoke this skill back. If the dependency is missing, offer that route's
 installation/setup; do not silently review the current branch instead. A local `--base` override
 does not override a remote PR's verified merge-base. The following steps govern local review.
@@ -63,8 +69,9 @@ no extra instance prompt.
 
 Every pass uses the runtime's Review Panel: two independent read-only reviewers, the strongest
 allowed GPT model and the strongest allowed Claude Opus model. Candidates come from approved
-runner-context `profiles` or, by default, the harness's bundled model list (the owner's model picker,
-strongest first), narrowed by `allowedModels`. Each starts at the highest effort and long context; the
+runner-context `profiles` or, by default, the harness's bundled model list (the owner's ranking,
+strongest first), narrowed by `allowedModels`; the session's or project's own model never replaces
+them. Each starts at `max` effort and long context; the
 CLI rejects an unavailable model or unsupported effort before any model work, and the runtime moves to
 the next choice at no cost. The two review the same pinned snapshot at the
 same time unless `maxParallelReviewers` is 1, which runs them one after the other. Their findings are
@@ -73,22 +80,30 @@ findings only when neither reports one. When restrictions or availability leave 
 `runner.criticalReview` is `false`, one reviewer runs and the result and report say why. A failed
 reviewer fails the pass after both finish; the other result stays in the report as evidence.
 
-1. Start the review panel on the current snapshot. Prioritize concrete
-   correctness defects, behavioral regressions, error handling, and consequential missing tests.
+1. Start the review panel on the current snapshot at the selected level: `critical` by default, or
+   `broad` from `--broad` (`-ReviewLevel broad`). Critical reports only what blocks merging the change
+   or completing its task, such as defects and regressions it introduces, an unfixed target issue,
+   security or data-loss risk, broken contracts or callers, and missing tests the unit-test level
+   requires. Broad reports every issue with evidence, including minor and pre-existing ones. Review
+   Levels in the runtime guide defines both.
    Read complete owning functions, relevant callers, and nearby tests. State the triggering
    scenario, broken contract, and impact rather than reporting a keyword match or speculative risk.
-   The runtime captures the final response with `--silent --output-format text --stream off`.
+   The runtime sends the prompt on standard input, so a large diff isn't limited by the command line,
+   and captures the final response with `--silent --output-format text --stream off`.
    Require one JSON object with `verdict`, a non-empty string `summary`, and a `findings` array;
    CLI JSONL events, empty output, or exit zero alone are not a review verdict.
-2. Return all currently supported findings, including revalidated earlier findings. The coordinator
+2. Return all currently supported findings at that level, including revalidated earlier findings. The coordinator
    compares exact normalized file/line/message keys with the last completed review of the same
-   repository reference/root, scope, baseline reference/commit, and security mode. Old reports without structured comparison
+   repository reference/root, scope, baseline reference/commit, security mode, and review level;
+   reviews recorded before levels existed count as broad. Old reports without structured comparison
    data are not guessed from Markdown. Changed wording/line numbers conservatively count as new;
    this is not semantic issue tracking or automatic resolution of prior reports.
 3. If that completed first pass has **no new findings**, run exactly one `Fresh` pass. This also
    applies when it repeats existing findings. Use a new reviewer context, the same pinned code
    snapshot, and the whole selected repository, including unchanged code, configuration, and tests. Rebuild
-   understanding from sources, without passing the first review's conclusions as instructions.
+   understanding from sources, without passing the first review's conclusions as instructions. At
+   `critical` it uses that coverage only to find what the change breaks or leaves inconsistent
+   elsewhere; at `broad` it audits the whole repository.
 4. Keep the union of supported findings from both passes on the same verified snapshot. A clean second pass does not erase a
    finding from the first. Preserve earlier reports; a finding absent from a later report is not
    automatically marked resolved. Revalidate prior evidence before repeating it as a current issue.
@@ -148,7 +163,7 @@ in development. No failed worker session gets an automatic retry.
 Keep the general evidence-based principles above here. Reuse `differential-review` as a specialized
 sub-skill instead of copying its security methodology into a second maintained checklist.
 
-`/harness-review --security` adds that methodology to every panel reviewer in the same general review
+A request for a security review adds that methodology to every panel reviewer in the same general review
 and any fresh pass, not an extra worker. The shared helper's `-SecurityReview` loads the installed guide from
 the project first, then the global installation, and explicitly supplies its text to each worker.
 Merely naming or installing a skill is not context injection. Missing requested guidance blocks
@@ -168,7 +183,7 @@ CC-BY-SA-4.0 license; it is loaded, not copied into this bundle. `/dif-review` i
 /harness-review --repo-ref R-001
 /harness-review --base origin/develop
 /harness-review --base HEAD
-/harness-review --security
+/harness-review run --broad
 /harness-review <PR-URL>
 ```
 
@@ -176,10 +191,11 @@ CC-BY-SA-4.0 license; it is loaded, not copied into this bundle. `/dif-review` i
 & <harness-folder>/scripts/harness.ps1 -ProjectPath <root> -Action Review
 & <harness-folder>/scripts/harness.ps1 -ProjectPath <controller-folder> -Action Review -RepoRef R-001
 & <harness-folder>/scripts/harness.ps1 -ProjectPath <root> -Action Review -BaseRef <verified-ref> -SecurityReview
+& <harness-folder>/scripts/harness.ps1 -ProjectPath <root> -Action Review -ReviewLevel broad
 ```
 
 Show findings first, ordered by evidenced severity with current file/line anchors and the reviewers
-that reported them, then each pass's requested scope, controller, coding repository, baseline,
+that reported them, then the review level, each pass's requested scope, controller, coding repository, baseline,
 security guidance source when used, reviewers and any one-reviewer note, attempted pass and session
 counts, restart count, coverage gaps, and report path. Keep pre-existing issues separate from
 introduced regressions. The shared state retains compact review comparison data in its existing

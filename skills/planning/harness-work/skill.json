@@ -1,7 +1,7 @@
 {
   "name": "harness-work",
   "title": "Harness Work",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "requiredInterfaces": {
     "harness-runtime": {
       "development-tests": 1

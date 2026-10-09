@@ -385,7 +385,7 @@ function Get-HarnessVerifiedMonitorSubset {
 function Get-HarnessMonitorView {
     param($Paths)
     if (-not (Test-Path -LiteralPath $Paths.Config -PathType Leaf)) {
-        return [pscustomobject]@{ initialized = $false; monitors = @(); latest = @(); incidents = @(); candidates = @(); proposals = @(); verifiedSubset = @() }
+        return [pscustomobject]@{ initialized = $false; monitors = @(); latest = @(); incidents = @(); candidates = @(); proposals = @(); verifiedSubset = @(); pendingDefinitions = @() }
     }
     $config = Read-HarnessConfig $Paths
     $state = Read-HarnessState $Paths
@@ -398,6 +398,7 @@ function Get-HarnessMonitorView {
         candidates = @($monitoring.candidates | Where-Object { $_ })
         batch = $monitoring.batch
         verifiedSubset = @(Get-HarnessVerifiedMonitorSubset $config $state)
+        pendingDefinitions = @(Get-HarnessPendingDefinitions $Paths $config monitoring)
         assessments = @(foreach ($definition in (Get-HarnessMonitorSettings $config).monitors | Where-Object { $_.kind -ceq 'discovery' -and $_.scope }) {
             $latest = @($monitoring.latest | Where-Object monitor -CEQ $definition.name) | Select-Object -First 1
             [pscustomobject]@{ monitor = $definition.name; assessment = Get-HarnessDiscoveryAssessmentSummary $definition @($monitoring.candidates | Where-Object monitor -CEQ $definition.name) ([string]$latest.result.status) }
@@ -593,7 +594,7 @@ function Invoke-HarnessMonitor {
         }
         $assessmentComplete = -not $savedResult.assessment -or $savedResult.assessment.status -in @('Assessed', 'NotRequired')
         $savedResult | Add-Member -NotePropertyName complete -NotePropertyValue ($savedResult.status -ceq 'Succeeded' -and $assessmentComplete -and (-not $savedResult.verification -or $savedResult.verification.status -in @('Verified', 'NoCandidates', 'Disabled'))) -Force
-        # Standing intake runs only on a named, complete check; `check all` batches collect and propose only.
+        # Standing intake runs only on a named, complete check; all-source checks collect and propose only.
         if ($definition.intake -and -not $CollectOnly) {
             $intakeResult = [pscustomobject]@{ accepted = @(); skipped = @(); reason = 'The check was not complete, so nothing was taken in or worked.' }
             $workResult = [pscustomobject]@{ status = 'Skipped'; ran = @(); pending = 0; reason = $intakeResult.reason }

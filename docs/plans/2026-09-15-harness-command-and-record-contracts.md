@@ -166,10 +166,10 @@ synopsis notation: `/harness-<topic> [action1|action2|...] [<arguments>...]`.
 | `/harness-project clean [--policy <file>] [--apply]` | Preview historical records/reports or configure retention; applying one operation does not imply the other. No schedule or source-skill cleanup. |
 | `/harness-project context [<task-id>\|add\|remove] [<arguments>...]` | Read the selected project's/task's rules, plans, decisions, and registered sources without creating another context store; `add` and `remove` keep the one registry of supporting URLs, files, folders, and coding Git roots. Removal unregisters the source, never its target. `link` is an alias. |
 | `/harness-project policy [list\|set\|pause\|stop\|resume] [<arguments>...]` | Own runtime limits and failure handling. `limits` and `fallback` qualify list/set; policy changes start nothing. |
-| `/harness-work [list\|upsert\|run\|queue\|sprint\|test] [<arguments>...]` | `upsert` owns task records and readiness without starting work; `add` and `update` are aliases. It accepts requirements, a local file, or a URL. `run`, `queue`, and `sprint` own execution, queues, the development review loop, and goal-based sprints; ad-hoc work reuses task intake. Old `now` maps to `run --now`; `next` maps to `queue`. A sprint delegates status drafts to `harness-write` and PRs to `pr-publish`. |
+| `/harness-work [list\|upsert\|run\|queue\|sprint\|test] [<arguments>...]` | `upsert` owns task records and readiness without starting work; `add` and `update` are aliases. It accepts requirements, a local file, or a URL. `run`, `queue`, and `sprint` own execution, queues, the development review loop, and goal-based sprints; ad-hoc work reuses task intake. Old `now` maps to running now; `next` maps to `queue`. A sprint delegates status drafts to `harness-write` and PRs to `pr-publish`. |
 | `/harness-work test [list\|declare\|run] [<arguments>...]` | Inspect or declare flows/environments, or run a selected flow. Optional task linkage reuses its workspace. |
 | `/harness-review [list\|run] [<arguments>...]` | Review ahead/working changes or a verified PR snapshot; optional scope, base, and security arguments retain their meanings. |
-| `/harness-monitor [list\|declare\|check\|accept\|auto] [<arguments>...]` | Inspect source candidates/health observations, declare monitors, check a source, accept a candidate/incident-linked manual task, or turn on scheduled automatic follow-up through a local-only worker flow. |
+| `/harness-monitor [list\|declare\|check\|accept\|auto] [<arguments>...]` | Inspect source candidates/health observations, declare a monitor (reusing or drafting its file), check a source, accept a candidate/incident-linked manual task, or turn on scheduled automatic follow-up through a local-only worker flow. |
 | `/harness-write [list\|upsert\|slots] [<arguments>...]` | `upsert doc` lists or authors reader doc sets and focused updates in the coding repository, with Humanizer before final validation. `upsert tracker\|meeting\|email` drafts communications and `slots` ranks meeting times from saved free/busy data; drafts only, and sending, inviting, and sharing need explicit requests. `upsert report` resolves an existing or missing artifact and authors it; platform, output, validation, and publication boundaries stay separate. create/update remain aliases, and no controller initialization or runtime action is implied. |
 | `/harness-timer [list\|set\|disable\|resume\|clean\|migrate] [<arguments>...]` | Own cadence and schedule lifecycle. `clean` handles stale schedules only; weekly maintenance delegates history to harness. |
 | `/harness-decision [list\|explain\|record] [<arguments>...]` | Read-only [decision bulletin](#decision-bulletin): open decisions plus a brief configuration summary by default; `list all` adds recent decisions and the detailed setup checklist. Closed/exact-ID views omit setup. `explain` is read-only: options, evidence-backed reasons, an example, the trade-off, and status. Record only an explicit human choice, linked to affected tasks. |
@@ -302,6 +302,11 @@ updates do not refresh installed copies or configure live workflows.
   and a clean pass only when both are clean. Models or effort levels the CLI rejects before model work
   are skipped at no cost. One usable family, or `runner.criticalReview: false`, runs one reviewer and
   says so; `/pr-review` keeps its one profile.
+  Reviewers work at a review level: `critical` (default) reports only what blocks merging the change
+  or completing its task, and its Full pass looks only for what the change breaks elsewhere; `broad`
+  reports every issue with evidence and audits the whole repository. `/harness-review run --broad`
+  and `/pr-review run --broad` (or a saved PR `reviewLevel`) choose broad; development reviews always
+  use critical. See the [review-levels ADR](decisions/2026-10-08-review-levels-adr.md).
   Standalone Review makes one fresh whole-repository pass after a completed pass has no new findings,
   including when it repeats existing findings. Findings are handed to the existing dev/proposal
   workflow; after fixes, the review coordinator repeats from Changes until no supported unfixed
@@ -381,7 +386,7 @@ clean Changes/Full round with no supported unresolved issues sets `complete: tru
 `nextPhase: Review`. Reports and run metadata include the reviewers, any one-reviewer note,
 attempted passes and sessions, and restarts.
 
-`--security` composes the installed [differential-review guide](../../skills/security/differential-review/SKILL.md)
+A requested security review composes the installed [differential-review guide](../../skills/security/differential-review/SKILL.md)
 into the same reviewer contexts. Keep common evidence-based code-review principles in harness-review,
 but reuse the specialized security methodology at its owning guide rather than copying it. No
 scanner, extra worker, implicit installation, or wider tool permission is introduced. Requested
@@ -472,13 +477,14 @@ that its service version matches the checked-out code. Reuse existing project te
   See the [declaration schema and examples](../../skills/planning/harness-work/references/test-flows.md).
 - **Ad-hoc:** `/harness-work test run <flow> [environment]` tests the current workspace, or the saved task
   workspace with `--task <task-id>`. It does not require an AI model or create a development task.
-- **Scheduled:** `/harness-timer 0.5 test <flow> <environment>` runs that target every 12 hours after
+- **Scheduled:** `/harness-timer set project 12h test <flow> <environment>` runs that target every 12 hours after
   explicit setup and environment scheduling approval. It does not replace the development timer.
 - **Development:** `testing.afterDev` selects the test flows that run with the first (Changes) review
   pass of feature/fix/verify work; legacy validation commands still run first. `testing.afterReview`
   runs flows once after a clean Full pass, on the reviewed code. A failed test goes back to the
-  developer as a fix round; blocked or paused tests stop the task. `afterDev` refuses flows that
-  declare `effects: external`, and checks that need a deployment run on demand or on a timer.
+  developer as a fix round; blocked or paused tests stop the task. An `effects: external` flow in
+  `afterDev` runs on unreviewed code with a warning, and checks that need a deployment run on demand
+  or on a timer.
   `testing.unitTests` (`critical` by default) sets how much unit testing the developer adds and the
   reviewers expect. See the [real-tests ADR](decisions/2026-10-08-real-tests-in-development-loop-adr.md).
 
@@ -648,7 +654,7 @@ The [report-authoring ADR](./decisions/2026-09-15-harness-report-authoring-adr.m
 the earlier authoring-skill deferral, not the monitoring or execution boundaries.
 
 - No arguments shows status/actions; an explicit create/update request clarifies missing requirements.
-  `--design-only` requests a specification.
+  A request for a design only gets a specification.
   Neither implicitly initializes harness state or connects to a data source.
 - Reuse the [KPI design companion](../../skills/data/kpi-dashboard/SKILL.md) for
   metric contracts, population/grain/unit/time/freshness checks, and layout principles. It is
@@ -807,7 +813,7 @@ current declarations; in-flight operations keep their snapshot and record outcom
 edit is invalid. Pause/stop remains live. Scheduler declarations and progress are separate; ticks
 preserve configuration edits. The README links views without duplicating task data.
 
-`/hn-project migrate` previews an in-place legacy-to-layout-2 transition; approved `--apply` preserves task
+`/hn-project migrate` shows an in-place legacy-to-layout-2 transition and asks once; a yes preserves task
 identity, queues, pauses, report bytes, external board locations, and schedule cadence while updating
 owned paths. Active/unrecovered work and collisions block it. Custom adapters and snapshots remain
 in place for explicit review, not automatic rewriting or deletion. `init` never migrates; Root

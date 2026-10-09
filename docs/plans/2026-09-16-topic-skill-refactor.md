@@ -364,9 +364,11 @@ map retires installed copies under those names; nothing else accepts them.
 - `/skillvault-authoring` authors skill bundles and catalog entries in a verified SkillVault repository,
   never the working project's application source. Show source and working project separately;
   upsert never installs. Preserve the source resolver's existing selection rules.
-- `/rules apply` loads the compact rules without changing files. Upsert and remove change private
-  Personal rules by default and the shared core only on request, always after explicit approval;
-  `/rules` keeps a generated always-on copy of the four rules. Workers receive core guidance
+- `/rules apply [core] [global|project|session]` puts the core and extra rules, or only the core rules,
+  into the global always-on file (default), a project's `.github/copilot-instructions.md`, or the
+  current chat; other skills' "apply `/rules apply`" means the current chat. Upsert and remove change
+  private Personal rules by default, or project rules, and the public library only when the owner
+  names `extra` or `core`, always after explicit approval. Workers receive core guidance
   explicitly; installing or mentioning a skill is not automatic context injection.
 - Grilling remains a human decision interview. Offer it for unresolved consequential choices,
   including choices found after development, not every review or monitor tick. Unattended

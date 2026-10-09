@@ -47,7 +47,7 @@ different schema. Invalid or unreadable sources are unavailable evidence, not an
 | `list closed` | `-Action Show -Filter Closed` | Up to five recent Accepted/Rejected/Superseded decisions |
 | `list all` | `-Action Show -Filter All` | Open decisions, recent decisions, then the detailed Configuration When Needed checklist |
 | `list <decision-id>` | `-Action Show -Id <decision-id>` | The selected record regardless of status |
-| `--recent <count>` | `-RecentCount <count>` | Change the resolved-results limit, from 1 to 100 |
+| A number of results, such as "the last 20" | `-RecentCount <count>` | Change the resolved-results limit, from 1 to 100 |
 
 `all` means all statuses, not an unlimited resolved-result count; it includes every open decision
 and the detailed configuration checklist. Apply the same filter when reading plans and ADRs

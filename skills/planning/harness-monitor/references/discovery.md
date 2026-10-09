@@ -28,7 +28,9 @@ mention of DAS/PACS is not enough. Never assume the result count before reading 
 it to make it look small.
 
 Show the exact source, filters, result granularity, time/freshness budgets, and proposed definition
-before applying through `MonitorConfig -Apply -Actor <owner> -Reason <reason>`. Missing harness
+before saving it with `/harness-monitor declare`, which drafts the file under `.harness_sv/definitions/`,
+asks to save, and saves it through `MonitorConfig -Apply -Actor <owner> -Reason <reason>` on a yes or
+after 1 minute without an answer, unless the owner holds it. Missing harness
 initialization stays a prerequisite, not a side effect. Examples below are templates, not live setup.
 
 ```json
@@ -266,8 +268,9 @@ classification. For example, a DAS/PACS owner may exclude `security-compliance` 
 these explicitly, never as global defaults, and make scope descriptions and prefilters include work
 kept for visibility.
 
-When an attended source review supplies or corrects an assessment, save a local review artifact and
-preview/apply it through the shared runtime; applying continues into Auto verification:
+When an attended source review supplies or corrects an assessment, save a local review artifact,
+show it, and ask once before applying it through the shared runtime (it holds without an answer);
+applying continues into Auto verification:
 
 ```powershell
 & <harness-folder>/scripts/harness.ps1 -ProjectPath <root> -Action MonitorAssess -MonitorName das-platform-backlog -DefinitionPath assessment.json
@@ -443,7 +446,8 @@ source candidate. Failed, partial, stale, or older collections never remove or r
 A missing item is Missing, not fixed, and neither disappearance nor source closure alone changes a
 linked task's status.
 
-Acceptance previews the exact proposal. Applying needs owner and reason plus a fresh, complete latest
+`accept <id>` acts at once because the id names the proposal (Ask Once in the runtime guide); when the
+proposal no longer meets the conditions below, it reports why and accepts nothing. Accepting needs owner and reason plus a fresh, complete latest
 collection for the candidate and its required related evidence; an unrelated source may still be
 Partial. With verification enabled, the candidate needs a current verified-open outcome, and scoped
 candidates also need a current Relevant assessment with explained priority; raw, Uncertain, or
@@ -467,8 +471,9 @@ as a declared `producer` flow.
 
 When the owner's policy is to work every item a source lists, the source can carry that approval
 instead of an `accept` per item. Turn it on with `/harness-monitor auto <name> --worker <flow>`:
-it previews the intake below, writes it on the owner's approval (with `approvedBy` set to that
-owner and `allowScheduled: true`), and delegates the `monitor <name>` timer to `/harness-timer`.
+it shows the intake below and asks once, writes it on a yes (with `approvedBy` set to that
+owner and `allowScheduled: true`), and delegates the `monitor <name>` timer to `/harness-timer`;
+without an answer it holds, because it starts automatic work.
 `/harness-monitor auto` lists every monitor's intake and worker tasks; `auto <name> off` removes it.
 Health monitors take the same intake for their incidents; see
 [health observations](monitoring.md#episode-and-task-contract). The intake is plain declaration data:
@@ -498,7 +503,7 @@ Health monitors take the same intake for their incidents; see
 - **Intake.** At the end of a complete named check (`check <name>` and its `monitor <name>` timer),
   every proposal that manual acceptance would take becomes a task, in priority order: same freshness,
   relevance, and verification rules, with Unknown risk and no automatic eligibility. Follow-ups of
-  completed work and blocked proposals stay for a human. `check all` never takes items in.
+  completed work and blocked proposals stay for a human. A `check` of all sources never takes items in.
 - **Work.** Then the worker runs once per queued task of this source whose item is in the current
   collection, up to `maxPerCheck`, highest priority first. A Missing item waits. The worker receives
   `HARNESS_ITEM_ID` (the adapter's item ID), `HARNESS_TASK_ID`, `HARNESS_SOURCE`,

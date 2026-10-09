@@ -88,8 +88,9 @@ environment are available.
 - Optional flow `effects` is `local` or `external`. `local` states that the flow writes only local
   files, such as drafts and reports, and never posts, changes another system, or changes code.
   `external` means it deploys or writes somewhere else, such as shared PPE data. A
-  `/harness-monitor` feed producer or standing-intake worker must declare `local`, and `afterDev`
-  refuses an `external` flow. The harness cannot verify the statement, so review the commands first.
+  `/harness-monitor` feed producer or standing-intake worker must declare `local`. An `external` flow
+  in `afterDev` is allowed with a warning, described under When Tests Run. The harness cannot verify
+  the statement, so review the commands first.
 - Optional step `repeatable` is a boolean, false by default. Set it true only after explicitly
   reviewing that repeating this command is safe. It enables no retry by itself: `/harness-project policy fallback`
   must also declare that command's known transient exit codes. With those codes declared, omitted
@@ -120,10 +121,13 @@ task's development loop:
   round, the loop stops for a decision. Timeouts, stops, and blocked starts keep their outcomes. A
   blocked review, or code that changes after the tests or a review, sends the task back to these
   tests, so a retry never skips them.
+  An `external` flow, such as a local PPE test you want every round, may be listed here. It then
+  runs on code that review has not passed yet, so the declaration result and the context summary
+  carry a warning, and each run's report notes that it ran before review was clean.
 - `afterReview` flows run once after the Full pass is clean, on that exact code. A failure starts a
-  fix round that goes through the tests and both review passes again. Put flows that write shared
-  data or take long here, such as a bounded local PPE smoke check. A repeat failure of the same
-  flow stops for a decision.
+  fix round that goes through the tests and both review passes again. This is the safer place for
+  flows that write shared data or take long, such as a bounded local PPE smoke check. A repeat
+  failure of the same flow stops for a decision.
 - Scheduled runs use only environments with `allowScheduled: true`, in both lists. Otherwise the
   task stops as Blocked until someone runs it with `/harness-work run <task>`.
 - A flow in neither list runs only on demand or on a timer. Use this for checks that need a
@@ -152,23 +156,24 @@ it does not cancel an active or interrupted run.
 /harness-work test run smoke
 /harness-work test run smoke localPPE
 /harness-work test run smoke local --task T-001
-/harness-timer 0.5 test smoke localPPE
-/harness-timer status test smoke localPPE
-/harness-timer disable test smoke localPPE
-/harness-timer resume test smoke localPPE
+/harness-timer set project 12h test smoke localPPE
+/harness-timer list
+/harness-timer disable <id>
+/harness-timer resume <id>
 ```
 
 `test declare` without a file drafts a declaration from the coding repository: its agent
 instructions, README, test projects, scripts, and pipelines. Save the draft under
-`.harness_sv/definitions/`, show it with the effects and lists you chose, and apply it only after the
-user approves. Never guess a command or mark a flow `local` without reading what it does; leave a
+`.harness_sv/definitions/`, show it with the effects and lists you chose, and ask to save it: it saves
+on a yes or after 1 minute without an answer, unless held. Never guess a command or mark a flow `local` without reading what it does; leave a
 method you could not verify out of the draft and say so.
 
 Scheduling requires prior explicit `allowScheduled: true` for that environment. The shared timer
 maps the test target to `-TestFlow` and `-TestEnvironment`, then the dispatcher to `-Action Test`,
 `-Flow`, `-TestEnvironment`, and `-Scheduled`. It runs tests only, without selecting development
-tasks or starting Copilot. Disable can target a removed flow by supplying both saved names;
-resume rechecks the current declaration and prerequisites.
+tasks or starting Copilot. `list` shows each schedule's id; `disable <id>` works even after the flow
+is removed, and `resume <id>` rechecks the current declaration and prerequisites. The older
+`/harness-timer 0.5 test <flow> <environment>` form still sets a schedule, with the number in days.
 
 All triggers honor `/harness-project policy limits` environment/launcher/directory limits and `/harness-project policy fallback` durable
 target pauses. A failed run counts once for `test:<flow>:<environment>` after retries, not once per

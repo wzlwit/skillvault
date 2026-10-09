@@ -1,8 +1,8 @@
 
 # Harness Monitoring
 
-Contents: Start Here; Commands; Results and Incidents; Task Intake; Scheduling; Storage and Scope;
-Related Work.
+Contents: Start Here; Commands (Declare); Results and Incidents; Task Intake; Scheduling; Storage and
+Scope; Related Work.
 
 Discover source-linked work candidates or evaluate structured health observations on the existing
 harness. **No arguments only shows saved definitions, latest checks, candidates, incidents, and
@@ -42,20 +42,55 @@ Use the shared `harness-runtime/scripts/harness.ps1` with the selected project r
 | Request | Helper action and behavior |
 | --- | --- |
 | `/harness-monitor` | `-Action Monitor`; show saved state only, including timestamps and pending proposals |
-| `/harness-monitor declare <file>` | `-Action MonitorConfig -DefinitionPath <file>`; validate and preview named definitions |
-| `/harness-monitor check` or `check all` | `-Action Monitor -AllMonitors`; collect all configured sources, assess/verify, reconcile and audit one complete or Partial batch |
+| `/harness-monitor declare <name>\|<file> [--hold]` | Find or draft the declaration file, ask to save (saving after 1 minute without an answer), then offer a timer; see Declare below |
+| `/harness-monitor check` | `-Action Monitor -AllMonitors`; collect all configured sources, assess/verify, reconcile and audit one complete or Partial batch |
 | `/harness-monitor check <name>` | `-Action Monitor -MonitorName <name>`; collect, assess relevance, Auto-verify status, reconcile local outcomes, then rank proposals |
-| `/harness-monitor accept <id>` | `-Action MonitorTask -Id <id>`; preview a `C-...` discovery candidate or `I-...` incident for explicit intake |
+| `/harness-monitor accept <id>` | `-Action MonitorTask -Id <id> -Apply -Actor <owner> -Reason <request>`; accept the named `C-...` discovery candidate or `I-...` incident at once and show the resulting task |
 | `/harness-monitor auto` | `-Action MonitorAuto`; list each monitor's standing intake, worker, limits, last check, and worker tasks |
-| `/harness-monitor auto <name> --worker <flow> [--every <duration>] [--max <n>] [--attempts <n>] [--setup-exit <code>...]` | `-Action MonitorAuto -MonitorName <name> -Flow <flow> [-MaxPerCheck <n>] [-MaxAttempts <n>] [-SetupExitCode <code>...]`; preview, then apply with `-Apply -Actor -Reason`; then `/harness-timer set project <duration>` (default `1h`) for `monitor <name>` |
-| `/harness-monitor auto <name> off` | `-Action MonitorAuto -MonitorName <name> -Off`; preview, apply with `-Apply -Actor -Reason`, then `/harness-timer disable <id>` for that monitor's timer |
+| `/harness-monitor auto <name> --worker <flow> [--every <duration>]` | `-Action MonitorAuto -MonitorName <name> -Flow <flow>`, plus `-MaxPerCheck <n>`, `-MaxAttempts <n>`, or `-SetupExitCode <code>...` when the request names those limits (defaults: 2 items per check, 2 attempts); show and ask once, then on a yes apply with `-Apply -Actor -Reason` and `/harness-timer set project <duration>` (default `1h`) for `monitor <name>`; hold without an answer |
+| `/harness-monitor auto <name> off` | `-Action MonitorAuto -MonitorName <name> -Off`; show and ask once, then on a yes apply with `-Apply -Actor -Reason` and `/harness-timer disable <id>` for that monitor's timer; hold without an answer |
 
-Declaration and task intake preview unless `-Apply` is supplied. Show the exact definitions or
-proposal and require approval before applying with `-Actor <human-owner> -Reason <reason>`.
-A reviewed `--apply` request authorizes that exact operation; obtain missing owner/reason details.
-Do not accept unseen file changes after approval. Declarations upsert by name; unmentioned monitors
+### Declare
+
+`declare` saves a monitor declaration:
+
+1. **Find the file.** Use an explicit path. Otherwise search `.harness_sv/definitions/` for JSON files
+   whose `monitors` include that name; if several match, ask which one. If none exists, draft
+   `.harness_sv/definitions/monitor-<name>.json` from the request under the
+   [health](monitoring.md) or [discovery](discovery.md) contract, asking only for the source, scope,
+   or threshold choices the request leaves open. Never invent a source, credential, or threshold.
+2. **Ask to save.** Run `-Action MonitorConfig -DefinitionPath <file>` and show what changes: new or
+   changed monitors, standing intake, and scheduling approval (`allowScheduled`). Ask **Save now**
+   or **Hold** with the host's question tool; a request that already says save, such as the older
+   `--apply`, needs no question.
+   - Save: run it again with `-Apply -Actor <owner> -Reason <reason>`, with the requesting owner as
+     Actor and the request as Reason. Save exactly the file shown; if it changes first, show it again.
+   - No answer, including a question tool that reports the owner unavailable: say in the reply that it
+     saves in 1 minute unless told to hold, wait 1 minute, and save if no other reply has arrived. The
+     Reason notes that it was saved without an answer.
+   - Hold, from `--hold`, the request, or the answer: save nothing and keep the file. Save it later
+     by replying save or running `declare <name>` again.
+3. **Offer a timer.** Unless the monitor already has a timer, end the reply by offering to check it
+   on a timer: every `1h` (recommended), another duration, or no. Show the exact
+   `/harness-timer set project <duration> monitor <name>` command and do not wait for an answer. A
+   yes, in this reply or later, sets `allowScheduled: true` in the file and saves it again when it is
+   not already set, because scheduled checks need it, then runs that command and applies it. Without
+   a yes, start no timer.
+
+Declaring runs no check: use `check <name>` to run one now, and `auto <name>` to work its items
+automatically. Declare, `accept`, and `auto` follow Ask Once in the runtime guide.
+
+Task intake through `accept <id>` acts at once, because the id names exactly what to accept: it
+accepts with `-Apply -Actor <human-owner> -Reason <reason>` and shows the resulting task. Accept
+exactly the proposal or incident named; when it no longer matches the board, such as a candidate
+that changed or was already accepted, report that and accept nothing. Declarations upsert by name; unmentioned monitors
 are preserved. Changing a previously observed metric/resource/environment/window/condition needs
 a new monitor name so old incidents retain their meaning. Declarations do not run or schedule checks.
+
+The bare monitor view lists `pendingDefinitions`: JSON files under `.harness_sv/definitions/` whose
+monitors differ from the saved declarations, with each new or changed monitor. They include held
+drafts, but also older files that later declarations passed; saving one of those would undo the later
+change, so check it before `declare <file>`.
 
 An explicit named check covers only that source. The all-source check continues collecting other
 configured sources after one failure, preserves existing records, and returns `Partial` with
@@ -115,18 +150,21 @@ status or contract. Signal recovery alone does not complete an investigation or 
 After approving `allowScheduled: true` in that monitor definition, use:
 
 ```text
-/harness-timer 0.5 monitor service-health
-/harness-timer status monitor service-health
-/harness-timer disable monitor service-health
+/harness-timer set project 1h monitor service-health
+/harness-timer list
+/harness-timer disable <id>
+/harness-timer resume <id>
 ```
 
-These examples select the named monitor through the timer helper's `-MonitorName service-health`,
-not `-TestFlow`. The timer calls `Monitor -Scheduled` using the same collector/evaluator and pause
+`set project <duration> monitor <name>` selects the named monitor through the timer's
+`-MonitorName service-health`, not `-TestFlow`; `list` shows each schedule's id for `disable` and
+`resume`. The timer calls `Monitor -Scheduled` using the same collector/evaluator and pause
 target. Health checks run no AI worker; discovery verification runs the read-only Auto worker.
 Neither creates tasks, chooses thresholds, fixes code, or publishes dashboards.
-Cadence remains positive days, explicitly supplied or reused for that exact target, not an invented
-default. Monitoring declarations and checks do not create schedules, and the default E2E timer
-does not add monitoring automatically.
+The cadence is the duration given, such as `30m`, `1h`, or `1d`, or the one already saved for that
+exact target, never an invented default; the older `/harness-timer 0.5 monitor <name>` form still
+sets it, with the number in days. Monitoring declarations and checks do not create schedules, and
+the default E2E timer does not add monitoring automatically.
 
 Existing monitor command-flow timers using `-TestFlow` retain their Test executor and identity.
 Do not silently migrate them or reinterpret a name shared by a monitor and a flow. Use the timer

@@ -1,0 +1,36 @@
+{
+  "name": "pbi-report-visual-conventions",
+  "title": "Power BI Report Visual Conventions",
+  "version": "1.0.0",
+  "status": "draft",
+  "visibility": "private",
+  "kind": "agent",
+  "description": "Power BI report visual conventions: canvas #FAF9F8 and Fit to width, full numbers, \"(Blank)\" for blanks, titles that fit, chart labels and lines, with a checker for formats, blanks and text fit. Use when building or reviewing report visuals; pbi-report-layout-tests automates the layout checks on PBIR and PBIX, pbi-tmdl-workflow covers editing the files, kpi-dashboard platform-agnostic design, powerbi-modeling DAX.",
+  "tags": [
+    "power-bi",
+    "pbir",
+    "tmdl",
+    "report-design",
+    "dax"
+  ],
+  "author": "wzlwit",
+  "license": null,
+  "source": {
+    "repo": "skillvault",
+    "path": "templates/pbi-report-visual-conventions"
+  },
+  "install": {
+    "global": true,
+    "project": true,
+    "session": true,
+    "defaultScope": "project",
+    "strategy": "copy"
+  },
+  "dependencies": [],
+  "examples": [
+    "Review the report visuals in this PBIR folder against the team conventions",
+    "Why does this card show (Blank), and should it show 0?",
+    "python scripts/check_visual_conventions.py <Report folder> --model <SemanticModel folder> --resx <en-US.resx>"
+  ],
+  "readme": "SKILL.md"
+}

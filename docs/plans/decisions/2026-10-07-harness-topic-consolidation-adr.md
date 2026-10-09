@@ -44,6 +44,11 @@ the typed shorthand.
    *Amended 2026-10-07:* `harness-work` merged `add` and `update` into `upsert`, and `harness-project`
    merged `link` into `context`: bare `context` shows the briefing with the registered sources, and
    `context add|remove` keeps the one source registry. `link`, `add`, and `update` remain aliases.
+   *Amended 2026-10-08:* at the owner's request, `harness-monitor declare` is the one declaration
+   action. It reuses or drafts the monitor's declaration file, shows the change, and asks to save; with
+   no answer it saves after 1 minute, unless the owner holds it, and `--preview` is gone. The reply
+   then offers a timer with its `/harness-timer set` command, without waiting; it starts only on a
+   yes, which may come later (see the Ask Once ADR). `harness-monitor` moves to 2.0.0.
 3. **Hidden runtime.** The `harness` folder keeps the scripts, the runtime guide, and the review model
    list, with `user-invocable: false` and `disable-model-invocation: true`. Script paths, runtime
    interfaces, and ownership stay where they were. Topic procedures moved into the topics; a topic

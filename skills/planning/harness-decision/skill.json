@@ -1,7 +1,7 @@
 {
   "name": "harness-decision",
   "title": "Harness Decision",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "kind": "agent",
   "description": "[explain|record] List open harness decisions separately from optional configuration, filter closed/all decisions, explain one decision or question, or record a choice. Shorthand: /hn-decision. Overlaps with architecture-decision-records on history; owns the compact bulletin, decision register, and read-only explanations.",
   "tags": [

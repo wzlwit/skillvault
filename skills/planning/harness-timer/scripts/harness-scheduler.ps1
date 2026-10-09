@@ -249,7 +249,15 @@ function Test-HarnessScheduledProcess {
     if (-not $Active.processId -or -not $Active.processStartedAt) { return $false }
     $process = Get-Process -Id $Active.processId -ErrorAction SilentlyContinue
     if (-not $process) { return $false }
-    try { $process.StartTime.ToUniversalTime().Ticks -eq ([datetimeoffset]::Parse($Active.processStartedAt)).UtcTicks }
+    try {
+        # PowerShell 7 ConvertFrom-Json returns ISO timestamps as [datetime]; a string round trip drops
+        # the fraction and the UTC kind, which made every live worker look dead to a mid-run tick.
+        $recorded = $Active.processStartedAt
+        $recordedTicks = if ($recorded -is [datetimeoffset]) { $recorded.UtcTicks }
+        elseif ($recorded -is [datetime]) { $recorded.ToUniversalTime().Ticks }
+        else { [datetimeoffset]::Parse([string]$recorded, [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::RoundtripKind).UtcTicks }
+        $process.StartTime.ToUniversalTime().Ticks -eq $recordedTicks
+    }
     catch { $true }
 }
 

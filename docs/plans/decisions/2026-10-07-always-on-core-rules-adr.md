@@ -1,7 +1,15 @@
 # ADR: Always-On Core Rules and Personal Rule Edits
 
 - Date: 2026-10-07
-- Status: Accepted
+- Status: Accepted. Amended 2026-10-08: the owner asked to keep extra rules in the repository and to
+  treat add, upsert, and apply as putting rules into a scope, not editing SkillVault. The rule library
+  is the public `core.md` and a new `extra.md` (one bullet per rule). `/rules apply [core]
+  [global|project|session]` puts the core and extra rules, or only the core rules with `core`
+  (`/rules core`), into the generated block of the global file (default) or the project's
+  `.github/copilot-instructions.md`, or into the current chat; the block records its set. Upsert and
+  remove still default to the private Personal rules, now with a `project` option, and change the
+  library only when the owner names `extra` or `core`. Another skill's "apply `/rules apply`" means
+  session. This closes decision 5; `rules` moves to 3.0.0.
 - Decision owner: Zhaolong Wang
 - Scope: How the four core working rules reach every chat, where rule edits go, and how `/rules`
   relates to `/hn-project policy`.

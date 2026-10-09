@@ -1,11 +1,11 @@
 {
   "name": "rules",
   "title": "Rules",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "status": "public",
   "visibility": "public",
   "kind": "instruction",
-  "description": "[apply|upsert|remove] Apply the four core working rules (also /rules core) to the current task without editing files, or manage AI rule documents; persistent rule changes require confirmation.",
+  "description": "[apply|upsert|remove] Put the core and extra rules, or only the four core rules with /rules core, into effect globally (default), in a project, or for this chat; add or change your own global or project rules. The SkillVault rule library changes only when you name extra or core, and persistent rule changes require confirmation.",
   "tags": [
     "core",
     "engineering",
@@ -46,6 +46,10 @@
   "examples": [
     "/rules",
     "/rules list",
-    "/rules apply"
+    "/rules apply",
+    "/rules core",
+    "/rules apply project",
+    "/rules upsert",
+    "/rules upsert extra"
   ]
 }

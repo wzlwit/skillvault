@@ -3,7 +3,7 @@ name: harness-write
 description: "[upsert|slots] Draft and update writing for people: evidence-grounded feature docs, onboarding, and troubleshooting guides; stakeholder trackers, meeting invites, and email updates or thread replies; and dashboards, reports, and queries; rank meeting slots offline. Shorthand: /hn-write; upsert takes doc|tracker|meeting|email|report. Overlaps with architecture-decision-records on rationale, harness-monitor on status and owner evidence, harness-work on report implementation, kpi-dashboard and jarvis-metrics on report design, and the office-documents and ppt-master references on document output. Drafts only: never sends, invites, shares, or publishes without explicit approval."
 metadata:
   author: wzlwit
-  version: "1.0.0"
+  version: "2.0.0"
 argument-hint: "[list|upsert|slots] [<arguments>...]"
 ---
 
@@ -37,7 +37,7 @@ unchanged; abbreviation adds no confirmation. This is conversational routing, no
 /hn-write upsert tracker <initiative> [--workspace <name>]
 /hn-write upsert meeting <initiative> [--at <slot>] [--thread <subject>]
 /hn-write upsert email <purpose> [--thread <subject>]
-/hn-write upsert report <artifact-or-purpose> [--type <platform>] [--output <path>] [--design-only]
+/hn-write upsert report <artifact-or-purpose> [--type <platform>] [--output <path>]
 /hn-write slots <thread-or-people> [--required <people>] [--optional <people>] [--days <weekdays>] [--within <duration>] [--duration 30m]
 ```
 

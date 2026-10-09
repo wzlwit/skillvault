@@ -323,7 +323,8 @@ function ConvertTo-HarnessDiscoveryAssessment {
         $normalized.relevance = 'NotRelevant'; $normalized.classification = 'OutOfScope'
         $normalized.reason += ' Excluded by the declared category policy.'; $normalized.priority = $null
     }
-    elseif ($normalized.relevance -ceq 'Relevant' -and $normalized.category -and $Definition.scope.priorityFloors.PSObject.Properties[$normalized.category]) {
+    elseif ($normalized.relevance -ceq 'Relevant' -and $normalized.category -and $null -ne $Definition.scope.priorityFloors -and
+        $Definition.scope.priorityFloors.PSObject.Properties[$normalized.category]) {
         $floor = [int]$Definition.scope.priorityFloors.($normalized.category)
         if ($normalized.priority -lt $floor) { $normalized.priority = $floor; $normalized.priorityReason += " Declared category policy limits pickup to P$floor or below." }
     }

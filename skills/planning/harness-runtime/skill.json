@@ -1,12 +1,13 @@
 {
   "name": "harness-runtime",
   "title": "Harness Runtime",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "ownershipProtocol": 1,
   "runtimeInterfaces": {
     "harness-runtime": 4,
     "monitor-discovery": 7,
-    "development-tests": 1
+    "development-tests": 1,
+    "review-levels": 1
   },
   "requiredInterfaces": {
     "skillvault-installation": {

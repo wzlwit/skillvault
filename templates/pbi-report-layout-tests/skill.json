@@ -1,0 +1,36 @@
+{
+  "name": "pbi-report-layout-tests",
+  "title": "Power BI Report Layout Tests",
+  "version": "1.0.0",
+  "status": "draft",
+  "visibility": "private",
+  "kind": "agent",
+  "description": "Test a Power BI report's layout and visuals in a PBIR folder, PBIP or PBIX: pbir-utils rules, page geometry, field bindings read with PBIXRay, and PBIX-vs-PBIP parity. Use before check-in or release; pbi-report-visual-conventions defines the conventions and checks text fit and blank handling.",
+  "tags": [
+    "power-bi",
+    "pbir",
+    "pbix",
+    "testing",
+    "layout"
+  ],
+  "author": "wzlwit",
+  "license": null,
+  "source": {
+    "repo": "skillvault",
+    "path": "templates/pbi-report-layout-tests"
+  },
+  "install": {
+    "global": true,
+    "project": true,
+    "session": true,
+    "defaultScope": "project",
+    "strategy": "copy"
+  },
+  "dependencies": [],
+  "examples": [
+    "Test the layout and visuals of this report before I check it in",
+    "Verify the release PBIX matches the PBIP it was saved from",
+    "python scripts/verify_report.py <X.pbix> --against <X.Report> --wireframe wireframe.html"
+  ],
+  "readme": "SKILL.md"
+}

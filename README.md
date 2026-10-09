@@ -164,7 +164,7 @@ An optional follow-up step alone is not material overlap; describe it directly, 
 | `harness-timer`, `skillvault-installation`, `schedule-manager` | Schedule setup and controls. | Timer dispatches to existing project, PR, and refresh owners; `skillvault-installation refresh` performs the refresh; schedule-manager administers Windows tasks broadly. |
 | `skillvault-discovery` | Search, evaluation, and explanation within one topic. | `explain` describes use; `evaluate` judges adoption value; `search` finds candidates. |
 | `planning-with-files` | Planning with `grilling`; decision notes with `architecture-decision-records`. | Installs OthmanAdi's original for task tracking and recovery; its hooks run local scripts in hosts that support skill hooks. |
-| `pr-publish` | Opening PRs with the GitHub Pull Requests extension's `create-pull-request` skill. | Use for PRs that need the repository template, a scenario table, and named tests, or to update an existing PR; it opens PRs through that extension's tool when available. |
+| `pr-publish` | Opening PRs with the GitHub Pull Requests extension's `create-pull-request` skill. | Writes a new PR's description that skill's way and adds a current vs. to-be scenario table. On an existing PR it keeps the description and adds or refreshes only that table. It opens PRs through that extension's tool when available. |
 | `skillvault-authoring` | Writing `SKILL.md` files with VS Code's `agent-customization` skill. | Use only for skills in the SkillVault repository and its catalog; it never installs. |
 
 The [brainstorming skill](skills/planning/brainstorming/SKILL.md) adapts the Superpowers
@@ -210,7 +210,8 @@ Use `/harness-decision` for a read-only bulletin of active open decisions plus a
 raise a missing setting only when requested or enabled work needs a human choice that saved
 settings, inheritance, or defaults cannot resolve. Recorded Open/Proposed decisions stay visible.
 `list closed` shows up to five recent resolved decisions; `list all` includes open/recent decisions
-and the detailed configuration checklist. `--recent <count>` changes only the resolved-result limit.
+and the detailed configuration checklist. Asking for a number of results, such as the last 20, changes
+only the resolved-result limit.
 Use `/harness-decision list <decision-id>` for any status, `explain <decision-id|question>` for a
 read-only, plain-language explanation with options, reasons, and an example, or `record` with an
 explicit human choice.
@@ -258,12 +259,15 @@ review implementation with verified isolated checkouts, complete paginated comme
 evidence, and a fresh second pass only when the first finds nothing new. It never switches the
 user's current branch or runs untrusted PR code, hooks, builds, or tests.
 
-[PR publish](skills/github/pr-publish/SKILL.md) handles your own PRs from the current branch.
-`/pr-publish list` shows the branch, its PR, and gaps in the description; `preview` drafts the
-title and description into a local file and checks them against the repository's PR template;
-`upsert` creates the PR or updates its title, description, or draft state, then reads it back and
-ends with the PR link. It opens PRs through the VS Code create-pull-request tool when available,
-otherwise through `gh`, and never comments, requests reviewers, or merges.
+[PR publish](skills/github/pr-publish/SKILL.md) handles your own PRs from the current branch, with
+no options. `/pr-publish list` shows the branch, its PR, and whether its description has the
+current vs. to-be table; `preview` writes the title, description, and table locally and checks them.
+`upsert` creates the PR, ready for review, with a short description written the way the
+`create-pull-request` skill writes one, plus the table. On an existing PR it adds or refreshes only
+the table and keeps the rest, including a GitHub Copilot summary. Ask in plain words for anything
+else, such as a draft or a rewritten description. It reads the PR back and ends with the PR link,
+opens PRs through the VS Code create-pull-request tool when available, otherwise through `gh`, and
+never comments, requests reviewers, or merges.
 
 Setup requires a strongest-first approved model list, verified per-model effort/context choices,
 and explicit time/credit/count bounds. The helper requests the maximum supported permitted
@@ -307,6 +311,13 @@ For example, install `harness-work` through
 
 One folder registers one topic; actions are routed inside it. There are no per-action or `hn-*`
 skill registrations.
+
+A command that changes saved state asks once instead of needing a separate preview or `--apply`
+step. A command that names exactly what to change acts at once: monitor `accept <id>` and a fully
+specified timer `set`, `disable <id>`, or `resume <id>`. With no answer, monitor and test `declare`
+save after 1 minute; every other change, such as policy, `auto`, migration, or cleanup, holds; a
+timer offered after a declaration is shown as a command and starts only on a yes. See Ask Once in the
+[runtime guide](skills/planning/harness-runtime/references/runtime.md#ask-once).
 
 `help`/`status` remain read-only aliases rather than extra advertised actions. `/hn-*` shorthand selects
 the matching topic. Source folders use `harness-*` and `skillvault-*`, without duplicate shorthand bundles.
@@ -380,12 +391,19 @@ compatible report, it makes one fresh independent pass over the whole selected r
 keeps supported findings from both. Ordinary Review and development Critical stay change-scoped;
 Fresh keeps the same permissions and budgets, with inadequate coverage reported as blocked.
 The [review guide](skills/planning/harness-review/references/workflow.md) explains exact
-newness matching, scope, and the optional `/harness-review --security` composition with
-[differential-review](skills/security/differential-review/SKILL.md). General review and
+newness matching, scope, and the optional security review, which composes
+[differential-review](skills/security/differential-review/SKILL.md) on request. General review and
 security methodology stay separate; neither implies automatic fixes, publication, or a scanner.
 Local changes during either pass restart Review on the updated snapshot, at most twice, while
 keeping the original baseline and restrictions. Superseded findings remain in the report, not the
 current verdict. Persistent edits return `Partial`; pinned PR snapshots and worker errors do not retry.
+
+Reviewers report at the `critical` level by default: only what blocks merging the change or completing
+its task, with the Full pass looking only for what the change breaks elsewhere. `/harness-review run
+--broad` (or `/pr-review run --broad`, or a saved PR `reviewLevel`) reports every issue with evidence,
+including minor and pre-existing ones, and audits the whole repository. Development reviews always use
+critical. Review Levels in the [runtime guide](skills/planning/harness-runtime/references/runtime.md#review-levels)
+defines both.
 
 The review coordinator keeps the request open across findings checkpoints: hand findings to the
 existing dev/proposal workflow, let dev fix and validate, then repeat Changes -> Full until no
@@ -407,8 +425,11 @@ the development timer. Definitions do not provision localPPE or install framewor
 uses the existing history CSV and linked reports, with flow/environment identity and real exits.
 
 Use `/harness-monitor` to inspect saved definitions, candidates, incidents, and proposals without
-collecting data. `/harness-monitor declare <file>` previews either [work discovery](skills/planning/harness-monitor/references/discovery.md)
-or [numeric health](skills/planning/harness-monitor/references/monitoring.md) declarations.
+collecting data; it also lists declaration files that differ from what's saved, such as held drafts.
+`/harness-monitor declare <name>|<file>` reuses or drafts a [work discovery](skills/planning/harness-monitor/references/discovery.md)
+or [numeric health](skills/planning/harness-monitor/references/monitoring.md) declaration under
+`.harness_sv/definitions/` and asks to save it, saving after 1 minute without an answer unless held
+(`--hold`); the reply then offers a timer with its command, which starts only on a yes.
 `/harness-monitor check <name>` reads the declared ADO backlog/query, text folder, adapter feed, or
 numeric snapshot. Discovery preserves source IDs/revisions and deferred status; failed or incomplete
 reads never mean the source is empty or fixed. ADO discovery requires a service scope; the check
@@ -416,7 +437,7 @@ workflow assesses relevance, verifies status with AI model `auto`, reconciles ev
 AlreadyFixed/Stale outcomes, then ranks unfinished work. Unverified results remain visible separately
 from pickup proposals. External ADO/document writeback needs separate source-specific approval;
 the built-in verifier provides none. Development retains its strongest permitted double-check. Health checks
-retain metric/window validation and incident episodes. `/harness-monitor accept <id>` previews explicit task intake; discovery `C-...`
+retain metric/window validation and incident episodes. `/harness-monitor accept <id>` accepts the named proposal at once and shows the task; discovery `C-...`
 candidates and health `I-...` incidents share the existing task store. Previously postponed work
 enters the priority queue when accepted; actual blockers remain blocked. Readiness,
 automatic development, source authentication, and scheduling remain separately authorized. No PBI
@@ -439,9 +460,9 @@ completion; unchanged evidenced completion stays closed, and material new requir
 follow-up proposals, not automatic development. Domain exclusions/priority floors are local policy.
 
 New boards use `current-<project>.csv`, with the filename persisted centrally as `currentFileName`.
-Existing boards keep `current.csv` unless explicitly renamed. `/hn-project root --current-file <name>`
-previews the guarded rename; requested topic snapshots use `root --view <topic> --monitors <names>`
-and stay under artifacts. Neither creates another authoritative queue. See the
+Existing boards keep `current.csv` unless explicitly renamed. Asking `/hn-project root` to rename the
+board file previews the guarded rename; a requested snapshot of named monitors under a topic label
+stays under artifacts. Neither creates another authoritative queue. See the
 [accepted naming decision](docs/plans/decisions/2026-09-25-project-qualified-board-names-adr.md).
 
 Use `/harness-write upsert report <purpose> --type powerbi|grafana|jarvis|web|query` for the
@@ -451,7 +472,7 @@ the relevant platform guidance, then uses available authorized tools and the exi
 workflow for tracked local implementation. Bare `/harness-write` shows status/actions; `upsert`
 updates an identified existing target or creates a confirmed missing one. `create` and `update`
 remain aliases, not separate existence requirements;
-`--design-only` requests a specification. Design-only, Created, Validated, and Published are
+asking for a design only gets a specification. Design-only, Created, Validated, and Published are
 different outcomes, not interchangeable success claims. The dispatcher is a session workflow,
 not a new PowerShell action or report renderer; the selected platform's writer must be available.
 No platform skills/tools are installed automatically, and publishing/monitoring remain separate.
@@ -471,7 +492,7 @@ final-page visual checks; values-only CSV and Markdown-only work keep their exis
 
 The `jarvis` route selects [jarvis-metrics](skills/monitoring/jarvis-metrics/SKILL.md)
 for Geneva/MDM, Kusto-to-Metrics or Logs-to-Metrics source decisions and widget configuration.
-For example, `/harness-write upsert report service-health --type jarvis --design-only` prepares a specification;
+For example, `/harness-write upsert report service-health --type jarvis`, asking for a design only, prepares a specification;
 creating a saved Jarvis artifact requires an available authorized authoring surface. Query-only
 work remains `--type query`, including queries intended for Jarvis, without compulsory conversion
 or visuals. Jarvis-native monitors/alerts and `/harness-monitor` JSON checks are distinct optional targets.
@@ -482,11 +503,11 @@ Durations use `m/h/d/n/y` for minutes, hours, fixed days, calendar months, and c
 New work schedules require an explicit duration; updates can reuse the exact saved cadence/context.
 For matching agents or schedules, confirm **Reuse (singleton) or New?**; `--new <name>` remains
 create-only and does not authorize competing writers. Old `now`/`next` development requests map
-to `run --now`/`queue`; a queue request never starts a worker.
+to running now and to `queue`; a queue request never starts a worker.
 
 One current-user heartbeat dispatches all registered logical schedules, with a routine `1d` baseline
 shortened automatically by faster job intervals and earlier deadlines. Active workers keep a
-30-minute check cap. `/harness-timer set heartbeat 12h` previews a baseline-only change;
+30-minute check cap. `/harness-timer set heartbeat 12h` asks once before a baseline-only change;
 `list heartbeat` reads it. Applying preserves job cadence, start-time anchors, and maintenance.
 Overdue jobs found unavailable or conflicting wait for the adaptive recheck rather than causing
 one-minute polling. The heartbeat is script-only, not an AI model configured as `auto`.
@@ -500,13 +521,13 @@ an exact `migrate` preview; no install silently changes them or their cadence.
 New controllers use authoritative `config/` domain files, generated `board/` CSV views, `runtime/`
 state and locks, monthly readable `history/` reports, and a short README for navigation.
 Commands and direct edits share the same declarations; there is no second active configuration.
-`/hn-project migrate` separately previews in-place conversion of an existing controller, with approved
-`--apply`, preserved records/evidence/cadence, and rollback. `init` only reconnects legacy state.
+`/hn-project migrate` separately shows in-place conversion of an existing controller and asks once,
+with preserved records/evidence/cadence and rollback. `init` only reconnects legacy state.
 This is separate from Root relocation and timer migration. See the
 [layout and verification decision](docs/plans/decisions/2026-09-25-declarative-harness-and-auto-verification-adr.md).
 
-`/harness-project clean [--policy <file>] [--apply]` previews historical-data cleanup or configures
-retention. Retention defaults to **90 days and 5,000
+`/harness-project clean [--policy <file>]` shows historical-data cleanup or a retention change and asks once; it
+changes nothing without an answer. Retention defaults to **90 days and 5,000
 completed entries per harness**, with optional **1,000 per topic** instead of the total count.
 Protect active/pinned/linked evidence, open tasks/incidents, policy evidence, and comparison context.
 Records and corresponding files are pruned together; authored plans, decisions, and evaluations
@@ -525,7 +546,7 @@ No remote scans or catch-up outside the window. See the
 migration, duration edge cases, and retained legacy routes.
 
 Use `/harness-project policy list [limits|fallback]` to inspect policy without writing anything. `set limits|fallback <file>`
-previews an explicit replacement; applying it requires a reviewed declaration, human owner, and reason.
+shows an explicit replacement and asks once; it saves only on a yes, with the human owner and reason.
 The [restriction guide](skills/planning/harness-project/references/limits.md) and
 [fallback guide](skills/planning/harness-project/references/fallback.md) include field contracts, usage,
 and situation/response tables. Policy examples are not applied automatically. `/rules` still manages
@@ -542,9 +563,10 @@ principles, workflow, step-by-step usage, outputs, limits, and source links. It 
 or install the skill it explains.
 
 `/skillvault-discovery evaluate <candidate>` saves a completed public-safe assessment in
-`docs/evaluations/<candidate>.md` by default, including defer/skip. `--chat-only` opts out.
-Reuse the record on reevaluation while verifying fresh evidence; private assessments need a private
-destination. These lasting references are outside history cleanup and never enter the catalog unless
+`docs/evaluations/<candidate>.md` by default, including defer/skip; asking for chat only opts out.
+Reuse the record on reevaluation while verifying fresh evidence, and compare the candidate with
+earlier records of related candidates. Private assessments need a private destination. These lasting
+references are outside history cleanup and never enter the catalog unless
 an actual skill is authored. See [the Oh My Pi assessment](docs/evaluations/oh-my-pi.md).
 
 ## Selected Category Skills
@@ -603,7 +625,7 @@ neither executes an action. Other arguments are not abbreviated, and permissions
 stay unchanged. This is conversational routing, not new PowerShell argument parsing.
 Canonical menus, skill registrations, and read-only bare defaults stay unchanged. Source changes
 do not refresh installed copies. Completed evaluations retain their public-safe record by default,
-with `--chat-only` to skip it; explanation stays read-only.
+unless you ask for chat only; explanation stays read-only.
 
 ## Install or Upsert
 
@@ -639,7 +661,7 @@ installs or updates that project copy; `/skillvault-authoring upsert my-custom-s
 Its `create` and `update` aliases also upsert; the user need not check existence first.
 The canonical authoring topic is `/skillvault-authoring [list|upsert|remove] [<arguments>...]`;
 `/sv-authoring` is shorthand. Existing installed copies under former names move only through an
-approved `skillvault-installation update --topics` migration.
+approved topic-layout migration through `skillvault-installation update`.
 The registered topic for installed copies is `skillvault-installation`, including `refresh`.
 
 ## Global install

@@ -6,7 +6,7 @@ description: "[explain|record] List open harness decisions separately from optio
   bulletin, decision register, and read-only explanations."
 metadata:
   author: wzlwit
-  version: "2.0.0"
+  version: "3.0.0"
 argument-hint: "[list|explain|record] [<arguments>...]"
 ---
 
@@ -25,7 +25,7 @@ unchanged; abbreviation adds no confirmation. This is conversational routing, no
 
 - Bare invocation, `list`, or `list open` shows active open decisions plus a one-line
   **Configuration When Needed** summary and source link when optional setup is documented.
-  `list closed` shows recent resolved outcomes (five by default; `--recent <count>` changes it),
+  `list closed` shows recent resolved outcomes (five by default, or the number asked for),
   `list all` adds the detailed configuration checklist, and `list <decision-id>` shows one record of
   any status. Listing records or accepts nothing.
 - `explain <decision-id|path|question>` follows the [explanation procedure](./references/workflow.md#explain-a-decision-or-question):

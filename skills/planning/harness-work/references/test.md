@@ -25,14 +25,21 @@ executor's exit-code semantics. Do not turn every repeated health observation in
 2. Inspect the relevant existing test commands and environment documentation. `local` and
    `localPPE` are project-defined targets, not interchangeable labels or proof of provisioned
    infrastructure. Do not invent endpoints, credentials, test results, or approval to reset data.
-3. No arguments lists declared flows, environments, the `afterDev` and `afterReview` hooks, and the
-   unit-test level using the shared
+3. No arguments lists declared flows, environments, the `afterDev` and `afterReview` hooks, the
+   unit-test level, and `pendingDefinitions` using the shared
    `harness-runtime/scripts/harness.ps1 -ProjectPath <root> -Action Test`. It is read-only and does
-   not initialize state, create a declaration, or launch tests.
+   not initialize state, create a declaration, or launch tests. `pendingDefinitions` names each JSON
+   file under `.harness_sv/definitions/` that differs from the saved declarations, with its new or
+   changed environments, flows, hooks, and unit-test level. These include held drafts, but also older
+   files that later declarations passed; saving one of those would undo the later change, so check it
+   before `test declare <file>`.
 
 ## Declare
 
-`/harness-work test declare <JSON-file>` applies a reviewed declaration through:
+`/harness-work test declare <JSON-file>` saves a declaration through the command below. It first shows
+what the file adds or changes against the current declarations and asks to save; it saves on a yes or
+after 1 minute without an answer, and `--hold`, or asking to hold, saves nothing until you say save
+(Ask Once in the runtime guide):
 
 ```powershell
 & <harness-folder>/scripts/harness.ps1 -ProjectPath <root> -Action TestConfig -DefinitionPath <JSON-file>
@@ -45,8 +52,8 @@ this command to update that same authoritative file; no second imported active c
 Read the existing configuration before any update.
 
 `/harness-work test declare` without a file drafts that declaration from the coding repository, as
-described under Invocation in [test declarations](./test-flows.md#invocation), and applies it only
-after the user approves the draft.
+described under Invocation in [test declarations](./test-flows.md#invocation), then asks to save it
+the same way.
 
 Environment and flow definitions upsert by name; omitted definitions are preserved. Supplying
 `afterDev` or `afterReview` replaces that hook list, and `unitTests` replaces the level; omitting
@@ -76,8 +83,8 @@ changes runner/model settings.
 
 ## Scheduled and Post-Development Runs
 
-`/harness-timer 0.5 test <flow> <environment>` configures that flow/environment every 12 hours.
-Use `status`, `disable`, or `resume` in place of the interval for the same exact target. The timer
+`/harness-timer set project 12h test <flow> <environment>` runs that flow/environment every 12 hours;
+`/harness-timer list` shows its id, which `disable <id>` and `resume <id>` take. The timer
 skill owns schedule creation; declaration and manual tests never create one. The target must
 explicitly permit scheduling with `allowScheduled: true`. Test timers are separate from the
 development timer, but all use the same runner lock and flow implementation.

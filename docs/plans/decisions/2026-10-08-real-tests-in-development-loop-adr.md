@@ -6,7 +6,8 @@
   default, and showing test methods in project context, and asked whether real tests belong before or
   after review. A grilling round put eight questions; the owner was not available to answer, and the
   session was told to continue, so the agent adopted its recommended answers. Decision 9 is the second
-  round, answered the same way after a lookup of the owner's repositories.
+  round, answered the same way after a lookup of the owner's repositories. On 2026-10-08 at 17:20 the
+  owner reviewed decision 5 and changed it from refusing external flows in `afterDev` to a warning.
 - Decision owner: Zhaolong Wang
 - Supersedes in part: the test order and the stop on test failures in decision 5 of the
   [review-panel ADR](./2026-10-02-review-panel-dev-loop-and-sprints-adr.md).
@@ -47,8 +48,12 @@ the change.
    returns needs-decision when the environment caused the failure. If the same test fails again right
    after a fix round, the loop stops at NeedsDecision. Timeouts, stops, restrictions, and blocked starts
    keep their existing outcomes.
-5. **Unreviewed code never reaches another system automatically.** `afterDev` refuses a flow that declares
-   `effects: "external"`. Such flows run after review or on demand.
+5. **External flows before review are allowed, with a warning (owner decision).** A flow that declares
+   `effects: "external"` may be listed in `afterDev`, for example a local PPE test worth running every
+   round. It then runs on code that review has not passed yet, so the declaration result and the
+   context summary warn about it, and each Validate run that executed one notes it in the task and its
+   report. `afterReview` stays the safer place for such flows. The agent first recommended refusing
+   them; the owner chose the warning because some external tests belong in every round.
 6. **Unattended runs keep the environment rule.** A scheduled run uses only environments with
    `allowScheduled: true`, after review too. Otherwise the task stops as Blocked until the owner runs it
    with `/harness-work run <task>`.
@@ -63,7 +68,7 @@ the change.
 9. **`afterReview` runs once, on the reviewed code.** A new list in the test declarations runs after the
    Full pass is clean, on that exact snapshot. A failure starts a fix round; the fix goes through the
    tests, the Changes and Full passes, and `afterReview` again. External flows such as a bounded local
-   PPE smoke check belong here; scenarios that take hours stay on demand.
+   PPE smoke check fit here best; scenarios that take hours stay on demand.
 10. **Compatibility.** The runtime provides a new interface, `development-tests` 1, which `harness-work`
     and `harness-project` require; `harness-runtime` 4 is unchanged for its other consumers. Existing
     declarations stay valid. The Validate run now includes the Changes pass, so a clean task records
@@ -79,13 +84,15 @@ the change.
   would prove what ran, and the AI could touch PPE with unreviewed code.
 - **Stopping the reviewers when a test fails.** Rejected: it saves credits but loses findings the same
   fix round could address.
+- **Refusing external flows in `afterDev`.** First adopted, then replaced by the owner with a warning:
+  some external tests, such as local PPE, are worth running on every round.
 - **Tracking deployments per task now.** Deferred: it needs release-pipeline and commit-inclusion data.
 
 ## Consequences
 
 - A round takes as long as the slower of the tests and the Changes review, not both.
 - A round whose tests fail still pays for a review; its findings go into the same fix round.
-- Flows that write shared data, such as local PPE, must be declared `external` and listed in
-  `afterReview`.
+- Flows that write shared data, such as local PPE, should be declared `external`. Listed in `afterDev`
+  they run on unreviewed code with a warning; listed in `afterReview` they run only on reviewed code.
 - The runtime starts a PowerShell thread job for tests during review; when thread jobs are unavailable it
   runs the tests first.

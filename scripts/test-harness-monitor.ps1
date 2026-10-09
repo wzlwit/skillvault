@@ -718,6 +718,8 @@ if ($DiscoveryOnly) {
         $policyAssessment | Add-Member -NotePropertyMembers @{ category = 'reporting'; classification = 'Deferred'; blockers = @() }
         $prioritized = ConvertTo-HarnessDiscoveryAssessment $policyAssessment $policyDefinition $policyAssessment.sourceRevision
         if ($prioritized.priority -ne 4 -or $prioritized.classification -cne 'Deferred') { throw 'Declared local priority policy discarded deferred reporting or ignored its priority floor.' }
+        $unfloored = ConvertTo-HarnessDiscoveryAssessment $policyAssessment $scopedDefinition $policyAssessment.sourceRevision
+        if ($unfloored.priority -ne 1 -or $unfloored.category -cne 'reporting') { throw 'A categorized item failed or changed priority when the monitor declares no priority floors.' }
         $policyAssessment.category = 'security-compliance'
         if ((ConvertTo-HarnessDiscoveryAssessment $policyAssessment $policyDefinition $policyAssessment.sourceRevision).relevance -cne 'NotRelevant') { throw 'An explicit local category exclusion was ignored.' }
         $policyAssessment.category = 'platform-defect'
@@ -848,6 +850,16 @@ try {
     }
     $view = Get-HarnessMonitorView $paths
     if ($view.proposals.Count -ne 1 -or $view.proposals[0].autoEligible -or $view.proposals[0].kind -cne 'verify' -or (Read-HarnessState $paths).tasks.Count -ne 0) { throw 'A monitor proposal granted task execution or changed the task board.' }
+    $definitionsRoot = Join-Path $paths.Control 'definitions'
+    New-Item -ItemType Directory -Path $definitionsRoot -Force | Out-Null
+    Write-HarnessJson (Join-Path $definitionsRoot 'monitor-service-health.json') ([pscustomobject]@{ monitors = @($definition) })
+    if (@((Get-HarnessMonitorView $paths).pendingDefinitions).Count) { throw 'A definition file equal to the saved monitor was listed as pending.' }
+    $heldMonitor = $definition | ConvertTo-Json -Depth 10 | ConvertFrom-Json
+    $heldMonitor.name = 'held-health'
+    Write-HarnessJson (Join-Path $definitionsRoot 'monitor-held-health.json') ([pscustomobject]@{ monitors = @($heldMonitor) })
+    $pending = @((Get-HarnessMonitorView $paths).pendingDefinitions)
+    if ($pending.Count -ne 1 -or $pending[0].file -notlike '*monitor-held-health.json' -or $pending[0].changes[0] -cne 'new monitor held-health') { throw 'A held monitor declaration was not listed as pending.' }
+    Remove-Item -LiteralPath $definitionsRoot -Recurse -Force
     $beforeConfig = [IO.File]::ReadAllText($paths.Config)
     $definition.condition.threshold = 10
     Write-HarnessJson $definitionFile ([pscustomobject]@{ monitors = @($definition) })

@@ -56,20 +56,33 @@ try {
     $beforeConfig = [System.IO.File]::ReadAllText($paths.Config)
     $listing = & $dispatcher -ProjectPath $fixtureRoot -Action Test | ConvertFrom-Json
     if ($listing.flows[0].name -cne 'smoke' -or [System.IO.File]::ReadAllText($paths.State) -cne $beforeState -or [System.IO.File]::ReadAllText($paths.Config) -cne $beforeConfig) { throw 'Declarations or listing executed tests or changed board state.' }
+    $testDefinitions = Join-Path $paths.Control 'definitions'
+    New-Item -ItemType Directory -Path $testDefinitions -Force | Out-Null
+    Copy-Item -LiteralPath $definitionFile -Destination (Join-Path $testDefinitions 'tests-saved.json')
+    if (@((& $dispatcher -ProjectPath $fixtureRoot -Action Test | ConvertFrom-Json).pendingDefinitions).Count) { throw 'A test declaration equal to the saved one was listed as pending.' }
+    $heldFlow = $settings.flows[0] | ConvertTo-Json -Depth 10 | ConvertFrom-Json
+    $heldFlow.maxMinutes = 5
+    @{ flows = @($heldFlow); unitTests = 'broad' } | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath (Join-Path $testDefinitions 'tests-held.json') -Encoding UTF8
+    $heldTests = @((& $dispatcher -ProjectPath $fixtureRoot -Action Test | ConvertFrom-Json).pendingDefinitions)
+    if ($heldTests.Count -ne 1 -or $heldTests[0].file -notlike '*tests-held.json' -or ($heldTests[0].changes -join ',') -cne 'changed flow smoke,changed unitTests' -or [System.IO.File]::ReadAllText($paths.Config) -cne $beforeConfig) { throw 'A held test declaration was not listed as pending, or listing changed configuration.' }
+    Remove-Item -LiteralPath $testDefinitions -Recurse -Force
     @{ afterDev = @(@{ flow = 'missing' }) } | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $definitionFile -Encoding UTF8
     Assert-TestFlowFailure { & $dispatcher -ProjectPath $fixtureRoot -Action TestConfig -DefinitionPath 'test-definition.json' } 'Unknown afterDev'
     if ([System.IO.File]::ReadAllText($paths.Config) -cne $beforeConfig) { throw 'Invalid test declarations changed configuration.' }
     $externalFlow = [pscustomobject]@{ name = 'ppe-smoke'; method = 'Smoke test against a shared environment'; defaultEnvironment = 'localPPE'; maxMinutes = 1; effects = 'external'; steps = @([pscustomobject]@{ name = 'smoke'; executable = 'pwsh'; arguments = @('-NoProfile', '-Command', 'exit 0') }) }
-    @{ flows = @($externalFlow); afterDev = @(@{ flow = 'ppe-smoke' }) } | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $definitionFile -Encoding UTF8
-    Assert-TestFlowFailure { & $dispatcher -ProjectPath $fixtureRoot -Action TestConfig -DefinitionPath 'test-definition.json' } 'cannot run before review is clean'
     @{ unitTests = 'everything' } | ConvertTo-Json | Set-Content -LiteralPath $definitionFile -Encoding UTF8
     Assert-TestFlowFailure { & $dispatcher -ProjectPath $fixtureRoot -Action TestConfig -DefinitionPath 'test-definition.json' } 'critical or broad'
-    if ([System.IO.File]::ReadAllText($paths.Config) -cne $beforeConfig) { throw 'A refused external afterDev flow or unit-test level changed configuration.' }
-    @{ flows = @($externalFlow); afterReview = @(@{ flow = 'ppe-smoke' }); unitTests = 'broad' } | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $definitionFile -Encoding UTF8
+    if ([System.IO.File]::ReadAllText($paths.Config) -cne $beforeConfig) { throw 'A refused unit-test level changed configuration.' }
+    @{ flows = @($externalFlow); afterDev = @(@{ flow = 'ppe-smoke' }) } | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $definitionFile -Encoding UTF8
+    $warned = & $dispatcher -ProjectPath $fixtureRoot -Action TestConfig -DefinitionPath 'test-definition.json' | ConvertFrom-Json
+    if (@($warned.afterDev).Count -ne 1 -or @($warned.warnings).Count -ne 1 -or $warned.warnings[0] -notmatch 'ppe-smoke declares external effects' -or 'warnings' -cin @((Read-HarnessConfig $paths).testing.PSObject.Properties.Name)) { throw 'An external afterDev flow was not accepted with an unsaved warning.' }
+    $warnedContext = (& $dispatcher -ProjectPath $fixtureRoot -Action Context | ConvertFrom-Json).testing
+    if (@($warnedContext.warnings).Count -ne 1 -or $warnedContext.withReview[0].effects -cne 'external') { throw 'Context did not warn about the external afterDev flow.' }
+    @{ afterDev = @(); afterReview = @(@{ flow = 'ppe-smoke' }); unitTests = 'broad' } | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $definitionFile -Encoding UTF8
     $declared = & $dispatcher -ProjectPath $fixtureRoot -Action TestConfig -DefinitionPath 'test-definition.json' | ConvertFrom-Json
-    if (@($declared.afterReview).Count -ne 1 -or $declared.unitTests -cne 'broad' -or @($declared.flows).Count -ne 2 -or @($declared.afterDev).Count -ne 0) { throw 'afterReview and unitTests were not merged into the test declarations.' }
+    if (@($declared.afterReview).Count -ne 1 -or $declared.unitTests -cne 'broad' -or @($declared.flows).Count -ne 2 -or @($declared.afterDev).Count -ne 0 -or @($declared.warnings).Count -ne 0) { throw 'afterReview and unitTests were not merged into the test declarations.' }
     $context = & $dispatcher -ProjectPath $fixtureRoot -Action Context | ConvertFrom-Json
-    if ($context.testing.unitTests -cne 'broad' -or $context.testing.afterReview[0].flow -cne 'ppe-smoke' -or $context.testing.afterReview[0].environment -cne 'localPPE' -or $context.testing.afterReview[0].effects -cne 'external' -or $context.testing.onDemand[0].flow -cne 'smoke' -or $context.testing.note) { throw 'Context did not show how the project is tested.' }
+    if ($context.testing.unitTests -cne 'broad' -or $context.testing.afterReview[0].flow -cne 'ppe-smoke' -or $context.testing.afterReview[0].environment -cne 'localPPE' -or $context.testing.afterReview[0].effects -cne 'external' -or $context.testing.onDemand[0].flow -cne 'smoke' -or $context.testing.note -or @($context.testing.warnings).Count) { throw 'Context did not show how the project is tested.' }
     if ((& $dispatcher -ProjectPath $fixtureRoot -Action Restrict | ConvertFrom-Json).unitTests -cne 'broad') { throw 'The policy view did not show the unit-test level.' }
     [System.IO.File]::WriteAllText($paths.Config, $beforeConfig)
     if ((& $dispatcher -ProjectPath $fixtureRoot -Action Context | ConvertFrom-Json).testing.note -notmatch 'No declared test flow runs during development') { throw 'Context did not say that no declared test runs during development.' }

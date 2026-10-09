@@ -60,10 +60,16 @@ If those requirements cannot be met, continue only permitted investigation and r
      task.
    - Each Changes and Full pass uses the runtime's Review Panel: two independent read-only reviewers,
      the strongest allowed GPT and Claude Opus models from the bundled default list (or approved
-     runner-context profiles), at the highest effort the CLI accepts, in parallel unless
-     `maxParallelReviewers` is 1. A pass is clean only when both are clean. Unavailable models are
+     runner-context profiles), at `max` effort or the highest the CLI accepts, in parallel unless
+     `maxParallelReviewers` is 1. The developer's or session's model never replaces them. A pass is
+     clean only when both are clean. Unavailable models are
      skipped at no cost; when only one family is usable, one reviewer runs and the result says so;
      `runner.criticalReview: false` keeps one reviewer. There is no separate Critical pass.
+   - Development reviews always use the `critical` review level (Review Levels in the runtime guide):
+     reviewers report only what blocks the task or merging its change, and the Full pass looks only for
+     what the change breaks or leaves inconsistent elsewhere, so the loop ends once those are fixed.
+     Minor and unrelated pre-existing issues are not reported; run `/harness-review run --broad` for a
+     wider audit.
    - Changes findings start a fix round: the developer receives them as `reviewFindings`, verifies each,
      and fixes those within scope; the tests and the Changes review then run again. A clean Changes
      pass with passing tests gets one Full pass, and in-scope Full findings start another fix round.
