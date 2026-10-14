@@ -1,9 +1,9 @@
 {
   "name": "pr-watch",
   "title": "PR Watchlist",
-  "version": "3.0.0",
+  "version": "4.0.0",
   "kind": "agent",
-  "description": "[add|remove] Manage the single user-wide PR review watchlist. Watchlist changes do not run reviews or change schedules; pr-review owns execution and review results, and harness-timer owns its logical schedule.",
+  "description": "[remove] Alone: the watchlist. Text: watch a URL. Manage the single user-wide PR review watchlist. Watchlist changes do not run reviews or change schedules; pr-review owns execution and review results, and harness-schedule owns its logical schedule.",
   "tags": [
     "github",
     "pull-request",
@@ -26,8 +26,9 @@
   ],
   "examples": [
     "/pr-watch",
-    "/pr-watch list",
-    "/pr-watch add"
+    "/pr-watch https://github.com/owner/repo",
+    "/pr-watch https://github.com/owner/repo/pull/1",
+    "/pr-watch remove W-002"
   ],
   "readme": "SKILL.md",
   "inputs": [
@@ -35,13 +36,10 @@
       "name": "action",
       "required": false,
       "type": "string",
-      "default": "list",
       "enum": [
-        "list",
-        "add",
         "remove"
       ],
-      "description": "Primary action; omitted means read-only list. Compatibility aliases remain in SKILL.md. Operation-specific approvals still apply."
+      "description": "Menu word: remove. Alone, the skill shows the watchlist; other text watches a PR or repository URL. Operation-specific approvals still apply."
     }
   ]
 }

@@ -214,7 +214,7 @@ try {
     New-Item -ItemType Directory -Path (Join-Path $scheduledRoot 'tests') | Out-Null
     Write-HarnessJson $scheduledPaths.Config $scheduledConfig
     Write-HarnessViews $scheduledPaths $scheduledConfig (Read-HarnessState $scheduledPaths)
-    $decisionHelper = Join-Path $PSScriptRoot '../skills/planning/harness-decision/scripts/harness-decision.ps1'
+    $decisionHelper = Join-Path $PSScriptRoot '../skills/planning/harness-decide/scripts/harness-decide.ps1'
     $null = & $decisionHelper -ProjectPath $scheduledRoot -Action Record -Question 'Keep the rule file?' -Choice 'Keep' -Owner Fixture -Reference (Join-Path $scheduledPaths.Control 'rules.md')
     $schedulerRoot = Join-Path $fixture 'scheduled registry'
     New-Item -ItemType Directory -Path $schedulerRoot | Out-Null

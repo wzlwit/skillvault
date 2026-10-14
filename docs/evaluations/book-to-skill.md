@@ -67,7 +67,7 @@ Value: High for repeated use of long, authorized documents; conditional for occa
 Fit: An optional document-ingestion specialist plus agent instructions. It has more extraction
 machinery than a generic authoring guide, but it should not become another SkillVault installer.
 
-[SkillVault authoring](../../skills/core/skillvault-authoring/references/upsert.md) already owns
+[SkillVault authoring](../../skills/core/skillvault-author/references/upsert.md) already owns
 canonical-source editing, reuse of an existing owner, attribution, scope, and validation. The
 candidate contributes document-oriented extraction and knowledge organization; it does not replace
 that ownership. [Harness documentation](../../skills/planning/harness-write/references/doc.md)
@@ -162,7 +162,7 @@ to the pre-change workflows; current implementation and verification are recorde
 
 ## Applied Locally
 
-[Document-derived authoring](../../skills/core/skillvault-authoring/references/upsert.md#author-from-documents)
+[Document-derived authoring](../../skills/core/skillvault-author/references/upsert.md#author-from-documents)
 now maps supported source knowledge to task triggers, inputs, decisions, steps, outputs, limits,
 and traceable references. It checks extraction coverage, keeps short inputs small, and uses supporting
 files only where needed. The entrypoint routes document-based upserts to this procedure.

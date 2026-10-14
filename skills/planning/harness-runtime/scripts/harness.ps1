@@ -23,7 +23,7 @@ param(
     [switch]$UseWorkingChanges,
     [string]$BaseRef,
     [switch]$SecurityReview,
-    [ValidateSet('critical', 'broad')][string]$ReviewLevel,
+    [ValidateSet('blocking', 'broad')][string]$ReviewLevel,
     [switch]$ConfirmStopped,
     [switch]$ConfirmLocation,
     [string]$Flow,
@@ -64,7 +64,8 @@ if ($guardsExecution) {
 . (Join-Path $PSScriptRoot 'harness-runner.ps1')
 if (($Move -or $PSBoundParameters.ContainsKey('DestinationPath')) -and $Action -ne 'Root') { throw 'Move and DestinationPath apply only to Root.' }
 if ($SecurityReview -and $Action -ne 'Review') { throw 'SecurityReview applies only to the independent Review action.' }
-if ($ReviewLevel -and $Action -ne 'Review') { throw 'ReviewLevel applies only to the independent Review action; the development loop reviews at the critical level.' }
+if ($ReviewLevel -and $Action -notin @('Review', 'Dev')) { throw 'ReviewLevel applies only to Review and to Dev for a named task.' }
+if ($ReviewLevel -and $Action -eq 'Dev' -and -not $Id -and -not $Title -and -not $FollowUpOf) { throw 'ReviewLevel on Dev needs the task it applies to: an Id or a new task.' }
 if ($ConfirmLocation -and $Action -ne 'Init') { throw 'ConfirmLocation applies only to Init.' }
 if ($AllMonitors -and ($Action -ne 'Monitor' -or $MonitorName)) { throw 'AllMonitors requires Monitor without a single MonitorName.' }
 if (($Off -or $PSBoundParameters.ContainsKey('MaxPerCheck') -or $PSBoundParameters.ContainsKey('MaxAttempts') -or $PSBoundParameters.ContainsKey('SetupExitCode')) -and $Action -ne 'MonitorAuto') { throw 'Off, MaxPerCheck, MaxAttempts, and SetupExitCode apply only to MonitorAuto.' }
@@ -144,7 +145,7 @@ if ($Action -eq 'Init') {
 }
 if (-not (Test-Path -LiteralPath $paths.Config)) {
     if ($Action -in @('Status', 'Context', 'Board') -or ($Action -eq 'Test' -and -not $Flow)) {
-        [ordered]@{ initialized = $false; project = $paths.Project; board = Get-HarnessDefaultBoard $paths; next = '/harness-project init' } | ConvertTo-Json
+        [ordered]@{ initialized = $false; project = $paths.Project; board = Get-HarnessDefaultBoard $paths; next = '/harness-setup' } | ConvertTo-Json
         return
     }
 }
@@ -232,7 +233,7 @@ switch ($Action) {
             current = Get-HarnessCurrentPath $paths $config
             task = $task
             repository = $repository
-            effectiveRunner = $effectiveConfig.runner | Select-Object command, model, reasoningEffort, contextTier, workspaceMode, maxMinutes, maxCredits, maxTasksPerCycle, criticalReview, availableTools
+            effectiveRunner = $effectiveConfig.runner | Select-Object command, model, reasoningEffort, contextTier, workspaceMode, maxMinutes, maxCredits, maxTasksPerCycle, secondReviewer, availableTools
             reviewPanel = Get-HarnessReviewPanel $effectiveConfig
             testing = Get-HarnessTestingSummary $config
             references = @($state.references | Where-Object { $_.active -and (-not $_.taskId -or ($Id -and $_.taskId -eq $Id)) })
@@ -292,7 +293,7 @@ switch ($Action) {
         finally { $runLock.Dispose() }
     }
     'Review' {
-        $result = Invoke-HarnessReview -Paths $paths -Scope $(if ($Scope) { $Scope } else { 'Current changes' }) -BaseRef $BaseRef -SecurityReview:$SecurityReview -ReviewLevel $(if ($ReviewLevel) { $ReviewLevel } else { 'critical' }) -RepositoryRef $RepositoryRef -RunnerContext $RunnerContext
+        $result = Invoke-HarnessReview -Paths $paths -Scope $(if ($Scope) { $Scope } else { 'Current changes' }) -BaseRef $BaseRef -SecurityReview:$SecurityReview -ReviewLevel $(if ($ReviewLevel) { $ReviewLevel } else { 'blocking' }) -RepositoryRef $RepositoryRef -RunnerContext $RunnerContext
         $result | ConvertTo-Json -Depth 10
         if ($result.status -in @('Failed', 'NeedsRecovery', 'blocked')) { throw "Independent review $($result.status). Inspect its recorded outcome and report." }
     }
@@ -312,6 +313,8 @@ switch ($Action) {
             $queueMode = $(if ($Mode) { $Mode } elseif ($state.active) { 'next' } else { 'now' })
             $repositoryOptions = @{}
             if ($PSBoundParameters.ContainsKey('RepositoryRef')) { $repositoryOptions.RepositoryRef = $RepositoryRef }
+            # A named development request sets that task's review level: broad from /hn-dev broad, otherwise blocking.
+            if ($Action -eq 'Dev') { $repositoryOptions.ReviewLevel = $(if ($ReviewLevel) { $ReviewLevel } else { 'blocking' }) }
             $queued = Queue-HarnessTask -Paths $paths -Id $Id -Mode $queueMode -UseWorkingChanges:$UseWorkingChanges @repositoryOptions
             if ($Mode -eq 'next' -or $queued.status -in @('AlreadyRunning', 'QueuedForWorker', 'ReleasedFromWorker')) { $queued | ConvertTo-Json; return }
         }

@@ -1,6 +1,7 @@
 # Rule Management
 
-Manage the authoritative AI-rules document without silently changing working guidance.
+Manage the authoritative AI-rules document without silently changing working guidance. A rule typed
+after `/rules`, and `/rules remove <rule>`, follow this procedure.
 
 ## Lessons Proposed as Rules
 
@@ -40,7 +41,7 @@ rules compact, and do not copy incident narratives, confidence scores, or privat
 2. Read the complete governing section and current rules before proposing a change.
 3. Check for duplication, conflict, weakened requirements, and the appropriate existing rule.
    Preserve explicit security requirements. If the rule is a limit the harness can enforce, say
-   that it belongs in `/hn-project policy set limits` or `set fallback`, name the matching field, and
+   that it belongs in `/hn-setup policy set limits` or `set fallback`, name the matching field, and
    continue only if the user still wants a written rule.
 4. Present the operation, target, exact proposed insertion or replacement, rationale, and any
    compact guidance that must remain synchronized.
@@ -55,7 +56,7 @@ rules compact, and do not copy incident narratives, confidence scores, or privat
 8. Validate the changed Markdown and any affected catalog/manifest. Report changed files and
    anything deliberately excluded from the compact core.
 
-`upsert` proposes an insertion for a new rule or shows current and replacement text for an existing one; `remove` shows the
-exact rule and dependent guidance to be removed. None is implied by `/rules apply` or a grilling
+Text proposes an insertion for a new rule or shows current and replacement text for an existing one; `remove` shows the
+exact rule and dependent guidance to be removed. Neither is implied by `/rules apply` or a grilling
 recommendation. Never edit from a summary or grep hit, weaken a security rule without explicit
 direction, or delete by a partial name match. Commits, pushes, and PRs require separate requests.

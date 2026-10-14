@@ -28,7 +28,7 @@ mention of DAS/PACS is not enough. Never assume the result count before reading 
 it to make it look small.
 
 Show the exact source, filters, result granularity, time/freshness budgets, and proposed definition
-before saving it with `/harness-monitor declare`, which drafts the file under `.harness_sv/definitions/`,
+before saving it. Giving `/harness-monitor` the source drafts the file under `.harness_sv/definitions/`,
 asks to save, and saves it through `MonitorConfig -Apply -Actor <owner> -Reason <reason>` on a yes or
 after 1 minute without an answer, unless the owner holds it. Missing harness
 initialization stays a prerequisite, not a side effect. Examples below are templates, not live setup.
@@ -103,8 +103,8 @@ initialization stays a prerequisite, not a side effect. Examples below are templ
   task reconciliation.
 - Once a check is recorded, changing the source identity, scope, topic filters, or environment needs a
   new monitor name; time and freshness budgets can be reviewed separately, and existing definitions
-  are preserved. Old unscoped ADO definitions stay listable, but their checks are blocked: declare a
-  scoped replacement and explicitly stop the old schedule. Unrelated monitors stay usable.
+  are preserved. Old unscoped ADO definitions stay visible, but their checks are blocked: save a scoped
+  replacement under a new name and explicitly turn the old schedule off. Unrelated monitors stay usable.
 
 ## Built-In Readers
 
@@ -212,7 +212,7 @@ or automatic eligibility.
 
 A feed can name its producer: `source: { "type": "json-feed", "path": "...", "producer": { "flow":
 "<flow>", "environment": "<optional environment>" } }`. Each check then runs that declared
-`/harness-work test` flow first, under the check's lock, and reads the feed only if the producer exits
+`/harness-dev test` flow first, under the check's lock, and reads the feed only if the producer exits
 0; a failed producer fails the check. An exit code listed in the source's `intake.setupExitCodes`,
 such as "a shared resource is busy", blocks the check instead, without counting a failure, and the
 next check retries. The producer flow must declare `effects: "local"`. Changing the
@@ -277,7 +277,7 @@ applying continues into Auto verification:
 & <harness-folder>/scripts/harness.ps1 -ProjectPath <root> -Action MonitorAssess -MonitorName das-platform-backlog -DefinitionPath assessment.json -Apply
 ```
 
-This is the internal assessment step of `check`, not another registered action. A check request
+This is the internal assessment step of a check, not another registered action. A check request
 permits recording that analysis without per-candidate approval; task acceptance and execution keep
 their own policy. Bind assessments to the actual collection run, candidate IDs, source revisions, and
 exact declared scope; this example is not live evidence:
@@ -375,7 +375,7 @@ runtime never fetches new sources or widens access to satisfy a link.
 
 Optional `claims` bind normalized substantive facts to exact quotes in the collected item text. Fact
 names use `acceptance`, `requirements`, or `completion` with optional lowercase dotted qualifiers, and
-values are compared exactly, not by fuzzy wording. Status or owner metadata and bare status labels are
+values are compared exactly, not by fuzzy wording. Status or owner metadata and status labels alone are
 not substantive proof, and claims identify disagreements without ever proving code completion. Example
 item fields from a reviewed adapter:
 
@@ -389,7 +389,7 @@ item fields from a reviewed adapter:
 ```
 
 Any reader, including the built-in ones, can have the same relationship and per-fact authority
-declared locally through `MonitorConfig`. Declarations upsert by name, unmentioned relationships
+declared locally through `MonitorConfig`. Declarations add or replace by name, unmentioned relationships
 remain, and direct edits pass the normal configuration validation. This example grants no live access
 or authority:
 
@@ -425,14 +425,15 @@ ownership, and filtered snapshots match every contributing monitor, not just the
 ## Checks and Task Intake
 
 ```text
-/hn-monitor check
-/hn-monitor check das-platform-backlog
-/hn-monitor check design-concerns
+/hn-monitor
+/hn-monitor das-platform-backlog
+/hn-monitor design-concerns
 /hn-monitor accept C-001
 ```
 
+The alone view offers the all-source check, and a monitor name checks that source.
 Checks use the existing monitor lock, ownership, permissions, budget, pause, and history mechanisms.
-The no-name check covers every configured source in one locked batch, and named checks are scoped.
+The all-source check covers every configured source in one locked batch, and named checks are scoped.
 Per-source diagnostics show coverage, hierarchy expansion, candidate changes and uncertainty,
 rejection reasons, and board totals by source and priority. Batch results, `verifiedSubset`, and the
 current-work CSV follow the [monitor workflow](workflow.md#commands) and its
@@ -460,11 +461,11 @@ proposal when fresh evidence proves work remains open. Repeated acceptance reuse
 source changes remain evidence; task contract changes and completed-task follow-ups use the normal
 explicit task workflow, never automatic reopening or overwriting human edits.
 
-After source review, `/harness-work` owns readiness, repository binding, manual
+After source review, `/harness-dev` owns readiness, repository binding, manual
 queueing, and separately approved low-risk automatic pickup; monitoring never starts development.
 Approved eligible work, including postponed work, is picked by priority after the existing human
 queue precedence. Scheduling still needs that definition's `allowScheduled: true` and an explicit
-`/harness-timer` operation, and an adapter feed also needs an independently approved producer, such
+`/harness-schedule` operation, and an adapter feed also needs an independently approved producer, such
 as a declared `producer` flow.
 
 ## Standing Intake
@@ -472,7 +473,7 @@ as a declared `producer` flow.
 When the owner's policy is to work every item a source lists, the source can carry that approval
 instead of an `accept` per item. Turn it on with `/harness-monitor auto <name> --worker <flow>`:
 it shows the intake below and asks once, writes it on a yes (with `approvedBy` set to that
-owner and `allowScheduled: true`), and delegates the `monitor <name>` timer to `/harness-timer`;
+owner and `allowScheduled: true`), and delegates the `monitor <name>` timer to `/harness-schedule`;
 without an answer it holds, because it starts automatic work.
 `/harness-monitor auto` lists every monitor's intake and worker tasks; `auto <name> off` removes it.
 Health monitors take the same intake for their incidents; see
@@ -496,14 +497,15 @@ Health monitors take the same intake for their incidents; see
   `config/monitors.json`. Applying through `auto` or `MonitorConfig` records a `StandingIntake` policy
   event with the human Actor, and removing it records `StandingIntakeRemoved`. Without `intake`,
   acceptance stays manual.
-- **Worker.** A declared `/harness-work test` flow (`environment` defaults to the flow's own) that
+- **Worker.** A declared `/harness-dev test` flow (`environment` defaults to the flow's own) that
   declares `effects: "local"`: it writes only local files such as drafts and reports, never posts,
   changes another system, or changes code. The harness cannot check this; the declaration is the
   owner's statement, so review the worker first. Work that writes elsewhere stays manual.
-- **Intake.** At the end of a complete named check (`check <name>` and its `monitor <name>` timer),
-  every proposal that manual acceptance would take becomes a task, in priority order: same freshness,
-  relevance, and verification rules, with Unknown risk and no automatic eligibility. Follow-ups of
-  completed work and blocked proposals stay for a human. A `check` of all sources never takes items in.
+- **Intake.** At the end of a complete named check (`/harness-monitor <name>` and its
+  `monitor <name>` timer), every proposal that manual acceptance would take becomes a task, in
+  priority order: same freshness, relevance, and verification rules, with Unknown risk and no
+  automatic eligibility. Follow-ups of completed work and blocked proposals stay for a human. The
+  all-source check never takes items in.
 - **Work.** Then the worker runs once per queued task of this source whose item is in the current
   collection, up to `maxPerCheck`, highest priority first. A Missing item waits. The worker receives
   `HARNESS_ITEM_ID` (the adapter's item ID), `HARNESS_TASK_ID`, `HARNESS_SOURCE`,
@@ -517,11 +519,11 @@ Health monitors take the same intake for their incidents; see
   process cannot be confirmed stopped stays Running with its recovery marker; explicit recovery counts
   that attempt once and requeues the task until the cap. Failed or blocked work makes the check
   command exit nonzero.
-- **Boundaries.** Worker tasks never enter development: `/harness-work run` or `queue` on one only
-  resets its attempts and requeues it for this source's next check, which is how to retry a failed
-  item. If the source no longer declares `intake`, that request releases the task from its worker
-  instead, and it then follows the normal development review. A completed task is not reopened when
-  its source item changes later; that change stays evidence.
+- **Boundaries.** Worker tasks never enter development: `/harness-dev <task>` or
+  `/harness-dev queue <task>` on one only resets its attempts and requeues it for this source's next
+  check, which is how to retry a failed item. If the source no longer declares `intake`, that request
+  releases the task from its worker instead, and it then follows the normal development review. A
+  completed task is not reopened when its source item changes later; that change stays evidence.
 
 This feature requires the colocated `harness-runtime` interface `monitor-discovery: 7`. Installing
 or updating the skill selects no private source, supplies no credentials, and creates no live monitor.

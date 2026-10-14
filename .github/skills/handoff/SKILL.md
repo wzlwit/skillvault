@@ -1,6 +1,6 @@
 ---
 name: handoff
-description: Prepare a concise continuation note for another session or person. Use for /handoff or an explicit request to save work for a later session. Overlaps with harness-project on context summaries; creates a note rather than a live status view or process-control action.
+description: Prepare a concise continuation note for another session or person. Use for /handoff or an explicit request to save work for a later session. Overlaps with harness-setup on context summaries; creates a note rather than a live status view or process-control action.
 argument-hint: "[<next-session-focus>] [--output <path>]"
 disable-model-invocation: true
 license: MIT
@@ -57,10 +57,11 @@ need reconciliation before retry, not an assumption that nothing changed.
 ## Harness Integration
 
 When the project already uses a harness, reuse its task, report, and reference records and
-read-only `/harness-project context` or status views as needed. Distinguish registered links from sources
-actually read. This skill needs no harness installation, initialization, new task, or runtime action.
+read-only `/harness-setup` briefings (given a task ID or a question) or status views as needed.
+Distinguish registered links from sources actually read. This skill needs no harness installation,
+initialization, new task, or runtime action.
 
-Pause, stop, recovery, and resume belong to `/harness-project policy fallback` and the existing runtime under
+Pause, stop, recovery, and resume belong to `/harness-setup policy` and the existing runtime under
 their own approval and confirmation rules. A handoff note never stops workers, clears pauses,
 requeues tasks, changes schedules, or marks work Completed. If stopping was requested, report the
 owning control's observed outcome; unconfirmed termination remains a blocker. Do not hand an active

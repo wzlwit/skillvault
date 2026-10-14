@@ -38,20 +38,20 @@ All rows below now default to global. `Project` in Before identifies a changed m
 | [graphify](../skills/codeview/graphify/SKILL.md) | Global | Portable reference; upstream CLI remains separate. |
 | [grilling](../skills/planning/grilling/SKILL.md) | Global | Reusable decision interview; unanswered choices stay open. |
 | [handoff](../skills/planning/handoff/SKILL.md) | Project | Explicit-only continuation notes; destinations stay project-aware. |
-| [harness-project context](../skills/planning/harness-project/references/context.md) | Project | Shared reader for the selected project's context. |
-| [harness-decision](../skills/planning/harness-decision/SKILL.md) | Project | Shared decision helper; each project retains its register. |
-| [harness-work](../skills/planning/harness-work/SKILL.md) | Project | Shared executor; task scope, workspaces, and permissions stay explicit. |
-| [harness-project policy fallback](../skills/planning/harness-project/references/fallback.md) | Project | Shared policy commands; target pauses stay in project state. |
-| [harness-project init](../skills/planning/harness-project/references/init.md) | Project | Shared runtime; ProjectPath selects every project's configuration. |
-| [harness-project root](../skills/planning/harness-project/references/root.md) | Project | Shared command selecting a project's board, not relocating records. |
+| [harness-project context](../skills/planning/harness-setup/references/context.md) | Project | Shared reader for the selected project's context. |
+| [harness-decision](../skills/planning/harness-decide/SKILL.md) | Project | Shared decision helper; each project retains its register. |
+| [harness-work](../skills/planning/harness-dev/SKILL.md) | Project | Shared executor; task scope, workspaces, and permissions stay explicit. |
+| [harness-project policy fallback](../skills/planning/harness-setup/references/fallback.md) | Project | Shared policy commands; target pauses stay in project state. |
+| [harness-project init](../skills/planning/harness-setup/references/init.md) | Project | Shared runtime; ProjectPath selects every project's configuration. |
+| [harness-project root](../skills/planning/harness-setup/references/root.md) | Project | Shared command selecting a project's board, not relocating records. |
 | [harness-monitor](../skills/planning/harness-monitor/SKILL.md) | Project | Shared evaluator; observations and incidents remain project-specific. |
-| [harness-project context](../skills/planning/harness-project/SKILL.md) | Project | Shared reference helper; registered links stay in the project board. |
+| [harness-project context](../skills/planning/harness-setup/SKILL.md) | Project | Shared reference helper; registered links stay in the project board. |
 | [harness-write](../skills/planning/harness-write/SKILL.md) | Project | Reusable authoring dispatcher; artifact identity/access stays explicit. |
-| [harness-project policy limits](../skills/planning/harness-project/references/limits.md) | Project | Shared boundary commands; no permission is granted by installation. |
+| [harness-project policy limits](../skills/planning/harness-setup/references/limits.md) | Project | Shared boundary commands; no permission is granted by installation. |
 | [harness-review](../skills/planning/harness-review/SKILL.md) | Project | Shared reviewer; current-project baseline and scope remain unchanged. |
-| [harness-work](../skills/planning/harness-work/SKILL.md) | Project | Shared intake command; tasks are saved only in the selected project. |
-| [harness-work test](../skills/planning/harness-work/SKILL.md) | Project | Shared test flow executor; methods/environments stay project-local. |
-| [harness-timer](../skills/planning/harness-timer/SKILL.md) | Project | Shared scheduler helper beside the harness runtime; project task identities persist. |
+| [harness-work](../skills/planning/harness-dev/SKILL.md) | Project | Shared intake command; tasks are saved only in the selected project. |
+| [harness-work test](../skills/planning/harness-dev/SKILL.md) | Project | Shared test flow executor; methods/environments stay project-local. |
+| [harness-timer](../skills/planning/harness-schedule/SKILL.md) | Project | Shared scheduler helper beside the harness runtime; project task identities persist. |
 | [humanizer](../skills/writing/humanizer/skill.json) | Global | Reusable reference, with upstream editing rules not bundled. |
 | [jarvis-metrics](../skills/monitoring/jarvis-metrics/SKILL.md) | Project | Reusable Jarvis guidance; no account or connector comes with it. |
 | [kpi-dashboard](../skills/data/kpi-dashboard/SKILL.md) | Project | Reusable metric methodology; actual metric definitions stay task-specific. |
@@ -61,19 +61,19 @@ All rows below now default to global. `Project` in Before identifies a changed m
 | [pr-watch add](../skills/github/pr-watch/SKILL.md) | Global | Adds to the same user-wide watchlist; does not start reviews. |
 | [pr-watch list](../skills/github/pr-watch/SKILL.md) | Global | Reads the shared watchlist without remote calls or initialization. |
 | [pr-watch remove](../skills/github/pr-watch/SKILL.md) | Global | Removes a shared watch entry, preserving PRs and reports. |
-| [harness-timer set pr](../skills/planning/harness-timer/SKILL.md) | Global | One current-user timer for the whole list, not per installation. |
+| [harness-timer set pr](../skills/planning/harness-schedule/SKILL.md) | Global | One current-user timer for the whole list, not per installation. |
 | [rules](../skills/core/rules/SKILL.md) | Global | Shared rule-editing workflow; authoritative destination is explicitly resolved. |
 | [rules apply](../skills/core/rules/SKILL.md) | Global | Reusable guidance; installation is not always-on injection. |
-| [schedule-manager](../skills/system/schedule-manager/SKILL.md) | Global | User-wide schedule inventory; mutations retain confirmation. |
-| [skillvault-discovery evaluate](../skills/core/skillvault-discovery/SKILL.md) | Global | Reusable adoption assessment without installation or execution. |
-| [skillvault-installation refresh](../skills/core/skillvault-installation/SKILL.md) | Global | Explicit refresh of managed global copies; no schedule on install. |
-| [skillvault-installation](../skills/core/skillvault-installation/SKILL.md) | Global | Shared catalog installer; verifies source separately from copy destination. |
-| [skillvault-discovery explain](../skills/core/skillvault-discovery/SKILL.md) | Global | Reusable read-only explanations, not target workflow execution. |
-| [skillvault-installation list](../skills/core/skillvault-installation/SKILL.md) | Global | User-wide installed-skill inventory and scoped administration. |
-| [skillvault-authoring remove](../skills/core/skillvault-authoring/SKILL.md) | Global | Explicit source maintenance; remains excluded from bootstrap. |
-| [skillvault-discovery search](../skills/core/skillvault-discovery/SKILL.md) | Global | Cross-source skill discovery without installation. |
-| [skillvault-installation uninstall](../skills/core/skillvault-installation/SKILL.md) | Global | Shared installed-copy administration with confirmed exact targets. |
-| [skillvault-authoring](../skills/core/skillvault-authoring/SKILL.md) | Global | Explicit source authoring; remains excluded from bootstrap. |
+| [schedule-manager](../skills/system/schedule-manage/SKILL.md) | Global | User-wide schedule inventory; mutations retain confirmation. |
+| [skillvault-discovery evaluate](../skills/core/skillvault-discover/SKILL.md) | Global | Reusable adoption assessment without installation or execution. |
+| [skillvault-installation refresh](../skills/core/skillvault-install/SKILL.md) | Global | Explicit refresh of managed global copies; no schedule on install. |
+| [skillvault-installation](../skills/core/skillvault-install/SKILL.md) | Global | Shared catalog installer; verifies source separately from copy destination. |
+| [skillvault-discovery explain](../skills/core/skillvault-discover/SKILL.md) | Global | Reusable read-only explanations, not target workflow execution. |
+| [skillvault-installation list](../skills/core/skillvault-install/SKILL.md) | Global | User-wide installed-skill inventory and scoped administration. |
+| [skillvault-authoring remove](../skills/core/skillvault-author/SKILL.md) | Global | Explicit source maintenance; remains excluded from bootstrap. |
+| [skillvault-discovery search](../skills/core/skillvault-discover/SKILL.md) | Global | Cross-source skill discovery without installation. |
+| [skillvault-installation uninstall](../skills/core/skillvault-install/SKILL.md) | Global | Shared installed-copy administration with confirmed exact targets. |
+| [skillvault-authoring](../skills/core/skillvault-author/SKILL.md) | Global | Explicit source authoring; remains excluded from bootstrap. |
 | [supabase-postgres-best-practices](../skills/data/supabase-postgres-best-practices/SKILL.md) | Project | Reusable Postgres advice; database type, target, and access stay scoped. |
 | [trading-signal-analysis](../skills/finance/trading-signal-analysis/SKILL.md) | Project | Reusable research workflow; data/evaluator/licensing remain prerequisites. |
 | [webapp-testing](../skills/testing/webapp-testing/SKILL.md) | Project | Reusable browser test workflow; app, test accounts, and browser setup stay explicit. |

@@ -1,6 +1,6 @@
 $ErrorActionPreference = 'Stop'
-$resolveScript = Join-Path $PSScriptRoot '..\skills\core\skillvault-authoring\scripts\resolve-source-repo.ps1'
-$installResolveScript = Join-Path $PSScriptRoot '..\skills\core\skillvault-installation\scripts\resolve-source-repo.ps1'
+$resolveScript = Join-Path $PSScriptRoot '..\skills\core\skillvault-author\scripts\resolve-source-repo.ps1'
+$installResolveScript = Join-Path $PSScriptRoot '..\skills\core\skillvault-install\scripts\resolve-source-repo.ps1'
 
 function Assert-True {
     param([bool]$Condition, [string]$Message)

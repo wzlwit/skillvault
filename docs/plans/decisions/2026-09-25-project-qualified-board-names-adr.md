@@ -52,5 +52,5 @@ refresh only on an explicit request. No live board rename or schedule change is 
 ## References
 
 - [Current plan](../2026-09-15-harness-command-and-record-contracts.md#plans-and-records)
-- [Current-view procedure](../../../skills/planning/harness-project/references/root.md#current-view-names)
+- [Current-view procedure](../../../skills/planning/harness-setup/references/root.md#current-view-names)
 - [Shared runtime](../../../skills/planning/harness-runtime/references/runtime.md#configuration-and-state)

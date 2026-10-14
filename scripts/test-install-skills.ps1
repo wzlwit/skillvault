@@ -3,8 +3,8 @@ param([switch]$OwnershipOnly, [switch]$CompatibilityOnly, [Alias('RecoveryOnly')
 $ErrorActionPreference = 'Stop'
 
 $installScript = Join-Path $PSScriptRoot 'install-skills.ps1'
-. (Join-Path (Split-Path -Parent $PSScriptRoot) 'skills\core\skillvault-installation\scripts\skill-files.ps1')
-. (Join-Path (Split-Path -Parent $PSScriptRoot) 'skills/core/skillvault-installation/scripts/skill-ownership.ps1')
+. (Join-Path (Split-Path -Parent $PSScriptRoot) 'skills\core\skillvault-install\scripts\skill-files.ps1')
+. (Join-Path (Split-Path -Parent $PSScriptRoot) 'skills/core/skillvault-install/scripts/skill-ownership.ps1')
 
 function Assert-True {
     param([bool]$Condition, [string]$Message)
@@ -69,35 +69,41 @@ try {
         $selectionCatalog = @(
             @{ name = 'harness'; description = 'Project controller'; path = 'skills/planning/harness'; version = '1.0.0' },
             @{ name = 'harness-dev'; description = 'Development workflow'; path = 'skills/planning/harness-dev'; version = '1.0.0' },
-            @{ name = 'harness-timer'; description = 'Scheduled work'; path = 'skills/planning/harness-timer'; version = '1.0.0' },
+            @{ name = 'harness-schedule'; description = 'Scheduled work'; path = 'skills/planning/harness-schedule'; version = '1.0.0' },
             @{ name = 'utility'; description = 'Observability companion mentioning harness'; path = 'skills/system/utility'; version = '1.0.0' },
             @{ name = 'report-builder'; description = 'Business KPI dashboards'; path = 'skills/data/report-builder'; version = '1.0.0' },
             @{ name = 'diagram-guide'; description = 'Architecture views'; path = 'skills/codeview/diagram-guide'; version = '1.0.0' }
         )
         foreach ($entry in $selectionCatalog) { $null = New-FixtureSkill $repositoryRoot $entry.path $entry.name $entry.version global }
         ConvertTo-Json -Depth 5 -InputObject $selectionCatalog | Set-Content (Join-Path $repositoryRoot 'catalog.json')
-        foreach ($query in @('harness', 'arnes', 'HARNESS', 'harness*')) {
-            $matched = @(Find-SkillCatalogEntry $selectionCatalog $query)
-            Assert-True (($matched.name -join ',') -ceq 'harness,harness-dev,harness-timer') 'name matching includes all family members even when one name matches exactly'
+        # A selector without * names one skill exactly, ignoring case; * makes a name pattern (owner decision, 2026-10-09).
+        foreach ($query in @('harness', 'HARNESS')) {
+            Assert-True ((@(Find-SkillCatalogEntry $selectionCatalog $query).name -join ',') -ceq 'harness') 'a name without * selects only that skill, ignoring case'
+        }
+        foreach ($query in @('harness*', '*arnes*', 'HARNESS*')) {
+            Assert-True ((@(Find-SkillCatalogEntry $selectionCatalog $query).name -join ',') -ceq 'harness,harness-dev,harness-schedule') 'name* and *name* select every matching name'
         }
         Assert-True (@(Find-SkillCatalogEntry $selectionCatalog 'harness-*').Count -eq 2) 'name patterns can select only suffixed members'
-        Assert-True ((@(Find-SkillCatalogEntry $selectionCatalog harness -Exact).name -join ',') -ceq 'harness') 'explicit exact selection keeps a single skill'
-        Assert-True ((@(Find-SkillCatalogEntry $selectionCatalog observability).name -join ',') -ceq 'utility') 'description keywords work when no names match'
-        Assert-True ((@(Find-SkillCatalogEntry $selectionCatalog 'KPI dashboards').name -join ',') -ceq 'report-builder') 'literal keyword phrases are supported'
-        Assert-True ((@(Find-SkillCatalogEntry $selectionCatalog codeview).name -join ',') -ceq 'diagram-guide') 'catalog folder keywords are supported'
-        Assert-True (@(Find-SkillCatalogEntry $selectionCatalog public).Count -eq $selectionCatalog.Count) 'the existing public selector still selects the full catalog'
+        Assert-True ((@(Find-SkillCatalogEntry $selectionCatalog '*guide').name -join ',') -ceq 'diagram-guide') '*name selects names that end with it'
+        Assert-True (@(Find-SkillCatalogEntry $selectionCatalog '*').Count -eq $selectionCatalog.Count) '* selects the whole catalog'
+        foreach ($query in @('arnes', 'observability', 'public')) {
+            Assert-True (Test-Throws { Find-SkillCatalogEntry $selectionCatalog $query }) "'$query' is not a skill name, so it selects nothing"
+        }
+        $suggestion = ''
+        try { $null = Find-SkillCatalogEntry $selectionCatalog 'observability' } catch { $suggestion = $_.Exception.Message }
+        Assert-True ($suggestion -match 'nothing was selected' -and $suggestion -match 'utility') 'a name with no exact match suggests skills that mention it'
         Assert-True (Test-Throws { Find-SkillCatalogEntry $selectionCatalog 'absent*' }) 'unmatched patterns do not select unrelated skills'
         Assert-True (Test-Throws { Find-SkillCatalogEntry $selectionCatalog ' ' }) 'blank selection does not install everything'
-        $preview = & $installScript -Select harness,arnes -RepoRoot $repositoryRoot -ProjectPath $projectRoot -GlobalSkillsPath $globalRoot -Preview | ConvertFrom-Json
+        $preview = & $installScript -Select 'harness*', '*arnes*' -RepoRoot $repositoryRoot -ProjectPath $projectRoot -GlobalSkillsPath $globalRoot -Preview | ConvertFrom-Json
         Assert-True ($preview.Count -eq 3 -and @(Get-ChildItem $globalRoot -Force).Count -eq 0) 'selection preview is deduplicated and copies nothing'
         Assert-True (-not (Test-Path $env:SKILLVAULT_OWNERSHIP_ROOT)) 'preview acquires no ownership or runtime state'
-        Assert-True (Test-Throws { & $installScript -Select harness,absent -RepoRoot $repositoryRoot -ProjectPath $projectRoot -GlobalSkillsPath $globalRoot }) 'one unmatched selector blocks the entire batch'
+        Assert-True (Test-Throws { & $installScript -Select 'harness*', absent -RepoRoot $repositoryRoot -ProjectPath $projectRoot -GlobalSkillsPath $globalRoot }) 'one unmatched selector blocks the entire batch'
         Assert-True (@(Get-ChildItem $globalRoot -Force).Count -eq 0) 'a failed selection batch leaves all targets untouched'
-        & $installScript -Select harness -RepoRoot $repositoryRoot -ProjectPath $projectRoot -GlobalSkillsPath $globalRoot | Out-Null
-        Assert-True ((@(Get-ChildItem $globalRoot -Directory | Sort-Object Name).Name -join ',') -ceq 'harness,harness-dev,harness-timer') 'partial selection installs the complete name match set, not description-only neighbors'
-        $repeatPreview = & $installScript -Select harness -RepoRoot $repositoryRoot -ProjectPath $projectRoot -GlobalSkillsPath $globalRoot -Preview | ConvertFrom-Json
+        & $installScript -Select 'harness*' -RepoRoot $repositoryRoot -ProjectPath $projectRoot -GlobalSkillsPath $globalRoot | Out-Null
+        Assert-True ((@(Get-ChildItem $globalRoot -Directory | Sort-Object Name).Name -join ',') -ceq 'harness,harness-dev,harness-schedule') 'a pattern installs the complete name match set, not description-only neighbors'
+        $repeatPreview = & $installScript -Select 'harness*' -RepoRoot $repositoryRoot -ProjectPath $projectRoot -GlobalSkillsPath $globalRoot -Preview | ConvertFrom-Json
         Assert-True ($repeatPreview.Count -eq 3) 'existing installations can be previewed without force approval'
-        Assert-True (Test-Throws { & $installScript -Select harness -RepoRoot $repositoryRoot -ProjectPath $projectRoot -GlobalSkillsPath $globalRoot }) 'selection does not bypass forced-replacement approval'
+        Assert-True (Test-Throws { & $installScript -Select 'harness*' -RepoRoot $repositoryRoot -ProjectPath $projectRoot -GlobalSkillsPath $globalRoot }) 'selection does not bypass forced-replacement approval'
         $exactPreview = & $installScript -Name harness -RepoRoot $repositoryRoot -ProjectPath $projectRoot -GlobalSkillsPath $globalRoot -Preview | ConvertFrom-Json
         Assert-True (@($exactPreview).Count -eq 1) 'the existing script Name API remains exact'
         Write-Output 'Selection checks passed: partial names, keywords, patterns, explicit exact names, read-only preview, batching, and replacement approval.'
@@ -192,7 +198,7 @@ try {
         @(@{ name = 'consumer'; path = 'skills/core/consumer' }, @{ name = 'provider'; path = 'skills/core/provider' }) | ConvertTo-Json | Set-Content (Join-Path $repositoryRoot 'catalog.json')
         $missing = Get-SkillRuntimeCompatibility -SkillPath $installed
         Assert-True (-not $missing.compatible -and $missing.requiredUpdates -contains 'provider') 'an installed bundle cannot satisfy a missing sibling from the source catalog'
-        $source = Join-Path (Split-Path -Parent $PSScriptRoot) 'skills/planning/harness-timer'
+        $source = Join-Path (Split-Path -Parent $PSScriptRoot) 'skills/planning/harness-schedule'
         Assert-SkillRuntimeCompatibility -SkillPath $source
         Write-Output 'Compatibility checks passed: same-version rejection, explicit companion updates, released claims, independent package versions, exact interfaces, and installation isolation.'
         return
@@ -209,7 +215,7 @@ try {
             Assert-True ($_.Exception.Data['SkillOwnershipStatus'] -ceq 'Busy') 'cross-controller contention returns Busy'
             Assert-True ($_.Exception.Data['SkillOwnershipOwner'].controller -ceq 'first') 'contention identifies the original owner'
         }
-        $helper = Join-Path (Split-Path -Parent $PSScriptRoot) 'skills/core/skillvault-installation/scripts/skill-ownership.ps1'
+        $helper = Join-Path (Split-Path -Parent $PSScriptRoot) 'skills/core/skillvault-install/scripts/skill-ownership.ps1'
         $childCode = '. $args[0]; try { $lease = Enter-SkillOwnership -Resources @([pscustomobject]@{ kind = "checkout"; path = $args[1]; mode = "Write" }) -Owner @{ controller = "child" } -Root $args[2]; Exit-SkillOwnership $lease; exit 9 } catch { [Console]::Write($_.Exception.Data["SkillOwnershipStatus"]); exit 0 }'
         $childResult = & pwsh -NoProfile -NonInteractive -CommandWithArgs $childCode $helper $repositoryRoot $ownershipRoot
         Assert-True ($LASTEXITCODE -eq 0 -and $childResult -ceq 'Busy') 'the ownership gate excludes writers in another process'
@@ -248,7 +254,7 @@ try {
     Clear-SkillOwnership -Id $lease.id -ConfirmStopped -Root $ownershipRoot
     Assert-True (@(Get-ChildItem -LiteralPath $ownershipRoot -File).Count -eq 0) 'released claims leave no stale ownership evidence'
     $runtimeResources = @(Get-SkillRuntimeResources (Join-Path (Split-Path -Parent $PSScriptRoot) 'skills/planning/harness-runtime'))
-    Assert-True (@($runtimeResources | Where-Object { $_.path -like '*SKILLVAULT-INSTALLATION' }).Count -eq 1) 'source runtime ownership includes its installer dependency exactly once'
+    Assert-True (@($runtimeResources | Where-Object { $_.path -like '*SKILLVAULT-INSTALL' }).Count -eq 1) 'source runtime ownership includes its installer dependency exactly once'
     $legacyRoot = Join-Path $fixtureRoot 'legacy-runtime'
     $legacyRuntime = New-FixtureSkill -RepositoryRoot $legacyRoot -RelativePath harness -SkillName harness -Version '1.0.0' -DefaultScope global
     $legacyManifest = Get-Content -LiteralPath (Join-Path $legacyRuntime 'skill.json') -Raw | ConvertFrom-Json
@@ -439,10 +445,12 @@ try {
     '{"name":"harness-root","version":"1.0.0"}' | Set-Content -LiteralPath (Join-Path $legacyFolder 'skill.json')
     '# Legacy fixture with preserved custom guidance' | Set-Content -LiteralPath (Join-Path $legacyFolder 'SKILL.md')
     (New-FixtureMetadata -SourcePath 'skills/public/planning/harness-root' -Scope global -Version '1.0.0') | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $legacyFolder '.skillvault-install.json')
-    $migrationScript = Join-Path $catalogRepository 'skills/core/skillvault-installation/scripts/migrate-topics.ps1'
-    $fullNames = @('skillvault-authoring', 'skillvault-discovery', 'skillvault-installation')
+    $migrationScript = Join-Path $catalogRepository 'skills/core/skillvault-install/scripts/migrate-topics.ps1'
+    $fullNames = @('skillvault-author', 'skillvault-discover', 'skillvault-install')
+    # Each management topic once had a short registered folder; install's was sv-installation.
+    $shortNames = @{ 'skillvault-author' = 'sv-source'; 'skillvault-discover' = 'sv-discovery'; 'skillvault-install' = 'sv-installation' }
     foreach ($fullName in $fullNames) {
-        $shortName = if ($fullName -eq 'skillvault-authoring') { 'sv-source' } else { $fullName -replace '^skillvault-', 'sv-' }
+        $shortName = $shortNames[$fullName]
         $catalogEntry = $catalogEntries | Where-Object name -CEQ $fullName
         $shortPath = New-FixtureSkill -RepositoryRoot $migrationGlobal -RelativePath $shortName -SkillName $shortName -Version $catalogEntry.version -DefaultScope global
         (New-FixtureMetadata -SourcePath "skills/public/core/$shortName" -Scope global -Version $catalogEntry.version) | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $shortPath '.skillvault-install.json')
@@ -454,44 +462,64 @@ try {
     }
     $formerSourcePath = New-FixtureSkill -RepositoryRoot $migrationGlobal -RelativePath 'skillvault-source' -SkillName 'skillvault-source' -Version '1.0.0' -DefaultScope global
     (New-FixtureMetadata -SourcePath 'skills/public/core/skillvault-source' -Scope global -Version '1.0.0') | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $formerSourcePath '.skillvault-install.json')
+    # The longer topic names were current until 2026-10-09; copies under them retire into the verb names.
+    $formerLongNames = [ordered]@{ 'skillvault-installation' = 'skillvault-install'; 'skillvault-discovery' = 'skillvault-discover'; 'skillvault-authoring' = 'skillvault-author' }
+    # The 2026-10-09 convention renamed four harness topics and schedule-manager; harness-dev and harness-decide are current again.
+    $formerNameMap = Get-SkillFormerNames
+    foreach ($renamed in ([ordered]@{ 'harness-project' = 'harness-setup'; 'harness-work' = 'harness-dev'; 'harness-decision' = 'harness-decide'; 'harness-timer' = 'harness-schedule'; 'schedule-manager' = 'schedule-manage' }).GetEnumerator()) {
+        Assert-True ($formerNameMap[$renamed.Key] -ceq $renamed.Value) "copies named $($renamed.Key) retire into $($renamed.Value)"
+    }
+    Assert-True (-not $formerNameMap.ContainsKey('harness-dev') -and -not $formerNameMap.ContainsKey('harness-decide')) 'reused topic names are current, not former names'
+    Assert-True (@($formerNameMap.Values | Where-Object { $_ -cnotin @((Get-Content -LiteralPath (Join-Path $catalogRepository 'catalog.json') -Raw | ConvertFrom-Json).name) }).Count -eq 0) 'every former name maps to a current catalog skill'
+    $formerLongPaths = @{}
+    foreach ($former in $formerLongNames.Keys) {
+        $formerLongPaths[$former] = New-FixtureSkill -RepositoryRoot $migrationGlobal -RelativePath $former -SkillName $former -Version '3.0.0' -DefaultScope global
+        (New-FixtureMetadata -SourcePath "skills/core/$former" -Scope global -Version '3.0.0') | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $formerLongPaths[$former] '.skillvault-install.json')
+    }
     $legacyBefore = [IO.File]::ReadAllText((Join-Path $legacyFolder 'SKILL.md'))
     $namingPreview = & $migrationScript -ProjectPath $migrationProject -RepoPath $catalogRepository -Scope global -GlobalSkillsPath $migrationGlobal -Name $fullNames | ConvertFrom-Json
-    Assert-True ($namingPreview.preview -and $namingPreview.install.Count -eq 3 -and $namingPreview.retire.Count -eq 6 -and -not (Test-Path (Join-Path $migrationGlobal 'skillvault-installation'))) 'selected naming migration previews the three management topics and retires former authoring and refresh names'
-    Assert-True (@($namingPreview.retire | Where-Object { $_.oldName -in $formerRefreshNames -and $_.name -ceq 'skillvault-installation' }).Count -eq 2) 'former refresh folders map to skillvault-installation'
+    Assert-True ($namingPreview.preview -and $namingPreview.install.Count -eq 3 -and $namingPreview.retire.Count -eq 9 -and -not (Test-Path (Join-Path $migrationGlobal 'skillvault-install'))) 'selected naming migration previews the three management topics and retires their former short, long, and refresh names'
+    Assert-True (@($namingPreview.retire | Where-Object { $_.oldName -in $formerRefreshNames -and $_.name -ceq 'skillvault-install' }).Count -eq 2) 'former refresh folders map to skillvault-install'
+    foreach ($former in $formerLongNames.Keys) {
+        Assert-True (@($namingPreview.retire | Where-Object { $_.oldName -ceq $former -and $_.name -ceq $formerLongNames[$former] }).Count -eq 1) "copies named $former map to $($formerLongNames[$former])"
+    }
     Assert-True (Test-Throws { & $migrationScript -ProjectPath $migrationProject -RepoPath $catalogRepository -Scope global -GlobalSkillsPath $migrationGlobal -Name 'absent-skill' -Apply -Force }) 'unknown canonical migration names are rejected before writes'
     Assert-True (Test-Throws { & $migrationScript -ProjectPath $migrationProject -RepoPath $catalogRepository -Scope global -GlobalSkillsPath $migrationGlobal -Name $fullNames -Apply -Force }) 'legacy runtime migration requires explicit stopped-worker confirmation'
-    Assert-True (-not (Test-Path (Join-Path $migrationGlobal 'skillvault-authoring'))) 'an unconfirmed transition writes no replacement'
+    Assert-True (-not (Test-Path (Join-Path $migrationGlobal 'skillvault-author'))) 'an unconfirmed transition writes no replacement'
     $namingResult = & $migrationScript -ProjectPath $migrationProject -RepoPath $catalogRepository -Scope global -GlobalSkillsPath $migrationGlobal -Name $fullNames -Apply -Force -ConfirmStopped | ConvertFrom-Json
     Assert-True ($namingResult.backups.Count -eq 0 -and -not (Test-Path $env:SKILLVAULT_TRANSACTION_ROOT) -and (Get-InstallResidue $migrationGlobal).Count -eq 0) 'completed topic migration retains no archives'
     foreach ($fullName in $fullNames) {
-        $shortName = if ($fullName -eq 'skillvault-authoring') { 'sv-source' } else { $fullName -replace '^skillvault-', 'sv-' }
+        $shortName = $shortNames[$fullName]
         Assert-True (-not (Test-Path (Join-Path $migrationGlobal $shortName)) -and (Test-Path (Join-Path $migrationGlobal "$fullName/SKILL.md"))) 'full names replace short registered folders'
     }
     Assert-True (-not (Test-Path -LiteralPath $formerSourcePath)) 'the former full authoring name is retired after replacements verify'
-    foreach ($formerRefresh in $formerRefreshNames) {
-        Assert-True (-not (Test-Path -LiteralPath (Join-Path $migrationGlobal $formerRefresh))) "the former refresh folder $formerRefresh is retired into skillvault-installation"
+    foreach ($former in $formerLongNames.Keys) {
+        Assert-True (-not (Test-Path -LiteralPath $formerLongPaths[$former])) "the former $former copy is retired after $($formerLongNames[$former]) verifies"
     }
-    Assert-True (Test-Path -LiteralPath (Join-Path $migrationGlobal 'skillvault-installation/scripts/skill-refresh.ps1')) 'the installation copy carries the refresh script'
+    foreach ($formerRefresh in $formerRefreshNames) {
+        Assert-True (-not (Test-Path -LiteralPath (Join-Path $migrationGlobal $formerRefresh))) "the former refresh folder $formerRefresh is retired into skillvault-install"
+    }
+    Assert-True (Test-Path -LiteralPath (Join-Path $migrationGlobal 'skillvault-install/scripts/skill-refresh.ps1')) 'the installation copy carries the refresh script'
     Assert-True ([IO.File]::ReadAllText((Join-Path $legacyFolder 'SKILL.md')) -ceq $legacyBefore) 'a selected naming migration leaves unselected topics untouched'
     & (Join-Path $PSScriptRoot 'verify-installed-skills.ps1') -RepoRoot $catalogRepository -SkillsPath $migrationGlobal -Name $fullNames | Out-Null
     $repeatNaming = & $migrationScript -ProjectPath $migrationProject -RepoPath $catalogRepository -Scope global -GlobalSkillsPath $migrationGlobal -Name $fullNames | ConvertFrom-Json
     Assert-True ($repeatNaming.install.Count -eq 0 -and $repeatNaming.retire.Count -eq 0) 'selected migration does not refresh already identical copies'
     $shortPath = New-FixtureSkill -RepositoryRoot $migrationGlobal -RelativePath 'sv-installation' -SkillName 'sv-installation' -Version '1.1.0' -DefaultScope global
     (New-FixtureMetadata -SourcePath 'skills/public/core/sv-installation' -Scope global -Version '1.1.0') | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $shortPath '.skillvault-install.json')
-    $fullMetadata = [IO.File]::ReadAllText((Join-Path $migrationGlobal 'skillvault-installation/.skillvault-install.json'))
-    $retireOnly = & $migrationScript -ProjectPath $migrationProject -RepoPath $catalogRepository -Scope global -GlobalSkillsPath $migrationGlobal -Name 'skillvault-installation' -Apply -Force | ConvertFrom-Json
+    $fullMetadata = [IO.File]::ReadAllText((Join-Path $migrationGlobal 'skillvault-install/.skillvault-install.json'))
+    $retireOnly = & $migrationScript -ProjectPath $migrationProject -RepoPath $catalogRepository -Scope global -GlobalSkillsPath $migrationGlobal -Name 'skillvault-install' -Apply -Force | ConvertFrom-Json
     Assert-True ($retireOnly.install.Count -eq 0 -and $retireOnly.retire.Count -eq 1 -and $retireOnly.backups.Count -eq 0 -and -not (Test-Path $shortPath)) 'a short-name duplicate is retired when the full-name copy is already current'
-    Assert-True ([IO.File]::ReadAllText((Join-Path $migrationGlobal 'skillvault-installation/.skillvault-install.json')) -ceq $fullMetadata) 'retiring a duplicate does not rewrite the current full-name metadata'
+    Assert-True ([IO.File]::ReadAllText((Join-Path $migrationGlobal 'skillvault-install/.skillvault-install.json')) -ceq $fullMetadata) 'retiring a duplicate does not rewrite the current full-name metadata'
     $migrationPreview = & $migrationScript -ProjectPath $migrationProject -RepoPath $catalogRepository -Scope global -GlobalSkillsPath $migrationGlobal | ConvertFrom-Json
-    Assert-True ($migrationPreview.preview -and $migrationPreview.retire[0].oldName -eq 'harness-root' -and $migrationPreview.retire[0].name -eq 'harness-project' -and -not (Test-Path (Join-Path $migrationGlobal 'harness-runtime')) -and -not (Test-Path (Join-Path $migrationGlobal 'harness-project'))) 'topic migration preview writes nothing and maps exact legacy names'
+    Assert-True ($migrationPreview.preview -and $migrationPreview.retire[0].oldName -eq 'harness-root' -and $migrationPreview.retire[0].name -eq 'harness-setup' -and -not (Test-Path (Join-Path $migrationGlobal 'harness-runtime')) -and -not (Test-Path (Join-Path $migrationGlobal 'harness-setup'))) 'topic migration preview writes nothing and maps exact legacy names'
     $migrationResult = & $migrationScript -ProjectPath $migrationProject -RepoPath $catalogRepository -Scope global -GlobalSkillsPath $migrationGlobal -Apply -Force -ConfirmStopped | ConvertFrom-Json
-    Assert-True (-not (Test-Path -LiteralPath $legacyFolder) -and (Test-Path (Join-Path $migrationGlobal 'harness-project/SKILL.md')) -and (Test-Path (Join-Path $migrationGlobal 'harness-runtime/scripts/harness.ps1'))) 'approved migration replaces the legacy registration with the canonical topic and its runtime'
+    Assert-True (-not (Test-Path -LiteralPath $legacyFolder) -and (Test-Path (Join-Path $migrationGlobal 'harness-setup/SKILL.md')) -and (Test-Path (Join-Path $migrationGlobal 'harness-runtime/scripts/harness.ps1'))) 'approved migration replaces the legacy registration with the canonical topic and its runtime'
     Assert-True ($migrationResult.backups.Count -eq 0 -and -not (Test-Path $env:SKILLVAULT_TRANSACTION_ROOT)) 'migration leaves only the approved canonical copies'
 
-    $scopedNames = @('skillvault-authoring', 'skillvault-installation')
+    $scopedNames = @('skillvault-author', 'skillvault-install')
     & $installScript -Name $scopedNames -RepoRoot $catalogRepository -ProjectPath $migrationProject -Scope project | Out-Null
-    $global:fixtureUnchangedTarget = Join-Path $migrationGlobal 'skillvault-installation'
-    'stale' | Set-Content (Join-Path $migrationGlobal 'skillvault-authoring/stale.txt')
+    $global:fixtureUnchangedTarget = Join-Path $migrationGlobal 'skillvault-install'
+    'stale' | Set-Content (Join-Path $migrationGlobal 'skillvault-author/stale.txt')
     foreach ($name in $scopedNames) { 'stale' | Set-Content (Join-Path $migrationProject ".github/skills/$name/stale.txt") }
     function global:Copy-Item {
         param([string]$LiteralPath, [string]$Destination, [switch]$Recurse, [switch]$Force)

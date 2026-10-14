@@ -1,9 +1,9 @@
 {
   "name": "pr-publish",
   "title": "PR Publish",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "kind": "agent",
-  "description": "[preview|upsert] Create or update your own pull request with a current vs. to-be scenario table. A new PR gets a short description in the style of the GitHub Pull Requests extension's create-pull-request skill and opens ready for review; an existing PR keeps its description and gets only the table. Overlaps with that skill on opening PRs and uses its VS Code tool when available, otherwise gh; pr-review reviews PRs instead. Never pushes or writes to a PR without an explicit ask.",
+  "description": "[list] Alone: publish this branch's PR. Text: adjust it, like show me first. Create or update your own pull request with a current vs. to-be scenario table. A new PR gets a short description in the style of the GitHub Pull Requests extension's create-pull-request skill and opens ready for review; an existing PR keeps its description and gets only the table. Overlaps with that skill on opening PRs and uses its VS Code tool when available, otherwise gh; pr-review reviews PRs instead. Never pushes or writes to a PR without an explicit ask.",
   "tags": [
     "github",
     "pull-request",
@@ -27,8 +27,9 @@
   ],
   "examples": [
     "/pr-publish",
-    "/pr-publish preview",
-    "/pr-publish upsert"
+    "/pr-publish show me first",
+    "/pr-publish push",
+    "/pr-publish list"
   ],
   "readme": "SKILL.md",
   "inputs": [
@@ -36,13 +37,10 @@
       "name": "action",
       "required": false,
       "type": "string",
-      "default": "list",
       "enum": [
-        "list",
-        "preview",
-        "upsert"
+        "list"
       ],
-      "description": "Primary action; omitted means read-only list. Operation-specific approvals still apply."
+      "description": "Menu word: list. Alone, the skill publishes the current branch's PR; other text adjusts that, such as show me first, push, or a PR to target. Operation-specific approvals still apply."
     }
   ]
 }

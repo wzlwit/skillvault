@@ -8,13 +8,13 @@ const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url))
 const namePattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const own = (value, key) => Object.prototype.hasOwnProperty.call(value, key);
 const textFile = (file) => fs.readFileSync(file, 'utf8').replace(/^\uFEFF/, '');
-// A multi-action topic's argument-hint starts with its action group, such as [list|run]. Its description
-// leads with the same actions except the bare-default list, such as [run], to save picker space.
+// A multi-action skill's argument-hint starts with its menu, such as [broad|list] or [clean]. Its description
+// leads with the same menu, then what the skill does alone and with text, within the part the / picker shows.
 const leadingActions = (metadata) => {
-  const group = typeof metadata['argument-hint'] === 'string' ? /^\[([a-z]+(?:\|[a-z]+)+)\]/.exec(metadata['argument-hint']) : null;
-  const actions = group ? group[1].split('|').filter((action) => action !== 'list') : [];
-  return actions.length ? `[${actions.join('|')}]` : null;
+  const group = typeof metadata['argument-hint'] === 'string' ? /^\[([a-z]+(?:\|[a-z]+)*)\]/.exec(metadata['argument-hint']) : null;
+  return group ? `[${group[1]}]` : null;
 };
+const menuLead = /^\[[a-z|]+\] Alone: [^.]+\. Text: [^.]+\./;
 
 function parseYaml(text, label) {
   const document = parseDocument(text, { uniqueKeys: true });
@@ -50,8 +50,10 @@ export function parseSkill(text, expectedName, manifest) {
   // The / picker shows only the start of a description and shows argument-hint only after selection.
   const actions = leadingActions(metadata);
   if (actions) {
-    assert.ok(metadata.description.startsWith(`${actions} `),
-      `${expectedName}: description must start with its argument-hint actions except list, "${actions} "`);
+    const lead = menuLead.exec(metadata.description);
+    assert.ok(metadata.description.startsWith(`${actions} Alone: `) && lead,
+      `${expectedName}: description must start with its menu and labels, "${actions} Alone: <by itself>. Text: <with text>."`);
+    assert.ok(lead[0].length <= 80, `${expectedName}: the menu, Alone, and Text lead must fit in 80 characters`);
   }
   return metadata;
 }

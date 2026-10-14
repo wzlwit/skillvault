@@ -68,7 +68,7 @@ participating and older writers while assuming protection remains complete.
 
 ## Implementation and Verification
 
-The shared [ownership helper](../../../skills/core/skillvault-installation/scripts/skill-ownership.ps1)
+The shared [ownership helper](../../../skills/core/skillvault-install/scripts/skill-ownership.ps1)
 uses process-held claim locks and a short registry mutex. The default registry is
 `~/.copilot/skillvault/ownership`; explicitly isolated environments use a common
 `SKILLVAULT_OWNERSHIP_ROOT`. Fixtures supply temporary roots rather than touching live claims.

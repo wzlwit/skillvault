@@ -20,11 +20,11 @@ recording stays explicit; do not turn script unavailability into permission to e
 ## Scope and Baseline
 
 For an explicit PR URL, load `pr-review` and delegate to its verified remote-snapshot workflow
-before initializing or running a project review. Preserve a requested security review and
-`--broad` level. Its
-shared helper does not invoke this skill back. If the dependency is missing, offer that route's
-installation/setup; do not silently review the current branch instead. A local `--base` override
-does not override a remote PR's verified merge-base. The following steps govern local review.
+before initializing or running a project review. Preserve a requested security review and the
+`broad` level. Its shared helper does not invoke this skill back. If the dependency is missing,
+offer that route's installation/setup; do not silently review the current branch instead. A local
+base ("since <ref>") does not override a remote PR's verified merge-base. The following steps
+govern local review.
 
 1. Resolve the project, apply `/rules apply` and applicable project instructions, and read the
    canonical `harness-runtime` guide. Follow Runner Inheritance and pass known compatible
@@ -32,12 +32,15 @@ does not override a remote PR's verified merge-base. The following steps govern 
    use inherited or maximum verified/native settings, not a setup blocker or invented small cap.
    Explicit restrictions and read-only review permissions remain effective. Use the canonical
    shared script, not an obsolete copy under a retired shortcut folder.
-   For a separate local repository, map `--repo-ref <id>` to `-RepositoryRef` (alias `-RepoRef`)
-   and keep `-ProjectPath` at the controller. Select an active project-wide reference to an
-   existing local Git root. Do not pick the first reference, clone a URL, or confuse this option
-   with PR selection. With no reference, local review still targets the controller's own checkout.
+   For a separate local repository, map a registered repository ID in the request, such as `R-001`,
+   to `-RepositoryRef` (alias `-RepoRef`) and keep `-ProjectPath` at the controller. Select an
+   active project-wide reference to an existing local Git root. Do not pick the first reference,
+   clone a URL, or confuse this reference with PR selection. With no reference, local review still
+   targets the controller's own checkout. A task ID in the request names that task as the scope
+   (`-Scope`) and selects its bound repository reference when it has one.
 2. With no explicit scope, review committed work ahead of the comparison branch plus current
-   staged/unstaged and untracked inputs. An explicit `--base <ref>` maps to `-BaseRef` and wins.
+   staged/unstaged and untracked inputs. An explicit base in the request, such as "since main",
+   maps to `-BaseRef` and wins; "since HEAD" compares only working changes.
    Otherwise the helper prefers local `origin/develop`, then the branch's configured upstream,
    and uses its merge-base with HEAD. It pins that commit for the run's snapshot checks.
 3. If neither comparison ref exists, report `WorkingChangesOnly`: HEAD is used and only working
@@ -77,11 +80,11 @@ the next choice at no cost. The two review the same pinned snapshot at the
 same time unless `maxParallelReviewers` is 1, which runs them one after the other. Their findings are
 merged; the pass is clean only when both are clean, blocked when either is blocked, and has no new
 findings only when neither reports one. When restrictions or availability leave one family, or
-`runner.criticalReview` is `false`, one reviewer runs and the result and report say why. A failed
+`runner.secondReviewer` is `false`, one reviewer runs and the result and report say why. A failed
 reviewer fails the pass after both finish; the other result stays in the report as evidence.
 
-1. Start the review panel on the current snapshot at the selected level: `critical` by default, or
-   `broad` from `--broad` (`-ReviewLevel broad`). Critical reports only what blocks merging the change
+1. Start the review panel on the current snapshot at the selected level: `blocking` by default, or
+   `broad` from the `broad` menu word (`-ReviewLevel broad`). Blocking reports only what blocks merging the change
    or completing its task, such as defects and regressions it introduces, an unfixed target issue,
    security or data-loss risk, broken contracts or callers, and missing tests the unit-test level
    requires. Broad reports every issue with evidence, including minor and pre-existing ones. Review
@@ -95,14 +98,15 @@ reviewer fails the pass after both finish; the other result stays in the report 
 2. Return all currently supported findings at that level, including revalidated earlier findings. The coordinator
    compares exact normalized file/line/message keys with the last completed review of the same
    repository reference/root, scope, baseline reference/commit, security mode, and review level;
-   reviews recorded before levels existed count as broad. Old reports without structured comparison
-   data are not guessed from Markdown. Changed wording/line numbers conservatively count as new;
+   reviews recorded before levels existed count as broad, and earlier `critical` reviews count as
+   `blocking`. Old reports without structured comparison data are not guessed from Markdown.
+   Changed wording/line numbers conservatively count as new;
    this is not semantic issue tracking or automatic resolution of prior reports.
 3. If that completed first pass has **no new findings**, run exactly one `Fresh` pass. This also
    applies when it repeats existing findings. Use a new reviewer context, the same pinned code
    snapshot, and the whole selected repository, including unchanged code, configuration, and tests. Rebuild
    understanding from sources, without passing the first review's conclusions as instructions. At
-   `critical` it uses that coverage only to find what the change breaks or leaves inconsistent
+   `blocking` it uses that coverage only to find what the change breaks or leaves inconsistent
    elsewhere; at `broad` it audits the whole repository.
 4. Keep the union of supported findings from both passes on the same verified snapshot. A clean second pass does not erase a
    finding from the first. Preserve earlier reports; a finding absent from a later report is not
@@ -150,7 +154,7 @@ Each script round uses up to two passes per snapshot, each with up to two review
 most 12 attempted sessions across two local restarts. That churn bound does not limit rounds
 resumed after completed fixes. Each session retains its explicit, inherited, and native time/credit limits;
 outer run/scheduler budgets and pauses are never increased or reset. A restart can consume extra
-sessions, not extra permission. `runner.criticalReview: false` keeps one reviewer per pass, here and
+sessions, not extra permission. `runner.secondReviewer: false` keeps one reviewer per pass, here and
 in development. No failed worker session gets an automatic retry.
 
 ## Differential Security Review
@@ -174,22 +178,24 @@ changes such as permission boundaries or removed protections. Keep the same base
 read-only restrictions. The worker cannot run shell checks or fetch URLs in this adapter; unavailable
 baseline/history or proof must be reported as a coverage limitation, not fabricated evidence.
 No scanner/plugin is installed. The original guide retains its Trail of Bits attribution and
-CC-BY-SA-4.0 license; it is loaded, not copied into this bundle. `/dif-review` is not a new alias.
+CC-BY-SA-4.0 license; it is loaded, not copied into this bundle. No `/dif-review` shortcut is added.
 
 ## Usage and Results
 
 ```text
 /harness-review
-/harness-review --repo-ref R-001
-/harness-review --base origin/develop
-/harness-review --base HEAD
-/harness-review run --broad
+/harness-review R-001
+/harness-review since origin/develop
+/harness-review since HEAD
+/harness-review security since main
+/harness-review broad
+/harness-review list
 /harness-review <PR-URL>
 ```
 
 ```powershell
 & <harness-folder>/scripts/harness.ps1 -ProjectPath <root> -Action Review
-& <harness-folder>/scripts/harness.ps1 -ProjectPath <controller-folder> -Action Review -RepoRef R-001
+& <harness-folder>/scripts/harness.ps1 -ProjectPath <controller-folder> -Action Review -RepositoryRef R-001
 & <harness-folder>/scripts/harness.ps1 -ProjectPath <root> -Action Review -BaseRef <verified-ref> -SecurityReview
 & <harness-folder>/scripts/harness.ps1 -ProjectPath <root> -Action Review -ReviewLevel broad
 ```
@@ -207,8 +213,8 @@ findings. `nextPhase: Review` on a findings checkpoint tells the coordinator whe
 fixes; `Partial` uses the same phase once the snapshot settles. The run record carries these fields
 so a successful reviewer process is not mistaken for completion of unresolved work.
 
-Honor the run lock and `/harness-project policy limits`/`/harness-project policy fallback` gates. Do not fix code, change permissions,
+Honor the run lock and the limits and fallback policies set through `/harness-setup policy`. Do not fix code, change permissions,
 publish comments, approve a PR, push, merge, change a schedule, or create a task implicitly.
 Reuse the existing authorized dev/proposal handoff for findings; that does not require another
-fixer or review request. Creating a separate task through `/harness-work upsert` outside that handoff still requires
+fixer or review request. Creating a separate task through `/harness-dev upsert` outside that handoff still requires
 the user's request or an existing explicit intake policy.

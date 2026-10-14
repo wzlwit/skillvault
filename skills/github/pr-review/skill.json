@@ -1,16 +1,16 @@
 {
   "name": "pr-review",
   "title": "PR Review",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "ownershipProtocol": 1,
   "requiredInterfaces": {
     "harness-runtime": {
       "harness-runtime": 4,
-      "review-levels": 1
+      "review-levels": 2
     }
   },
   "kind": "agent",
-  "description": "[run|configure] Review a PR URL, repository, or user-wide watchlist; a PR URL alone also starts a review. Overlaps with harness-review on general review and differential-review on security; owns remote selection and isolated evidence, while pr-watch manages targets.",
+  "description": "[broad|list|configure] Alone: review watched PRs. Text: review that PR. Review PRs from a URL, a repository, or the user-wide watchlist for blocking issues in isolated snapshots; broad also reports minor and existing issues. Overlaps with harness-review on general review and differential-review on security; owns remote selection and isolated evidence, while pr-watch manages targets.",
   "tags": [
     "github",
     "pull-request",
@@ -37,9 +37,10 @@
   ],
   "examples": [
     "/pr-review",
+    "/pr-review https://github.com/owner/repo/pull/1",
+    "/pr-review broad https://github.com/owner/repo/pull/1",
     "/pr-review list",
-    "/pr-review run",
-    "/pr-review run --broad"
+    "/pr-review configure"
   ],
   "readme": "SKILL.md",
   "inputs": [
@@ -47,13 +48,12 @@
       "name": "action",
       "required": false,
       "type": "string",
-      "default": "list",
       "enum": [
+        "broad",
         "list",
-        "run",
         "configure"
       ],
-      "description": "Primary action; omitted means read-only list. Compatibility aliases remain in SKILL.md. Operation-specific approvals still apply."
+      "description": "Menu word: broad, list, or configure. Alone, the skill reviews the watched PRs that changed; other text names a PR or repository URL to review now. Operation-specific approvals still apply."
     }
   ]
 }

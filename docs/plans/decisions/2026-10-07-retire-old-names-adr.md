@@ -2,6 +2,11 @@
 
 - Date: 2026-10-07
 - Status: Accepted
+- Superseded in part 2026-10-09: `skillvault-install` is a current name again, and
+  `skillvault-installation` is retired instead; see the [verb-named topics ADR](./2026-10-09-verb-named-topics-adr.md).
+- Superseded in part 2026-10-09: decision 2 no longer holds, because action aliases inside topics are
+  dropped too, and `harness-dev`, `harness-decide`, `/hn-dev`, and `/hn-decide` are current names
+  again; see the [bare, text, and menu convention ADR](./2026-10-09-bare-text-menu-convention-adr.md).
 - Decision owner: Zhaolong Wang
 - Scope: Old skill, topic, and command names that current skills still accepted or advertised, the folders and copies that carried them, and stale repository files.
 - Supersedes: Decision 5 ("Old commands") of the [harness topic consolidation](./2026-10-07-harness-topic-consolidation-adr.md) and the compatibility routes kept for older names in the [topic refactor plan](../2026-09-16-topic-skill-refactor.md). The [SkillVault topic consolidation](./2026-10-07-skillvault-topic-consolidation-adr.md) already retired the old SkillVault spellings.

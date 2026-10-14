@@ -60,7 +60,7 @@ function Read-HarnessConfig {
     if (Test-Path -LiteralPath (Join-Path $Paths.Control 'migrate.pending.json')) { throw 'Harness layout migration is incomplete. Inspect migrate.pending.json and preserve its temporary originals before recovery.' }
     if (Test-Path -LiteralPath (Join-Path (Split-Path -Parent $Paths.State) 'board-name.pending.json')) { throw 'Board filename update is incomplete. Preserve board-name.pending.json and its temporary originals for recovery.' }
     if ($Paths.LayoutVersion -eq 2 -and (Test-Path -LiteralPath (Join-Path $Paths.Control 'config.json'))) { throw 'Both legacy and declarative configurations exist. Resolve the interrupted layout transition before continuing.' }
-    if (-not (Test-Path -LiteralPath $Paths.Config -PathType Leaf)) { throw 'Harness is not initialized. Run /harness-project init for this project first.' }
+    if (-not (Test-Path -LiteralPath $Paths.Config -PathType Leaf)) { throw 'Harness is not initialized. Run /harness-setup for this project first.' }
     $config = if ($Paths.LayoutVersion -eq 2) { Read-HarnessDeclarativeConfig $Paths } else { Get-Content -LiteralPath $Paths.Config -Raw | ConvertFrom-Json }
     if ($config.schemaVersion -ne 1 -or $config.projectRoot -ine $Paths.Project) { throw 'Harness config version or project root does not match this project.' }
     $projectId = [guid]::Empty
@@ -243,7 +243,7 @@ function Initialize-Harness {
                 reasoningEffort = $null
                 maxMinutes = $null
                 maxCredits = $null
-                criticalReview = $null
+                secondReviewer = $null
                 maxTasksPerCycle = $null
                 allowedTools = $null
                 availableTools = $null

@@ -1,9 +1,9 @@
 {
   "name": "harness-monitor",
   "title": "Harness Monitor",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "kind": "agent",
-  "description": "[declare|check|accept|auto] Monitor work across approved source adapters, including ADO and documents; assess relevance, Auto-verify status, correlate explicit requirements, reconcile evidence, and expose verified subsets, or check health observations. `declare` drafts or reuses a monitor's declaration file and saves it; `auto` follows up a source's items or health incidents through an approved local-only worker flow on a schedule. Shorthand: /hn-monitor. Overlaps with harness-work on checks and intake, kpi-dashboard on metric contracts, harness-write on status and owner evidence, and dri on incidents; preserves deferred work and never launches development.",
+  "description": "[accept|auto] Alone: last results. Text: check one, or a new link. Monitor work across approved source adapters, including ADO and documents, and numeric health observations: assess relevance, verify status with AI model auto, reconcile evidence, and propose ranked tasks; auto follows a source up through an approved local-only worker flow. Shorthand: /hn-monitor. Overlaps with harness-dev on intake and checks, kpi-dashboard on metric contracts, harness-write on status and owner evidence, and dri on incidents; preserves deferred work and never launches development.",
   "requiredInterfaces": {
     "harness-runtime": {
       "harness-runtime": 4,
@@ -34,21 +34,18 @@
   },
   "dependencies": [
     "harness-runtime",
-    "harness-work",
-    "harness-project",
-    "harness-timer",
+    "harness-dev",
+    "harness-setup",
+    "harness-schedule",
     "rules"
   ],
   "examples": [
     "/harness-monitor",
-    "/harness-monitor list",
-    "/harness-monitor declare design-concerns",
-    "/harness-monitor declare design-concerns --hold",
-    "/harness-monitor check",
-    "/harness-monitor check design-concerns",
+    "/harness-monitor backlog",
+    "/harness-monitor https://dev.azure.com/org/project/_queries/query/1",
     "/harness-monitor accept C-001",
-    "/harness-monitor auto",
-    "/harness-monitor auto design-concerns --worker investigate-item --every 1h"
+    "/harness-monitor auto backlog --worker triage",
+    "/harness-monitor auto backlog off"
   ],
   "readme": "SKILL.md",
   "inputs": [
@@ -56,15 +53,11 @@
       "name": "action",
       "required": false,
       "type": "string",
-      "default": "list",
       "enum": [
-        "list",
-        "declare",
-        "check",
         "accept",
         "auto"
       ],
-      "description": "Primary action; omitted means read-only list. Compatibility aliases remain in SKILL.md. Operation-specific approvals still apply."
+      "description": "Menu word: accept or auto. Alone, the skill shows each monitor's last results and offers to check them all; other text checks that monitor or starts monitoring a link, folder, or file. Operation-specific approvals still apply."
     }
   ]
 }

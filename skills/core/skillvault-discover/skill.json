@@ -1,0 +1,62 @@
+{
+  "name": "skillvault-discover",
+  "title": "SkillVault Discover",
+  "version": "4.0.0",
+  "status": "public",
+  "visibility": "public",
+  "kind": "agent",
+  "description": "[explain] Alone: past evaluations. Text: search or evaluate it. Discover skills for a purpose, evaluate a candidate against the catalog and earlier evaluations, and explain skills, tools, or products. Shorthand: /sv-discover. Evaluation saves a public-safe assessment unless chat only; search and explanation are read-only. None installs, runs, or edits the target.",
+  "tags": [
+    "skillvault",
+    "discovery",
+    "search",
+    "agent-skills"
+  ],
+  "author": "wzlwit",
+  "license": "MIT",
+  "homepage": "https://github.com/wzlwit/skillvault",
+  "source": {
+    "repo": "skillvault",
+    "path": "skills/core/skillvault-discover"
+  },
+  "install": {
+    "global": true,
+    "project": true,
+    "session": true,
+    "defaultScope": "global",
+    "strategy": "copy"
+  },
+  "inputs": [
+    {
+      "name": "action",
+      "required": false,
+      "type": "string",
+      "enum": [
+        "explain"
+      ],
+      "description": "Menu word: explain. Alone, the skill shows past evaluations and asks what to look for; other text searches for a purpose or evaluates a URL or skill. Operation-specific approvals still apply."
+    },
+    {
+      "name": "description",
+      "required": false,
+      "type": "string",
+      "description": "Skill name, tool/product name, URL, capability, workflow, or problem: a purpose searches, a URL or skill name is evaluated, and after explain it names the subject. Omit it to see past evaluations."
+    }
+  ],
+  "outputs": [
+    "skill-candidates",
+    "source-links",
+    "search-summary"
+  ],
+  "readme": "SKILL.md",
+  "dependencies": [
+    "git",
+    "skillvault-install"
+  ],
+  "examples": [
+    "/skillvault-discover",
+    "/skillvault-discover a skill that reviews SQL migrations",
+    "/skillvault-discover https://github.com/owner/repo/tree/main/skills/example",
+    "/skillvault-discover explain humanizer"
+  ]
+}

@@ -7,8 +7,16 @@ function Get-HarnessTestSettings {
 function Get-HarnessUnitTestLevel {
     param($Config)
     $settings = Get-HarnessTestSettings $Config
-    if ('unitTests' -cin $settings.PSObject.Properties.Name -and $settings.unitTests) { return [string]$settings.unitTests }
-    'critical'
+    if ('unitTests' -cin $settings.PSObject.Properties.Name -and $settings.unitTests) { return ConvertTo-HarnessUnitTestLevel $settings.unitTests }
+    'blocking'
+}
+
+# The unit-test level critical was renamed blocking on 2026-10-09; saved settings and declaration files keep their meaning.
+function ConvertTo-HarnessUnitTestLevel {
+    param($Level)
+    $value = [string]$Level
+    if (-not $value -or $value -ceq 'critical') { return 'blocking' }
+    $value
 }
 
 function Get-HarnessTestHooks {
@@ -46,7 +54,7 @@ function Get-HarnessTestingSummary {
             [pscustomobject]@{ flow = [string]$flow.name; environment = [string]$flow.defaultEnvironment; method = [string]$flow.method; effects = $(if ($flow.effects) { [string]$flow.effects } else { 'undeclared' }) }
         })
         environments = @(foreach ($environment in @($settings.environments | Where-Object { $null -ne $_ })) { [pscustomobject]@{ name = [string]$environment.name; allowScheduled = [bool]$environment.allowScheduled } })
-        note = $(if (-not $withReview.Count -and -not $afterReview.Count) { 'No declared test flow runs during development; the harness runs runner.validationCommands or the repository test entry (scripts/test-all.ps1, then npm test). Declare real tests with /harness-work test declare.' } else { '' })
+        note = $(if (-not $withReview.Count -and -not $afterReview.Count) { 'No declared test flow runs during development; the harness runs runner.validationCommands or the repository test entry (scripts/test-all.ps1, then npm test). Declare real tests with /harness-dev test declare.' } else { '' })
         warnings = @(Get-HarnessTestWarnings $settings)
     }
 }
@@ -87,7 +95,7 @@ function Assert-HarnessTestSettings {
     }
     $sections = @($Settings.PSObject.Properties.Name)
     if ('afterReview' -cin $sections -and $Settings.afterReview -isnot [array]) { throw 'Testing afterReview must be an array.' }
-    if ('unitTests' -cin $sections -and $Settings.unitTests -cnotin @('critical', 'broad')) { throw 'Testing unitTests must be critical or broad.' }
+    if ('unitTests' -cin $sections -and $Settings.unitTests -cnotin @('blocking', 'broad', 'critical')) { throw 'Testing unitTests must be blocking or broad.' }
     $environmentNames = @{}
     foreach ($target in $Settings.environments) {
         Assert-HarnessTestName $target.name
@@ -132,7 +140,7 @@ function Set-HarnessTestSettings {
     if ($sections.Count -eq 0 -or @($sections | Where-Object { $_ -cnotin @('environments', 'flows', 'afterDev', 'afterReview', 'unitTests') }).Count -gt 0) { throw 'Test declarations contain only environments, flows, afterDev, afterReview, and unitTests sections.' }
     foreach ($section in $sections) {
         if ($section -ceq 'unitTests') {
-            if ($incoming.unitTests -cnotin @('critical', 'broad')) { throw 'Testing unitTests must be critical or broad.' }
+            if ($incoming.unitTests -cnotin @('blocking', 'broad', 'critical')) { throw 'Testing unitTests must be blocking or broad.' }
             continue
         }
         if ($incoming.$section -isnot [array]) { throw "Testing $section must be an array." }
@@ -153,7 +161,7 @@ function Set-HarnessTestSettings {
             foreach ($section in @('afterDev', 'afterReview')) {
                 if ($section -cin $sections) { $settings | Add-Member -NotePropertyName $section -NotePropertyValue @($incoming.$section) -Force }
             }
-            if ('unitTests' -cin $sections) { $settings | Add-Member -NotePropertyName unitTests -NotePropertyValue ([string]$incoming.unitTests) -Force }
+            if ('unitTests' -cin $sections) { $settings | Add-Member -NotePropertyName unitTests -NotePropertyValue (ConvertTo-HarnessUnitTestLevel $incoming.unitTests) -Force }
             Assert-HarnessTestSettings $settings
             $config | Add-Member -NotePropertyName testing -NotePropertyValue $settings -Force
             Write-HarnessConfig $Paths $config

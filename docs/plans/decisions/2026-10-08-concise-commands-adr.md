@@ -4,6 +4,10 @@
 - Status: Accepted. The owner asked for no "fancy" flags, a simple default, and only the options that
   are needed, and for "concise" to be a rule of this repository. Which options went was the agent's
   recommendation, open to owner review; the owner was not available for the scope question.
+- Superseded in part 2026-10-09: of the options kept in decision 4, `--broad` becomes a menu action,
+  `--repo` and the `harness-write` inputs become plain words, and `--exact` gives way to exact-or-wildcard
+  selectors; see the [bare, text, and menu convention ADR](./2026-10-09-bare-text-menu-convention-adr.md).
+  The rule in decision 1 stands.
 - Decision owner: Zhaolong Wang
 - Scope: The options that users type for SkillVault's own skills, and how summaries describe them.
 

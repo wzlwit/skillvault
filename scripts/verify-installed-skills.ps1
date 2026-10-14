@@ -5,7 +5,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-. (Join-Path $PSScriptRoot '..\skills\core\skillvault-installation\scripts\skill-files.ps1')
+. (Join-Path $PSScriptRoot '..\skills\core\skillvault-install\scripts\skill-files.ps1')
 $catalog = Get-Content -LiteralPath (Join-Path $RepoRoot 'catalog.json') -Raw | ConvertFrom-Json
 $count = 0
 $originCount = 0

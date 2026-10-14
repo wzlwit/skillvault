@@ -22,11 +22,11 @@ pre-existing issues, and uncertainty distinct. `harness-review` covers current-p
 correctness and `pr-review` owns verified remote PRs; this guide supplies their specialized
 security methodology, not a worker runtime.
 
-`/harness-review --security` supplies this installed guide to its general reviewer and bounded
-fresh pass on the same scope and snapshot. `/pr-review <PR-URL> --security` supplies it to the
-bounded shared PR reviewer without executing untrusted PR code. Neither route copies the guide or
-adds a scanner; keep the methodology here, not in a second checklist. General review alone does
-not establish security audit coverage.
+Asking `/harness-review` for a security review supplies this installed guide to its general reviewer
+and bounded fresh pass on the same scope and snapshot. Asking `/pr-review` for a security review of a
+PR supplies it to the bounded shared PR reviewer without executing untrusted PR code. Neither route
+copies the guide or adds a scanner; keep the methodology here, not in a second checklist. General
+review alone does not establish security audit coverage.
 
 ## Workflow
 

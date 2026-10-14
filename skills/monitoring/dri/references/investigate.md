@@ -2,9 +2,9 @@
 
 Contents: Inputs; Steps; The Brief; Query Practice; Profile Contents.
 
-Use this procedure for `/dri investigate`. It reads and reports; it changes nothing. The project's
-DRI profile supplies every service-specific source, query, signal, and owner (see the
-[skill rules](../SKILL.md#project-profile)).
+Use this procedure for `/dri investigate`, or an incident ID or link typed after `/dri`. It reads
+and reports; it changes nothing. The project's DRI profile supplies every service-specific source,
+query, signal, and owner (see the [skill rules](../SKILL.md#project-profile)).
 
 ## Inputs
 

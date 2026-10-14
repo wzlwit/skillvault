@@ -6,6 +6,11 @@
   the fix for the current issue, and broad tries to find every possible issue. The agent asked which
   reviews the option should cover; the owner was not available, so the agent adopted its recommended
   answer (decision 4).
+- Superseded in part 2026-10-09: `critical` is renamed `blocking`, with saved values still read;
+  `runner.criticalReview` gets a clearer name; and development can review at `broad` through
+  `/hn-dev broad`, replacing decision 4's rule that development always uses the default level. See the
+  [bare, text, and menu convention ADR](./2026-10-09-bare-text-menu-convention-adr.md). What each level
+  reports is unchanged.
 - Decision owner: Zhaolong Wang
 - Scope: What reviewers report in `/harness-review`, development runs, and `/pr-review`.
 - Supersedes in part: decision 6 of the [review-panel ADR](./2026-10-02-review-panel-dev-loop-and-sprints-adr.md)

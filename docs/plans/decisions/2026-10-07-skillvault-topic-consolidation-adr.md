@@ -2,6 +2,11 @@
 
 - Date: 2026-10-07
 - Status: Accepted
+- Superseded in part 2026-10-09: the three topics are now `skillvault-install`,
+  `skillvault-discover`, and `skillvault-author`, with `/sv-install`, `/sv-discover`, and
+  `/sv-author` as shorthands; see the [verb-named topics ADR](./2026-10-09-verb-named-topics-adr.md).
+- Superseded in part 2026-10-09 (later): their action sets change, with search and evaluation in one
+  flow; see the [bare, text, and menu convention ADR](./2026-10-09-bare-text-menu-convention-adr.md).
 - Decision owner: Zhaolong Wang
 - Scope: The registered SkillVault management topics, where refresh lives, and which old command names still route.
 - Supersedes: The separate `skillvault-refresh` registration in the [topic refactor plan](../2026-09-16-topic-skill-refactor.md) and the legacy command routes it kept for SkillVault topics (`/skillvault-source`, `/sv-source`, `/sv-install`, `/sv-list`, `/sv-uninstall`, `/sv-search`, `/sv-evaluate`, `/sv-key-points`, the fresh and sync spellings, and their `/skv-*` and full-name forms). The [harness topic consolidation](./2026-10-07-harness-topic-consolidation-adr.md) is unaffected; its old harness commands still route. *Updated 2026-10-07:* later the same day, the [old-name retirement ADR](./2026-10-07-retire-old-names-adr.md) retired those old harness commands too.
@@ -76,6 +81,6 @@ retire the old names, and asked for installed copies to follow.
 
 ## References
 
-- [Installation topic](../../../skills/core/skillvault-installation/SKILL.md)
-- [Refresh procedure](../../../skills/core/skillvault-installation/references/refresh.md)
+- [Installation topic](../../../skills/core/skillvault-install/SKILL.md)
+- [Refresh procedure](../../../skills/core/skillvault-install/references/refresh.md)
 - [Topic refactor plan](../2026-09-16-topic-skill-refactor.md)

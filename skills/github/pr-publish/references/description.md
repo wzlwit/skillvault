@@ -4,17 +4,18 @@
 Contents: Keep an existing description; Write a new description; Gather evidence first; Checklists
 and test evidence; Scenario table; Prose; Check findings.
 
-Use these rules for `preview` and before every `upsert`. Write into local UTF-8 files, preview them
-with the helper's `Publish` command, and fix or explain each check finding.
+Use these rules before every publish, including a run that stops at "show me first". Write into
+local UTF-8 files, preview them with the helper's `Publish` command, and fix or explain each check
+finding.
 
 ## Keep an existing description
 
 An open PR's description stays as written, whoever wrote it: you, GitHub's Copilot summary, or an
-earlier run. Write only the table, or "No behavior change.", into a file; `upsert` adds it, or
+earlier run. Write only the table, or "No behavior change.", into a file; publishing adds it, or
 replaces the Current vs. to-be section, and changes nothing else. A new `### Current vs. to-be`
 section closes the first `##` section, or follows the text when the description has no sections.
-Change other text only when the user asks, and say what changed. Keep link targets, issue
-references, and code.
+Change other text only when the user asks, such as "rewrite the description", and say what
+changed. Keep link targets, issue references, and code.
 
 ## Write a new description
 
@@ -33,7 +34,7 @@ references, and code.
 
 Add no per-file list, type of change, checklist, or test evidence section unless the template asks
 for one, and keep the description short. To use GitHub's Copilot summary instead, create the PR on
-GitHub with Copilot's **Summary** in the description field; `upsert` then adds only the table.
+GitHub with Copilot's **Summary** in the description field; `/pr-publish` then adds only the table.
 
 ## Gather evidence first
 

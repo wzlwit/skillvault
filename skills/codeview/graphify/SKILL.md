@@ -40,7 +40,7 @@ uv tool install graphifyy
 graphify vscode install
 ```
 
-Graphify manages the files it installs and their updates. `/skillvault-installation refresh` refreshes
+Graphify manages the files it installs and their updates. `/skillvault-install refresh` refreshes
 SkillVault-managed installs and does not overwrite an upstream-owned Graphify installation.
 
 ## Curation

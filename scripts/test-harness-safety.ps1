@@ -51,6 +51,7 @@ try {
     }
     $inherited = Resolve-HarnessRunnerConfig -Config $config -RunnerContext ([pscustomobject]@{ runner = $parentRunner })
     Assert-HarnessRunnerConfig $inherited
+    if ($inherited.runner.secondReviewer -ne $true -or $inherited.runner.PSObject.Properties.Match('criticalReview').Count) { throw 'A runner context with the old criticalReview key did not set secondReviewer.' }
     if ($inherited.runner.model -cne 'parent-fixture' -or $inherited.runner.maxMinutes -ne 10 -or $inherited.runner.maxCredits -ne 8 -or $inherited.runner.workspaceMode -cne 'current' -or $inherited.runner.allowedTools[0] -cne 'write') { throw 'Missing runner settings did not inherit the parent execution context.' }
     if ($null -ne $config.runner.model -or $null -ne (Read-HarnessConfig $paths).runner.model) { throw 'Resolving inherited settings changed the supplied or saved configuration.' }
     $native = Resolve-HarnessRunnerConfig $config
@@ -72,10 +73,11 @@ try {
     }
     $overrides = $config | ConvertTo-Json -Depth 20 | ConvertFrom-Json
     $overrides.runner.maxCredits = 3
-    $overrides.runner.criticalReview = $false
+    $overrides.runner.PSObject.Properties.Remove('secondReviewer')
+    $overrides.runner | Add-Member -NotePropertyName criticalReview -NotePropertyValue $false -Force
     $overrides | Add-Member -NotePropertyName restrictions -NotePropertyValue ([pscustomobject]@{ maxProcessMinutes = 4 })
     $combined = Resolve-HarnessRunnerConfig $overrides $context
-    if ($combined.runner.maxMinutes -ne 4 -or $combined.runner.maxCredits -ne 3 -or $combined.runner.criticalReview -ne $false) { throw 'Explicit values or inherited stricter ceilings were lost during resolution.' }
+    if ($combined.runner.maxMinutes -ne 4 -or $combined.runner.maxCredits -ne 3 -or $combined.runner.secondReviewer -ne $false) { throw 'Explicit values or inherited stricter ceilings were lost during resolution.' }
     Assert-PolicyFailure { Assert-HarnessRestrictions -Config $combined -Model other } 'allowedModels'
     $largerRequest = $config | ConvertTo-Json -Depth 20 | ConvertFrom-Json
     $largerRequest.runner.maxMinutes = 30
@@ -328,7 +330,7 @@ $null = Set-HarnessPause $paths project 'Fixture child requests its own stop' 'F
     $flowConfig.runner.model = 'fixture-model'
     $flowConfig.runner.reasoningEffort = 'high'
     $flowConfig.runner.maxCredits = 1
-    $flowConfig.runner.criticalReview = $false
+    $flowConfig.runner.secondReviewer = $false
     Write-HarnessJson $paths.Config $flowConfig
     $script:policyReviewCalls = 0
     function Resolve-HarnessReviewBaseline { param($Paths, $BaseRef); [pscustomobject]@{ reference = 'fixture-upstream'; commit = 'fixture-base'; selection = 'Upstream' } }

@@ -65,7 +65,7 @@ authorizes discarding local changes or rewriting accepted decision history.
 
 The [source validator](../../../scripts/validate-skill-files.mjs) checks the three-part catalog
 path and reads templates from the repository root. The
-[refresh helper](../../../skills/core/skillvault-installation/scripts/skill-refresh.ps1) implements
+[refresh helper](../../../skills/core/skillvault-install/scripts/skill-refresh.ps1) implements
 the catalog-confirmed relocation, covered by the [refresh fixture](../../../scripts/test-skill-refresh.ps1).
 
 During implementation on 2026-09-23, all 23 Node instruction tests and all PowerShell/Bash
@@ -115,7 +115,7 @@ contents, including unpublished edits, not a claim of parity with the remote bra
 
 ### Outcome and Recovery
 
-The [migration helper](../../../skills/core/skillvault-installation/scripts/migrate-topics.ps1)
+The [migration helper](../../../skills/core/skillvault-install/scripts/migrate-topics.ps1)
 updated the four global copies with retained backups. The two workspace copies were backed up
 and updated through the [staged installer](../../../scripts/install-skills.ps1). Original bundles
 and installation metadata remain in excluded `.skillvault-backup-migration-*` directories under

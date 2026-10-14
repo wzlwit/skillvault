@@ -1,10 +1,10 @@
 ---
 name: dri
-description: "[investigate] Investigate a production incident as a read-only copilot for the on-call DRI: gather evidence, separate facts from hypotheses, and draft next steps and updates. Also holds the proposed DRI-agent design (staged roles, preflight checks, evaluation) while it grows. Service specifics come from the project's private DRI profile. Never changes production or posts updates without explicit approval. Overlaps with harness-monitor on incidents: harness-monitor detects health breaches and proposes work; dri investigates one incident."
+description: "[investigate] Alone: DRI status. Text: investigate that incident. Investigate a production incident as a read-only copilot for the on-call DRI: gather evidence, separate facts from hypotheses, and draft next steps and updates. Also holds the proposed DRI-agent design (staged roles, preflight checks, evaluation) while it grows. Service specifics come from the project's private DRI profile. Never changes production or posts updates without explicit approval. Overlaps with harness-monitor on incidents: harness-monitor detects health breaches and proposes work; dri investigates one incident."
 metadata:
   author: wzlwit
-  version: "1.0.0"
-argument-hint: "[list|investigate] [<arguments>...]"
+  version: "2.0.0"
+argument-hint: "[investigate] [<incident ID or link>]"
 ---
 
 # DRI Copilot
@@ -17,21 +17,25 @@ This skill is a starting point. `investigate` works today and is read-only. The 
 DRI-agent design (staged roles, preflight checks, repair plans, and evaluation) is a
 [proposal](./references/proposal.md), not yet commands.
 
-Action matching applies only to the explicit action token: exact canonical actions and documented
-aliases take precedence; otherwise exactly 3 or 4 leading letters may select one canonical action
-in this topic. Multiple matches: show choices and ask; no match: show help. Ambiguous or unknown
-tokens execute nothing. Do not prefix-match aliases, skill names, targets, paths, options, or other
-arguments. Case handling, natural-language routing, full names in menus and registrations, the
-read-only bare default, and each procedure's arguments, permissions, and confirmations stay
-unchanged; abbreviation adds no confirmation. This is conversational routing, not script argument parsing.
+Menu words are the actions in brackets. A first word that is a menu word, or exactly 3 or 4 leading letters
+of one, selects that action when the rest of the request fits it; otherwise ask. Several matches show choices
+and run nothing. Anything else is text, and no input at all is the skill alone. Matching never applies to
+skill names, targets, paths, or other arguments, and never changes an action's arguments, permissions, or
+confirmations. This is conversational routing, not script argument parsing.
 
-| Action | Outcome |
+| Input | What happens |
 | --- | --- |
-| `list` | Show what `/dri` can do, the proposal's status, and the project's DRI profile |
-| `investigate <incident>` | Build a read-only, evidence-linked brief for one incident |
+| Alone | Show whether the project's DRI profile was found and the proposal's status, then ask which incident |
+| Text | An incident ID or link: [investigate it](./references/investigate.md), read-only, the same as `investigate` |
+| `investigate <incident>` | [Build a read-only, evidence-linked brief for one incident](./references/investigate.md); without an incident, ask which one |
 
-- Bare invocation, `list`, `status`, and `help` show the actions, the proposal's status, and whether
-  a DRI profile was found. They query nothing and write nothing. Unknown actions show help.
+- Alone shows whether the project's DRI profile was found, and where, and the proposal's status,
+  then asks which incident to investigate. It queries nothing and writes nothing; no answer changes
+  nothing.
+- The alone view ends with one line naming the text uses: paste an incident ID or link to
+  investigate it.
+- Text that is an incident ID or link runs the same read-only investigation as `investigate`. When
+  it is unclear whether the text names an incident, ask.
 - Before `investigate`, read the [investigation procedure](./references/investigate.md). Before
   changing the design or adding a command, read the [proposal](./references/proposal.md).
 

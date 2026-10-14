@@ -5,9 +5,10 @@ Contents: Observation Format; Episode and Task Contract; Helper Examples.
 This is the numeric health-monitor contract. For work candidates from ADO, local folders, or
 other source adapters, use [discovery declarations](discovery.md) with `kind: discovery` instead.
 
-Save a `monitors` array with `/harness-monitor declare <name>|<file>`, which shows the change and
-asks to save, saving after 1 minute without an answer unless you hold it. The example's names, values,
-and paths are illustrative, not installed configuration or recommendations for a real service.
+Save a `monitors` array by giving `/harness-monitor` its declaration file, or the observation file to
+watch; it shows the change and asks to save, saving after 1 minute without an answer unless you hold
+it. The example's names, values, and paths are illustrative, not installed configuration or
+recommendations for a real service.
 
 ```json
 {
@@ -40,13 +41,13 @@ and paths are illustrative, not installed configuration or recommendations for a
 | `condition` | Numeric breach condition: `gt`, `ge`, `lt`, `le`, `eq`, or `ne`, plus finite threshold |
 | `response` | Optional `propose-task` default or `report-only`; no automatic intake option |
 | `allowScheduled` | Optional boolean, false when omitted; independent of timer registration |
-| `referenceId` | Optional active `/harness-project context` source ID pointing to a dashboard, query, or source guide |
+| `referenceId` | Optional active source ID, registered through `/harness-setup`, pointing to a dashboard, query, or source guide |
 
 All nonoptional fields must be supplied. Unknown declaration/source/condition fields are rejected.
-No numeric defaults are guessed. `monitors` upserts by name and preserves unmentioned definitions;
-an empty array removes nothing. Stop future checks with the exact timer's Disable action and/or
-explicit monitor pause, not by deleting incident state. Omitted optional fields on a replacement
-return to their defaults, so review permission/response changes before applying.
+No numeric defaults are guessed. `monitors` adds or replaces by name and preserves unmentioned
+definitions; an empty array removes nothing. Stop future checks by turning the exact timer off
+and/or with an explicit monitor pause, not by deleting incident state. Omitted optional fields on a
+replacement return to their defaults, so review permission/response changes before applying.
 
 Once any observation is saved, use a new name for changed resource/environment/metric/window or
 threshold/operator. Old incidents stay under the old meaning. A source-path or freshness-budget
@@ -116,11 +117,11 @@ apply unchanged.
 ```
 
 Apply reviewed declarations or task acceptance with `-Apply -Actor <owner> -Reason <reason>`.
-`check` explicitly saves run/incident evidence, so it has no preview flag. No-argument inspection
-reads saved values only. Accepting a task still requires fresh Unhealthy evidence at that time;
+A check explicitly saves run/incident evidence, so it has no preview flag. The alone view reads
+saved values only. Accepting a task still requires fresh Unhealthy evidence at that time;
 inspection may show an older pending proposal without authorizing intake.
 
-For scheduling, `/harness-timer set project <duration> monitor service-health` maps to the timer's
+For scheduling, `/harness-schedule project <duration> monitor service-health` maps to the timer's
 `-Action Set -Target project -Interval <duration> -MonitorName service-health`; preview before Apply.
 It is separate from existing `Topic monitor <flow> <environment>` command-flow timers, and the older
 `-IntervalDay <days>` form still works. Fallback uses `monitor:<name>`.

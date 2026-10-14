@@ -185,19 +185,19 @@ function Get-HarnessMonitorAutoView {
 
 # Turn a monitor's standing intake on or update it (`-Flow`), or off (`-Off`). Previews unless -Apply;
 # applying records the human approval through the normal declaration path. Scheduling stays with
-# /harness-timer (`set project <duration>` for `monitor <name>`).
+# /harness-schedule (`set project <duration>` for `monitor <name>`).
 function Set-HarnessMonitorAuto {
     param($Paths, [string]$Name, [string]$Flow, [string]$Environment, [int]$MaxPerCheck, [int]$MaxAttempts, [int[]]$SetupExitCode, [switch]$Off, [switch]$Apply, [string]$Actor, [string]$Reason)
     $config = Read-HarnessConfig $Paths
     $definition = Get-HarnessMonitorDefinition $config $Name
     $updated = $definition | ConvertTo-Json -Depth 20 | ConvertFrom-Json
     if ($Off) {
-        if (-not $updated.intake) { return [pscustomobject]@{ status = 'AlreadyOff'; monitor = $Name; next = 'No standing intake to remove. Disable any monitor timer with /harness-timer disable <id>.' } }
+        if (-not $updated.intake) { return [pscustomobject]@{ status = 'AlreadyOff'; monitor = $Name; next = 'No standing intake to remove. Turn any monitor timer off with /harness-schedule <id> off.' } }
         $updated.PSObject.Properties.Remove('intake')
     }
     else {
         $existing = $definition.intake
-        $worker = if ($Flow) { [pscustomobject]@{ flow = $Flow } } elseif ($existing) { $existing.worker } else { throw 'Name the worker with -Flow: a declared /harness-work test flow with effects local.' }
+        $worker = if ($Flow) { [pscustomobject]@{ flow = $Flow } } elseif ($existing) { $existing.worker } else { throw 'Name the worker with -Flow: a declared /harness-dev test flow with effects local.' }
         if ($Flow -and $Environment) { $worker | Add-Member -NotePropertyName environment -NotePropertyValue $Environment }
         $intake = [ordered]@{
             mode = 'auto'; worker = $worker
@@ -221,7 +221,7 @@ function Set-HarnessMonitorAuto {
         return [pscustomobject]@{
             preview = $true; monitor = $Name; auto = -not $Off; intake = $updated.intake; allowScheduled = $updated.allowScheduled
             proposalsNow = @($pending).Count
-            next = $(if ($Off) { 'Apply with -Apply -Actor <owner> -Reason <why>, then disable the monitor timer with /harness-timer disable <id>.' } else { "Apply with -Apply -Actor <owner> -Reason <why>; the next complete check accepts what manual acceptance would and runs the worker. Then schedule it: /harness-timer set project <duration> for monitor $Name." })
+            next = $(if ($Off) { 'Apply with -Apply -Actor <owner> -Reason <why>, then turn the monitor timer off with /harness-schedule <id> off.' } else { "Apply with -Apply -Actor <owner> -Reason <why>; the next complete check accepts what manual acceptance would and runs the worker. Then schedule it: /harness-schedule project <duration> monitor $Name." })
         }
     }
     if ([string]::IsNullOrWhiteSpace($Actor) -or [string]::IsNullOrWhiteSpace($Reason)) { throw 'Turning a standing intake on or off requires a human Actor and Reason.' }

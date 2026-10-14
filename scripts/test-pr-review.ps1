@@ -201,11 +201,11 @@ try {
     if ($watchView.entries.Count -ne 2 -or @($watchView.entries | Where-Object { $_.PSObject.Properties['reviews'] }).Count -or $resultView.reviews.Count -ne 1 -or $firstResult.Count -ne 1 -or $firstResult[0].status -cne 'clean' -or $firstWatchers -cne $expectedWatchers) { throw 'The watch view and review results were not separated.' }
     $again = Invoke-PrReviewRun $paths
     if ($again.results[0].status -cne 'Unchanged' -or $script:providerFixture.Workers -ne 2) { throw 'An unchanged completed snapshot was reviewed again.' }
-    if ($run.results[0].reviewLevel -cne 'critical' -or $script:providerFixture.Level -cne 'critical') { throw 'PR review did not default to the critical level.' }
+    if ($run.results[0].reviewLevel -cne 'blocking' -or $script:providerFixture.Level -cne 'blocking') { throw 'PR review did not default to the blocking level.' }
     $broadRun = Invoke-PrReviewRun $paths -ReviewLevel broad
     if ($broadRun.results[0].status -cne 'clean' -or $broadRun.results[0].reviewLevel -cne 'broad' -or $script:providerFixture.Level -cne 'broad' -or $script:providerFixture.Workers -ne 4 -or $null -ne (Read-HarnessConfig $runtime).prReview.reviewLevel) { throw 'An ad-hoc broad PR review did not run at broad, or changed the saved level.' }
     $afterBroad = Invoke-PrReviewRun $paths
-    if ($afterBroad.results[0].status -cne 'Unchanged' -or $script:providerFixture.Workers -ne 4) { throw 'A broad result did not cover a later critical request on the same snapshot.' }
+    if ($afterBroad.results[0].status -cne 'Unchanged' -or $script:providerFixture.Workers -ne 4) { throw 'A broad result did not cover a later blocking request on the same snapshot.' }
     $script:providerFixture.PullReads = 0
     $script:providerFixture.ChangeAfterReview = $true
     $stale = Invoke-PrReviewRun $paths -Again
@@ -269,8 +269,9 @@ try {
     if ($savedSettings.maxCycleCredits -ne 8 -or (Read-HarnessConfig $runtime).runner.maxCredits -ne 2) { throw 'Restoring the declared budgets lost the cycle or per-session credit cap.' }
     $defaults = Get-PrReviewSettings $null
     if (-not $defaults.defaultProfiles -or ($defaults.githubHosts -join ',') -cne 'github.com' -or $null -ne $defaults.maxPullRequests -or $null -ne $defaults.maxCycleMinutes -or $null -ne $defaults.maxCycleCredits -or $defaults.allowScheduled -or $defaults.securityReview) { throw 'Unsaved PR settings did not default to github.com, no limits, no schedule, and the review model list.' }
-    if ($defaults.reviewLevel -cne 'critical' -or (Get-PrReviewSettings ([pscustomobject]@{ reviewLevel = 'broad' })).reviewLevel -cne 'broad') { throw 'The PR review level did not default to critical or keep a saved broad level.' }
-    Assert-PrFailure { Assert-PrReviewSettings ([pscustomobject]@{ reviewLevel = 'deep' }) } 'reviewLevel must be critical or broad'
+    if ($defaults.reviewLevel -cne 'blocking' -or (Get-PrReviewSettings ([pscustomobject]@{ reviewLevel = 'broad' })).reviewLevel -cne 'broad') { throw 'The PR review level did not default to blocking or keep a saved broad level.' }
+    if ((Get-PrReviewSettings ([pscustomobject]@{ reviewLevel = 'critical' })).reviewLevel -cne 'blocking') { throw 'A PR review level saved as critical was not read as blocking.' }
+    Assert-PrFailure { Assert-PrReviewSettings ([pscustomobject]@{ reviewLevel = 'deep' }) } 'reviewLevel must be blocking or broad'
     $defaultChoice = Select-PrReviewProfile ([pscustomobject]@{ prReview = $null }) $capabilities
     if ($defaultChoice.model -cne 'gpt-fixture-top' -or $defaultChoice.effort -cne 'max' -or $defaultChoice.context -cne 'long_context' -or (@($defaultChoice.options).model -join ',') -cne 'gpt-fixture-top,gpt-fixture-next,claude-opus-fixture-top') { throw 'The default PR reviewer did not come from the review model list, strongest first.' }
     $narrowedChoice = Select-PrReviewProfile ([pscustomobject]@{ prReview = $null; restrictions = [pscustomobject]@{ allowedModels = @('claude-opus-fixture-top') } }) $capabilities

@@ -1,6 +1,6 @@
 $ErrorActionPreference = 'Stop'
 
-$refreshScript = Join-Path $PSScriptRoot '..\skills\core\skillvault-installation\scripts\skill-refresh.ps1'
+$refreshScript = Join-Path $PSScriptRoot '..\skills\core\skillvault-install\scripts\skill-refresh.ps1'
 $fixtureRoot = Join-Path ([System.IO.Path]::GetTempPath()) ('skill-refresh-test-' + [guid]::NewGuid().ToString('N'))
 $savedFixtureOwnershipRoot = $env:SKILLVAULT_OWNERSHIP_ROOT
 $env:SKILLVAULT_OWNERSHIP_ROOT = Join-Path $fixtureRoot 'runtime-ownership'
@@ -8,7 +8,7 @@ $savedFixtureTransactionRoot = $env:SKILLVAULT_TRANSACTION_ROOT
 $env:SKILLVAULT_TRANSACTION_ROOT = Join-Path $fixtureRoot 'updates'
 $savedGitPrompt = $env:GIT_TERMINAL_PROMPT
 $savedGcmInteractive = $env:GCM_INTERACTIVE
-. (Join-Path $PSScriptRoot '../skills/core/skillvault-installation/scripts/skill-ownership.ps1')
+. (Join-Path $PSScriptRoot '../skills/core/skillvault-install/scripts/skill-ownership.ps1')
 $sourceRepoRoot = Join-Path $fixtureRoot 'source'
 $globalRoot = Join-Path $fixtureRoot 'global'
 $cacheRoot = Join-Path $fixtureRoot 'cache'

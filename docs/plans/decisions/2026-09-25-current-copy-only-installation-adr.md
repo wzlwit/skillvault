@@ -48,9 +48,9 @@ cleanup of existing archives intentionally removes those historical snapshots.
 
 ## Implementation and Verification
 
-The [transaction helper](../../../skills/core/skillvault-installation/scripts/skill-transactions.ps1)
+The [transaction helper](../../../skills/core/skillvault-install/scripts/skill-transactions.ps1)
 supports the shared installer, migration, and uninstall paths. The scheduler no longer delegates
-installation-archive cleanup. The [installation guide](../../../skills/core/skillvault-installation/references/install.md#transactional-updates)
+installation-archive cleanup. The [installation guide](../../../skills/core/skillvault-install/references/install.md#transactional-updates)
 owns the operational contract.
 
 Existing temporary fixtures verify current-copy-only success, complete originals during work,

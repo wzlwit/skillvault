@@ -1,0 +1,64 @@
+{
+  "name": "schedule-manage",
+  "title": "Schedule Manage",
+  "version": "2.0.0",
+  "status": "public",
+  "visibility": "public",
+  "kind": "agent",
+  "description": "[enable|disable|delete] Alone: Windows tasks. Text: filter them. Manage Windows scheduled tasks, selected by number, list, range, or keyword. Triggers on \"list schedules\", \"list scheduled tasks\", \"enable scheduled task\", \"disable scheduled task\", or \"delete scheduled task\". Overlaps with harness-schedule on enabling and disabling tasks; covers general schedule administration.",
+  "tags": [
+    "windows",
+    "schedule",
+    "tasks",
+    "cleanup",
+    "automation"
+  ],
+  "author": "wzlwit",
+  "license": "MIT",
+  "homepage": "https://github.com/wzlwit/skillvault",
+  "source": {
+    "repo": "skillvault",
+    "path": "skills/system/schedule-manage"
+  },
+  "install": {
+    "global": true,
+    "project": false,
+    "session": false,
+    "defaultScope": "global",
+    "globalPath": "~/.copilot/skills",
+    "strategy": "copy"
+  },
+  "inputs": [
+    {
+      "name": "action",
+      "required": false,
+      "type": "string",
+      "enum": [
+        "enable",
+        "disable",
+        "delete"
+      ],
+      "description": "Menu word: enable, disable, or delete. Alone, the skill lists Windows scheduled tasks, numbered; other text filters the list. Operation-specific approvals still apply."
+    },
+    {
+      "name": "selector",
+      "required": false,
+      "type": "string",
+      "description": "Required for enable, disable, or delete. Indexes, ranges, comma lists, or keywords. Examples: 2, 1,3, 4-6, SkillVault."
+    }
+  ],
+  "outputs": [
+    "indexed-schedule-list",
+    "schedule-enable-summary",
+    "schedule-disable-summary",
+    "schedule-delete-summary"
+  ],
+  "dependencies": [],
+  "examples": [
+    "/schedule-manage",
+    "/schedule-manage SkillVault",
+    "/schedule-manage disable 2",
+    "/schedule-manage delete 1,3-5"
+  ],
+  "readme": "SKILL.md"
+}

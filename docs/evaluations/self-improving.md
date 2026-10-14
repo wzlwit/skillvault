@@ -57,7 +57,7 @@ guidance. A new runtime, agent framework, memory database, or automatic worker i
 The installed [rules workflow](../../skills/core/rules/SKILL.md) already requires an authoritative
 target and confirmation for persistent rule changes. Its
 [management procedure](../../skills/core/rules/references/manage.md) checks duplication, conflicts,
-and weakened requirements before promotion. [SkillVault authoring](../../skills/core/skillvault-authoring/SKILL.md)
+and weakened requirements before promotion. [SkillVault authoring](../../skills/core/skillvault-author/SKILL.md)
 already resolves canonical sources and validates skill changes; installed-copy updates belong to
 the guarded installer. Host memory already supplies a place for non-procedural learning.
 
@@ -84,7 +84,7 @@ rule-management routes rather than introducing a self-modifying controller or sc
 ## Applied Locally
 
 After a separate request to improve repository skills, native guidance was added to
-[SkillVault authoring](../../skills/core/skillvault-authoring/references/upsert.md#improve-from-task-experience)
+[SkillVault authoring](../../skills/core/skillvault-author/references/upsert.md#improve-from-task-experience)
 and [rule management](../../skills/core/rules/references/manage.md#lessons-proposed-as-rules):
 
 - Separate procedures, host-memory facts, repository conventions, rule proposals, and observations

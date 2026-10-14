@@ -2,8 +2,8 @@ $ErrorActionPreference = 'Stop'
 
 # Real Git against local bare repositories. An isolated Git configuration maps the fixture URLs to
 # those repositories, so no network, user configuration, or real checkout is touched.
-. (Join-Path $PSScriptRoot '../skills/core/skillvault-installation/scripts/skill-files.ps1')
-$refreshScript = Join-Path $PSScriptRoot '../skills/core/skillvault-installation/scripts/skill-refresh.ps1'
+. (Join-Path $PSScriptRoot '../skills/core/skillvault-install/scripts/skill-files.ps1')
+$refreshScript = Join-Path $PSScriptRoot '../skills/core/skillvault-install/scripts/skill-refresh.ps1'
 $installScript = Join-Path $PSScriptRoot 'install-skills.ps1'
 $verifyScript = Join-Path $PSScriptRoot 'verify-installed-skills.ps1'
 $fixtureRoot = Join-Path ([System.IO.Path]::GetTempPath()) ('skill-refresh-merge-test-' + [guid]::NewGuid().ToString('N'))

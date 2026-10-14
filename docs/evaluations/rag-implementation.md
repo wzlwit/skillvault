@@ -95,7 +95,7 @@ Windows compatibility, or Chinese/multilingual benchmark was run in this evaluat
 ### Retrieval-Aware Comparative Checks
 
 - Target: `skillvault-authoring`, **Comparative outcome checks** in its
-  [upsert workflow](../../skills/core/skillvault-authoring/references/upsert.md).
+  [upsert workflow](../../skills/core/skillvault-author/references/upsert.md).
 - Evidence and gap: The RAG reference separates retrieval and answer metrics but leaves empty
   denominators and identity assumptions unresolved. Before this update, authoring guidance required
   matched baselines, measured units, complete comparable pairs, and unavailable metrics to remain

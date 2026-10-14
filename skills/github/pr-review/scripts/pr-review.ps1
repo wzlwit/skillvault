@@ -7,7 +7,7 @@ param(
     [switch]$Again,
     [switch]$Scheduled,
     [switch]$SecurityReview,
-    [ValidateSet('critical', 'broad')][string]$ReviewLevel,
+    [ValidateSet('blocking', 'broad')][string]$ReviewLevel,
     [string]$DefinitionPath,
     [switch]$Apply,
     [ValidateSet('Status', 'Set', 'Disable', 'Resume')][string]$TimerAction = 'Set',

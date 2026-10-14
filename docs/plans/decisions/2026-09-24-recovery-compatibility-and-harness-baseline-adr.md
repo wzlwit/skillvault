@@ -19,9 +19,9 @@ Recovery bundles stored beside active skills have appeared in the host's availab
 Excluding `.skillvault-backup-*` from SkillVault's own inventory does not keep the host from
 discovering their skill instructions. Complete recovery copies are still needed for rollback.
 
-The [installation helper](../../../skills/core/skillvault-installation/scripts/skill-files.ps1)
+The [installation helper](../../../skills/core/skillvault-install/scripts/skill-files.ps1)
 removes temporary staging and ordinary successful-swap backups, but retains legacy-transition
-and failed-recovery copies. The [topic migration helper](../../../skills/core/skillvault-installation/scripts/migrate-topics.ps1)
+and failed-recovery copies. The [topic migration helper](../../../skills/core/skillvault-install/scripts/migrate-topics.ps1)
 also retains originals after success. Existing harness maintenance prunes run history and stale
 schedules, not these archives. Moving retained copies alone would leave their growth unbounded.
 
@@ -127,9 +127,9 @@ remain necessary even after the policy is implemented.
 ## Implementation and Verification
 
 The initial ADR was documentation-only. The owner's subsequent implementation request authorized
-source changes: the [then-current recovery helper](https://github.com/wzlwit/skillvault/blob/6a51cbf0b60e81d88c56e8975bcf68a1f6812092/skills/core/skillvault-installation/scripts/skill-recovery.ps1)
+source changes: the [then-current recovery helper](https://github.com/wzlwit/skillvault/blob/6a51cbf0b60e81d88c56e8975bcf68a1f6812092/skills/core/skillvault-install/scripts/skill-recovery.ps1)
 now owns complete originals, records, protected retention, and the preview-first administration
-command. The [then-current installation guide](https://github.com/wzlwit/skillvault/blob/6a51cbf0b60e81d88c56e8975bcf68a1f6812092/skills/core/skillvault-installation/references/install.md#recovery-backups)
+command. The [then-current installation guide](https://github.com/wzlwit/skillvault/blob/6a51cbf0b60e81d88c56e8975bcf68a1f6812092/skills/core/skillvault-install/references/install.md#recovery-backups)
 describes explicit policy, migration, and classification operations. Existing archive migration,
 cleanup activation, installed-copy rollout, and schedule changes remain separately approved.
 No live backup is moved or deleted by this source implementation, and no publication is implied.

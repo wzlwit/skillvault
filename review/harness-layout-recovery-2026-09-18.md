@@ -30,7 +30,7 @@ These are not an intentionally supported compatibility layer. Some are intermedi
 wrappers, while others contain older instruction text or partial resources. For example,
 the archived init wrapper forwards to a shorthand management wrapper, and the archived
 management entry advertises `loc|init|context|status|help`. The current
-[development topic](../skills/planning/harness-work/SKILL.md) uses `list|run|queue`.
+[development topic](../skills/planning/harness-dev/SKILL.md) uses `list|run|queue`.
 Keeping these parallel source trees violates the repository's agreed layout and contributes
 to the existing repository-wide validation failures.
 

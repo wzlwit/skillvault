@@ -71,8 +71,11 @@ try {
     if ([System.IO.File]::ReadAllText($paths.Config) -cne $beforeConfig) { throw 'Invalid test declarations changed configuration.' }
     $externalFlow = [pscustomobject]@{ name = 'ppe-smoke'; method = 'Smoke test against a shared environment'; defaultEnvironment = 'localPPE'; maxMinutes = 1; effects = 'external'; steps = @([pscustomobject]@{ name = 'smoke'; executable = 'pwsh'; arguments = @('-NoProfile', '-Command', 'exit 0') }) }
     @{ unitTests = 'everything' } | ConvertTo-Json | Set-Content -LiteralPath $definitionFile -Encoding UTF8
-    Assert-TestFlowFailure { & $dispatcher -ProjectPath $fixtureRoot -Action TestConfig -DefinitionPath 'test-definition.json' } 'critical or broad'
+    Assert-TestFlowFailure { & $dispatcher -ProjectPath $fixtureRoot -Action TestConfig -DefinitionPath 'test-definition.json' } 'blocking or broad'
     if ([System.IO.File]::ReadAllText($paths.Config) -cne $beforeConfig) { throw 'A refused unit-test level changed configuration.' }
+    @{ unitTests = 'critical' } | ConvertTo-Json | Set-Content -LiteralPath $definitionFile -Encoding UTF8
+    $null = & $dispatcher -ProjectPath $fixtureRoot -Action TestConfig -DefinitionPath 'test-definition.json'
+    if ((Read-HarnessConfig $paths).testing.unitTests -cne 'blocking') { throw 'A declaration with the old critical unit-test level was not saved as blocking.' }
     @{ flows = @($externalFlow); afterDev = @(@{ flow = 'ppe-smoke' }) } | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $definitionFile -Encoding UTF8
     $warned = & $dispatcher -ProjectPath $fixtureRoot -Action TestConfig -DefinitionPath 'test-definition.json' | ConvertFrom-Json
     if (@($warned.afterDev).Count -ne 1 -or @($warned.warnings).Count -ne 1 -or $warned.warnings[0] -notmatch 'ppe-smoke declares external effects' -or 'warnings' -cin @((Read-HarnessConfig $paths).testing.PSObject.Properties.Name)) { throw 'An external afterDev flow was not accepted with an unsaved warning.' }

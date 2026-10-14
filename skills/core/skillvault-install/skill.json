@@ -1,0 +1,102 @@
+{
+  "name": "skillvault-install",
+  "title": "SkillVault Install",
+  "version": "4.0.0",
+  "ownershipProtocol": 1,
+  "runtimeInterfaces": {
+    "compatibility": 1,
+    "installation-transactions": 1,
+    "upstream-references": 3,
+    "structured-refresh": 2
+  },
+  "status": "public",
+  "visibility": "public",
+  "kind": "agent",
+  "description": "[list|update|uninstall|clean|refresh] Alone: the catalog. Text: install it. Manage installed SkillVault copies and keep them current: install by exact name or a * pattern, list installed copies, update them from the local checkout, uninstall, clean up copies that load twice or conflict, and refresh from upstream. Shorthand: /sv-install. Clean shows overlaps, which skillvault-discover can evaluate; refresh scheduling delegates to harness-schedule. Edits no SkillVault source or application code except refresh's adaptation merges; skillvault-author owns skill authoring.",
+  "tags": [
+    "bootstrap",
+    "installer",
+    "meta",
+    "sync"
+  ],
+  "author": "wzlwit",
+  "license": "MIT",
+  "homepage": "https://github.com/wzlwit/skillvault",
+  "source": {
+    "repo": "skillvault",
+    "path": "skills/core/skillvault-install"
+  },
+  "install": {
+    "global": true,
+    "project": true,
+    "session": true,
+    "defaultScope": "global",
+    "globalPath": "~/.copilot/skills",
+    "strategy": "copy"
+  },
+  "inputs": [
+    {
+      "name": "action",
+      "required": false,
+      "type": "string",
+      "enum": [
+        "list",
+        "update",
+        "uninstall",
+        "clean",
+        "refresh"
+      ],
+      "description": "Menu word: list, update, uninstall, clean, or refresh. Alone, the skill shows the catalog with each skill's state here; other text installs the named skill or * pattern. Operation-specific approvals still apply."
+    },
+    {
+      "name": "skill",
+      "required": false,
+      "type": "string",
+      "description": "Skill name, matched exactly and ignoring case, or a name pattern with *: name*, *name, *name*, or * for every skill. No exact match installs nothing and suggests skills that mention it. Omit to see the catalog."
+    },
+    {
+      "name": "scope",
+      "required": false,
+      "type": "string",
+      "enum": [
+        "global",
+        "project",
+        "session"
+      ],
+      "description": "Optional second positional target: global (~/.copilot/skills), project (.github/skills), or session (current AI session only). Defaults to the resolved skill's install.defaultScope, then project."
+    },
+    {
+      "name": "version",
+      "required": false,
+      "type": "string",
+      "default": "latest",
+      "description": "Optional third positional version: latest or a skill version in v#.#.# format, installed from that skill's <skill>/v#.#.# tag. Defaults to latest."
+    },
+    {
+      "name": "repoPath",
+      "required": false,
+      "type": "string",
+      "description": "Explicit verified source checkout, named in plain words such as from C:\\path\\skillvault. Otherwise use the known C:\\repos\\skillvault checkout; never silently select a cache or another session's clone. Separate from the target project."
+    }
+  ],
+  "outputs": [
+    "installed-skill-summary",
+    "catalog-listing",
+    "clean-findings",
+    "refresh-run-summary"
+  ],
+  "dependencies": [
+    "git"
+  ],
+  "examples": [
+    "/skillvault-install",
+    "/skillvault-install humanizer",
+    "/skillvault-install harness* global",
+    "/skillvault-install list",
+    "/skillvault-install update",
+    "/skillvault-install uninstall 3",
+    "/skillvault-install clean",
+    "/skillvault-install refresh"
+  ],
+  "readme": "SKILL.md"
+}

@@ -1,0 +1,328 @@
+
+# SkillVault Install
+
+Contents: Parameters; Source Checkout; Behavior; Runtime Coordination; Transactional Updates; Topic
+Layout Migration; Notes on versioning; Safety.
+
+This skill installs, updates, and explores existing skills from the `skillvault` catalog at
+`https://github.com/wzlwit/skillvault`.
+
+Name a skill after `/skillvault-install` to install a missing skill or update an installed copy from
+the catalog. It does not create or edit source skills. Use `/skillvault-author` to create or change
+a skill's source in SkillVault; that workflow never installs, so install the result here afterward.
+
+## Parameters
+
+Parse these from the text after the skill, in this order:
+
+- `skillName` — a skill name or a name pattern. A name without `*` matches the one catalog skill
+  with that name, ignoring case. `name*`, `*name`, and `*name*` match names that start with, end
+  with, or contain the text, ignoring case, and `*` alone selects every catalog skill. Patterns
+  match names only, never descriptions or paths. A name with no exact match selects nothing: say so
+  and suggest the skills whose names or descriptions mention it, such as `harness*` for `harness`.
+  Numbers, ranges, and comma lists belong to `list` and `uninstall`.
+  If no skill is named, show the catalog: the skill alone.
+- `scope` — optional plain word: `global`, `project`, or `session`. If omitted,
+  read the resolved skill's `skill.json` `install.defaultScope`. If the manifest does not
+  declare `defaultScope`, use `project`.
+  - `global` installs into `~/.copilot/skills/<skillName>` (available to the current user across sessions on this machine).
+  - `project` installs into `<current repo>/.github/skills/<skillName>` (available only in
+    that repo).
+  - `session` uses the resolved skill in the current AI session only. Do not copy files into
+    `~/.copilot/skills` or `.github/skills`; read the resolved skill instructions and apply
+    them for the current request.
+- `version` — optional: `latest` (default) or a skill version in `v#.#.#` format, such as
+  `v1.2.0`, which installs that skill's `<skill>/v#.#.#` tag.
+- `adapt` or `origin` — optional plain word, for skills from another repository (see
+  [upstream references](#upstream-references)). Without it, install the adaptation when one
+  exists, otherwise the original. `origin` fetches the original even when an adaptation exists;
+  `adapt` stops for a skill that has no adaptation.
+- "from <path>" — optional explicit source checkout, separate from installation scope. Resolve
+  relative paths against the original working project. Use this to approve a different checkout;
+  never infer that another session's clone is the intended source because its origin matches.
+
+Examples of invocations to recognize:
+- `/skillvault-install` → show the catalog with each skill's state here; install nothing.
+- `/skillvault-install schedule-manage` → install, update, or use `schedule-manage` with its manifest-defined default scope.
+- `/skillvault-install harness* global` → show every skill whose name starts with `harness`, including `harness-runtime`, with required companions, and ask once before installing them globally.
+- `/sv-install harness-setup global` → install only `harness-setup` globally, plus any required companions shown separately.
+- `/skillvault-install harness` → select nothing, since no skill is named exactly `harness`, and suggest `harness*` and the skills that mention it.
+- `/skillvault-install *schedule* project latest` → show the catalog names containing `schedule` and ask once before installing or updating them in project scope from latest.
+- `/skillvault-install *` → show every catalog skill and ask once before installing or updating all of them.
+- `/skillvault-install schedule-manage project` → install into the current project's
+  `.github/skills/`.
+- `/skillvault-install schedule-manage session latest` → use `schedule-manage` only in the current AI
+  session.
+- `/skillvault-install schedule-manage global v1.1.0` → install `schedule-manage`
+  globally from its tag `schedule-manage/v1.1.0`.
+- `/skillvault-install update` → bring the approved managed installed skills in global scope and
+  the current project up to the local checkout, preserving pins unless explicitly changed.
+- `/skillvault-install harness-review project latest from C:\repos\skillvault` selects an exact source
+  checkout while keeping the current project as the installation target.
+- `/skillvault-install grilling` → install SkillVault's adaptation of grilling.
+- `/skillvault-install grilling origin` → install Matt Pocock's original instead.
+- `/skillvault-author my-skill` → create or change a local SkillVault source skill only;
+  install it with this topic afterward.
+
+## Source Checkout
+
+Before browsing, installing, updating, or using a session skill, run the bundled
+[read-only source resolver](../scripts/resolve-source-repo.ps1) in its default Install mode:
+
+```powershell
+& <install-skill-folder>/scripts/resolve-source-repo.ps1 -ProjectPath <original-project-root>
+```
+
+Map "from <path>" to `-RepoPath <path>`. The installer selects only:
+
+1. The explicit source checkout, when supplied.
+2. Otherwise the known Windows checkout `C:\repos\skillvault`, when present and verified.
+
+There is no automatic fallback to `~/.copilot/skillvault-src`, the working directory, a temporary
+worktree, or any clone created by another session. If the known checkout is absent, including on
+platforms without that path, `NeedsSource` requires the user to name the actual checkout with
+"from <path>". A matching repository name, catalog layout, or Git origin alone does not approve another
+checkout. The resolver's Upsert mode belongs to the separate authoring workflow; do not select it
+to bypass this installation rule or override the known path with a discovered clone.
+
+Require `Status: Resolved`. Verification checks that the selected directory is the exact Git
+root, contains `catalog.json` and `skills/`, and has one `origin` fetch URL identifying
+`github.com/wzlwit/skillvault` using standard HTTPS or SSH. Invalid explicit/known sources block
+installation without retargeting remotes or selecting another source. The helper uses PowerShell
+5.1+ or PowerShell 7 and Git; if verification cannot run, report the missing prerequisite.
+
+Read `CatalogPath` and the selected manifests/bundle files from the resolved checkout on every
+invocation. Do not use cached search results, an earlier session's summary, or installed copies
+as the source of truth. Installed copies are comparison targets for pins and customization review.
+Show the resolved `RepoRoot`, catalog, selected source folders, and separate installation targets
+before copying. Invoke that checkout's installer with an explicit `-RepoRoot <resolved-root>`;
+keep `-ProjectPath` bound to the original project even when it differs from the source checkout.
+
+Use the selected checkout as-is, preserving uncommitted work. For local `latest`, report that
+the source is the current checkout contents, which may include unpublished edits; this does not
+claim they match the remote tip. Do not fetch, pull, reset, switch branches, or clone as an implicit
+install step. If a checkout or revision must be obtained, get approval for that exact destination
+and operation first, then re-resolve the explicit path. Never overwrite another session's work.
+
+## Behavior
+
+### No `skillName` given (catalog exploration)
+
+1. Resolve the actual source checkout using Source Checkout above; do not synchronize a cache.
+2. Read its current `catalog.json` and show the skills in a short table sorted by skill name: name,
+   version, description, and the state here. Use the shared inventory to check
+   `~/.copilot/skills/<name>` and the project's `.github/skills/<name>`: not installed, global, or
+   this project; the installed version; whether the copy is pinned; and whether a managed `latest`
+   copy is behind the checkout, meaning its version or recorded source revision differs from the
+   checkout's. If the user asks for grouping, derive it from `path`. Keep `catalog.json` to its
+   compact fields: name, description, path, and version.
+3. When managed `latest` copies are behind, offer to update them through
+   [update](#skillvault-install-update-explicit-installed-copy-refresh), asking once. No answer
+   changes nothing.
+4. End with one line naming the text uses: a skill name installs it, and a pattern such as
+   `harness*` shows its matches first.
+
+### `skillName` or pattern given (install/update mode)
+
+1. Resolve the actual source checkout and read its current catalog; stop if no source is resolved.
+2. Resolve the selector using `Find-SkillCatalogEntry` in the bundled
+   [file helper](../scripts/skill-files.ps1), rather than inventing a first-match rule:
+   - A name without `*`: the one catalog skill with that name, ignoring case. Install it and its
+     required companions at once after showing the preview; replacing an existing or customized
+     copy still needs its approval.
+   - `name*`, `*name`, or `*name*`: every catalog name that starts with, ends with, or contains the
+     text, ignoring case; `*` alone selects the whole catalog. Show the complete matched set and
+     required companions, and ask once before writing.
+   - No exact match: nothing is selected and nothing is written. Say so and suggest the skills
+     whose names or descriptions mention the text, as the helper's message lists them.
+   - Multiple matches are a batch, not an ambiguity requiring the user to supply each name again.
+     Preserve pins and separately review existing/customized replacements.
+3. Determine target scope:
+   - If the user provided `scope`, use it.
+   - If the user omitted `scope`, use the resolved skill's `install.defaultScope`.
+    - If `install.defaultScope` is missing, fall back to `project`.
+   - `global`: `~/.copilot/skills/<skillName>`
+   - `project`: `<current repo root>/.github/skills/<skillName>` (create the
+     `.github/skills` folder if missing)
+   - `session`: no target path; read the resolved skill instructions and apply them only to
+     the current request/session.
+   - For `global` or `project`, check both `~/.copilot/skills/<skillName>` and the current
+     project's `.github/skills/<skillName>`. If the skill is installed in the other scope, show that
+     copy and ask whether to move it to the requested scope: install there, then remove the old copy
+     through [uninstall](uninstall.md). Otherwise keep the existing copy and skip that skill. Keep
+     both copies only when the user confirms a reason, such as a pinned or customized project copy.
+4. For `global` or `project`, use `scripts/install-skills.ps1` from the SkillVault checkout
+  with `-Name`, `-Scope`, explicit `-RepoRoot <resolved-root>`, and the original project's `-ProjectPath`.
+  Omitted scope resolves per manifest. Show existing target differences and use `-Force`
+  only for the approved replacements. It stages the copy and metadata before replacement,
+  restores the prior install on swap failure, and excludes Git internals. Do not use symlinks.
+  The script's existing `-Name` array remains exact for approved batch execution. To resolve or
+  preview user selectors directly, use `-Select <selectors> -Preview`.
+  Pass `adapt` or `origin` as `-Variant adapt|origin`.
+  Preview validates the source and returns names/scopes/paths without creating target folders or
+  ownership state. For an original it fetches the upstream repository and shows the repository,
+  path, version, commit, and files. Recheck the preview before execution; a selector matching nothing blocks the
+  entire batch. For example:
+
+  ```powershell
+  & <repo>/scripts/install-skills.ps1 -Select 'harness*' -Scope global -RepoRoot <repo> -ProjectPath <project> -Preview
+  ```
+
+5. The installer writes `.skillvault-install.json` into each target skill folder:
+   - `installedBy`: `skillvault`
+   - `sourceRepo`: the SkillVault repository that supplies the copied folder
+     (`https://github.com/wzlwit/skillvault.git`)
+   - `sourcePath`: the copied folder's path within that repository
+   - `scope`: resolved scope, either `global` or `project`
+   - `requestedVersion`: `latest` or the pinned `v#.#.#` version
+  - `installedVersion`: version from the copied skill's `skill.json`, including explicit null
+   - `installedAt`: UTC timestamp
+   - `sourceCheckout` and `sourceRevision`, when the source is the root of a Git checkout: the
+     checkout path and the committed Git tree of the skill folder. Refresh merges new commits into
+     the installed copy from that base, so installed uncommitted work is kept, not overwritten.
+     For a pin, `sourcePath` and `sourceRevision` come from the skill's tag.
+   - An original records the upstream instead: `sourceType: upstream`, the upstream `sourceRepo`
+     and `sourcePath`, its `version` as `requestedVersion`, and the fetched Git tree as
+     `sourceRevision`.
+    `/skillvault-install refresh` uses this metadata for managed global `latest` installs only.
+    Upstream links in other skills or guides describe provenance only; they do not authorize
+    replacing that skill with upstream content.
+6. For `session`, read the resolved skill's `SKILL.md` or `README.md`, follow it for the current
+  request, and confirm that no persistent install was written.
+7. Confirm to the user: what was installed or used, the version from its `skill.json`, the
+  requested source version (`latest` or the pinned version), and the exact target path when files
+  were copied.
+
+### Upstream references
+
+A skill from another repository is either a reference or an adapted skill. Both declare an
+`upstream` block: an HTTPS `repo` without credentials, the skill folder `path` in that repository,
+and `version`: `latest` (the default branch), a tag, or a full commit.
+
+- A reference (`kind: reference`, `install.strategy: upstream`) keeps only `skill.json`, with no
+  `SKILL.md`. Installing it fetches the original into `~/.copilot/skillvault-cache/originals/`
+  (`-UpstreamCachePath` overrides it) and copies the upstream folder as-is, adding only install
+  metadata. Its `SKILL.md` frontmatter `name` must equal the catalog name.
+- An adapted skill (`install.strategy: adapted`) keeps SkillVault's adaptation under the original's
+  name, or under a new name when it turns the original into a different workflow. It names the
+  original in its `SKILL.md` and records in `upstream.commit` the upstream commit
+  it includes. Like a wrapper, its `SKILL.md` keeps SkillVault's changes outside one
+  `<!-- upstream:begin -->` ... `<!-- upstream:end -->` section that holds the original text
+  unchanged, and the folder keeps the original's other files. It installs the adaptation by
+  default and the original with `origin`. A renamed adaptation has no `origin` variant; the
+  installer refuses it because the original's name differs. It must not be installed alongside the
+  original, so before installing either, check for the other under its own name and ask which to
+  keep. `/skillvault-install refresh` merges later upstream changes into
+  the adaptation automatically. Upstream content is never copied into the repository without a
+  license file from the upstream repository.
+
+Fetching disables Git and credential prompts, so sign in separately when a repository needs it. A
+modified cache, or one tracking another repository, blocks the batch. Replacing an existing copy
+still needs `-Force`. Refresh keeps `latest` originals current from upstream; a pinned original
+stays at its pin until it is installed again.
+
+### `/skillvault-install update` (explicit installed-copy refresh)
+
+1. Resolve the actual source checkout and read its current catalog. Apply the version rules below;
+  do not refresh from a cache or another clone just because its metadata records the same origin.
+  Use the local checkout as it is: `update` never fetches, pulls, or switches it; `refresh` is the
+  action that fetches.
+2. Use the shared inventory to identify managed installed skills in global scope and the
+  current project that exist in the catalog. Preserve pinned versions unless the user
+  explicitly requests changing that pin. Preview replacements and install approved targets
+  through `scripts/install-skills.ps1`; do not silently adopt unrelated unmanaged folders.
+3. Report a short summary: which skills were updated, and their versions.
+
+## Runtime Coordination
+
+The shared [ownership helper](../scripts/skill-ownership.ps1) reserves selected replacement targets
+before copying. It excludes active readers of those runtime bundles or dependencies, including
+manual harness runs, and keeps a multi-target installer or migration reservation until it finishes.
+`-Force` approves replacement; it does not bypass `Busy`, uncertain claims, or other required
+approvals. A conflict names its owner and changes no reserved targets.
+
+An older installed runtime without `ownershipProtocol: 1` cannot establish that it is idle.
+Affected updates require an attended transition: inspect the relevant workers, confirm they have
+stopped and will not restart during the transition, then supply `-ConfirmStopped` with the exact
+approved `install-skills.ps1`, `install-global.ps1`, or migration invocation. Temporary originals
+protect only the in-progress operation. This flag cannot take over an active ownership claim.
+Never save that confirmation as an unattended permission; scheduled refresh has no such override.
+
+Bash bootstrap delegates to the guarded PowerShell installer when available. Without PowerShell,
+it defers changes when installed runtimes make ownership uncertain; it does not assume a missing
+lock means idle. Run the attended transition through PowerShell rather than weakening this guard.
+Source-only implementation changes do not update installed helpers or live schedules.
+
+Executable bundles declare `runtimeInterfaces` and `requiredInterfaces` separately from package
+versions. Requirements name declared dependencies and exact positive integer interface versions.
+Admission checks the actual same-scope bundles while holding runtime ownership. Missing or
+incompatible interfaces block execution and identify the companion update set; they do not
+authorize its installation. An installed copy cannot satisfy a missing sibling from a source
+checkout. Older admission helpers must be updated with the affected consumers. Catalog validation
+checks interface declarations and source dependency compatibility before rollout.
+
+## Transactional Updates
+
+Keep one current installed copy at its canonical name. Replacement, topic migration, and
+uninstall retain no historical installation archives or user-wide recovery directory. They use
+the shared [transaction helper](../scripts/skill-transactions.ps1) to preserve complete originals
+only while the operation is in progress, including local metadata and hidden files.
+
+Temporary originals live under the OS temporary directory's `skillvault-updates/update-<id>/`,
+outside source and skill discovery. The installer validates new contents before discarding originals.
+A failed replacement restores the original and removes its temporary transaction after verified
+rollback. A failed new installation removes its own partial target. Topic migration rolls back
+the affected batch when work fails; successful migration leaves only the canonical copies.
+
+If restoration itself fails, stop and report the temporary original path. Those files are an
+unresolved transaction, not a retained version archive; finish recovery before discarding the
+only unrestored original. Successful operations do not leave a rollback history, age/generation
+policy, storage-budget configuration, or scheduled archive-cleanup job. The old recovery CLI
+and retention interface are retired; `installation-transactions: 1` declares the new helper
+contract. Update required companion bundles together through the normal ownership gate.
+
+Preview exact managed replacements and obsolete names before an approved update. Retire an old
+registered name only after its selected canonical replacement verifies. Do not delete third-party,
+customized, pinned, or unrelated files merely because they are old. Existing archive and legacy
+source removal requires an identified, approved set; an install request alone is not bulk cleanup.
+Old skill names stay only in the installer's former-name map, which retires copies installed under
+them without duplicate installed folders; users never type them.
+
+Fixtures set `SKILLVAULT_TRANSACTION_ROOT` to an isolated temporary directory and use temporary
+`SKILLVAULT_OWNERSHIP_ROOT` values. No test may write to installed copies, live histories, or
+the retired recovery store. Recreating older versions is a separate explicit source/install
+operation; current-copy maintenance never rewrites Git history, runs workers, or changes schedules.
+
+## Topic Layout Migration
+
+For an explicitly requested topic-layout migration, `update` uses the bundled
+[migration helper](../scripts/migrate-topics.ps1). Preview exact current-project/global targets,
+canonical mappings, same-scope dependencies, and retired names; apply with `-Apply -Force` only after
+approval. `-Name <canonical-names>` limits it to selected topics and required siblings, leaving
+identical copies unchanged. Copies installed under a former topic name map to the current topic
+that took over their actions, using the installer's former-name map. Migration
+retires those copies without refreshing unrelated topics. Successful migration discards temporary
+originals and changes no schedules or other projects. It never copies a reference or replaces an
+installed original (`UpstreamOriginal`); install those by name.
+
+## Notes on versioning
+
+- Local `latest` uses the resolved checkout's current files. A pin passes `-RequestedVersion v#.#.#`
+  to the installer, which reads the skill's own `<skill>/v#.#.#` tag in the resolved checkout: the
+  catalog at that tag gives the folder, and the tagged `skill.json` must hold that version. It never
+  switches branches or changes the checkout's files, so uncommitted work is safe. A missing tag
+  blocks installation; fetching tags or using another checkout needs approval, and another
+  session's clone is never used. Versions and tags follow the version rules in the SkillVault
+  repository's `AGENTS.md`.
+- Release version may be null. It is distinct from requested install policy and source
+  revision; never substitute `latest` for an undeclared release version.
+- After copying, read the target's `skill.json` `version` field back to confirm what was
+  installed, so the user can see it changed after an update.
+
+## Safety
+
+- Source selection and installation targets are separate. A verification failure never authorizes
+  a cache/clone fallback, source edits, Git publishing, or changes to unrelated installations.
+- Never delete unrelated files outside the target skill's own folder.
+- Always show the user a short summary of what changed before finishing.
+- Use `scripts/validate-catalog.ps1` for repeated catalog and skill validation.

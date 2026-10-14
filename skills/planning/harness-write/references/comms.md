@@ -83,5 +83,6 @@ credentials.
   every row.
 - Report each artifact as Draft (not saved), Saved (written, not yet read back), Verified, or Sent by
   the user, with its link and anything that was not done.
-- When a harness root is initialized, offer to register the tracker, meeting, and thread through
-  `/harness-project context add`. Offer `/grilling` to stress-test a draft before it is sent.
+- When a harness root is initialized, offer to register the tracker, meeting, and thread links as
+  project sources by giving each link to `/harness-setup` with a short note. Offer `/grilling` to
+  stress-test a draft before it is sent.

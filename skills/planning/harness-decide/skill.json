@@ -1,0 +1,62 @@
+{
+  "name": "harness-decide",
+  "title": "Harness Decide",
+  "version": "4.0.0",
+  "kind": "agent",
+  "description": "[closed|all] Alone: open decisions. Text: explain it, then decide. Keep the harness decision register: list open decisions apart from optional setup, explain a decision or question with its options, and save the choice, or leave a new question open. Shorthand: /hn-decide. Overlaps with architecture-decision-records on history; owns the compact bulletin and register.",
+  "tags": [
+    "planning",
+    "decisions",
+    "harness",
+    "csv"
+  ],
+  "author": "wzlwit",
+  "source": {
+    "repo": "skillvault",
+    "path": "skills/planning/harness-decide"
+  },
+  "install": {
+    "global": true,
+    "project": true,
+    "session": true,
+    "defaultScope": "global",
+    "strategy": "copy"
+  },
+  "dependencies": [
+    "rules",
+    "architecture-decision-records"
+  ],
+  "examples": [
+    "/harness-decide",
+    "/harness-decide D-004",
+    "/harness-decide Postgres or Redis for the cache?",
+    "/harness-decide D-004 B, because it is simpler",
+    "/harness-decide closed",
+    "/harness-decide all"
+  ],
+  "readme": "SKILL.md",
+  "inputs": [
+    {
+      "name": "action",
+      "required": false,
+      "type": "string",
+      "enum": [
+        "closed",
+        "all"
+      ],
+      "description": "Menu word: closed or all. Alone, the skill shows open decisions and offers to go through them; other text explains that decision, question, or statement and asks for the choice. Operation-specific approvals still apply."
+    },
+    {
+      "name": "filter",
+      "required": false,
+      "type": "string",
+      "default": "open",
+      "enum": [
+        "open",
+        "closed",
+        "all"
+      ],
+      "description": "Decision status filter for the views. Open, shown when the skill runs alone, adds a brief optional-configuration summary; closed and all are the menu words, and all includes the detailed checklist. Closed and exact-ID views omit configuration; an exact ID is shown regardless of status."
+    }
+  ]
+}

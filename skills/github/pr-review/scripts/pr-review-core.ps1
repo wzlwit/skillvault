@@ -177,7 +177,7 @@ function Assert-PrReviewSettings {
     }
     if (-not (Test-HarnessUnspecifiedAllowance $Settings.maxPullRequests) -and ($Settings.maxPullRequests -ne [Math]::Floor($Settings.maxPullRequests) -or $Settings.maxPullRequests -gt 100)) { throw 'maxPullRequests must be an integer from 1 through 100.' }
     foreach ($field in @('allowScheduled', 'securityReview')) { if ($null -ne $Settings.$field -and $Settings.$field -isnot [bool]) { throw "$field must be true or false when supplied." } }
-    if (-not (Test-HarnessUnspecifiedAllowance $Settings.reviewLevel) -and ($Settings.reviewLevel -isnot [string] -or $Settings.reviewLevel -cnotin @('critical', 'broad'))) { throw 'reviewLevel must be critical or broad when supplied.' }
+    if (-not (Test-HarnessUnspecifiedAllowance $Settings.reviewLevel) -and ($Settings.reviewLevel -isnot [string] -or $Settings.reviewLevel -cnotin @('blocking', 'broad', 'critical'))) { throw 'reviewLevel must be blocking or broad when supplied.' }
     if (-not (Test-HarnessUnspecifiedAllowance $Settings.githubHosts)) {
         if ($Settings.githubHosts -isnot [array]) { throw 'githubHosts must be a list of DNS names.' }
         foreach ($hostName in $Settings.githubHosts) {
@@ -201,10 +201,11 @@ function Get-PrReviewSettings {
     param($Settings)
     if ($null -ne $Settings -and $Settings.PSObject.Properties['defaultProfiles']) { return $Settings }
     Assert-PrReviewSettings $Settings
-    $effective = [ordered]@{ profiles = @(); githubHosts = @('github.com'); maxPullRequests = $null; maxCycleMinutes = $null; maxCycleCredits = $null; allowScheduled = $false; securityReview = $false; reviewLevel = 'critical' }
+    $effective = [ordered]@{ profiles = @(); githubHosts = @('github.com'); maxPullRequests = $null; maxCycleMinutes = $null; maxCycleCredits = $null; allowScheduled = $false; securityReview = $false; reviewLevel = 'blocking' }
     if ($null -ne $Settings) {
         foreach ($field in @($effective.Keys)) { if (-not (Test-HarnessUnspecifiedAllowance $Settings.$field)) { $effective[$field] = $Settings.$field } }
     }
+    $effective.reviewLevel = ConvertTo-HarnessReviewLevel $effective.reviewLevel
     $effective.defaultProfiles = @($effective.profiles).Count -eq 0
     [pscustomobject]$effective
 }

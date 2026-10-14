@@ -1,5 +1,5 @@
 $ErrorActionPreference = 'Stop'
-$removeScript = Join-Path $PSScriptRoot '..\skills\core\skillvault-authoring\scripts\skill-remove.ps1'
+$removeScript = Join-Path $PSScriptRoot '..\skills\core\skillvault-author\scripts\skill-remove.ps1'
 
 function Assert-True {
     param([bool]$Condition, [string]$Message)

@@ -23,7 +23,7 @@ foreach ($time in @('2026-09-19T08:29:00Z', '2026-09-19T09:00:00Z', '2026-09-20T
 if (Test-HarnessMaintenanceWindow ([datetimeoffset]'2026-09-19T08:45:00Z') UTC '2026-09-19') { throw 'Maintenance repeated in the same window.' }
 Write-Output 'Scheduler duration checks passed: fixed/calendar cadence, coalescing, and Saturday maintenance window.'
 
-. (Join-Path $PSScriptRoot '../skills/planning/harness-timer/scripts/harness-scheduler.ps1')
+. (Join-Path $PSScriptRoot '../skills/planning/harness-schedule/scripts/harness-scheduler.ps1')
 # PowerShell 7 reads a saved 'o' timestamp back as a UTC DateTime; a running worker must still be recognized after that.
 $self = Get-Process -Id $PID
 $started = $self.StartTime.ToUniversalTime().ToString('o')
@@ -119,7 +119,7 @@ try {
 
     $paths = Get-HarnessSchedulerPaths (Join-Path $fixture 'scheduler')
     if ((Read-HarnessSchedules $paths).jobs.Count -ne 0 -or (Test-Path $paths.Root)) { throw 'Scheduler inspection created state.' }
-    $publicTimer = Join-Path $PSScriptRoot '../skills/planning/harness-timer/scripts/harness-timer.ps1'
+    $publicTimer = Join-Path $PSScriptRoot '../skills/planning/harness-schedule/scripts/harness-schedule.ps1'
     $emptyListing = & $publicTimer -SchedulerRoot $paths.Root | ConvertFrom-Json
     if ($emptyListing.jobs.Count -or $emptyListing.heartbeatInterval -ne '1d' -or (Test-Path $paths.Root)) { throw 'The bare timer command lost the default baseline or wrote state.' }
     $baselinePreview = & $publicTimer -SchedulerRoot $paths.Root -Action Set -Target heartbeat -Interval 12h | ConvertFrom-Json
@@ -334,7 +334,7 @@ try {
     $executionId = [guid]::NewGuid().ToString('N')
     $job.active = [pscustomobject]@{ runId = $executionId; processId = $PID; processStartedAt = (Get-Process -Id $PID).StartTime.ToUniversalTime().ToString('o') }
     Write-HarnessSchedules $paths $state
-    $heartbeatScript = Join-Path $PSScriptRoot '../skills/planning/harness-timer/scripts/harness-heartbeat.ps1'
+    $heartbeatScript = Join-Path $PSScriptRoot '../skills/planning/harness-schedule/scripts/harness-heartbeat.ps1'
     & $heartbeatScript -SchedulerRoot $paths.Root -Action Execute -JobId $job.id -RunId $executionId
     $receipt = Get-Content (Join-Path $paths.Receipts ($job.id + '.json')) -Raw | ConvertFrom-Json
     $execution = $receipt.output | ConvertFrom-Json
@@ -342,7 +342,7 @@ try {
     $refreshBundle = Join-Path $fixture 'refresh-adapter'
     $refreshFixture = Join-Path $refreshBundle 'scripts/refresh-runner.ps1'
     New-Item -ItemType Directory -Path (Split-Path -Parent $refreshFixture) -Force | Out-Null
-    $refreshManifest = [pscustomobject]@{ name = 'skillvault-installation'; version = '1.0.0'; runtimeInterfaces = [pscustomobject]@{ 'structured-refresh' = 2 } }
+    $refreshManifest = [pscustomobject]@{ name = 'skillvault-install'; version = '1.0.0'; runtimeInterfaces = [pscustomobject]@{ 'structured-refresh' = 2 } }
     Write-HarnessJson (Join-Path $refreshBundle 'skill.json') $refreshManifest
     [IO.File]::WriteAllText($refreshFixture, @'
 param([switch]$RunOnce, [switch]$ResultJson, [string]$RetryPlanPath, [int]$OwnerProcessId)
@@ -381,7 +381,7 @@ if ($RetryPlanPath) {
     Write-HarnessSchedules $transportPaths $transportState
     Assert-SchedulerFailure { & $heartbeatScript -SchedulerRoot $transportPaths.Root -Action Execute -JobId $transportJob.id -RunId $blockedRun }
     $blockedReceipt = Get-Content (Join-Path $transportPaths.Receipts ($transportJob.id + '.json')) -Raw | ConvertFrom-Json
-    if ($blockedReceipt.status -cne 'Blocked' -or $blockedReceipt.requiredUpdates -notcontains 'skillvault-installation' -or (Test-Path (Join-Path (Split-Path -Parent $refreshFixture) 'invoked.txt'))) { throw 'An incompatible saved refresh adapter launched or failed to report its required update set.' }
+    if ($blockedReceipt.status -cne 'Blocked' -or $blockedReceipt.requiredUpdates -notcontains 'skillvault-install' -or (Test-Path (Join-Path (Split-Path -Parent $refreshFixture) 'invoked.txt'))) { throw 'An incompatible saved refresh adapter launched or failed to report its required update set.' }
     $maintenanceRoot = Join-Path $fixture 'maintenance-only'
     $null = & $publicTimer -SchedulerRoot $maintenanceRoot -Action Set -Target maintenance -Apply
     $maintenanceTrigger = $registeredTasks[$registeredTasks.Count - 1].Triggers[0]

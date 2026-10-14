@@ -111,6 +111,6 @@ See the [working plan's open decisions](../2026-09-15-harness-command-and-record
 ## References
 
 - [Rules Core](../../../skills/core/rules/references/core.md)
-- [SkillVault Install](../../../skills/core/skillvault-installation/references/install.md)
+- [SkillVault Install](../../../skills/core/skillvault-install/references/install.md)
 - [Architecture Decision Records](../../../skills/writing/architecture-decision-records/SKILL.md)
 - [Graphify reference](../../../skills/codeview/graphify/SKILL.md)

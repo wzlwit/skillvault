@@ -7,7 +7,7 @@
   },
   {
     "name": "architecture-decision-records",
-    "description": "Write or review architecture decision records. Use for ADRs, significant technology choices, design trade-offs, decision history, or superseding an accepted architectural decision. Overlaps with grilling on trade-offs, planning-with-files on decision notes, harness-decision on decision history, and harness-write on reader-facing rationale; focuses on lasting rationale and supersession.",
+    "description": "Write or review architecture decision records. Use for ADRs, significant technology choices, design trade-offs, decision history, or superseding an accepted architectural decision. Overlaps with grilling on trade-offs, planning-with-files on decision notes, harness-decide on decision history, and harness-write on reader-facing rationale; focuses on lasting rationale and supersession.",
     "path": "skills/writing/architecture-decision-records",
     "version": null
   },
@@ -31,9 +31,9 @@
   },
   {
     "name": "dri",
-    "description": "[investigate] Investigate a production incident as a read-only copilot for the on-call DRI: gather evidence, separate facts from hypotheses, and draft next steps and updates. Also holds the proposed DRI-agent design (staged roles, preflight checks, evaluation) while it grows. Service specifics come from the project's private DRI profile. Never changes production or posts updates without explicit approval. Overlaps with harness-monitor on incidents: harness-monitor detects health breaches and proposes work; dri investigates one incident.",
+    "description": "[investigate] Alone: DRI status. Text: investigate that incident. Investigate a production incident as a read-only copilot for the on-call DRI: gather evidence, separate facts from hypotheses, and draft next steps and updates. Also holds the proposed DRI-agent design (staged roles, preflight checks, evaluation) while it grows. Service specifics come from the project's private DRI profile. Never changes production or posts updates without explicit approval. Overlaps with harness-monitor on incidents: harness-monitor detects health breaches and proposes work; dri investigates one incident.",
     "path": "skills/monitoring/dri",
-    "version": "1.0.0"
+    "version": "2.0.0"
   },
   {
     "name": "github-issues",
@@ -55,57 +55,57 @@
   },
   {
     "name": "handoff",
-    "description": "Prepare a concise continuation note for another session or person. Use for /handoff or an explicit request to save work for a later session. Overlaps with harness-project on context summaries; creates a note rather than a live status view or process-control action.",
+    "description": "Prepare a concise continuation note for another session or person. Use for /handoff or an explicit request to save work for a later session. Overlaps with harness-setup on context summaries; creates a note rather than a live status view or process-control action.",
     "path": "skills/planning/handoff",
     "version": null
   },
   {
-    "name": "harness-decision",
-    "description": "[explain|record] List open harness decisions separately from optional configuration, filter closed/all decisions, explain one decision or question, or record a choice. Shorthand: /hn-decision. Overlaps with architecture-decision-records on history; owns the compact bulletin, decision register, and read-only explanations.",
-    "path": "skills/planning/harness-decision",
+    "name": "harness-decide",
+    "description": "[closed|all] Alone: open decisions. Text: explain it, then decide. Keep the harness decision register: list open decisions apart from optional setup, explain a decision or question with its options, and save the choice, or leave a new question open. Shorthand: /hn-decide. Overlaps with architecture-decision-records on history; owns the compact bulletin and register.",
+    "path": "skills/planning/harness-decide",
+    "version": "4.0.0"
+  },
+  {
+    "name": "harness-dev",
+    "description": "[upsert|queue|sprint|test|broad] Alone: the board. Text: develop it. Record, queue, and develop tasks with the two-reviewer review loop, run goal-based sprints, and declare or run reusable tests; broad raises one task's reviews and unit tests. Shorthand: /hn-dev. Overlaps with harness-monitor on intake and checks, harness-review on code review, and harness-write on report implementation; sprints can draft status through harness-write.",
+    "path": "skills/planning/harness-dev",
     "version": "3.0.0"
   },
   {
     "name": "harness-monitor",
-    "description": "[declare|check|accept|auto] Monitor work across approved source adapters, including ADO and documents; assess relevance, Auto-verify status, correlate explicit requirements, reconcile evidence, and expose verified subsets, or check health observations. `declare` drafts or reuses a monitor's declaration file and saves it; `auto` follows up a source's items or health incidents through an approved local-only worker flow on a schedule. Shorthand: /hn-monitor. Overlaps with harness-work on checks and intake, kpi-dashboard on metric contracts, harness-write on status and owner evidence, and dri on incidents; preserves deferred work and never launches development.",
+    "description": "[accept|auto] Alone: last results. Text: check one, or a new link. Monitor work across approved source adapters, including ADO and documents, and numeric health observations: assess relevance, verify status with AI model auto, reconcile evidence, and propose ranked tasks; auto follows a source up through an approved local-only worker flow. Shorthand: /hn-monitor. Overlaps with harness-dev on intake and checks, kpi-dashboard on metric contracts, harness-write on status and owner evidence, and dri on incidents; preserves deferred work and never launches development.",
     "path": "skills/planning/harness-monitor",
-    "version": "2.0.0"
-  },
-  {
-    "name": "harness-project",
-    "description": "[root|init|migrate|context|clean|policy] Set up and steer a harness project: show status, select or move its root, initialize, migrate layout, show context and register its sources and coding repositories, clean history, and set limits and failure policy, including pause, stop, and resume. Shorthand: /hn-project. Context summaries overlap with handoff. Owns retention; harness-timer schedules maintenance. Bare invocation only lists.",
-    "path": "skills/planning/harness-project",
-    "version": "2.0.0"
+    "version": "3.0.0"
   },
   {
     "name": "harness-review",
-    "description": "[run] Review current-project changes with two independent reviewers per pass, GPT and Claude Opus, and a whole-repository Fresh pass when no new findings appear, automatically restarting when local files change. Shorthand: /hn-review; explicit scope or options also start a review. Overlaps with pr-review on general review and differential-review on security; PR URLs delegate to pr-review.",
+    "description": "[broad|list] Alone: review your changes. Text: review that scope. Review current-project changes for blocking issues with two independent reviewers per pass, GPT and Claude Opus, plus a whole-repository Fresh pass when no new findings appear, restarting when local files change; broad also reports minor and existing issues. Shorthand: /hn-review. Overlaps with pr-review on general review, differential-review on security, and harness-dev, whose development loop runs the same passes; PR URLs delegate to pr-review.",
     "path": "skills/planning/harness-review",
-    "version": "3.0.0"
+    "version": "4.0.0"
   },
   {
     "name": "harness-runtime",
-    "description": "Shared PowerShell 7 runtime for the harness topics: the harness.ps1 entry point, the runtime guide, and the default review model list. Not invoked directly; use harness-project (setup, context, policy), harness-work, harness-write, harness-review, harness-decision, harness-monitor, or harness-timer.",
+    "description": "Shared PowerShell 7 runtime for the harness topics: the harness.ps1 entry point, the runtime guide, and the default review model list. Not invoked directly; use harness-setup (setup, context, policy), harness-dev, harness-write, harness-review, harness-decide, harness-monitor, or harness-schedule.",
     "path": "skills/planning/harness-runtime",
-    "version": "3.0.0"
+    "version": "4.0.0"
   },
   {
-    "name": "harness-timer",
-    "description": "[set|disable|resume|clean|migrate] Manage logical schedules under one user-wide heartbeat. Shorthand: /hn-timer. Targets are project, pr, refresh, maintenance, or heartbeat settings. Bare invocation lists only. Overlaps with schedule-manager on task administration; owns SkillVault schedules. Maintenance delegates historical-data cleanup to harness-project clean.",
-    "path": "skills/planning/harness-timer",
-    "version": "3.0.0"
+    "name": "harness-schedule",
+    "description": "[clean] Alone: all schedules. Text: set one, like pr 1d or pr off. Manage logical schedules under one user-wide heartbeat for projects, PR review, refresh, and maintenance: set, turn off or on, convert old SkillVault Windows tasks, and clean up stale schedules. Shorthand: /hn-schedule. Overlaps with schedule-manage on Windows task administration; owns SkillVault schedules. Maintenance delegates history cleanup to harness-setup clean.",
+    "path": "skills/planning/harness-schedule",
+    "version": "4.0.0"
   },
   {
-    "name": "harness-work",
-    "description": "[upsert|run|queue|sprint|test] Add or update tasks; run or queue development, verification, and fixes with the two-reviewer review loop; run goal-based sprints; and declare or run reusable tests. Shorthand: /hn-work. Overlaps with harness-monitor on intake and checks, harness-review on code review, and harness-write on report implementation; sprints can draft status through harness-write. Bare invocation only lists; work starts only with an explicit verb.",
-    "path": "skills/planning/harness-work",
-    "version": "2.0.0"
+    "name": "harness-setup",
+    "description": "[root|clean|policy] Alone: set up or status. Text: add a source, or ask. Set up and steer a harness project: create it or convert an old layout, show status, select or move its root, register sources and coding repositories, brief a task, delete old run history, and set limits, failure handling, retention, and pause, stop, and resume. Shorthand: /hn-setup. Briefings overlap with handoff; harness-schedule schedules maintenance.",
+    "path": "skills/planning/harness-setup",
+    "version": "3.0.0"
   },
   {
     "name": "harness-write",
-    "description": "[upsert|slots] Draft and update writing for people: evidence-grounded feature docs, onboarding, and troubleshooting guides; stakeholder trackers, meeting invites, and email updates or thread replies; and dashboards, reports, and queries; rank meeting slots offline. Shorthand: /hn-write; upsert takes doc|tracker|meeting|email|report. Overlaps with architecture-decision-records on rationale, harness-monitor on status and owner evidence, harness-work on report implementation, kpi-dashboard and jarvis-metrics on report design, and the office-documents and ppt-master references on document output. Drafts only: never sends, invites, shares, or publishes without explicit approval.",
+    "description": "[slots] Alone: your drafts. Text: write it. Draft and update writing for people: evidence-grounded feature docs, onboarding, and troubleshooting guides; stakeholder trackers, meeting invites, and email updates or thread replies; and dashboards, reports, and queries; slots ranks meeting times offline. Shorthand: /hn-write. Overlaps with architecture-decision-records on rationale, harness-monitor on status and owner evidence, harness-dev on report implementation, kpi-dashboard and jarvis-metrics on report design, and the office-documents and ppt-master references on document output. Drafts only: never sends, invites, shares, or publishes without explicit approval.",
     "path": "skills/planning/harness-write",
-    "version": "2.0.0"
+    "version": "3.0.0"
   },
   {
     "name": "humanizer",
@@ -163,21 +163,21 @@
   },
   {
     "name": "pr-publish",
-    "description": "[preview|upsert] Create or update your own pull request with a current vs. to-be scenario table. A new PR gets a short description in the style of the GitHub Pull Requests extension's create-pull-request skill and opens ready for review; an existing PR keeps its description and gets only the table. Overlaps with that skill on opening PRs and uses its VS Code tool when available, otherwise gh; pr-review reviews PRs instead. Never pushes or writes to a PR without an explicit ask.",
+    "description": "[list] Alone: publish this branch's PR. Text: adjust it, like show me first. Create or update your own pull request with a current vs. to-be scenario table. A new PR gets a short description in the style of the GitHub Pull Requests extension's create-pull-request skill and opens ready for review; an existing PR keeps its description and gets only the table. Overlaps with that skill on opening PRs and uses its VS Code tool when available, otherwise gh; pr-review reviews PRs instead. Never pushes or writes to a PR without an explicit ask.",
     "path": "skills/github/pr-publish",
-    "version": "2.0.0"
+    "version": "3.0.0"
   },
   {
     "name": "pr-review",
-    "description": "[run|configure] Review a PR URL, repository, or user-wide watchlist; a PR URL alone also starts a review. Overlaps with harness-review on general review and differential-review on security; owns remote selection and isolated evidence, while pr-watch manages targets.",
+    "description": "[broad|list|configure] Alone: review watched PRs. Text: review that PR. Review PRs from a URL, a repository, or the user-wide watchlist for blocking issues in isolated snapshots; broad also reports minor and existing issues. Overlaps with harness-review on general review and differential-review on security; owns remote selection and isolated evidence, while pr-watch manages targets.",
     "path": "skills/github/pr-review",
-    "version": "2.0.0"
+    "version": "3.0.0"
   },
   {
     "name": "pr-watch",
-    "description": "[add|remove] Manage the single user-wide PR review watchlist. Watchlist changes do not run reviews or change schedules; pr-review owns execution and review results, and harness-timer owns its logical schedule.",
+    "description": "[remove] Alone: the watchlist. Text: watch a URL. Manage the single user-wide PR review watchlist. Watchlist changes do not run reviews or change schedules; pr-review owns execution and review results, and harness-schedule owns its logical schedule.",
     "path": "skills/github/pr-watch",
-    "version": "3.0.0"
+    "version": "4.0.0"
   },
   {
     "name": "rag-implementation",
@@ -187,33 +187,33 @@
   },
   {
     "name": "rules",
-    "description": "[apply|upsert|remove] Put the core and extra rules, or only the four core rules with /rules core, into effect globally (default), in a project, or for this chat; add or change your own global or project rules. The SkillVault rule library changes only when you name extra or core, and persistent rule changes require confirmation.",
+    "description": "[apply|remove] Alone: rules in effect. Text: add or change a rule. Put the core and extra rules, or only the four core rules with apply core, into effect globally (default), in a project, or for this chat; add, change, or remove your own global or project rules. The SkillVault rule library changes only when you name extra or core, and persistent rule changes require confirmation.",
     "path": "skills/core/rules",
-    "version": "3.0.0"
+    "version": "4.0.0"
   },
   {
-    "name": "schedule-manager",
-    "description": "[enable|disable|delete] Manage Windows scheduled tasks, selected by index, list, range, or keyword. Triggers on \"/schedule-manager\", \"schedule-manager\", \"list schedules\", \"list scheduled tasks\", \"enable scheduled task\", \"disable scheduled task\", or \"delete scheduled task\". Overlaps with harness-timer on enabling/disabling tasks; covers general schedule administration.",
-    "path": "skills/system/schedule-manager",
-    "version": "1.1.0"
+    "name": "schedule-manage",
+    "description": "[enable|disable|delete] Alone: Windows tasks. Text: filter them. Manage Windows scheduled tasks, selected by number, list, range, or keyword. Triggers on \"list schedules\", \"list scheduled tasks\", \"enable scheduled task\", \"disable scheduled task\", or \"delete scheduled task\". Overlaps with harness-schedule on enabling and disabling tasks; covers general schedule administration.",
+    "path": "skills/system/schedule-manage",
+    "version": "2.0.0"
   },
   {
-    "name": "skillvault-authoring",
-    "description": "[upsert|remove] Author and maintain skill bundles and catalog entries in the SkillVault repository, not application source or installed copies. Shorthand: /sv-authoring; create and update are upsert aliases. Overlaps with VS Code's agent-customization skill on writing SKILL.md files; use this one only for skills in the SkillVault repository and its catalog. Never installs; use skillvault-installation to install the result.",
-    "path": "skills/core/skillvault-authoring",
-    "version": "3.0.0"
+    "name": "skillvault-author",
+    "description": "[remove] Alone: the catalog. Text: create or change it. Author and maintain skill bundles and catalog entries in the SkillVault repository, not application source or installed copies. Shorthand: /sv-author. Overlaps with VS Code's agent-customization skill on writing SKILL.md files; use this one only for skills in the SkillVault repository and its catalog. Never installs; use skillvault-install to install the result.",
+    "path": "skills/core/skillvault-author",
+    "version": "4.0.0"
   },
   {
-    "name": "skillvault-discovery",
-    "description": "[search|evaluate|explain] Discover skills, evaluate candidates, and explain skills, tools, or products. Shorthand: /sv-discovery. Evaluation saves a public-safe assessment unless chat-only; search and explanation are read-only. None installs, runs, or edits the target.",
-    "path": "skills/core/skillvault-discovery",
-    "version": "3.0.0"
+    "name": "skillvault-discover",
+    "description": "[explain] Alone: past evaluations. Text: search or evaluate it. Discover skills for a purpose, evaluate a candidate against the catalog and earlier evaluations, and explain skills, tools, or products. Shorthand: /sv-discover. Evaluation saves a public-safe assessment unless chat only; search and explanation are read-only. None installs, runs, or edits the target.",
+    "path": "skills/core/skillvault-discover",
+    "version": "4.0.0"
   },
   {
-    "name": "skillvault-installation",
-    "description": "[install|update|uninstall|clean|refresh] Manage installed SkillVault copies and keep them current. Shorthand: /sv-installation. List defaults to installed copies; list catalog inspects sources; clean finds skills that load twice or conflict and shows overlaps, which skillvault-discovery evaluate can judge. Refresh merges upstream changes into adapted skills when push is permitted, then brings new commits to the local checkout and managed global latest copies; scheduling delegates to harness-timer set refresh. Edits no SkillVault source or application code except refresh's adaptation merges; skillvault-authoring owns skill authoring.",
-    "path": "skills/core/skillvault-installation",
-    "version": "3.0.0"
+    "name": "skillvault-install",
+    "description": "[list|update|uninstall|clean|refresh] Alone: the catalog. Text: install it. Manage installed SkillVault copies and keep them current: install by exact name or a * pattern, list installed copies, update them from the local checkout, uninstall, clean up copies that load twice or conflict, and refresh from upstream. Shorthand: /sv-install. Clean shows overlaps, which skillvault-discover can evaluate; refresh scheduling delegates to harness-schedule. Edits no SkillVault source or application code except refresh's adaptation merges; skillvault-author owns skill authoring.",
+    "path": "skills/core/skillvault-install",
+    "version": "4.0.0"
   },
   {
     "name": "supabase-postgres-best-practices",

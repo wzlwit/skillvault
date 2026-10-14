@@ -1,6 +1,6 @@
 # ADR: Topic Action Prefix Matching
 
-> Topic and command names in this record were updated to the current topics on 2026-10-07; see the [old-name retirement ADR](./2026-10-07-retire-old-names-adr.md).
+> Topic and command names in this record were updated to the current topics on 2026-10-07 and 2026-10-09; see the [old-name retirement ADR](./2026-10-07-retire-old-names-adr.md), the [verb-named topics ADR](./2026-10-09-verb-named-topics-adr.md), and the [bare, text, and menu convention ADR](./2026-10-09-bare-text-menu-convention-adr.md), which also drops action aliases.
 
 - Date: 2026-09-23
 - Status: Accepted
@@ -18,7 +18,7 @@ also preserves existing action aliases, ownership, and approval boundaries.
 The owner approved and requested implementation of discovery tuning on 2026-09-22: exact
 `eval`/`expl` aliases, separate standalone-use/skill/integration recommendations, explanations
 that address the requested tool or product first, and source-only delivery with documentation
-fixes. At that point, the [discovery source](../../../skills/core/skillvault-discovery/SKILL.md)
+fixes. At that point, the [discovery source](../../../skills/core/skillvault-discover/SKILL.md)
 accepted those two aliases but rejected other prefixes. This record preserves that earlier
 decision as context; installed-copy refresh remains separate.
 
@@ -59,14 +59,15 @@ Action examples:
 
 | Topic | Input | Canonical action |
 | --- | --- | --- |
-| `skillvault-discovery` | `eva` or `eval` | `evaluate` |
-| `skillvault-discovery` | `exp` or `expl` | `explain` |
-| `skillvault-installation` | `ins` or `inst` | `install` |
-| `skillvault-installation` | `upd` or `upda` | `update` |
-| `harness-work` | `que` or `queu` | `queue` |
+| `skillvault-discover` | `exp` or `expl` | `explain` |
+| `skillvault-install` | `upd` or `upda` | `update` |
+| `skillvault-install` | `ref` or `refr` | `refresh` |
+| `harness-dev` | `que` or `queu` | `queue` |
 
-The `harness-work` row replaced the former development topic's row when the topics were consolidated on 2026-10-07; see the
-[topic consolidation ADR](./2026-10-07-harness-topic-consolidation-adr.md).
+The `harness-dev` row replaced the former development topic's row when the topics were consolidated on 2026-10-07; see the
+[topic consolidation ADR](./2026-10-07-harness-topic-consolidation-adr.md). On 2026-10-09 the `evaluate` and `install` rows
+gave way to `refresh`, because those actions became text; see the
+[bare, text, and menu convention ADR](./2026-10-09-bare-text-menu-convention-adr.md).
 
 For a future menu containing both `declare` and `decline`, `dec` and `decl` would be ambiguous.
 An exact existing alias would still take precedence; otherwise the user must choose.

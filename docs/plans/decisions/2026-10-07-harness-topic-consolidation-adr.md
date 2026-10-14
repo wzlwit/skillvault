@@ -2,6 +2,9 @@
 
 - Date: 2026-10-07
 - Status: Accepted; decision 3 amended later the same day (see [Amendment](#amendment-runtime-renamed-to-harness-runtime)), and decision 5 superseded by the [old-name retirement ADR](./2026-10-07-retire-old-names-adr.md)
+- Superseded in part 2026-10-09: `harness-project`, `harness-work`, `harness-decision`, and
+  `harness-timer` become `harness-setup`, `harness-dev`, `harness-decide`, and `harness-schedule`, and
+  the groups and actions of decisions 1-2 change; see the [bare, text, and menu convention ADR](./2026-10-09-bare-text-menu-convention-adr.md).
 - Decision owner: Zhaolong Wang
 - Scope: Which harness topics register as skills, their names, where their procedures live, and how old commands route.
 - Supersedes: The per-topic registration of `harness`, `harness-task`, `harness-dev`, `harness-test`, `harness-link`, `harness-policy`, `harness-doc`, `harness-comms`, and `harness-report` in the [topic refactor plan](../2026-09-16-topic-skill-refactor.md) and the topic names in the [documentation](./2026-09-26-harness-documentation-adr.md), [communications](./2026-09-29-harness-communications-adr.md), [report authoring](./2026-09-15-harness-report-authoring-adr.md), and [review panel and sprints](./2026-10-02-review-panel-dev-loop-and-sprints-adr.md) ADRs. Their behavior decisions stand.
@@ -111,8 +114,8 @@ and the runtime. Old `/harness` and `/hn` commands were later retired by the
 
 ## References
 
-- [Project topic](../../../skills/planning/harness-project/SKILL.md)
-- [Work topic](../../../skills/planning/harness-work/SKILL.md)
+- [Project topic](../../../skills/planning/harness-setup/SKILL.md)
+- [Work topic](../../../skills/planning/harness-dev/SKILL.md)
 - [Writing topic](../../../skills/planning/harness-write/SKILL.md)
 - [Runtime guide](../../../skills/planning/harness-runtime/references/runtime.md)
 - [Topic refactor plan](../2026-09-16-topic-skill-refactor.md)

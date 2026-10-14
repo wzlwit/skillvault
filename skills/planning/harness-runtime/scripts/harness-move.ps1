@@ -217,8 +217,8 @@ function Get-HarnessMovePlan {
         if ((Split-Path -Parent $file.source) -inotIn @($worktrees.source)) { throw 'An unregistered worktree must be reconciled before relocation.' }
     }
     if ($registry) {
-        $schedulerHelper = Join-Path $PSScriptRoot '../../harness-timer/scripts/harness-scheduler.ps1'
-        if (-not (Test-Path -LiteralPath $schedulerHelper)) { throw 'Install the sibling harness-timer helper before relocating a registered controller.' }
+        $schedulerHelper = Join-Path $PSScriptRoot '../../harness-schedule/scripts/harness-scheduler.ps1'
+        if (-not (Test-Path -LiteralPath $schedulerHelper)) { throw 'Install the sibling harness-schedule helper before relocating a registered controller.' }
         . $schedulerHelper
         $scheduledState = Read-HarnessSchedules (Get-HarnessSchedulerPaths $SchedulerRoot)
         $moving = [pscustomobject]@{ kind = 'move'; directory = $Paths.Control }

@@ -1,11 +1,11 @@
 {
   "name": "rules",
   "title": "Rules",
-  "version": "3.0.0",
+  "version": "4.0.0",
   "status": "public",
   "visibility": "public",
   "kind": "instruction",
-  "description": "[apply|upsert|remove] Put the core and extra rules, or only the four core rules with /rules core, into effect globally (default), in a project, or for this chat; add or change your own global or project rules. The SkillVault rule library changes only when you name extra or core, and persistent rule changes require confirmation.",
+  "description": "[apply|remove] Alone: rules in effect. Text: add or change a rule. Put the core and extra rules, or only the four core rules with apply core, into effect globally (default), in a project, or for this chat; add, change, or remove your own global or project rules. The SkillVault rule library changes only when you name extra or core, and persistent rule changes require confirmation.",
   "tags": [
     "core",
     "engineering",
@@ -33,23 +33,18 @@
       "name": "action",
       "required": false,
       "type": "string",
-      "default": "list",
       "enum": [
-        "list",
         "apply",
-        "upsert",
         "remove"
       ],
-      "description": "Primary action; omitted means read-only list. Compatibility aliases remain in SKILL.md. Operation-specific approvals still apply."
+      "description": "Menu word: apply or remove. Alone, the skill shows the rules and where they apply; other text adds or changes your own rule after confirmation. Operation-specific approvals still apply."
     }
   ],
   "examples": [
     "/rules",
-    "/rules list",
     "/rules apply",
-    "/rules core",
-    "/rules apply project",
-    "/rules upsert",
-    "/rules upsert extra"
+    "/rules apply core project",
+    "/rules always run the focused test first",
+    "/rules remove 2"
   ]
 }

@@ -117,10 +117,10 @@ function New-PrReviewWorkspace {
 }
 
 function Test-PrReviewUnchanged {
-    param($State, $Target, $Pull, $Profile, [bool]$SecurityReview, [string]$ReviewLevel = 'critical')
+    param($State, $Target, $Pull, $Profile, [bool]$SecurityReview, [string]$ReviewLevel = 'blocking')
     $previous = @($State.prReviews | Where-Object key -CEQ $Target.key) | Select-Object -Last 1
-    # Results recorded before review levels reported every finding. A broad result also covers a critical request.
-    $previousLevel = if ($previous.reviewLevel) { [string]$previous.reviewLevel } else { 'broad' }
+    # Results recorded before review levels reported every finding. A broad result also covers a blocking request.
+    $previousLevel = ConvertTo-HarnessReviewLevel $previous.reviewLevel 'broad'
     [bool]($previous -and $previous.status -cin @('clean', 'findings') -and $previous.base -ceq $Pull.base.sha -and $previous.head -ceq $Pull.head.sha -and
         $previous.model -ceq $Profile.model -and $previous.effort -ceq $Profile.effort -and $previous.context -ceq $Profile.context -and $previous.securityReview -eq $SecurityReview -and
         ($previousLevel -ceq $ReviewLevel -or $previousLevel -ceq 'broad'))
@@ -189,7 +189,7 @@ function Assert-PrReviewReady {
 }
 
 function Invoke-PrReviewRun {
-    param($Paths, [string]$Url, [ValidateRange(1, 100)][int]$Limit = 5, [switch]$IncludeDrafts, [switch]$Again, [switch]$Scheduled, [switch]$SecurityReview, [ValidateSet('critical', 'broad')][string]$ReviewLevel)
+    param($Paths, [string]$Url, [ValidateRange(1, 100)][int]$Limit = 5, [switch]$IncludeDrafts, [switch]$Again, [switch]$Scheduled,     [switch]$SecurityReview, [ValidateSet('blocking', 'broad')][string]$ReviewLevel)
     if ($Scheduled -and ($Url -or $Again -or $IncludeDrafts -or $SecurityReview -or $ReviewLevel)) { throw 'Scheduled review uses the whole saved watchlist without per-tick overrides.' }
     $entries = if ($Url) {
         $target = ConvertTo-PrReviewTarget $Url (Get-PrReviewHosts $Paths)
@@ -207,12 +207,12 @@ function Invoke-PrReviewRun {
     $cycleId = [guid]::NewGuid().ToString('N')
     $ownership = $null
     try {
-        if (-not (Get-Command Enter-SkillRuntimeOwnership).Parameters.ContainsKey('InterfaceVersion')) { throw 'Incompatible runtime helper. Update skillvault-installation, harness, and pr-review together before execution; compatibility interface v1 is required.' }
+        if (-not (Get-Command Enter-SkillRuntimeOwnership).Parameters.ContainsKey('InterfaceVersion')) { throw 'Incompatible runtime helper. Update skillvault-install, harness, and pr-review together before execution; compatibility interface v1 is required.' }
         $ownership = Enter-SkillRuntimeOwnership -SkillPath (Split-Path -Parent $PSScriptRoot) -Owner ([pscustomobject]@{ controller = $runtime.Project; role = 'pr-review' }) -InterfaceVersion 1
         $config = Read-PrReviewConfig $runtime
         if ($SecurityReview) { $config.prReview.securityReview = $true }
         if ($ReviewLevel) { $config.prReview | Add-Member -NotePropertyName reviewLevel -NotePropertyValue $ReviewLevel -Force }
-        elseif (-not $config.prReview.reviewLevel) { $config.prReview | Add-Member -NotePropertyName reviewLevel -NotePropertyValue 'critical' -Force }
+        else { $config.prReview | Add-Member -NotePropertyName reviewLevel -NotePropertyValue (ConvertTo-HarnessReviewLevel $config.prReview.reviewLevel) -Force }
         $pause = Get-HarnessPause $runtime review
         if ($pause) { return [pscustomobject]@{ status = 'PolicyPaused'; pause = $pause; results = @() } }
         $profile = Assert-PrReviewReady $Paths $config $clock @($entries.host) -Scheduled:$Scheduled

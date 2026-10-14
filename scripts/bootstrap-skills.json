@@ -1,6 +1,6 @@
 [
-  "skillvault-installation",
-  "skillvault-discovery",
+  "skillvault-install",
+  "skillvault-discover",
   "rules",
-  "schedule-manager"
+  "schedule-manage"
 ]

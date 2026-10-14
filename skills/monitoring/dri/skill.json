@@ -1,9 +1,9 @@
 {
   "name": "dri",
   "title": "DRI Copilot",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "kind": "agent",
-  "description": "[investigate] Investigate a production incident as a read-only copilot for the on-call DRI: gather evidence, separate facts from hypotheses, and draft next steps and updates. Also holds the proposed DRI-agent design (staged roles, preflight checks, evaluation) while it grows. Service specifics come from the project's private DRI profile. Never changes production or posts updates without explicit approval. Overlaps with harness-monitor on incidents: harness-monitor detects health breaches and proposes work; dri investigates one incident.",
+  "description": "[investigate] Alone: DRI status. Text: investigate that incident. Investigate a production incident as a read-only copilot for the on-call DRI: gather evidence, separate facts from hypotheses, and draft next steps and updates. Also holds the proposed DRI-agent design (staged roles, preflight checks, evaluation) while it grows. Service specifics come from the project's private DRI profile. Never changes production or posts updates without explicit approval. Overlaps with harness-monitor on incidents: harness-monitor detects health breaches and proposes work; dri investigates one incident.",
   "tags": [
     "incident-response",
     "on-call",
@@ -26,8 +26,8 @@
   "dependencies": [],
   "examples": [
     "/dri",
-    "/dri list",
-    "/dri investigate <incident-id-or-link>"
+    "/dri 123456789",
+    "/dri investigate https://portal.example/incidents/123"
   ],
   "readme": "SKILL.md",
   "inputs": [
@@ -35,12 +35,10 @@
       "name": "action",
       "required": false,
       "type": "string",
-      "default": "list",
       "enum": [
-        "list",
         "investigate"
       ],
-      "description": "Primary action; omitted means read-only list. investigate is read-only; side effects need explicit approval."
+      "description": "Menu word: investigate. Alone, the skill shows the DRI profile status and asks which incident; other text investigates that incident ID or link. Operation-specific approvals still apply."
     }
   ]
 }

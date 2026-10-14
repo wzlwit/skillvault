@@ -305,7 +305,7 @@ function Get-HarnessPendingDefinitions {
             foreach ($section in @('afterDev', 'afterReview')) {
                 if ($section -cin $sections -and (ConvertTo-HarnessCanonicalJson @($definition.$section | Where-Object { $null -ne $_ })) -cne (ConvertTo-HarnessCanonicalJson @(Get-HarnessTestHooks $Config $section))) { $changes += "changed $section" }
             }
-            if ('unitTests' -cin $sections -and [string]$definition.unitTests -cne (Get-HarnessUnitTestLevel $Config)) { $changes += 'changed unitTests' }
+            if ('unitTests' -cin $sections -and (ConvertTo-HarnessUnitTestLevel $definition.unitTests) -cne (Get-HarnessUnitTestLevel $Config)) { $changes += 'changed unitTests' }
         }
         if ($changes.Count) {
             [pscustomobject]@{ file = [IO.Path]::GetRelativePath($Paths.Project, $file.FullName).Replace('\', '/'); changes = @($changes) }

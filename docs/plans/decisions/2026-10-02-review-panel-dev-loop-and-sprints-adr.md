@@ -136,8 +136,8 @@ probed with a few trivial calls. Implementation creates no schedule, installed c
 
 ## References
 
-- [Development workflow](../../../skills/planning/harness-work/references/dev.md)
-- [Sprint workflow](../../../skills/planning/harness-work/references/sprint.md)
+- [Development workflow](../../../skills/planning/harness-dev/references/dev.md)
+- [Sprint workflow](../../../skills/planning/harness-dev/references/sprint.md)
 - [Review workflow](../../../skills/planning/harness-review/references/workflow.md)
-- [Restrictions](../../../skills/planning/harness-project/references/limits.md)
+- [Restrictions](../../../skills/planning/harness-setup/references/limits.md)
 - [Runtime guide](../../../skills/planning/harness-runtime/references/runtime.md)

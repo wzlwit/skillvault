@@ -11,6 +11,9 @@
 - Decision owner: Zhaolong Wang
 - Supersedes in part: the test order and the stop on test failures in decision 5 of the
   [review-panel ADR](./2026-10-02-review-panel-dev-loop-and-sprints-adr.md).
+- Superseded in part 2026-10-09: the unit-test level `critical` in decision 7 is renamed `blocking`,
+  with saved values still read, and `/hn-dev broad` raises it to `broad` for one task; see the
+  [bare, text, and menu convention ADR](./2026-10-09-bare-text-menu-convention-adr.md).
 - Scope: Which tests the development loop runs, when, what happens when they fail, and how much unit
   testing the developer adds.
 

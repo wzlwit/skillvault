@@ -144,8 +144,8 @@ function Invoke-SkillVaultSetup {
     $downloaded = New-Object 'System.Collections.Generic.HashSet[string]'
     $downloadParameters = @{ Root = $downloadRoot; Revision = $resolvedRevision; Tree = $tree.tree; Downloaded = $downloaded }
     try {
-        $helperPath = 'skills/core/skillvault-installation/scripts/skill-files.ps1'
-        foreach ($path in @('scripts/bootstrap-skills.json', 'catalog.json', $helperPath, 'skills/core/skillvault-installation/scripts/skill-ownership.ps1', 'skills/core/skillvault-installation/scripts/skill-transactions.ps1')) {
+        $helperPath = 'skills/core/skillvault-install/scripts/skill-files.ps1'
+        foreach ($path in @('scripts/bootstrap-skills.json', 'catalog.json', $helperPath, 'skills/core/skillvault-install/scripts/skill-ownership.ps1', 'skills/core/skillvault-install/scripts/skill-transactions.ps1')) {
             Save-SetupFile @downloadParameters -RelativePath $path
         }
         . (Join-Path $downloadRoot $helperPath)

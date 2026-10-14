@@ -1,0 +1,64 @@
+{
+  "name": "harness-dev",
+  "title": "Harness Dev",
+  "version": "3.0.0",
+  "requiredInterfaces": {
+    "harness-runtime": {
+      "development-tests": 1,
+      "review-levels": 2
+    }
+  },
+  "kind": "agent",
+  "description": "[upsert|queue|sprint|test|broad] Alone: the board. Text: develop it. Record, queue, and develop tasks with the two-reviewer review loop, run goal-based sprints, and declare or run reusable tests; broad raises one task's reviews and unit tests. Shorthand: /hn-dev. Overlaps with harness-monitor on intake and checks, harness-review on code review, and harness-write on report implementation; sprints can draft status through harness-write.",
+  "tags": [
+    "harness",
+    "tasks",
+    "development",
+    "verification",
+    "testing"
+  ],
+  "author": "wzlwit",
+  "source": {
+    "repo": "skillvault",
+    "path": "skills/planning/harness-dev"
+  },
+  "install": {
+    "global": true,
+    "project": true,
+    "session": true,
+    "defaultScope": "global",
+    "strategy": "copy"
+  },
+  "dependencies": [
+    "harness-runtime",
+    "harness-schedule",
+    "rules"
+  ],
+  "readme": "SKILL.md",
+  "inputs": [
+    {
+      "name": "action",
+      "required": false,
+      "type": "string",
+      "enum": [
+        "upsert",
+        "queue",
+        "sprint",
+        "test",
+        "broad"
+      ],
+      "description": "Menu word: upsert, queue, sprint, test, or broad. Alone, the skill shows the board and offers the next ready task; other text develops that task or request. Operation-specific approvals still apply."
+    }
+  ],
+  "examples": [
+    "/harness-dev",
+    "/harness-dev T-012",
+    "/harness-dev fix the login timeout",
+    "/harness-dev T-012 now",
+    "/harness-dev broad T-012",
+    "/harness-dev upsert fix the login timeout",
+    "/harness-dev queue T-013",
+    "/harness-dev sprint",
+    "/harness-dev test list"
+  ]
+}

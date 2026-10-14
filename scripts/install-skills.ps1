@@ -2,7 +2,6 @@
 param(
     [Parameter(Mandatory = $true, ParameterSetName = 'Names')][string[]]$Name,
     [Parameter(Mandatory = $true, ParameterSetName = 'Selection')][string[]]$Select,
-    [Parameter(ParameterSetName = 'Selection')][switch]$Exact,
     [switch]$Preview,
     [string]$RepoRoot = (Split-Path -Parent $PSScriptRoot),
     [ValidateSet('default', 'global', 'project')][string]$Scope = 'default',
@@ -18,7 +17,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-. (Join-Path $PSScriptRoot '..\skills\core\skillvault-installation\scripts\skill-files.ps1')
+. (Join-Path $PSScriptRoot '..\skills\core\skillvault-install\scripts\skill-files.ps1')
 
 if ($RequestedVersion -cnotmatch '^(latest|v\d+\.\d+\.\d+)$') {
     throw "Invalid -RequestedVersion '$RequestedVersion'. Use 'latest' or a v#.#.# version."
@@ -32,7 +31,7 @@ if (-not (Test-Path -LiteralPath $catalogPath -PathType Leaf)) {
 
 $catalog = Get-Content -LiteralPath $catalogPath -Raw | ConvertFrom-Json
 if ($PSCmdlet.ParameterSetName -eq 'Selection') {
-    $selectedEntries = @(foreach ($query in $Select) { Find-SkillCatalogEntry -Catalog $catalog -Query $query -Exact:$Exact })
+    $selectedEntries = @(foreach ($query in $Select) { Find-SkillCatalogEntry -Catalog $catalog -Query $query })
     $Name = @($selectedEntries | Select-Object -ExpandProperty name -Unique)
 }
 $projectSkillsRoot = Join-Path $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($ProjectPath) '.github\skills'
@@ -74,7 +73,7 @@ foreach ($skillName in @($Name | Select-Object -Unique)) {
         }
 
         if ($resolvedScope -eq 'session') {
-            throw "Skill '$skillName' defaults to session scope, which copies no files. Use /skillvault-installation install with session scope, or pass -Scope project or -Scope global."
+            throw "Skill '$skillName' defaults to session scope, which copies no files. Use /skillvault-install <name> session, or pass -Scope project or -Scope global."
         }
 
         if ($resolvedScope -cnotin @('global', 'project')) {

@@ -61,4 +61,4 @@ workers, load it too. It does not roam through Settings Sync.
 
 - [Rules skill](../../../skills/core/rules/SKILL.md)
 - [Rule management](../../../skills/core/rules/references/manage.md)
-- [Harness restrictions](../../../skills/planning/harness-project/references/limits.md)
+- [Harness restrictions](../../../skills/planning/harness-setup/references/limits.md)

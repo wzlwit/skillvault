@@ -1,9 +1,9 @@
 {
   "name": "harness-write",
   "title": "Harness Writing",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "kind": "agent",
-  "description": "[upsert|slots] Draft and update writing for people: evidence-grounded feature docs, onboarding, and troubleshooting guides; stakeholder trackers, meeting invites, and email updates or thread replies; and dashboards, reports, and queries; rank meeting slots offline. Shorthand: /hn-write; upsert takes doc|tracker|meeting|email|report. Overlaps with architecture-decision-records on rationale, harness-monitor on status and owner evidence, harness-work on report implementation, kpi-dashboard and jarvis-metrics on report design, and the office-documents and ppt-master references on document output. Drafts only: never sends, invites, shares, or publishes without explicit approval.",
+  "description": "[slots] Alone: your drafts. Text: write it. Draft and update writing for people: evidence-grounded feature docs, onboarding, and troubleshooting guides; stakeholder trackers, meeting invites, and email updates or thread replies; and dashboards, reports, and queries; slots ranks meeting times offline. Shorthand: /hn-write. Overlaps with architecture-decision-records on rationale, harness-monitor on status and owner evidence, harness-dev on report implementation, kpi-dashboard and jarvis-metrics on report design, and the office-documents and ppt-master references on document output. Drafts only: never sends, invites, shares, or publishes without explicit approval.",
   "tags": [
     "harness",
     "documentation",
@@ -29,8 +29,8 @@
     "rules",
     "humanizer",
     "kpi-dashboard",
-    "harness-work",
-    "harness-project"
+    "harness-dev",
+    "harness-setup"
   ],
   "readme": "SKILL.md",
   "inputs": [
@@ -38,13 +38,10 @@
       "name": "action",
       "required": false,
       "type": "string",
-      "default": "list",
       "enum": [
-        "list",
-        "upsert",
         "slots"
       ],
-      "description": "Omitted means read-only listing. Create and update are aliases for upsert."
+      "description": "Menu word: slots. Alone, the skill confirms a target clear from the conversation or shows your drafts; other text writes what it describes. Operation-specific approvals still apply."
     },
     {
       "name": "kind",
@@ -57,13 +54,13 @@
         "email",
         "report"
       ],
-      "description": "What upsert creates or updates; required unless clear from the conversation."
+      "description": "What to write, taken from the words: doc, tracker, meeting, email, or report; asked only when unclear."
     },
     {
       "name": "target",
       "required": false,
       "type": "string",
-      "description": "Feature or doc set, initiative, email purpose, or report artifact; required for upsert unless clear from the conversation."
+      "description": "Feature or doc set, initiative, email purpose, or report artifact, taken from the words or a target clear from the conversation; asked only when unclear."
     },
     {
       "name": "audience",
@@ -104,13 +101,8 @@
   ],
   "examples": [
     "/harness-write",
-    "/hn-write list",
-    "/hn-write upsert doc cache-refresh --audience partner",
-    "/hn-write upsert doc cache-refresh troubleshooting --audience internal",
-    "/hn-write upsert tracker release-readiness --workspace \"Team workspace\"",
-    "/hn-write upsert meeting release-readiness --at \"Fri 13:30\" --thread \"Release readiness follow-up\"",
-    "/hn-write upsert email status-update --thread \"Release readiness follow-up\"",
-    "/hn-write slots \"Release readiness follow-up\" --days tue,wed --duration 30m",
-    "/harness-write upsert report service-health --type grafana --output dashboards/service-health.json"
+    "/harness-write status email to the platform team about the outage",
+    "/harness-write public docs for the monitor feature",
+    "/harness-write slots Alice and Bob next week, 30 minutes"
   ]
 }

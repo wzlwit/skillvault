@@ -3,7 +3,7 @@ $ErrorActionPreference = 'Stop'
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
 $bootstrapScript = Join-Path $PSScriptRoot 'install-global.ps1'
 $bootstrapShellScript = Join-Path $PSScriptRoot 'install-global.sh'
-. (Join-Path $repositoryRoot 'skills\core\skillvault-installation\scripts\skill-files.ps1')
+. (Join-Path $repositoryRoot 'skills\core\skillvault-install\scripts\skill-files.ps1')
 . (Join-Path $PSScriptRoot 'setup.ps1')
 
 $catalog = Get-Content -LiteralPath (Join-Path $repositoryRoot 'catalog.json') -Raw | ConvertFrom-Json
@@ -16,7 +16,10 @@ $expectedLegacySkills = @(
     'skillvault-sync:skills/public/skillvault-sync',
     'ai-principles:skills/public/core/ai-principles',
     'rule-update:skills/public/core/rule-update',
-    'skillvault-refresh:skills/core/skillvault-refresh'
+    'skillvault-refresh:skills/core/skillvault-refresh',
+    'skillvault-installation:skills/core/skillvault-installation',
+    'skillvault-discovery:skills/core/skillvault-discovery',
+    'schedule-manager:skills/system/schedule-manager'
 )
 
 function Assert-True {
@@ -365,6 +368,10 @@ $legacySkillEntries = @(
     New-LegacyInstall -Root $globalRoot -Name 'ai-principles' -InstalledBy 'skillvault' -SourcePath 'skills/public/core/ai-principles' -SourceRepo 'https://github.com/wzlwit/skillvault.git' | Out-Null
     New-LegacyInstall -Root $globalRoot -Name 'rule-update' -InstalledBy 'skillvault-bootstrap' -SourcePath 'skills/public/core/rule-update' -SourceRepo 'https://github.com/wzlwit/skillvault/' | Out-Null
     New-LegacyInstall -Root $globalRoot -Name 'skillvault-refresh' -InstalledBy 'skillvault-bootstrap' -SourcePath 'skills/core/skillvault-refresh' | Out-Null
+    # Bootstrap skills renamed on 2026-10-09 and 2026-10-10 retire like the earlier legacy names.
+    New-LegacyInstall -Root $globalRoot -Name 'skillvault-installation' -InstalledBy 'skillvault-bootstrap' -SourcePath 'skills/core/skillvault-installation' | Out-Null
+    New-LegacyInstall -Root $globalRoot -Name 'skillvault-discovery' -InstalledBy 'skillvault' -SourcePath 'skills/core/skillvault-discovery' | Out-Null
+    New-LegacyInstall -Root $globalRoot -Name 'schedule-manager' -InstalledBy 'skillvault-bootstrap' -SourcePath 'skills/system/schedule-manager' | Out-Null
 
     & $bootstrapScript -RepoRoot $repositoryRoot -GlobalSkillsPath $globalRoot | Out-Null
     Assert-True (Test-Path -LiteralPath $legacyInstallerPath) 'the renamed installer is preserved until migration is explicitly approved with -Force'
@@ -382,6 +389,9 @@ $legacySkillEntries = @(
     New-LegacyInstall -Root $globalRoot -Name 'ai-principles' -InstalledBy 'skillvault' -SourcePath 'skills/public/core/ai-principles' -SourceRepo 'https://github.com/someone-else/skillvault.git' | Out-Null
     New-LegacyInstall -Root $globalRoot -Name 'rule-update' -WithoutMetadata | Out-Null
     New-LegacyInstall -Root $globalRoot -Name 'skillvault-refresh' -WithoutMetadata | Out-Null
+    New-LegacyInstall -Root $globalRoot -Name 'skillvault-installation' -WithoutMetadata | Out-Null
+    New-LegacyInstall -Root $globalRoot -Name 'skillvault-discovery' -InstalledBy 'other-tool' -SourcePath 'skills/core/skillvault-discovery' | Out-Null
+    New-LegacyInstall -Root $globalRoot -Name 'schedule-manager' -InstalledBy 'skillvault' -SourcePath 'skills/system/schedule-manager' -SourceRepo 'https://github.com/someone-else/skillvault.git' | Out-Null
 
     & $bootstrapScript -RepoRoot $repositoryRoot -GlobalSkillsPath $globalRoot | Out-Null
     foreach ($legacyEntry in $expectedLegacySkills) {
@@ -472,7 +482,7 @@ Write-Output "Launched revision: $Revision"
 
     $setupRevision = '1234567890123456789012345678901234567890'
     $setupTreeRevision = 'abcdefabcdefabcdefabcdefabcdefabcdefabcd'
-    $setupFiles = @('catalog.json', 'scripts/bootstrap-skills.json', 'scripts/install-global.ps1', 'skills/core/skillvault-installation/scripts/skill-files.ps1', 'README.md')
+    $setupFiles = @('catalog.json', 'scripts/bootstrap-skills.json', 'scripts/install-global.ps1', 'skills/core/skillvault-install/scripts/skill-files.ps1', 'README.md')
     foreach ($name in $expectedBootstrapSkills) {
         $sourcePath = Get-SkillSourcePath -SkillName $name
         foreach ($file in @(Get-SkillFiles -SkillPath $sourcePath)) {

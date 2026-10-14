@@ -1,0 +1,64 @@
+{
+  "name": "harness-schedule",
+  "title": "Harness Schedule",
+  "version": "4.0.0",
+  "ownershipProtocol": 1,
+  "runtimeInterfaces": {
+    "scheduler": 1
+  },
+  "requiredInterfaces": {
+    "harness-runtime": {
+      "harness-runtime": 4
+    },
+    "skillvault-install": {
+      "compatibility": 1,
+      "structured-refresh": 2
+    }
+  },
+  "kind": "agent",
+  "description": "[clean] Alone: all schedules. Text: set one, like pr 1d or pr off. Manage logical schedules under one user-wide heartbeat for projects, PR review, refresh, and maintenance: set, turn off or on, convert old SkillVault Windows tasks, and clean up stale schedules. Shorthand: /hn-schedule. Overlaps with schedule-manage on Windows task administration; owns SkillVault schedules. Maintenance delegates history cleanup to harness-setup clean.",
+  "tags": [
+    "harness",
+    "scheduling",
+    "windows"
+  ],
+  "author": "wzlwit",
+  "source": {
+    "repo": "skillvault",
+    "path": "skills/planning/harness-schedule"
+  },
+  "install": {
+    "global": true,
+    "project": true,
+    "session": false,
+    "defaultScope": "global",
+    "strategy": "copy"
+  },
+  "dependencies": [
+    "harness-runtime",
+    "rules",
+    "pr-review",
+    "skillvault-install"
+  ],
+  "examples": [
+    "/harness-schedule",
+    "/harness-schedule pr 1d",
+    "/harness-schedule project 4h",
+    "/harness-schedule pr off",
+    "/harness-schedule pr on",
+    "/harness-schedule maintenance",
+    "/harness-schedule clean"
+  ],
+  "readme": "SKILL.md",
+  "inputs": [
+    {
+      "name": "action",
+      "required": false,
+      "type": "string",
+      "enum": [
+        "clean"
+      ],
+      "description": "Menu word: clean. Alone, the skill shows every schedule and offers to convert old SkillVault Windows tasks; other text sets a target's schedule or turns it off or on. Operation-specific approvals still apply."
+    }
+  ]
+}

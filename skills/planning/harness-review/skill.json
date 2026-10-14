@@ -1,14 +1,14 @@
 {
   "name": "harness-review",
   "title": "Harness Review",
-  "version": "3.0.0",
+  "version": "4.0.0",
   "requiredInterfaces": {
     "harness-runtime": {
-      "review-levels": 1
+      "review-levels": 2
     }
   },
   "kind": "agent",
-  "description": "[run] Review current-project changes with two independent reviewers per pass, GPT and Claude Opus, and a whole-repository Fresh pass when no new findings appear, automatically restarting when local files change. Shorthand: /hn-review; explicit scope or options also start a review. Overlaps with pr-review on general review and differential-review on security; PR URLs delegate to pr-review.",
+  "description": "[broad|list] Alone: review your changes. Text: review that scope. Review current-project changes for blocking issues with two independent reviewers per pass, GPT and Claude Opus, plus a whole-repository Fresh pass when no new findings appear, restarting when local files change; broad also reports minor and existing issues. Shorthand: /hn-review. Overlaps with pr-review on general review, differential-review on security, and harness-dev, whose development loop runs the same passes; PR URLs delegate to pr-review.",
   "tags": [
     "harness",
     "review",
@@ -32,9 +32,11 @@
   ],
   "examples": [
     "/harness-review",
-    "/harness-review list",
-    "/harness-review run",
-    "/harness-review run --broad"
+    "/harness-review src/api",
+    "/harness-review since main",
+    "/harness-review security",
+    "/harness-review broad",
+    "/harness-review list"
   ],
   "readme": "SKILL.md",
   "inputs": [
@@ -42,12 +44,11 @@
       "name": "action",
       "required": false,
       "type": "string",
-      "default": "list",
       "enum": [
-        "list",
-        "run"
+        "broad",
+        "list"
       ],
-      "description": "Primary action; omitted means read-only list. Compatibility aliases remain in SKILL.md. Operation-specific approvals still apply."
+      "description": "Menu word: broad or list. Alone, the skill reviews your current changes at the blocking level; other text names the scope to review. Operation-specific approvals still apply."
     }
   ]
 }

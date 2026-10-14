@@ -47,7 +47,7 @@ function Assert-HarnessMonitorFlows {
     $settings = Get-HarnessTestSettings $Config
     foreach ($entry in $references) {
         $flow = @($settings.flows | Where-Object { $_.name -ceq $entry.reference.flow }) | Select-Object -First 1
-        if (-not $flow) { throw "$($entry.label) flow $($entry.reference.flow) is not declared; declare it with /harness-work test declare." }
+        if (-not $flow) { throw "$($entry.label) flow $($entry.reference.flow) is not declared; declare it with /harness-dev test declare." }
         if ($flow.effects -cne 'local') { throw "$($entry.label) flow $($flow.name) must declare effects local: it may write only local files, never post or change other systems." }
         $environment = if ($entry.reference.environment) { [string]$entry.reference.environment } else { [string]$flow.defaultEnvironment }
         if (@($settings.environments | Where-Object { $_.name -ceq $environment }).Count -ne 1) { throw "$($entry.label) environment $environment is not declared." }

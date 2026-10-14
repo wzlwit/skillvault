@@ -31,11 +31,11 @@ Value is medium for discovering public ecosystem skills, but low as an additiona
 workflow in SkillVault. The CLI's owner filter and public directory are useful discovery options.
 Fit is an optional external source within the existing discovery workflow, without a new bundle.
 
-- [SkillVault discovery](../../skills/core/skillvault-discovery/SKILL.md) already owns capability
+- [SkillVault discovery](../../skills/core/skillvault-discover/SKILL.md) already owns capability
   search, evaluation, and explanation. Its search procedure checks installed/local/configured
   sources before external registries and separates discovery from installation. Find Skills starts
   with the public leaderboard and has broad triggers such as ordinary requests for task help.
-- [SkillVault installation](../../skills/core/skillvault-installation/SKILL.md) already owns scoped
+- [SkillVault installation](../../skills/core/skillvault-install/SKILL.md) already owns scoped
   copies, source verification, replacement approvals, pins, and runtime coordination. Importing
   another discovery-and-install workflow would create a competing route for those operations.
 

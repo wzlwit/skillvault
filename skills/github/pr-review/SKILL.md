@@ -1,51 +1,70 @@
 ---
 name: pr-review
-description: "[run|configure] Review a PR URL, repository, or user-wide watchlist; a PR URL alone also starts a review. Overlaps with harness-review on general review and differential-review on security; owns remote selection and isolated evidence, while pr-watch manages targets."
+description: "[broad|list|configure] Alone: review watched PRs. Text: review that PR. Review PRs from a URL, a repository, or the user-wide watchlist for blocking issues in isolated snapshots; broad also reports minor and existing issues. Overlaps with harness-review on general review and differential-review on security; owns remote selection and isolated evidence, while pr-watch manages targets."
 metadata:
   author: wzlwit
-  version: "2.0.0"
-argument-hint: "[list|run|configure] [<arguments>...]"
+  version: "3.0.0"
+argument-hint: "[broad|list|configure] [<PR or repository URL>]"
 ---
 
 # PR Review
 
 Review GitHub or explicitly configured GitHub Enterprise targets. This topic, `pr-watch`, and
-`harness-timer pr` share one user-wide list and existing timer, independent of the working project.
-They work from any folder with no harness Root, `/harness-project init`, or data-root choice: the dispatcher
+`harness-schedule pr` share one user-wide list and existing timer, independent of the working project.
+They work from any folder with no harness Root, harness setup, or data-root choice: the dispatcher
 always uses `~/.copilot/pr-review`. Creating, installing, explaining, or editing these skills starts
 no reviews or schedules.
 
-## Dispatch
+Menu words are the actions in brackets. A first word that is a menu word, or exactly 3 or 4 leading letters
+of one, selects that action when the rest of the request fits it; otherwise ask. Several matches show choices
+and run nothing. Anything else is text, and no input at all is the skill alone. Matching never applies to
+skill names, targets, paths, or other arguments, and never changes an action's arguments, permissions, or
+confirmations. This is conversational routing, not script argument parsing.
 
-- Bare invocation, `list`, and `status` show the latest result for every reviewed PR, watched or
-  ad hoc, newest first, through `scripts/pr-review.ps1 -Action Results`. A review in progress shows
-  `Running`; one whose process ended without a result shows `Interrupted` and stays pending. Results
-  describe their recorded snapshot, not present remote state. Watched targets and filters belong to
-  `/pr-watch list`. `help` or an unknown action shows choices. Neither fetches a provider nor
-  launches a reviewer.
-- `run`, a URL, or an unambiguous explicit review request selects the workflow below. `configure`
-  keeps its preview/apply path. Strip the routing verb before mapping arguments.
+| Input | What happens |
+| --- | --- |
+| Alone | [Reviews](#workflow) each watched PR that changed since its last review, at `blocking` or the saved default level |
+| Text | [Reviews](#workflow) that PR or repository URL now at `blocking`, without adding a watch entry |
+| `broad [<URL>]` | [Reviews](#workflow) the URL, or the watched PRs, at the `broad` level |
+| `list` | Shows the latest result for every reviewed PR; starts nothing |
+| `configure` | Shows a [settings definition](./references/runtime.md#optional-configuration) and asks once before saving it |
 
-Action matching applies only to the explicit action token: exact canonical actions and documented
-aliases take precedence; otherwise exactly 3 or 4 leading letters may select one canonical action
-in this topic. Multiple matches: show choices and ask; no match: show help. Ambiguous or unknown
-tokens execute nothing. Do not prefix-match aliases, skill names, targets, paths, options, or other
-arguments. Case handling, natural-language routing, full names in menus and registrations, the
-read-only bare default, and each procedure's arguments, permissions, and confirmations stay
-unchanged; abbreviation adds no confirmation. This is conversational routing, not script argument parsing.
+- **Alone** acts at once on the fixed target, the saved watchlist (`-Action Review`): each watched
+  PR whose snapshot changed since its last completed review, at the saved `reviewLevel` or
+  `blocking`. An empty watchlist starts nothing and says so, pointing to `/pr-watch` to watch a PR or
+  repository. Its report ends with one line naming the text uses: a PR or repository URL to review
+  now, or "again", "drafts", "security", or a count.
+- **Text**: an HTTPS PR or repository URL is reviewed now at `blocking` (`-Action Review -Url <URL>`)
+  and adds no watch entry. Plain words adjust a run, with or without a URL: "again" reviews an
+  unchanged snapshot again (`-Again`), "security" adds the security methodology
+  (`-SecurityReview`), and "blocking" runs at `blocking` when `broad` is saved
+  (`-ReviewLevel blocking`). For a repository URL, a count sets how many PRs to review (`-Limit`,
+  default five) and "drafts" includes draft PRs (`-IncludeDrafts`).
+- **`broad`** maps to `-ReviewLevel broad` for that run only and changes no saved setting.
+- **`list`** shows the latest result for every reviewed PR, watched or ad hoc, newest first, through
+  `scripts/pr-review.ps1 -Action Results`. A review in progress shows `Running`; one whose process
+  ended without a result shows `Interrupted` and stays pending. Results describe their recorded
+  snapshot, not present remote state. Watched targets and filters belong to `/pr-watch`. It neither
+  fetches a provider nor launches a reviewer.
+- **`configure`** takes saved settings, such as models, limits, `allowScheduled`, and the default
+  `reviewLevel` (`blocking` or `broad`), in plain words or as a JSON file. It drafts or reads the
+  definition, shows it, and asks once (`-Action Configure -DefinitionPath <file>`); a yes adds
+  `-Apply` for that exact definition, and no answer saves nothing. A definition drafted from plain
+  words goes to `~/.copilot/pr-review/.harness_sv/definitions/pr-review.json`, replacing an earlier
+  draft there only after the new one is shown.
+- Strip the menu word before mapping arguments.
 
 ## Workflow
 
 Apply `/rules apply` and follow the [runtime and setup contract](references/runtime.md) with the
 bundled [dispatcher](scripts/pr-review.ps1) and sibling `harness-runtime` dependency. No setup is needed:
-without saved settings, `run` uses github.com, the harness review model list, and no limits, and the
-first run creates the controller. Missing tools or account access are reported, not worked around.
+without saved settings, a review uses github.com, the harness review model list, and no limits, and
+the first review creates the controller. Missing tools or account access are reported, not worked
+around.
 
-1. Resolve an explicit HTTPS PR/repository URL, or review the saved list for `/pr-review run`; an
-   empty list is a no-op and an ad-hoc URL adds no watch entry. Map `--broad` to `-ReviewLevel broad`,
-   and plain requests to the other parameters: a PR count to `-Limit`, including drafts to
-   `-IncludeDrafts`, reviewing an unchanged PR again to `-Again`, a security review to
-   `-SecurityReview`, and a critical review when `broad` is saved to `-ReviewLevel critical`.
+1. Resolve an explicit HTTPS PR/repository URL, or review the saved list alone; an empty list is a
+   no-op and an ad-hoc URL adds no watch entry. Map `broad` and the plain words above to their
+   parameters.
 2. The helper uses the already configured `gh` account, deduplicates targets, verifies base/head
    identity, and collects paginated discussion, reviews, inline comments, and thread resolution
    state. Missing coverage blocks that review.
@@ -53,30 +72,29 @@ first run creates the controller. Missing tools or account access are reported, 
    merge-base; never switch the user's branch or initialize a target repository's harness. Reuse
    the shared read-only reviewer and its at-most-two-pass contract, without invoking
    `/harness-review` recursively. Report concrete defects with triggering conditions, impact, and
-   anchors. By default the review level is `critical`: only what blocks merging the PR. `--broad`, or
+   anchors. By default the review level is `blocking`: only what blocks merging the PR. `broad`, or
    a saved `reviewLevel: broad`, reports every issue with evidence, including minor and pre-existing
-   ones; a per-run option changes no saved setting.
+   ones; a per-run choice changes no saved setting. A saved `critical` reads as `blocking`.
 4. Use the first saved profile allowed by current restrictions, or by default the strongest allowed
    model in the harness review list, skipping models and effort levels the CLI rejects before any
    model work. Saved profiles are never replaced. Time, PR-count, and credit limits apply only when
    saved. No unlimited agents or context is implied.
-5. Skip unchanged completed snapshots unless the user asks to review them again; a broad result also
-   covers a later critical request. Findings are a completed review,
+5. Skip unchanged completed snapshots unless the request says "again"; a broad result also covers a
+   later blocking request. Findings are a completed review,
    not a clean PR. Failed, blocked, stale, or incomplete attempts stay pending.
 6. Show findings first, then PR identity, settings, pass count, deferred work, blockers, and report
    paths. `Bounded`/`Partial` is not an all-list clean result; omission never resolves old findings.
 
 ## Setup and Integration
 
-`/pr-review configure <file>` maps to `-Action Configure -DefinitionPath <file>`; add `-Apply` only after
-approval of that exact definition. Configuration is optional and only overrides defaults; scheduling
-needs saved `allowScheduled: true`. It enables no timer and runs no agents. Never copy
-illustrative profiles, budgets, credentials, or another project's settings as live approvals.
+Configuration through `configure` is optional and only overrides defaults; scheduling needs saved
+`allowScheduled: true`. It enables no timer and runs no agents. Never copy illustrative profiles,
+budgets, credentials, or another project's settings as live approvals.
 
 `/harness-review` stays project-first and delegates PR URLs here; this skill calls the shared review
 implementation, not that skill. `differential-review` is an optional methodology for security mode,
-not a copied checklist or third pass. `pr-watch` administers the list, and `harness-timer set pr`
-owns the one logical PR schedule under the shared heartbeat.
+not a copied checklist or third pass. `pr-watch` administers the list, and `harness-schedule` owns
+the one logical PR schedule under the shared heartbeat (`/harness-schedule pr 1d`).
 
 ## Boundaries
 

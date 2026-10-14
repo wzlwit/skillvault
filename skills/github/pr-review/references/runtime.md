@@ -18,7 +18,8 @@ no harness Root, initialization, or `-DataRoot` choice is needed:
 | `reports/history/` | Shared review evidence and snapshots |
 | `workspaces/` | Isolated fetched PR checkouts retained for evidence |
 
-List, results, and removal previews do not initialize storage. Add creates only the watchlist. The
+The watchlist and results views and removal previews do not initialize storage. Watching a URL
+(`-Action Add`) creates only the watchlist. The
 first review run or explicit configuration initializes the dedicated controller, never the
 source/target project's harness.
 Removal only unregisters the selected watch; it does not delete reports, checkouts, or remote PRs.
@@ -46,13 +47,13 @@ The dispatcher is `scripts/pr-review.ps1` in the installed `pr-review` bundle. I
 & $review -Action Review
 ```
 
-An enabled timer reads the current list on each tick, so a newly added entry becomes eligible
-then. Adding does not run it immediately. Unknown/removed GitHub hosts are blocked by the saved
+An enabled timer reads the current list on each tick, so a newly watched entry becomes eligible
+then. Watching does not run it immediately. Unknown/removed GitHub hosts are blocked by the saved
 host allowlist; URLs cannot contain credentials, query strings, or non-HTTPS endpoints.
 
 ## Optional Configuration
 
-Nothing needs configuring before `run`. Without saved settings, PR review uses:
+Nothing needs configuring before the first review. Without saved settings, PR review uses:
 
 | Setting | Default |
 | --- | --- |
@@ -60,8 +61,8 @@ Nothing needs configuring before `run`. Without saved settings, PR review uses:
 | `githubHosts` | `github.com` |
 | `maxPullRequests`, `maxCycleMinutes`, `maxCycleCredits` | No limit; per-entry discovery limits still apply |
 | `allowScheduled` | `false`; set it to `true` before timer setup |
-| `securityReview` | `false`; ad-hoc `-SecurityReview` can request it per run |
-| `reviewLevel` | `critical`: report only what blocks merging the PR; `broad` reports every issue with evidence. Ad-hoc `-ReviewLevel` can choose either per run |
+| `securityReview` | `false`; "security" in a request (`-SecurityReview`) adds it for one run |
+| `reviewLevel` | `blocking`: report only what blocks merging the PR; `broad` reports every issue with evidence. The `broad` menu word or the plain word "blocking" (`-ReviewLevel`) chooses either for one run |
 
 To override any of these, use a JSON definition with `runner`, `prReview`, or both, preview it, then
 apply the exact approved contents. Every field is optional; omitted fields keep their defaults. A
@@ -115,18 +116,20 @@ or authorization. Choose them with the owner before writing/applying a real defi
   passes. A saved `maxCycleCredits` reserves at most two per-session ceilings per reviewed PR; it is a
   conservative CLI ceiling allocation, not measured provider usage, account balance, or a daily
   quota. Each session's share must stay at least 30 AI credits, the CLI minimum, or that review is blocked.
-- A saved `maxPullRequests` bounds new/repeated review attempts per cycle. Each repository's list
+- A saved `maxPullRequests` bounds new/repeated review attempts per cycle. Each repository's watchlist
   entry separately limits discovery (default five, maximum 100), ordered by recent updates. Explicit
   PRs and repository results deduplicate. Open PRs are selected; closed/merged targets are
   reported without launching reviewers. Explicit PR URLs can select drafts.
 - `allowScheduled` must be saved as true before timer setup. `securityReview` chooses the saved
-  methodology for list/timer runs; ad-hoc `-SecurityReview` can request it without changing settings.
-- `reviewLevel` chooses the review level for list/timer runs (Review Levels in the harness runtime
-  guide); ad-hoc `-ReviewLevel critical|broad` (`--broad`, or a plain request for critical) chooses
-  it for one run without changing settings, and timer ticks take no override. Results and reports
-  record the level.
-  `Unchanged` treats an earlier broad review of the same snapshot as covering a critical request;
-  results saved before levels existed count as broad.
+  methodology for watchlist and timer runs; "security" in a request (`-SecurityReview`) adds it for
+  one run without changing settings.
+- `reviewLevel` chooses the review level for watchlist and timer runs (Review Levels in the harness
+  runtime guide); `-ReviewLevel blocking|broad` (the `broad` menu word, or the plain word
+  "blocking") chooses it for one run without changing settings, and timer ticks take no override.
+  Results and reports record the level.
+  `Unchanged` treats an earlier broad review of the same snapshot as covering a blocking request;
+  results saved before levels existed count as broad, and a saved or recorded `critical` reads as
+  `blocking`.
 - Enterprise hosts require explicit `githubHosts` entries and an existing authenticated `gh`
   account on each host. There is no implicit host/account discovery or Azure DevOps adapter.
 - An authenticated `gh` read uses only fixed REST GET endpoints and a fixed GraphQL query.
@@ -151,19 +154,22 @@ ownership description blocks replacement; do not delete it or invent a suffixed 
 & $review -Action Timer -TimerAction Resume -Apply
 ```
 
-Bare `harness-timer` requests Set, previews until approved, and reuses the single saved cadence.
-With no saved cadence, ask for positive fractional days (at least one minute). Zero is not an
-immediate-run alias. A resolved setup request authorizes that exact change after missing choices
-are answered; editing/installing the skill is not a setup request.
+`/harness-schedule pr <duration>` sets the PR timer, `/harness-schedule pr` alone shows it, and
+`/harness-schedule pr off` or `/harness-schedule pr on` stops future ticks or resumes the saved
+cadence; `/harness-schedule` alone shows every schedule. A request to set it without a duration
+asks once for one (at least one minute); zero never means run now. A resolved setup request
+authorizes that exact change after missing choices are answered; editing/installing the skill is
+not a setup request.
 
-Set creates or updates the same task and starts one interval later. Resume enables its existing
-trigger without resetting cadence or requesting an immediate run. Disable prevents future ticks,
-not a running review. Actions are read back for verification. Unrelated schedules remain intact.
+Setting creates or updates the same task and starts one interval later. Turning it on enables its
+existing trigger without resetting cadence or requesting an immediate run. Turning it off prevents
+future ticks, not a running review. Actions are read back for verification. Unrelated schedules
+remain intact.
 
 The task runs the installed dispatcher with `-Action Review -Scheduled`, no target override.
 It uses the current user's interactive logon at limited privilege, `IgnoreNew`, and a finite
 cycle time limit plus cleanup allowance. Do not claim logged-out execution or request credentials
-or elevation implicitly. The shared cycle lock also excludes overlapping manual list runs.
+or elevation implicitly. The shared cycle lock also excludes overlapping manual watchlist runs.
 No tick invokes setup, changes model permissions, registers another timer, or publishes reports.
 
 ## Pauses, Recovery, and Results

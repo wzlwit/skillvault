@@ -16,29 +16,32 @@ directory never selects the target: `-ProjectPath` controls configuration, state
 execution policy, and a task can select another coding repository through a reference. Changing a
 default moves no installation or runtime data.
 
-The shared runtime bundle is `harness-runtime`, hidden from the `/` menu. The topics are `harness-project`,
-`harness-work`, `harness-write`, `harness-review`, `harness-decision`, `harness-monitor`, and
-`harness-timer`; `/hn-*` is conversational shorthand for each, not a separate registration. Retired
+The shared runtime bundle is `harness-runtime`, hidden from the `/` menu. The topics are `harness-setup`,
+`harness-dev`, `harness-write`, `harness-review`, `harness-decide`, `harness-monitor`, and
+`harness-schedule`; `/hn-*` is conversational shorthand for each, not a separate registration. Retired
 topic and command names are not accepted.
-Bare multi-action topics use read-only `list`; explicit dev/review work uses `run`. PowerShell action
-names, stored state, and scheduler behavior are unchanged.
+Each topic's menu lists only its other actions. Alone, a topic acts at once only on a fixed target:
+`/harness-review` reviews the current changes. Otherwise it shows where things stand and offers the next
+step, asking once, and a target guessed from the conversation is confirmed first (`/harness-write`).
+Text after the topic does its main job, such as developing a task in `/harness-dev`.
+PowerShell action names, stored state, and scheduler behavior are unchanged.
 
 ## Root Inheritance
 
-`/harness-project root` shows the selected root; `/harness-project root <path>` selects the existing parent directory
+`/harness-setup root` shows the selected root; `/harness-setup root <path>` selects the existing parent directory
 for `.harness_sv/`. Prompts, the displayed `./` fallback, and moving an initialized harness to a new
-root follow the root guide (`harness-project/references/root.md`); `/hn-project root <path>` uses the same workflow. The read-only `Root`
+root follow the root guide (`harness-setup/references/root.md`); `/hn-setup root <path>` uses the same workflow. The read-only `Root`
 action reports the selected project, control/config, and board paths and initialized state. Only
 `Root` may omit `-ProjectPath`, resolving the current directory without writes.
 
 Every harness action reuses the selected Root without another location confirmation, including
-`/harness-project init`, reconnects, and the displayed `./` fallback. The session supplies the absolute
+creating the harness from `/harness-setup` alone, reconnects, and the displayed `./` fallback. The session supplies the absolute
 `-ProjectPath`, so later terminal-directory changes cannot retarget it; child scripts neither read
 editor context nor keep a second root registry. If no Root or explicit target exists, run
-`/harness-project root ./` once first. Invalid targets and explicit rejection block the action; they never
+`/harness-setup root ./` once first. Invalid targets and explicit rejection block the action; they never
 fall back to an incidental terminal or installation directory. An explicit action path overrides that
 invocation only, resolved against Root. Scheduled ticks reuse their saved explicit target.
-`/harness-project loc --board <board-path>` keeps its separate empty-board placement meaning.
+An explicit board override (see the root guide) keeps its separate empty-board placement meaning.
 
 The public `Init` action takes `-ProjectPath <selected-root> -ConfirmLocation` and rejects
 `-Scheduled`; the session supplies both from the selected Root without another prompt. Root
@@ -48,7 +51,7 @@ initialization, execution, installation, destructive change, or schedule.
 
 ## Configuration and State
 
-New `/harness-project init` controllers use layout version 2. `config/project.json` owns identity and runner
+New controllers, created from `/harness-setup` alone, use layout version 2. `config/project.json` owns identity and runner
 settings; `config/monitors.json`, `config/tests.json`, and `config/policy.json` own their domains, and
 `config/schedules.json` holds project schedules when configured. These declarations are the single
 editable source of truth: commands update the same files, direct edits need no import, and the runtime
@@ -61,17 +64,17 @@ an invalid declaration.
 object (counters, pauses, and audit events); `runtime/schedules.json` holds schedule progress. The
 configured current-work CSV, `history.csv`, and `references.csv` are generated views in the board
 root, `<project-root>/.harness_sv/board` by default; do not edit them as competing task queues.
-`/harness-decision` owns the decision register, and an existing standalone register keeps its board
+`/harness-decide` owns the decision register, and an existing standalone register keeps its board
 location on first initialization. Unrelated CSV files are never adopted or overwritten. A README links
 to board, history, and configuration without copying task rows.
 
 New controllers save `currentFileName: "current-<project-slug>.csv"`, stable across Root relocation;
 configurations without it keep `current.csv`. `Get-HarnessCurrentPath` and the `current` result
 property expose the resolved path. Renames and opt-in topic snapshots follow the
-current-view procedure (`harness-project/references/root.md#current-view-names`), never an implicit reconnect migration.
+current-view procedure (`harness-setup/references/root.md#current-view-names`), never an implicit reconnect migration.
 
-`/harness-project policy` declarations add `restrictions` and `fallback` to `config/policy.json`; there is no
-second policy database. Bare policy commands are read-only, even before initialization, and
+`/harness-setup policy` declarations add `restrictions` and `fallback` to `config/policy.json`; there is no
+second policy database. `policy list` is read-only, even before initialization, and
 installing a guide applies no example policy.
 
 Resolve reference, configuration, and policy paths against the controller, never the installed skill
@@ -81,14 +84,14 @@ convention; ordinary actions move no documentation. Explicit Root relocation mov
 inside the control directory, not external documents, and saves `executionRoot` for the former
 implicit coding/test target and instruction lookup (absent means the current `projectRoot`).
 
-Legacy flat controllers remain readable and runnable in place until explicit migration; `init` only
-reconnects. Transaction originals exist only in OS temporary storage until success or verified
+Legacy flat controllers remain readable and runnable in place until their conversion is approved;
+creating or reconnecting never converts a layout. Transaction originals exist only in OS temporary storage until success or verified
 rollback; interrupted updates keep a pending marker.
 
 ## Layout Migration
 
-`/hn-project migrate` (or `/harness-project migrate`) shows the in-place conversion and asks once
-([Ask Once](#ask-once); it holds without an answer); a yes maps to:
+When `/harness-setup` alone, or a Root move, finds an old layout, it offers the in-place conversion and
+asks once ([Ask Once](#ask-once); it holds without an answer); a yes maps to:
 
 ```powershell
 & <harness-folder>/scripts/harness.ps1 -ProjectPath <root> -Action Migrate -Apply
@@ -107,7 +110,7 @@ its temporary originals for attended recovery.
 ## Artifact Storage
 
 All harness-owned information and files default to `<root>/.harness_sv/`, where Root is selected
-through `/harness-project root` (`/hn-project root`). An explicit user destination overrides the relevant output,
+through `/harness-setup root` (`/hn-setup root`). An explicit user destination overrides the relevant output,
 not the whole controller. Keep one authoritative copy; do not mirror records into the project root.
 
 | Artifact | Default destination relative to Root |
@@ -148,7 +151,7 @@ and evidence stay where they are. Skill bundles and the host's project instructi
 harness artifacts; an authorized navigation update adds pointers there, not record copies. The
 user-wide PR and skill-refresh controllers keep their own storage; selecting a Root does not move them.
 
-The session-level `/harness-project init` workflow maintains a small Harness Context section in the project's
+The session-level setup workflow (`/harness-setup` alone, when it creates or reconnects a harness) maintains a small Harness Context section in the project's
 agent instruction file, linking current plans, decisions, and implementation status under
 `.harness_sv/docs`, with ADRs and run history separate. Current-facing docs are not chronological logs;
 live status stays a link to the board view or Status action. The script's `Init` action neither writes
@@ -188,7 +191,7 @@ authorized session-agent path instead of inventing grants or treating unknown ca
 | `maxMinutes` | Optional inherited time cap per agent or shared validation phase; no fabricated default |
 | `maxCredits` | Optional inherited CLI credit ceiling; omission means no cap (native account limits only), not a billing guarantee. The CLI refuses a declared cap below 30 |
 | `maxTasksPerCycle` | Optional positive inherited cap; otherwise the existing task set bounds one invocation |
-| `criticalReview` | Inherit the choice; otherwise the review panel's second-family reviewer runs in every pass; explicit false keeps one reviewer |
+| `secondReviewer` | Inherit the choice; otherwise the review panel's second-family reviewer runs in every pass; explicit false keeps one reviewer. The former name `criticalReview` is still read |
 | `allowedTools` | Inherit approved CLI permission patterns; otherwise keep native grants without adding allow-all |
 | `availableTools` | Inherit available CLI tool names; otherwise native availability, constrained by explicit policy |
 | `validationCommands` | Inherit applicable executable/argument checks or discover supported repository test scripts |
@@ -230,7 +233,7 @@ restrictions allow no profile or listed model in its family. Every `allowedModel
 filters all of these. Default candidates start at `max` effort and `long_context`; profiles use
 their declared efforts and contexts.
 
-- Inspect the list with `/harness-project policy list limits` or `Context`: each family
+- Inspect the list with `/harness-setup policy list limits` or `Context`: each family
   shows its models, which ones `allowedModels` permits, and the reviewers the next pass will try.
   Narrow the list by declaring `allowedModels`; reorder or update it by editing the bundled file.
 - The CLI has no command that lists models, so availability is checked when a reviewer starts. The CLI
@@ -241,7 +244,7 @@ their declared efforts and contexts.
 - If no model of a family is available, that reviewer is dropped and the result and report say "Only
   one reviewer ran" with the models tried. If neither family has one, the runner's own model (or
   `auto`) reviews alone. Restrictions that exclude a family leave one reviewer and say why.
-  `runner.criticalReview: false` also keeps one reviewer: the strongest allowed one, GPT first.
+  `runner.secondReviewer: false` also keeps one reviewer: the strongest allowed one, GPT first.
 - `/pr-review`'s approved profile (`-RunnerProfile` callers get one reviewer), and a runner model that
   reviews because nothing listed is allowed, are never replaced: a CLI rejection fails that pass.
 - When the session runs the reviewers itself as sub-agents, the attended agent fallback, it sets each
@@ -253,7 +256,7 @@ their declared efforts and contexts.
   chat stops. It then ends its turn and reads each result when that reviewer finishes, instead of
   waiting inside a turn, so it can answer the user meanwhile.
 - The reviewers run at the same time on the same pinned snapshot, inside the existing run lock.
-  `maxParallelReviewers: 1` in `/harness-project policy limits` runs them one after the other.
+  `maxParallelReviewers: 1` in `/harness-setup policy limits` runs them one after the other.
 - Findings are merged by exact file, line, and message, and record which reviewers reported them. A
   pass is clean only when both reviewers are clean, blocked when either is blocked, and has no new
   findings only when neither reports one. A failed reviewer fails the pass after both finish; the
@@ -263,14 +266,14 @@ their declared efforts and contexts.
 
 ### Review Levels
 
-Every reviewer works at one level (owner decision, 2026-10-08):
+Every reviewer works at one level (owner decisions, 2026-10-08 and 2026-10-09):
 
 | Level | Reports | Full pass |
 | --- | --- | --- |
-| `critical` (default) | Only what blocks merging the change or completing its task: a defect or regression the change introduces; the change not achieving its purpose, such as the task's issue left unfixed; a security, permission, or data-loss risk; a broken public contract, or a caller, consumer, or configuration the change breaks; a crash or unhandled error on a realistic path; or a missing unit test the declared `unitTests` level calls for. Rated P1 or P2. | Reads the whole repository, but only to find what the change breaks or leaves inconsistent: callers, other copies of the changed logic, configuration, contracts, and tests |
+| `blocking` (default) | Only what blocks merging the change or completing its task: a defect or regression the change introduces; the change not achieving its purpose, such as the task's issue left unfixed; a security, permission, or data-loss risk; a broken public contract, or a caller, consumer, or configuration the change breaks; a crash or unhandled error on a realistic path; or a missing unit test the declared `unitTests` level calls for. Rated P1 or P2. | Reads the whole repository, but only to find what the change breaks or leaves inconsistent: callers, other copies of the changed logic, configuration, contracts, and tests |
 | `broad` | Every issue the reviewer can support with evidence, rated P1 (blocks merging), P2 (should be fixed), or P3 (minor): also edge cases, performance, maintainability such as duplicated or inconsistent logic, documentation that no longer matches the code, test gaps, and pre-existing issues | Audits the whole repository, including code the change does not touch |
 
-- Critical never reports style, naming, refactoring ideas, performance without a concrete failure,
+- Blocking never reports style, naming, refactoring ideas, performance without a concrete failure,
   speculative risks, or pre-existing issues the change neither causes nor depends on. A severe
   pre-existing security or data-loss issue noticed in passing goes in the reviewer's summary, not the
   findings, so it never starts a fix round.
@@ -278,23 +281,26 @@ Every reviewer works at one level (owner decision, 2026-10-08):
   finds nothing more. Findings must still be supported by evidence; broad is not permission to
   speculate.
 - `Review -ReviewLevel broad` selects broad for one standalone review; `/pr-review` passes its own
-  level, from a per-run option or its saved `reviewLevel`. Development runs always review at
-  `critical`, and the dispatcher rejects `-ReviewLevel` on other actions. Run records, reports, and
-  results show the level.
-- A standalone review compares only with earlier reviews at the same level, so a critical review never
+  level, from its `broad` action or its saved `reviewLevel`. `Dev -Id <task> -ReviewLevel broad`, from
+  `/harness-dev broad`, saves broad on that task, so its reviews and its unit tests run broad even after a
+  queued pickup; any other named development request returns the task to blocking. The dispatcher
+  rejects `-ReviewLevel` on other actions. Run records, reports, and results show the level.
+- The level was named `critical` until 2026-10-09. Saved settings, task levels, and run records that
+  say `critical` read as `blocking`.
+- A standalone review compares only with earlier reviews at the same level, so a blocking review never
   rechecks findings from a broad one. Reviews recorded before levels existed reported every finding and
   compare as `broad`.
-- The level is separate from `runner.criticalReview`, which only decides whether the panel's second
-  reviewer runs. The runtime provides interface `review-levels` 1; `harness-review` and `pr-review`
-  require it.
+- The level is separate from `runner.secondReviewer`, which only decides whether the panel's second
+  reviewer runs. The runtime provides interface `review-levels` 2; `harness-review`, `pr-review`, and
+  `harness-dev` require it.
 
 ## Folder Controllers and Coding Repositories
 
-The controller may be an ordinary folder without Git; initialize it through `/harness-project init` and keep
+The controller may be an ordinary folder without Git; create it from `/harness-setup` alone and keep
 its `.harness_sv` configuration, state, board, queues, pauses, and reports there. Register an existing
 local Git root with `Ref -Source <repository-path>`, then select its stable `R-*` ID through `Task`,
 `UpdateTask`, or `Dev -RepositoryRef <id>` (alias `-RepoRef`). Requirement `-Source` and coding
-`-RepositoryRef` are distinct; task matching follows `harness-work` (exact after meaning-preserving
+`-RepositoryRef` are distinct; task matching follows `harness-dev` (exact after meaning-preserving
 normalization, never fuzzy).
 
 ```powershell
@@ -328,7 +334,7 @@ serialized together.
 
 ### Shared Ownership
 
-The bundled ownership adapter uses the same-scope `skillvault-installation` helper, and participating
+The bundled ownership adapter uses the same-scope `skillvault-install` helper, and participating
 runtime manifests declare `ownershipProtocol: 1`. The user-wide registry defaults to
 `~/.copilot/skillvault/ownership`; `SKILLVAULT_OWNERSHIP_ROOT` selects a common root for isolated
 environments and fixtures, and all cooperating entrypoints must share it. This coordinates
@@ -381,15 +387,15 @@ harness skills locate this same dependency instead of duplicating storage and ex
 | `Task` | List tasks, add with requirement fields, or use `-FollowUpOf <completed-id>` for a linked follow-up; optional source/revision/kind/priority/risk and `-RepositoryRef` |
 | `UpdateTask` | Exact `-Id` and supplied fields; revised completed requirements create a linked task; never update an active task contract or retarget an allocated task |
 | `Ref` | List references, upsert `-Source`/`-Note` with optional task `-Id`, or remove exact `-RemoveId` |
-| `Dev` | Existing `-Id`, ad-hoc fields, or `-FollowUpOf`; shares task update/intake, then optional `-Mode now` or queue-only `next`; runs the development review loop |
-| `Review` | Review ahead/working changes with optional `-RepositoryRef`, `-Scope`, `-BaseRef`, `-SecurityReview`, and `-ReviewLevel critical\|broad` (default `critical`; see [Review Levels](#review-levels)); each pass uses the review panel, with one whole-repository Fresh pass when no new findings appear |
+| `Dev` | Existing `-Id`, ad-hoc fields, or `-FollowUpOf`; shares task update/intake, then optional `-Mode now` or queue-only `next`; runs the development review loop. A named request sets the task's review level: `-ReviewLevel broad` saves broad on it, otherwise blocking |
+| `Review` | Review ahead/working changes with optional `-RepositoryRef`, `-Scope`, `-BaseRef`, `-SecurityReview`, and `-ReviewLevel blocking\|broad` (default `blocking`; see [Review Levels](#review-levels)); each pass uses the review panel, with one whole-repository Fresh pass when no new findings appear |
 | `TestConfig` | Import explicit `-DefinitionPath` JSON declarations without executing commands |
 | `Test` | List declarations and `pendingDefinitions`, or run `-Flow` with optional `-TestEnvironment`, task `-Id`, and timer `-Scheduled` |
 | `MonitorConfig` | Preview a `-DefinitionPath` declaration; apply with explicit `-Apply`, human `-Actor`, and `-Reason` |
 | `Monitor` | Show saved monitors/proposals and `pendingDefinitions`, or check one `-MonitorName`, optionally timer `-Scheduled` |
 | `Monitor -AllMonitors` | Check every configured source, report per-source coverage, and fail closed on an incomplete aggregate |
 | `MonitorTask` | Preview an exact incident `-Id` proposal; explicit Apply/Actor/Reason accepts it as a manual-only investigation task |
-| `MonitorAuto` | Without `-MonitorName`, list every monitor's standing intake, worker, limits, last check, and worker tasks. With `-MonitorName` and `-Flow <worker>` (optional `-TestEnvironment`, `-MaxPerCheck`, `-MaxAttempts`, `-SetupExitCode`), preview turning its intake on, or apply with `-Apply -Actor -Reason`, which also sets `allowScheduled`; `-Off` removes the intake. Attended only; scheduling stays with `harness-timer` |
+| `MonitorAuto` | Without `-MonitorName`, list every monitor's standing intake, worker, limits, last check, and worker tasks. With `-MonitorName` and `-Flow <worker>` (optional `-TestEnvironment`, `-MaxPerCheck`, `-MaxAttempts`, `-SetupExitCode`), preview turning its intake on, or apply with `-Apply -Actor -Reason`, which also sets `allowScheduled`; `-Off` removes the intake. Attended only; scheduling stays with `harness-schedule` |
 | `Restrict` | Show policy; `-PolicyAction Declare -DefinitionPath <file>` previews a restriction replacement |
 | `Fallback` | Show policy/pauses; explicitly Declare, Pause, Stop, or Resume through `-PolicyAction` |
 | `Cycle` | Run the next eligible task and bounded pending human/resume work |
@@ -399,7 +405,7 @@ Task intake never starts execution; missing description, scope, or acceptance yi
 Priority 1 is highest and separate from risk. Timer pickup requires explicit `-AutoEligible`, Low risk,
 and Queued status; human queues keep their order without bypassing readiness, and unknown or high-risk
 work needs a reviewed narrower scope, not an automatic downgrade. Explicitly revised completed
-requirements create a linked `followUpOf` task as defined by `harness-work`, visible in task state and
+requirements create a linked `followUpOf` task as defined by `harness-dev`, visible in task state and
 the current-work CSV; the original completion, snapshot, and report stay unchanged.
 
 An ad-hoc `Dev` request is registered before execution. Without a mode it starts when idle or queues
@@ -411,7 +417,7 @@ work stays queued for another explicit or scheduled run.
 
 ## History Cleanup
 
-`/harness-project clean` owns history retention. Reuse the selected Root, show what would be pruned,
+`/harness-setup clean` deletes old run history, and `/harness-setup policy` owns its retention settings. Reuse the selected Root, show what would be pruned,
 and ask once ([Ask Once](#ask-once); it holds without an answer); a yes runs `-Apply`:
 
 ```powershell
@@ -419,11 +425,12 @@ and ask once ([Ask Once](#ask-once); it holds without an answer); a yes runs `-A
 & <harness-folder>/scripts/harness.ps1 -ProjectPath <selected-root> -Action Clean -Apply
 ```
 
-`/harness-project clean --policy <file>` shows a retention declaration (mapped to `-DefinitionPath`; relative
-paths resolve against Root) and asks once; a yes saves it, and without an answer nothing changes. Declaring policy runs no
+`/harness-setup policy set retention <file>` shows a retention declaration (mapped to `-Action Clean -DefinitionPath`; relative
+paths resolve against Root) and asks once; a yes saves it, and without an answer nothing changes. `policy list retention`
+reads the current settings from the plain `-Action Clean` preview. Declaring policy runs no
 cleanup and enables no maintenance, and cleanup selects one controller, not every registered project.
 Weekly maintenance calls the same `harness-maintenance.ps1` implementation; the timer chooses only
-when. `/harness-timer clean` handles stale schedules only.
+when. `/harness-schedule clean` handles stale schedules only.
 
 Defaults are **90d and 5,000 completed entries per harness**, across topics. Completion time, not file
 mtime, determines age, and the oldest eligible entries beyond either bound are pruned. For count-only,
@@ -456,7 +463,7 @@ and there is no backup retention policy or weekly backup cleanup.
 
 ## Restrictions and Fallback
 
-`harness-project` owns the limits and fallback schemas, defaults, situation/response tables, and
+`harness-setup` owns the limits and fallback schemas, defaults, situation/response tables, and
 examples. Policy changes preview until `-Apply` with a human `-Actor` and `-Reason`, replace only the
 selected policy object, require an idle runner with no unresolved active marker, and never clear an
 existing pause. During execution, actual timeouts pause the affected target, restriction mismatches
@@ -471,15 +478,15 @@ A topic command that changes saved harness state runs as one request, with no se
 command (owner decisions, 2026-10-08):
 
 1. **Act at once** when the request names exactly what to change, and show what changed:
-   `/harness-monitor accept <id>`, and `/harness-timer set` with its target and duration (`set
-   maintenance` needs none) and no Reuse or New choice, `disable <id>`, or `resume <id>`. Everything
+   `/harness-monitor accept <id>`, and a `/harness-schedule` target with its duration (`maintenance`
+   needs none) and no Reuse or New choice, or a target or id with `off` or `on`. Everything
    else, and any of these when something had to be drafted, resolved, or chosen, takes the next steps.
 2. Show what will change: the resolved target with its current and new values, or the drafted file.
 3. Ask once with the host's question tool: **Save now** or **Hold**, or the action's own words such as
    **Turn on**. A request that already says save, including `--apply`, is the answer; `--hold`, or
    asking to hold, keeps everything unchanged until the owner says save.
 4. With no answer, including a question tool that reports the owner unavailable:
-   - **Save after 1 minute** for monitor and test `declare`. They update a declaration and run nothing
+   - **Save after 1 minute** for a monitor declaration and test `declare`. They update a declaration and run nothing
      by themselves. First say in the reply that it saves in 1 minute unless told to hold, then wait
      1 minute and save if no other reply has arrived; the Reason notes that it was saved without an
      answer.
@@ -492,7 +499,7 @@ command (owner decisions, 2026-10-08):
 The requesting owner is the Actor and the request is the Reason. An explicit `pause` or `stop` applies
 at once, Root's move prompt keeps its Move default, and an unanswered Reuse or New choice changes
 nothing. The scripts keep their preview-without-`-Apply` behavior; this governs how topics ask. The
-`/harness-monitor` and `/harness-work test` lists show `pendingDefinitions`: files under
+`/harness-monitor` and `/harness-dev test` lists show `pendingDefinitions`: files under
 `definitions/` that differ from the saved declarations, such as held drafts.
 
 ## Reuse or New
@@ -525,7 +532,7 @@ and need no instance prompt.
 Schedules compare purpose as well as identity before registration, and repeated ticks reuse the saved
 choice without prompting or creating another timer. The user-wide PR-review timer remains a singleton
 for its whole watchlist, and this choice never duplicates it. The project timer implements the choice
-through `-InstanceMode`, as described in `harness-timer`; editing these skills creates no schedule.
+through `-InstanceMode`, as described in `harness-schedule`; editing these skills creates no schedule.
 
 ## Script Permissions and Agent Fallback
 
@@ -635,7 +642,8 @@ each further round is another pickup counted by `maxTasksPerCycle`.
 Tasks saved in the removed Critical phase resume at the Changes pass, and tasks saved at the separate
 Review phase run that pass alone.
 
-The developer prompt states the unit-test level from `testing.unitTests` (`critical` by default) and
+The developer prompt states the unit-test level from `testing.unitTests` (`blocking` by default, or
+`broad` for a task started with `/harness-dev broad`) and
 the tests the harness will run; reviewers report missing tests by the same level. Each task records
 `testsRun`, and `testsNote` says when no declared flow ran.
 
@@ -688,8 +696,9 @@ credentials out of the worker environment.
 
 ## Timers
 
-`harness-timer` owns schedule commands, cadence, instances, maintenance, and schedule migration; keep
-it beside `harness-runtime` in the same install scope. Bare `/harness-timer` lists only, and changes follow
+`harness-schedule` owns schedule commands, cadence, instances, maintenance, and schedule migration; keep
+it beside `harness-runtime` in the same install scope. `/harness-schedule` alone shows schedules and only
+offers to convert old SkillVault Windows tasks, and changes follow
 [Ask Once](#ask-once): one question, and nothing changes without an answer. One current-user heartbeat owns OS timer changes. Layout-2 project declarations live in
 `config/schedules.json`; progress and active claims live in `runtime/schedules.json` under
 `runtime/locks/schedules.lock`; the central registry and latest job receipts live in
@@ -709,7 +718,7 @@ history work to [History Cleanup](#history-cleanup).
 
 ## Test Flows
 
-`harness-work` owns `testing.environments`, `testing.flows`, `testing.afterDev`, `testing.afterReview`,
+`harness-dev` owns `testing.environments`, `testing.flows`, `testing.afterDev`, `testing.afterReview`,
 and `testing.unitTests`. The shared `harness-tests.ps1` executor stays in this bundle so manual tests,
 timers, and development tests behave the same. Configurations without `testing` keep their legacy
 validation commands, and initialization starts with empty test definitions. Declaring runs nothing.
@@ -725,7 +734,7 @@ run lock, so a busy run is reported, not interrupted or silently queued. Task-li
 saved workspace, allocate no worktree, and never complete development.
 
 The runtime provides `development-tests` interface 1 for these test stages and the unit-test level;
-`harness-work` and `harness-project` require it.
+`harness-dev` and `harness-setup` require it.
 
 ## Monitoring
 

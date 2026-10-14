@@ -1,0 +1,69 @@
+{
+  "name": "skillvault-author",
+  "title": "SkillVault Author",
+  "version": "4.0.0",
+  "status": "public",
+  "visibility": "public",
+  "kind": "agent",
+  "description": "[remove] Alone: the catalog. Text: create or change it. Author and maintain skill bundles and catalog entries in the SkillVault repository, not application source or installed copies. Shorthand: /sv-author. Overlaps with VS Code's agent-customization skill on writing SKILL.md files; use this one only for skills in the SkillVault repository and its catalog. Never installs; use skillvault-install to install the result.",
+  "tags": [
+    "skillvault",
+    "authoring",
+    "upsert",
+    "open-source",
+    "scaffold"
+  ],
+  "author": "wzlwit",
+  "license": "MIT",
+  "homepage": "https://github.com/wzlwit/skillvault",
+  "source": {
+    "repo": "skillvault",
+    "path": "skills/core/skillvault-author"
+  },
+  "install": {
+    "global": true,
+    "project": false,
+    "session": false,
+    "defaultScope": "global",
+    "globalPath": "~/.copilot/skills",
+    "strategy": "copy"
+  },
+  "inputs": [
+    {
+      "name": "action",
+      "required": false,
+      "type": "string",
+      "enum": [
+        "remove"
+      ],
+      "description": "Menu word: remove. Alone, the skill confirms a target clear from the conversation or shows the catalog and asks; other text creates or changes that skill. Operation-specific approvals still apply."
+    },
+    {
+      "name": "nameOrUrl",
+      "required": false,
+      "type": "string",
+      "description": "Existing repository skill name to edit, new skill name to create from scratch, or source URL; an external skill URL is added as a reference by default. A name does not automatically import an installed copy. Omit it to see the catalog or confirm a target clear from the conversation."
+    },
+    {
+      "name": "repoPath",
+      "required": false,
+      "type": "string",
+      "description": "Explicit SkillVault checkout, named in plain words such as in C:\\path\\skillvault. Relative to the working project; must pass Git-root and origin verification. Does not select the installation destination."
+    }
+  ],
+  "outputs": [
+    "upsert-summary",
+    "validation-summary"
+  ],
+  "dependencies": [
+    "git",
+    "skillvault-install"
+  ],
+  "examples": [
+    "/skillvault-author",
+    "/skillvault-author a skill that ranks PR comments",
+    "/skillvault-author add a timeout to harness-review",
+    "/skillvault-author remove old-skill"
+  ],
+  "readme": "SKILL.md"
+}

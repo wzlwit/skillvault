@@ -1,5 +1,5 @@
 $ErrorActionPreference = 'Stop'
-$scriptPath = Join-Path $PSScriptRoot '..\skills\core\skillvault-installation\scripts\skill-inventory.ps1'
+$scriptPath = Join-Path $PSScriptRoot '..\skills\core\skillvault-install\scripts\skill-inventory.ps1'
 $root = Join-Path ([System.IO.Path]::GetTempPath()) ('skillvault-inventory-' + [guid]::NewGuid().ToString('N'))
 $savedFixtureOwnershipRoot = $env:SKILLVAULT_OWNERSHIP_ROOT
 $fixtureOwnership = $root + '-ownership'
@@ -7,7 +7,7 @@ $env:SKILLVAULT_OWNERSHIP_ROOT = $fixtureOwnership
 $savedFixtureTransactionRoot = $env:SKILLVAULT_TRANSACTION_ROOT
 $fixtureRecovery = $root + '-recovery'
 $env:SKILLVAULT_TRANSACTION_ROOT = $fixtureRecovery
-. (Join-Path $PSScriptRoot '../skills/core/skillvault-installation/scripts/skill-ownership.ps1')
+. (Join-Path $PSScriptRoot '../skills/core/skillvault-install/scripts/skill-ownership.ps1')
 
 try {
     foreach ($name in @('alpha', 'beta', 'gamma', 'session', '.skillvault-backup-fixture')) {
@@ -24,7 +24,11 @@ try {
         @{ Selector = '1,2-3'; Count = 3 },
         @{ Selector = '1,alpha'; Count = 1 },
         @{ Selector = 'BETA'; Count = 1 },
-        @{ Selector = 'no-match'; Count = 0 }
+        @{ Selector = 'no-match'; Count = 0 },
+        @{ Selector = 'alph'; Count = 0 },
+        @{ Selector = 'a*'; Count = 1 },
+        @{ Selector = '*a'; Count = 3 },
+        @{ Selector = '*MM*'; Count = 1 }
     )) {
         if (@(Resolve-Selector -Entries $inventory -SelectorText $case.Selector).Count -ne $case.Count) { throw "Incorrect selector result: $($case.Selector)" }
     }
@@ -40,7 +44,7 @@ try {
     finally { Exit-SkillOwnership $activeRuntime }
     & $scriptPath -Scope global -GlobalSkillsPath $root -Uninstall -Selector 'alpha' -Force | Out-Null
     if ((Test-Path -LiteralPath (Join-Path $root 'alpha')) -or -not (Test-Path -LiteralPath (Join-Path $root 'beta'))) { throw 'Uninstall changed the wrong skill.' }
-    . (Join-Path $PSScriptRoot '../skills/core/skillvault-installation/scripts/skill-files.ps1')
+    . (Join-Path $PSScriptRoot '../skills/core/skillvault-install/scripts/skill-files.ps1')
     if (Test-Path -LiteralPath $fixtureRecovery) { throw 'A successful uninstall retained an obsolete copy.' }
     & $scriptPath -Scope global -GlobalSkillsPath $root -Uninstall -Selector 'session' -Force | Out-Null
     if (-not (Test-Path -LiteralPath (Join-Path $root 'session'))) { throw 'Global uninstall removed session-only storage.' }

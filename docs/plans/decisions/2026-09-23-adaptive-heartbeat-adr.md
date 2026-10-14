@@ -64,9 +64,9 @@ new helpers, reconfigure existing Windows tasks, or change unrelated schedules.
 
 ## Implementation and Verification
 
-The [scheduler](../../../skills/planning/harness-timer/scripts/harness-scheduler.ps1)
+The [scheduler](../../../skills/planning/harness-schedule/scripts/harness-scheduler.ps1)
 owns baseline validation, persistence, adaptive timing, and tick-local deferred IDs. The existing
-[timer dispatcher](../../../skills/planning/harness-timer/scripts/harness-timer.ps1)
+[timer dispatcher](../../../skills/planning/harness-schedule/scripts/harness-schedule.ps1)
 exposes settings and synchronizes applied cleanup. The
 [scheduler fixture](../../../scripts/test-harness-scheduler.ps1) covers baseline defaults and
 overrides, old-state reads, preview purity, unchanged job timing, shortest intervals versus exact
@@ -74,5 +74,5 @@ deadlines, active results, disabled/calendar jobs, blocked rechecks, and release
 Existing maintenance, migration, receipt, no-overlap, and real local test-adapter checks remain.
 The fixtures use temporary state and fake Windows registration/AI workers, not live tasks.
 
-Operational guidance is in the [scheduler contract](../../../skills/planning/harness-timer/references/scheduler.md).
+Operational guidance is in the [scheduler contract](../../../skills/planning/harness-schedule/references/scheduler.md).
 Installed-copy rollout and live synchronization are separate, unrequested operations.

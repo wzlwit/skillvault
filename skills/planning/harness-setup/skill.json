@@ -1,0 +1,76 @@
+{
+  "name": "harness-setup",
+  "title": "Harness Setup",
+  "version": "3.0.0",
+  "requiredInterfaces": {
+    "harness-runtime": {
+      "development-tests": 1
+    }
+  },
+  "kind": "agent",
+  "description": "[root|clean|policy] Alone: set up or status. Text: add a source, or ask. Set up and steer a harness project: create it or convert an old layout, show status, select or move its root, register sources and coding repositories, brief a task, delete old run history, and set limits, failure handling, retention, and pause, stop, and resume. Shorthand: /hn-setup. Briefings overlap with handoff; harness-schedule schedules maintenance.",
+  "tags": [
+    "harness",
+    "initialization",
+    "planning",
+    "references",
+    "restrictions",
+    "budgets"
+  ],
+  "author": "wzlwit",
+  "source": {
+    "repo": "skillvault",
+    "path": "skills/planning/harness-setup"
+  },
+  "install": {
+    "global": true,
+    "project": true,
+    "session": true,
+    "defaultScope": "global",
+    "strategy": "copy"
+  },
+  "dependencies": [
+    "harness-runtime",
+    "rules",
+    "skillvault-install",
+    "architecture-decision-records",
+    "graphify",
+    "grilling"
+  ],
+  "readme": "SKILL.md",
+  "inputs": [
+    {
+      "name": "action",
+      "required": false,
+      "type": "string",
+      "enum": [
+        "root",
+        "clean",
+        "policy"
+      ],
+      "description": "Menu word: root, clean, or policy. Alone, the skill sets up the harness or shows its status; other text adds a source, briefs a task, or answers from the briefing. Operation-specific approvals still apply."
+    },
+    {
+      "name": "path",
+      "required": false,
+      "type": "string",
+      "description": "Existing parent/controller path for root. Omission only displays locations. Select a valid new path, then prompt to move an initialized previous harness; Move is the default, including no answer. Explicit answers or user instructions override it. A skipped or failed move keeps the new root selected. Invalid paths do not change Root."
+    },
+    {
+      "name": "current-file",
+      "required": false,
+      "type": "string",
+      "description": "Canonical current-<project>.csv filename. Creating a harness accepts it for a new controller; with root it shows an explicit rename through Board and asks once. Existing files change only after a yes."
+    }
+  ],
+  "examples": [
+    "/harness-setup",
+    "/harness-setup https://contoso.example/spec.md design spec",
+    "/harness-setup T-012",
+    "/harness-setup remove R-003",
+    "/harness-setup root C:/repos/project",
+    "/harness-setup clean",
+    "/harness-setup policy list limits",
+    "/harness-setup policy set retention retention.json"
+  ]
+}

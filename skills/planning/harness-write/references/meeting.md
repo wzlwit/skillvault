@@ -9,9 +9,9 @@ Use with the [shared workflow](comms.md).
    zones are optional unless the user says otherwise. Show the split and let the user adjust it.
 2. Fetch free/busy for everyone, including the organizer: `POST /me/calendar/getSchedule` with
    `Schedules`, `StartTime` and `EndTime` in the organizer's time zone, and
-   `AvailabilityViewInterval: 30`, over one or two weeks. Save the JSON response as a
-   [working file](comms.md#save-drafts-safely), because it can include other people's meeting
-   subjects and locations, and delete it once a slot is chosen.
+   `AvailabilityViewInterval: 30`, over the window the request names, otherwise one or two weeks.
+   Save the JSON response as a [working file](comms.md#save-drafts-safely), because it can include
+   other people's meeting subjects and locations, and delete it once a slot is chosen.
 3. Rank the slots with the bundled [script](../scripts/rank-slots.ps1) (PowerShell 5.1 or 7). Pass the
    same start, time zone, and interval that were sent to getSchedule:
 
@@ -27,8 +27,8 @@ Use with the [shared workflow](comms.md).
    by optional attendees who are free. Working hours and a 12:00 to 13:00 lunch are checked in each
    attendee's own time zone (`-LunchStart`, `-LunchEnd`, `-NoLunch`). Weekends are skipped unless
    `-Days` names them. Use `-IgnoreOrganizerBusyAt` for the organizer's own hold that is being moved,
-   `-DurationMinutes` for longer meetings, `-SortBy time` for the earliest slots, and `-Format json`
-   for further processing.
+   `-DurationMinutes` for meetings longer or shorter than the default 30 minutes, `-SortBy time` for
+   the earliest slots, and `-Format json` for further processing.
 4. Exclude public holidays. Check the calendar's holiday entries for the organizer, and ask about
    holidays in attendees' regions when they are not visible. Pass them with `-ExcludeDates`.
 5. Present a comparison table: the slot in the organizer's time zone and each attendee time zone,

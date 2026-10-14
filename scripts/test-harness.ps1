@@ -144,7 +144,7 @@ try {
         Assert-HarnessFailure { Set-HarnessCurrentFileName $paths 'current-active.csv' -Apply } 'active work'
         $null = Update-HarnessState $paths { param($saved); $saved.active = $null }
         $reference = Set-HarnessReference $paths -Source $renamed.destination -Note 'Canonical board link'
-        $decisionHelper = Join-Path $PSScriptRoot '../skills/planning/harness-decision/scripts/harness-decision.ps1'
+        $decisionHelper = Join-Path $PSScriptRoot '../skills/planning/harness-decide/scripts/harness-decide.ps1'
         $decision = & $decisionHelper -ProjectPath $project -Action Record -Question 'Which board?' -Choice 'Canonical' -Owner Fixture -Reference $renamed.destination | ConvertFrom-Json
         $linkedRename = Set-HarnessCurrentFileName $paths 'current-linked.csv' -Apply
         if (((Read-HarnessState $paths).references | Where-Object id -CEQ $reference.id).source -cne $linkedRename.destination -or
@@ -198,7 +198,7 @@ try {
         Write-HarnessViews $paths $loaded (Read-HarnessState $paths)
         if (-not (Test-Path (Get-HarnessCurrentPath $paths $loaded))) { throw 'The declarative layout did not separate board views.' }
         if (-not (Test-Path (Join-Path $paths.Control 'README.md'))) { throw 'The new controller lacks its navigation entry point.' }
-        $decisionHelper = Join-Path $PSScriptRoot '../skills/planning/harness-decision/scripts/harness-decision.ps1'
+        $decisionHelper = Join-Path $PSScriptRoot '../skills/planning/harness-decide/scripts/harness-decide.ps1'
         $null = & $decisionHelper -ProjectPath $fixtureRoot -Action Record -Question 'Layout fixture?' -Choice 'Accepted' -Owner Fixture
         if (-not (Test-Path (Join-Path $paths.Control 'board/decisions.csv'))) { throw 'Decision records ignored the declarative board location.' }
         $standaloneRoot = Join-Path $fixtureRoot 'standalone-decisions'
@@ -594,7 +594,7 @@ try {
     $config.runner.reasoningEffort = 'high'
     $config.runner.maxMinutes = 2
     $config.runner.maxCredits = 1
-    $config.runner.criticalReview = $true
+    $config.runner.secondReviewer = $true
     $config.runner.maxTasksPerCycle = 3
     $config.runner.workspaceMode = 'current'
     $config.runner.allowedTools = @('write')
@@ -693,14 +693,17 @@ try {
     if ($script:agentInput -match 'outsideTaskScope') { throw 'Standalone Full review asked for task-scope labels without a tracked task.' }
     $null = Invoke-HarnessAgent $paths $config $task $fixtureRoot Review 'fixture-snapshot'
     if ($script:agentInput -notmatch 'in the requested change set\.' -or $script:agentInput -match 'changeScope identifies the first pass' -or $script:agentArguments -notcontains '--deny-tool=shell') { throw 'Ordinary review widened its scope or permissions.' }
-    if ($script:agentInput -notmatch 'Review level critical: find only what blocks merging' -or $script:agentInput -notmatch 'Rate each P1 or P2' -or $script:agentInput -match 'Review level broad') { throw 'A review without a level did not default to critical.' }
-    if ($freshPrompt -notmatch 'Review level critical' -or $freshPrompt -notmatch 'At level critical, use that coverage to find what the change breaks' -or $freshPrompt -match 'At level broad') { throw 'A critical Full pass did not focus on what the change breaks.' }
+    if ($script:agentInput -notmatch 'Review level blocking: find only what blocks merging' -or $script:agentInput -notmatch 'Rate each P1 or P2' -or $script:agentInput -match 'Review level broad') { throw 'A review without a level did not default to blocking.' }
+    if ($freshPrompt -notmatch 'Review level blocking' -or $freshPrompt -notmatch 'At level blocking, use that coverage to find what the change breaks' -or $freshPrompt -match 'At level broad') { throw 'A blocking Full pass did not focus on what the change breaks.' }
     $broadTask = $task | Select-Object *
     $broadTask | Add-Member -NotePropertyName reviewLevel -NotePropertyValue 'broad' -Force
     $null = Invoke-HarnessAgent $paths $config $broadTask $fixtureRoot Fresh 'fixture-snapshot'
-    if ($script:agentInput -notmatch 'Review level broad: find every issue' -or $script:agentInput -notmatch 'At level broad, audit the whole repository' -or $script:agentInput -match 'Review level critical') { throw 'A broad Full pass did not ask for every issue across the repository.' }
+    if ($script:agentInput -notmatch 'Review level broad: find every issue' -or $script:agentInput -notmatch 'At level broad, audit the whole repository' -or $script:agentInput -match 'Review level blocking') { throw 'A broad Full pass did not ask for every issue across the repository.' }
     $broadTask.reviewLevel = 'deep'
-    Assert-HarnessFailure { Invoke-HarnessAgent $paths $config $broadTask $fixtureRoot Review 'fixture-snapshot' } 'critical or broad'
+    Assert-HarnessFailure { Invoke-HarnessAgent $paths $config $broadTask $fixtureRoot Review 'fixture-snapshot' } 'blocking or broad'
+    $broadTask.reviewLevel = 'critical'
+    $null = Invoke-HarnessAgent $paths $config $broadTask $fixtureRoot Review 'fixture-snapshot'
+    if ($script:agentInput -notmatch 'Review level blocking: find only what blocks merging') { throw 'A task saved with the old critical level did not review at blocking.' }
     Assert-HarnessFailure { Invoke-HarnessAgent $paths $config $task $fixtureRoot Critical 'fixture-snapshot' } 'Critical'
     $null = Invoke-HarnessAgent $paths $config $task $fixtureRoot Review 'fixture-snapshot' -Reviewer ([pscustomobject]@{ family = 'gpt'; model = 'gpt-fixture'; effort = 'xhigh'; context = 'long_context' })
     $modelIndex = [Array]::IndexOf($script:agentArguments, '--model')
@@ -828,12 +831,14 @@ try {
     $securityContext.content | Set-Content -LiteralPath $securityContext.path -Encoding UTF8
     Assert-HarnessFailure { & $dispatcher -ProjectPath $fixtureRoot -Action Status -SecurityReview } 'only to the independent Review'
     Assert-HarnessFailure { & $dispatcher -ProjectPath $fixtureRoot -Action Status -ReviewLevel broad } 'ReviewLevel applies only'
-    if ($review.reviewLevel -cne 'critical' -or [IO.File]::ReadAllText($review.report) -notmatch 'Review level: critical' -or @($script:reviewTaskLevels | Where-Object { $_ -cne 'critical' }).Count) { throw 'Development and standalone reviews did not default to the critical level.' }
+    if ($review.reviewLevel -cne 'blocking' -or [IO.File]::ReadAllText($review.report) -notmatch 'Review level: blocking' -or @($script:reviewTaskLevels | Where-Object { $_ -cne 'blocking' }).Count) { throw 'Development and standalone reviews did not default to the blocking level.' }
     $broadReview = Invoke-HarnessReview $paths -ReviewLevel broad
     $broadRun = @((Read-HarnessState $paths).runs | Where-Object { $_.report -ceq $broadReview.report })
-    if ($broadReview.reviewLevel -cne 'broad' -or $broadReview.passes -ne 2 -or $broadReview.previousReport -or $broadRun.Count -ne 1 -or $broadRun[0].review.reviewLevel -cne 'broad' -or ($script:reviewTaskLevels[-2..-1] -join ',') -cne 'broad,broad') { throw 'A broad review reused critical history or did not reach both passes and the run record.' }
-    $criticalAgain = Invoke-HarnessReview $paths
-    if ($criticalAgain.previousReport -cne $review.report) { throw 'A critical review did not compare with the earlier critical review, or compared with the broad one.' }
+    if ($broadReview.reviewLevel -cne 'broad' -or $broadReview.passes -ne 2 -or $broadReview.previousReport -or $broadRun.Count -ne 1 -or $broadRun[0].review.reviewLevel -cne 'broad' -or ($script:reviewTaskLevels[-2..-1] -join ',') -cne 'broad,broad') { throw 'A broad review reused blocking history or did not reach both passes and the run record.' }
+    # Reviews recorded before the 2026-10-09 rename say critical and still compare as blocking.
+    $null = Update-HarnessState $paths { param($saved); foreach ($run in @($saved.runs | Where-Object { $_.report -ceq $review.report })) { $run.review.reviewLevel = 'critical' } }
+    $blockingAgain = Invoke-HarnessReview $paths
+    if ($blockingAgain.previousReport -cne $review.report) { throw 'A blocking review did not compare with the earlier blocking or critical review, or compared with the broad one.' }
     $reviewFinding = [pscustomobject]@{ file = 'fixture.txt'; line = 1; severity = 'P2'; message = 'Supported fixture defect' }
     function Invoke-HarnessAgent {
         param($Paths, $Config, $Task, $Workspace, $Phase, $Snapshot)
@@ -1036,7 +1041,7 @@ try {
         $customRunnerPanel = Get-HarnessReviewPanel (Resolve-HarnessRunnerConfig $customRunnerConfig ([pscustomobject]@{ restrictions = [pscustomobject]@{ allowedModels = @('gpt-custom-runner', 'claude-opus-5.5') } }))
         if (($customRunnerPanel.reviewers.model -join ',') -cne 'gpt-custom-runner,claude-opus-5.5') { throw 'When restrictions allow no listed GPT model, the allowed runner model did not review.' }
         $singleBundledConfig = $weakRunnerConfig | ConvertTo-Json -Depth 20 | ConvertFrom-Json
-        $singleBundledConfig.runner.criticalReview = $false
+        $singleBundledConfig.runner.secondReviewer = $false
         $singleBundledPanel = Get-HarnessReviewPanel (Resolve-HarnessRunnerConfig $singleBundledConfig)
         if (@($singleBundledPanel.reviewers).Count -ne 1 -or $singleBundledPanel.reviewers[0].model -cne 'gpt-6-astra' -or $singleBundledPanel.reviewers[0].effort -cne 'max') { throw 'One reviewer did not use the strongest listed model at max effort.' }
         $narrowedPanel = Get-HarnessReviewPanel (Resolve-HarnessRunnerConfig $config ([pscustomobject]@{ restrictions = [pscustomobject]@{ allowedModels = @('fixture-model', 'gpt-6-sol', 'claude-opus-5') } }))
@@ -1065,9 +1070,14 @@ try {
     if (@($sequentialPanel.reviewers).Count -ne 2 -or $sequentialPanel.parallel) { throw 'maxParallelReviewers 1 did not run both reviewers one after the other.' }
     Assert-HarnessFailure { Assert-HarnessPolicyDefinition restrictions ([pscustomobject]@{ maxParallelReviewers = 1.5 }) } 'positive integer'
     $singleReviewerConfig = $config | ConvertTo-Json -Depth 20 | ConvertFrom-Json
-    $singleReviewerConfig.runner.criticalReview = $false
+    $singleReviewerConfig.runner.secondReviewer = $false
     $singlePanel = Get-HarnessReviewPanel (Resolve-HarnessRunnerConfig $singleReviewerConfig ([pscustomobject]@{ profiles = $panelProfiles }))
-    if (@($singlePanel.reviewers).Count -ne 1 -or $singlePanel.reviewers[0].model -cne 'gpt-fixture-2' -or $singlePanel.note -notmatch 'criticalReview is false') { throw 'An explicit criticalReview false did not keep one reviewer, the strongest allowed one.' }
+    if (@($singlePanel.reviewers).Count -ne 1 -or $singlePanel.reviewers[0].model -cne 'gpt-fixture-2' -or $singlePanel.note -notmatch 'secondReviewer is false') { throw 'An explicit secondReviewer false did not keep one reviewer, the strongest allowed one.' }
+    $legacyReviewerConfig = $config | ConvertTo-Json -Depth 20 | ConvertFrom-Json
+    $legacyReviewerConfig.runner.PSObject.Properties.Remove('secondReviewer')
+    $legacyReviewerConfig.runner | Add-Member -NotePropertyName criticalReview -NotePropertyValue $false -Force
+    $legacyPanel = Get-HarnessReviewPanel (Resolve-HarnessRunnerConfig $legacyReviewerConfig ([pscustomobject]@{ profiles = $panelProfiles }))
+    if (@($legacyPanel.reviewers).Count -ne 1) { throw 'A saved runner.criticalReview false no longer kept one reviewer.' }
     $prPanel = Get-HarnessReviewPanel (Resolve-HarnessRunnerConfig $config ([pscustomobject]@{ profiles = $panelProfiles })) -RunnerProfile ([pscustomobject]@{ model = 'pr-model' })
     if (@($prPanel.reviewers).Count -ne 1 -or $prPanel.note) { throw 'PR review gained a second reviewer.' }
     $explicitOpusConfig = $config | ConvertTo-Json -Depth 20 | ConvertFrom-Json
@@ -1321,11 +1331,26 @@ try {
         $developPrompt = [string](New-HarnessAgentLaunch -Paths $paths -Config $testLoopConfig -Task $repeatSaved -Workspace $fixtureRoot -Phase Develop -Snapshot 'prompt-snapshot').Process.InputText
         $reviewPrompt = [string](New-HarnessAgentLaunch -Paths $paths -Config $testLoopConfig -Task $repeatSaved -Workspace $fixtureRoot -Phase Review -Snapshot 'prompt-snapshot').Process.InputText
         if ($developPrompt -notmatch 'Unit tests: cover new and changed behavior' -or $developPrompt -notmatch 'Findings with source "test"' -or $developPrompt -notmatch 'never weaken, skip, or delete a test' -or $developPrompt -notmatch 'while the first review runs: unit \(local\)' -or $developPrompt -notmatch 'after a clean review: ppe-smoke \(local\)' -or $reviewPrompt -notmatch 'Report missing unit-test coverage') { throw 'The broad unit-test level, the planned tests, or the failed-test instructions did not reach the prompts.' }
-        $criticalConfig = $testLoopConfig | ConvertTo-Json -Depth 20 | ConvertFrom-Json
-        $criticalConfig.testing.PSObject.Properties.Remove('unitTests')
-        $criticalDevelop = [string](New-HarnessAgentLaunch -Paths $paths -Config $criticalConfig -Task $repeatSaved -Workspace $fixtureRoot -Phase Develop -Snapshot 'prompt-snapshot').Process.InputText
-        $criticalReview = [string](New-HarnessAgentLaunch -Paths $paths -Config $criticalConfig -Task $repeatSaved -Workspace $fixtureRoot -Phase Fresh -Snapshot 'prompt-snapshot').Process.InputText
-        if ($criticalDevelop -notmatch 'only where they protect critical behavior' -or $criticalDevelop -match 'cover new and changed behavior' -or $criticalReview -notmatch 'only when it leaves critical behavior unprotected') { throw 'The default critical unit-test level did not reach the developer and reviewers.' }
+        $blockingConfig = $testLoopConfig | ConvertTo-Json -Depth 20 | ConvertFrom-Json
+        $blockingConfig.testing.PSObject.Properties.Remove('unitTests')
+        $blockingDevelop = [string](New-HarnessAgentLaunch -Paths $paths -Config $blockingConfig -Task $repeatSaved -Workspace $fixtureRoot -Phase Develop -Snapshot 'prompt-snapshot').Process.InputText
+        $blockingReview = [string](New-HarnessAgentLaunch -Paths $paths -Config $blockingConfig -Task $repeatSaved -Workspace $fixtureRoot -Phase Fresh -Snapshot 'prompt-snapshot').Process.InputText
+        if ($blockingDevelop -notmatch 'only where they protect the defect being fixed' -or $blockingDevelop -match 'cover new and changed behavior' -or $blockingReview -notmatch 'only when it leaves the defect being fixed') { throw 'The default blocking unit-test level did not reach the developer and reviewers.' }
+        $blockingConfig.testing | Add-Member -NotePropertyName unitTests -NotePropertyValue 'critical' -Force
+        if ((Get-HarnessUnitTestLevel $blockingConfig) -cne 'blocking') { throw 'A saved critical unit-test level was not read as blocking.' }
+        $blockingConfig.testing.PSObject.Properties.Remove('unitTests')
+        # /hn-dev broad raises one task's reviews and unit tests; the project setting stays blocking.
+        $broadDevTask = $repeatSaved | Select-Object *
+        $broadDevTask | Add-Member -NotePropertyName reviewLevel -NotePropertyValue 'broad' -Force
+        $broadDevelop = [string](New-HarnessAgentLaunch -Paths $paths -Config $blockingConfig -Task $broadDevTask -Workspace $fixtureRoot -Phase Develop -Snapshot 'prompt-snapshot').Process.InputText
+        $broadDevReview = [string](New-HarnessAgentLaunch -Paths $paths -Config $blockingConfig -Task $broadDevTask -Workspace $fixtureRoot -Phase Review -Snapshot 'prompt-snapshot').Process.InputText
+        if ($broadDevelop -notmatch 'Unit tests: cover new and changed behavior' -or $broadDevReview -notmatch 'Review level broad: find every issue' -or $broadDevReview -notmatch 'Report missing unit-test coverage') { throw 'A broad development task did not raise its review and unit-test levels.' }
+        $levelTask = Add-HarnessTask -Paths $paths -Title 'Broad level' -Description 'Queued broad work keeps its level' -Scope 'level.txt' -Acceptance 'Runs at broad' -Kind fix -Risk Low
+        $null = Queue-HarnessTask $paths $levelTask.id 'next' -ReviewLevel broad
+        if ((Get-HarnessTask (Read-HarnessState $paths) $levelTask.id).reviewLevel -cne 'broad') { throw 'Queued broad work lost its review level.' }
+        $null = Queue-HarnessTask $paths $levelTask.id 'next' -ReviewLevel blocking
+        if ((Get-HarnessTask (Read-HarnessState $paths) $levelTask.id).PSObject.Properties.Match('reviewLevel').Count) { throw 'A plain development request did not return the task to blocking.' }
+        $null = Update-HarnessState $paths { param($saved); $saved.nextQueue = @($saved.nextQueue | Where-Object { $_ -cne $levelTask.id }); (Get-HarnessTask $saved $levelTask.id).status = 'Cancelled' }
         $testLoop.Calls.Clear()
         $testLoop.Fail = @{ smoke = 2 }
         $smokeTask = Add-HarnessTask -Paths $paths -Title 'After-review failure' -Description 'The shared smoke test keeps failing' -Scope 'smoke.txt' -Acceptance 'Stop for a decision' -Kind fix -Risk Low
@@ -1409,7 +1434,7 @@ try {
         Set-Item Function:Invoke-HarnessAgent -Value $savedAgentFunction
         Set-Item Function:Invoke-HarnessProcess -Value $savedProcessFunction
     }
-    $timerPath = Join-Path $PSScriptRoot '..\skills\planning\harness-timer\scripts\harness-project-timer.ps1'
+    $timerPath = Join-Path $PSScriptRoot '..\skills\planning\harness-schedule\scripts\harness-project-timer.ps1'
     $timerState = [pscustomobject]@{ Tasks = @(); Calls = (New-Object 'System.Collections.Generic.List[string]'); EnabledName = ''; DisabledName = '' }
     function Get-ScheduledTask { param($TaskPath); $timerState.Tasks }
     function New-ScheduledTaskAction { param($Execute, $Argument); [pscustomobject]@{ Execute = $Execute; Arguments = $Argument } }
@@ -1450,7 +1475,7 @@ try {
     if ($updatedE2E.operation -cne 'Update' -or $updatedE2E.taskName -cne $createPreview.taskName -or $timerState.Tasks.Count -ne 1 -or $timerState.Tasks[0].Trigger.Interval.TotalHours -ne 24) { throw 'Changing the E2E/dev interval created a duplicate or failed to update its existing timer.' }
     $updatedE2E = & $timerPath -ProjectPath $fixtureRoot -Topic e2e -IntervalDay 0.5 -InstanceMode Reuse -Apply | ConvertFrom-Json
     if ($updatedE2E.operation -cne 'Update' -or $timerState.Tasks.Count -ne 1) { throw 'Explicit E2E did not upsert the same default/dev schedule.' }
-    $config.runner.criticalReview = $false
+    $config.runner.secondReviewer = $false
     Write-HarnessJson $paths.Config $config
     $reviewPreview = & $timerPath -ProjectPath $fixtureRoot -Topic review -IntervalDay 1 | ConvertFrom-Json
     if ($reviewPreview.runnerAction -cne 'Review' -or $reviewPreview.taskName -ceq $defaultPreview.taskName) { throw 'Review topic did not select its independent review timer.' }

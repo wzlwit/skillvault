@@ -1,10 +1,10 @@
 ---
 name: pr-publish
-description: "[preview|upsert] Create or update your own pull request with a current vs. to-be scenario table. A new PR gets a short description in the style of the GitHub Pull Requests extension's create-pull-request skill and opens ready for review; an existing PR keeps its description and gets only the table. Overlaps with that skill on opening PRs and uses its VS Code tool when available, otherwise gh; pr-review reviews PRs instead. Never pushes or writes to a PR without an explicit ask."
+description: "[list] Alone: publish this branch's PR. Text: adjust it, like show me first. Create or update your own pull request with a current vs. to-be scenario table. A new PR gets a short description in the style of the GitHub Pull Requests extension's create-pull-request skill and opens ready for review; an existing PR keeps its description and gets only the table. Overlaps with that skill on opening PRs and uses its VS Code tool when available, otherwise gh; pr-review reviews PRs instead. Never pushes or writes to a PR without an explicit ask."
 metadata:
   author: wzlwit
-  version: "2.0.0"
-argument-hint: "[list|preview|upsert] [<arguments>...]"
+  version: "3.0.0"
+argument-hint: "[list] [<adjustment or PR>]"
 ---
 
 # PR Publish
@@ -14,29 +14,33 @@ GitHub or an authenticated GitHub Enterprise host, and adds a current vs. to-be 
 writes a new PR's description the way the `create-pull-request` skill does, and owns the table, its
 evidence, and the fallbacks when editor tools fail.
 
-Action matching applies only to the explicit action token: exact canonical actions and documented
-aliases take precedence; otherwise exactly 3 or 4 leading letters may select one canonical action
-in this topic. Multiple matches: show choices and ask; no match: show help. Ambiguous or unknown
-tokens execute nothing. Do not prefix-match aliases, skill names, targets, paths, options, or other
-arguments. Case handling, natural-language routing, full names in menus and registrations, the
-read-only bare default, and each procedure's arguments, permissions, and confirmations stay
-unchanged; abbreviation adds no confirmation. This is conversational routing, not script argument parsing.
+Menu words are the actions in brackets. A first word that is a menu word, or exactly 3 or 4 leading letters
+of one, selects that action when the rest of the request fits it; otherwise ask. Several matches show choices
+and run nothing. Anything else is text, and no input at all is the skill alone. Matching never applies to
+skill names, targets, paths, or other arguments, and never changes an action's arguments, permissions, or
+confirmations. This is conversational routing, not script argument parsing.
 
-| Action | Procedure |
+| Input | What happens |
 | --- | --- |
-| `list` | Show the branch, its PR, and whether its description has the table |
-| `preview` | [Write the title, description, and table](./references/description.md) locally and check them |
-| `upsert` | [Create the PR, or add or refresh its table](./references/publish.md) |
+| Alone | [Publishes](./references/publish.md) the current branch's PR: creates it with a short description and the table, or adds or refreshes only the table of an existing PR |
+| Text | [Publishes](./references/publish.md) with plain-word adjustments: "show me first", "push", "as draft", "ready", "rewrite the description", or a PR URL or number to target |
+| `list` | Shows the branch, its PR, and whether its description has the table; writes nothing |
 
-- Bare invocation or `list` runs the bundled [helper](./scripts/pr-publish.ps1) with
-  `-Action Status`, then `-Action Check` on an open PR's description. It writes nothing. `help` or
-  an unknown action shows choices.
-- Before `preview` or `upsert`, read the [description rules](./references/description.md). Before
-  `upsert`, also read [publishing](./references/publish.md). `upsert` always previews first.
-- The actions take no options. A new PR opens ready for review. An existing PR keeps its
-  description, including GitHub's Copilot summary, and its draft state; `upsert` changes only the
-  table. For anything else, such as a draft, a ready PR, or a rewritten description, ask in plain
-  words.
+- **Alone** acts at once, because the target is fixed: the current branch's PR. Before writing, read
+  the [description rules](./references/description.md) and [publishing](./references/publish.md).
+  It writes the title, description, and table locally, checks them, and shows them, then publishes.
+  Its report names the text uses in one line, then ends with the PR link.
+- **Text** adjusts the same run. "show me first" stops after the local files, checks, and preview,
+  before `-Apply` and any remote write. "push" pushes the branch first. "as draft" makes the PR a
+  draft (`gh pr ready <number> --undo`), and "ready" marks it ready for review
+  (`gh pr ready <number>`). "rewrite the description" also replaces an existing PR's description
+  (`-BodyFile`), not just its table. A PR URL or number names the PR to update; it must be the open
+  PR of the current branch, or of a local checkout the request names (`-RepositoryPath`).
+- **`list`** runs the bundled [helper](./scripts/pr-publish.ps1) with `-Action Status`, then
+  `-Action Check` on an open PR's description, and writes nothing.
+- The skill takes no options; plain words adjust a run. A new PR opens ready for review unless the
+  request says "as draft". An existing PR keeps its description, including GitHub's Copilot summary,
+  and its draft state; publishing changes only the table unless the request asks for more.
 - Requires PowerShell 7, Git, and `gh` signed in to the PR's host. The VS Code tool and the
   `create-pull-request` skill are optional.
 
@@ -53,7 +57,8 @@ unchanged; abbreviation adds no confirmation. This is conversational routing, no
 - Never make a PR a draft on your own, whatever is pending; list pending items in the description.
 - Change existing description text only when the user asks. The helper backs up the current title
   and description before replacing them.
-- A remote write needs an explicit ask: `upsert`, or a request such as "push and create a PR".
-  Push only when asked; force-push only with approval of that exact update. Never comment, reply,
-  resolve threads, request reviewers, set labels, retarget, or merge.
+- A remote write needs an explicit ask: `/pr-publish` itself, unless the request says "show me
+  first", or a request such as "push and create a PR". Push only when asked; force-push only with
+  approval of that exact update. Never comment, reply, resolve threads, request reviewers, set
+  labels, retarget, or merge.
 - After every write, read the PR back and compare it with what was sent. End with the PR link.

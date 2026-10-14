@@ -8,7 +8,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-. (Join-Path $PSScriptRoot '..\skills\core\skillvault-installation\scripts\skill-files.ps1')
+. (Join-Path $PSScriptRoot '..\skills\core\skillvault-install\scripts\skill-files.ps1')
 
 $canonicalSourceRepo = 'https://github.com/wzlwit/skillvault'
 $sourceRepo = 'https://github.com/wzlwit/skillvault.git'
@@ -24,7 +24,10 @@ $legacySkillEntries = @(
     'skillvault-sync:skills/public/skillvault-sync',
     'ai-principles:skills/public/core/ai-principles',
     'rule-update:skills/public/core/rule-update',
-    'skillvault-refresh:skills/core/skillvault-refresh'
+    'skillvault-refresh:skills/core/skillvault-refresh',
+    'skillvault-installation:skills/core/skillvault-installation',
+    'skillvault-discovery:skills/core/skillvault-discovery',
+    'schedule-manager:skills/system/schedule-manager'
 )
 
 function Get-SkillInstallMetadata {

@@ -1,8 +1,8 @@
-$ownershipHelper = Join-Path $PSScriptRoot '../../skillvault-installation/scripts/skill-ownership.ps1'
+$ownershipHelper = Join-Path $PSScriptRoot '../../skillvault-install/scripts/skill-ownership.ps1'
 if (-not (Test-Path -LiteralPath $ownershipHelper -PathType Leaf)) {
-    $ownershipHelper = Join-Path $PSScriptRoot '../../../core/skillvault-installation/scripts/skill-ownership.ps1'
+    $ownershipHelper = Join-Path $PSScriptRoot '../../../core/skillvault-install/scripts/skill-ownership.ps1'
 }
-if (-not (Test-Path -LiteralPath $ownershipHelper -PathType Leaf)) { throw 'Install the matching skillvault-installation ownership helper beside harness before execution.' }
+if (-not (Test-Path -LiteralPath $ownershipHelper -PathType Leaf)) { throw 'Install the matching skillvault-install ownership helper beside harness before execution.' }
 . $ownershipHelper
 
 function Enter-HarnessOwnership {
@@ -23,7 +23,7 @@ function Enter-HarnessOwnership {
         }
         $resources += [pscustomobject]@{ kind = 'checkout'; path = $checkout; mode = $Mode; snapshot = $identity }
     }
-    if (-not (Get-Command Enter-SkillRuntimeOwnership).Parameters.ContainsKey('InterfaceVersion')) { throw 'Incompatible runtime helper. Update skillvault-installation and harness together before execution; compatibility interface v1 is required.' }
+    if (-not (Get-Command Enter-SkillRuntimeOwnership).Parameters.ContainsKey('InterfaceVersion')) { throw 'Incompatible runtime helper. Update skillvault-install and harness together before execution; compatibility interface v1 is required.' }
     Enter-SkillRuntimeOwnership -SkillPath (Split-Path -Parent $PSScriptRoot) -Resources $resources -Owner ([pscustomobject]@{ controller = $Paths.Project; role = $Role; task = $TaskId }) -InterfaceVersion 1
 }
 

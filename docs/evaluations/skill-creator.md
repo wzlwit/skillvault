@@ -35,7 +35,7 @@ absent. The public directory identified Anthropic's canonical bundle, whose actu
 license, and helpers were then inspected at the revision above. Popularity and registry audit badges
 were not treated as quality or safety proof.
 
-The [current authoring workflow](../../skills/core/skillvault-authoring/references/upsert.md)
+The [current authoring workflow](../../skills/core/skillvault-author/references/upsert.md)
 already covers canonical sources, overlap, document-to-procedure mapping, source coverage, permission
 reuse, sharing rights, and experience-driven checks against intended and nearby valid cases. Those
 are not new improvement proposals. The inspected VS Code `agent-customization` entrypoint supplies
@@ -146,13 +146,13 @@ skill were imported.
 
 ## Applied Locally
 
-[Comparative outcome checks](../../skills/core/skillvault-authoring/references/upsert.md#comparative-outcome-checks)
+[Comparative outcome checks](../../skills/core/skillvault-author/references/upsert.md#comparative-outcome-checks)
 now offer an optional, scope-approved comparison with no skill or a fixed earlier revision. Baselines
 are preserved before editing, prompts and input fixtures are matched, and version/run outputs stay
 separate. Actual artifact evidence determines outcomes; failed execution remains Unverified. Missing
 metrics stay unavailable without invalidating independently verified task results.
 
-[Trigger regression checks](../../skills/core/skillvault-authoring/references/upsert.md#trigger-regression-checks)
+[Trigger regression checks](../../skills/core/skillvault-author/references/upsert.md#trigger-regression-checks)
 now cover explicit/implicit positive requests and nearby requests owned by another skill. The result
 table distinguishes observed selection failures from failed, timed-out, blocked, or unobservable
 runs. Trigger correctness remains separate from output quality, and fresh final cases must not have

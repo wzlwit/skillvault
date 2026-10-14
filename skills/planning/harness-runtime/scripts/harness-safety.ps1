@@ -223,7 +223,7 @@ function Get-HarnessPolicyView {
             maxParallelReviewers = Get-HarnessExecutionLimit $executionConfig maxParallelReviewers $null
         }
         testBudgets = @(foreach ($flow in $config.testing.flows) { [pscustomobject]@{ flow = $flow.name; maxMinutes = Get-HarnessExecutionLimit $config maxProcessMinutes $flow.maxMinutes } })
-        unitTests = $(if (Get-Command Get-HarnessUnitTestLevel -ErrorAction SilentlyContinue) { Get-HarnessUnitTestLevel $config } else { 'critical' })
+        unitTests = $(if (Get-Command Get-HarnessUnitTestLevel -ErrorAction SilentlyContinue) { Get-HarnessUnitTestLevel $config } else { 'blocking' })
     }
 }
 
