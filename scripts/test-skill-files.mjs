@@ -1234,8 +1234,8 @@ test('command examples use current menu words and show no removed option or sepa
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
   const catalog = parseJson(fs.readFileSync(path.join(root, 'catalog.json'), 'utf8'), 'catalog.json');
   // A request that says --apply still answers the one question, but menus and examples never show it.
-  // Options removed on 2026-10-08 and 2026-10-09; plain words or menu words replace them.
-  const removed = /(?<![\w-])(?:--(?:apply|critical|security|again|limit|include-drafts|recent|max|attempts|setup-exit|all|delete-stale|retire|now|current-file|view|monitors|design-only|chat-only|topics|broad|exact|repo|audience|output|workspace|at|thread|type|required|optional|days|within|duration|policy)|check all)(?![\w-])/;
+  // Options removed on 2026-10-08, 2026-10-09, and 2026-10-14; plain words or menu words replace them.
+  const removed = /(?<![\w-])(?:--(?:apply|critical|security|again|limit|include-drafts|recent|max|attempts|setup-exit|all|delete-stale|retire|now|current-file|view|monitors|design-only|chat-only|topics|broad|exact|repo|audience|output|workspace|at|thread|type|required|optional|days|within|duration|policy|repo-ref|follow-up|task|hold|worker|every|new|instance|reuse)|check all)(?![\w-])/;
   // Actions that alone or text took over on 2026-10-09 (bare, text, and menu convention ADR).
   const retiredFirstWords = {
     'harness-setup': ['list', 'init', 'migrate', 'context', 'link', 'loc'],
@@ -1625,9 +1625,9 @@ test('documented action menus match each topic argument-hint', () => {
     const full = path.join(directory, item.name);
     return item.isDirectory() ? markdown(full) : item.name.endsWith('.md') ? [full] : [];
   }) : [];
-  // Decision records and evaluations keep the menus they decided on; current docs and bundles must not drift.
+  // Decision records, evaluations, and review records keep the menus they decided on; current docs and bundles must not drift.
   const files = [path.join(root, 'README.md'), path.join(root, 'AGENTS.md'),
-    ...markdown(path.join(root, 'docs')).filter(file => !/[\\/]docs[\\/](?:plans[\\/]decisions|evaluations)[\\/]/.test(file)),
+    ...markdown(path.join(root, 'docs')).filter(file => !/[\\/]docs[\\/](?:plans[\\/]decisions|evaluations|reviews)[\\/]/.test(file)),
     ...markdown(path.join(root, 'skills')), ...markdown(path.join(root, 'templates'))];
   checked = 0;
   assert.deepEqual(files.flatMap(file => stale(path.relative(root, file), fs.readFileSync(file, 'utf8'))), []);

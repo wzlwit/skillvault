@@ -3,7 +3,7 @@ name: harness-schedule
 description: "[clean] Alone: all schedules. Text: set one, like pr 1d or pr off. Manage logical schedules under one user-wide heartbeat for projects, PR review, refresh, and maintenance: set, turn off or on, convert old SkillVault Windows tasks, and clean up stale schedules. Shorthand: /hn-schedule. Overlaps with schedule-manage on Windows task administration; owns SkillVault schedules. Maintenance delegates history cleanup to harness-setup clean."
 metadata:
   author: wzlwit
-  version: "4.0.0"
+  version: "5.0.0"
 argument-hint: "[clean] [<target> <duration|off|on>]"
 ---
 
@@ -42,7 +42,7 @@ confirmations. This is conversational routing, not script argument parsing.
   `<target or id> on` resumes the saved cadence after the prerequisite and recovery checks
   (`-Action Resume -Id <id>`). A target alone shows it (`-Action List -Target <target>`), and a
   target that matches several schedules asks which one. Project targets keep their topics and
-  instance names, such as `project 1d review --new second-review`.
+  instance names, such as `project 1d review as new second-review`.
 - Every change follows Ask Once in the `harness-runtime` guide. A request that names exactly what to
   change acts at once and reports the result: a target with its duration (`maintenance` needs none)
   when no matching schedule needs a Reuse or New choice, and `off` or `on` for one exact schedule.

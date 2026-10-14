@@ -3,7 +3,7 @@ name: skillvault-install
 description: "[list|update|uninstall|clean|refresh] Alone: the catalog. Text: install it. Manage installed SkillVault copies and keep them current: install by exact name or a * pattern, list installed copies, update them from the local checkout, uninstall, clean up copies that load twice or conflict, and refresh from upstream. Shorthand: /sv-install. Clean shows overlaps, which skillvault-discover can evaluate; refresh scheduling delegates to harness-schedule. Edits no SkillVault source or application code except refresh's adaptation merges; skillvault-author owns skill authoring."
 metadata:
   author: wzlwit
-  version: "4.0.0"
+  version: "4.0.1"
 argument-hint: "[list|update|uninstall|clean|refresh] [<skill or pattern*>]"
 ---
 

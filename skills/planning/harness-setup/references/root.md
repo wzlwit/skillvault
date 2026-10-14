@@ -163,7 +163,8 @@ materially changes the displayed scope, resolve that difference before applying.
 honor host permissions and declared working roots. This operation never widens an allowlist.
 Scheduled ticks cannot initiate this root-change workflow; the unanswered-prompt default applies
 only to a user-requested root change. The helper rejects scheduled use, active or unrecovered work, occupied/nested destinations, linked
-filesystem entries, embedded repositories, and unregistered worktrees. Scheduled controllers
+filesystem entries (symbolic links and junctions; cloud-synced folders such as OneDrive are not links),
+embedded repositories, and unregistered worktrees. Scheduled controllers
 require the sibling `harness-schedule` helper and a consistent registry. Enabled legacy OS timers
 must first be turned off or converted through `/harness-schedule`. External runner-context files retain their
 original path and must have unambiguous absolute paths or an explicit original policy root.

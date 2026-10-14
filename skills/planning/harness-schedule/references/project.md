@@ -63,20 +63,20 @@ new ID per invocation.
 | Named `monitor <name>` | `SkillVault Harness <project-id> Monitor <name>` |
 | Custom topic or legacy monitor flow | `SkillVault Harness <project-id> Topic <topic> <flow> <environment>` |
 
-`--new <name>` maps to `-InstanceMode New -InstanceName <name>` and appends ` Instance <name>`
+Saying `as new <name>` maps to `-InstanceMode New -InstanceName <name>` and appends ` Instance <name>`
 to that topic's task name. New is create-only: an existing case-insensitive name is a conflict,
 not permission to replace it. Use a stable name containing letters, digits, dots, underscores,
 or hyphens, starting with a letter/digit. Confirm its purpose; never generate random duplicate names.
 
-`--reuse` maps to `-InstanceMode Reuse`. Omit `--instance` for the singleton, or supply
-`--instance <name>` (`-InstanceName`) to reuse a named instance. Reuse selects exactly that owned
+Saying `reuse` maps to `-InstanceMode Reuse`. Name no instance for the singleton, or say
+`instance <name>` (`-InstanceName`) to reuse a named instance. Reuse selects exactly that owned
 schedule and preserves its saved cadence/context when omitted. A missing named instance cannot
 be reused. When no matching schedules exist, the initial call can create the unnamed singleton.
 Matching Set requests without InstanceMode return `NeedsInstanceChoice` in preview and reject
 Apply before mutation. Status includes an `instances` list so the session can present the choice.
 
 The interval, current time, and display prose are not part of this identity. For example,
-`/harness-schedule project 1d` followed by `/harness-schedule project 12h dev --reuse` updates the
+`/harness-schedule project 1d` followed by `/harness-schedule project 12h dev reuse` updates the
 same E2E schedule to every 12 hours.
 Explicit and default environments resolve to the same declared name; topic/name casing does not
 create another target. Existing task names are matched without case sensitivity and retained.
@@ -187,8 +187,8 @@ older requests, still means days:
 /harness-schedule project 1d
 /harness-schedule project 12h dev
 /harness-schedule project 1d review
-/harness-schedule project 1d review --new second-review
-/harness-schedule project 12h review --reuse --instance second-review
+/harness-schedule project 1d review as new second-review
+/harness-schedule project 12h review reuse instance second-review
 /harness-schedule project 12h test smoke localPPE
 /harness-schedule project 12h monitor service-health
 /harness-schedule project 6h monitor health local
@@ -197,7 +197,7 @@ older requests, still means days:
 /harness-schedule project monitor service-health
 /harness-schedule project monitor health local off
 /harness-schedule project test smoke localPPE on
-/harness-schedule project review --instance second-review
+/harness-schedule project review instance second-review
 ```
 
 A target alone, `off`, and `on` address the same topic/flow/environment and optional instance name

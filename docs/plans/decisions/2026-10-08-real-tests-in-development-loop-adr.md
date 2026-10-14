@@ -1,7 +1,9 @@
 # ADR: Real Tests in the Development Loop
 
 - Date: 2026-10-08
-- Status: Accepted by delegation; owner review pending. The owner proposed running real tests after
+- Status: Accepted. The owner confirmed it on 2026-10-14 in the
+  [whole-project review](./2026-10-14-whole-project-review-adr.md); it was first accepted by delegation.
+  The owner proposed running real tests after
   development (local, local PPE, PPE online), keeping unit tests to critical and realistic cases by
   default, and showing test methods in project context, and asked whether real tests belong before or
   after review. A grilling round put eight questions; the owner was not available to answer, and the

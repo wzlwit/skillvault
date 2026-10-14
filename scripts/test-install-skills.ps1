@@ -244,6 +244,31 @@ try {
     Clear-SkillOwnership -Id $lease.id -ConfirmStopped -Root $ownershipRoot
     $lease = Enter-SkillOwnership -Resources @($checkout) -Owner $secondOwner -Root $ownershipRoot
     Exit-SkillOwnership $lease
+    $deadReader = Enter-SkillOwnership -Resources @([pscustomobject]@{ kind = 'checkout'; path = $repositoryRoot; mode = 'Read'; snapshot = 'snapshot-one' }) -Owner $firstOwner -Root $ownershipRoot
+    Exit-SkillOwnership $deadReader -Uncertain
+    try { $null = Enter-SkillOwnership -Resources @($checkout) -Owner $secondOwner -Root $ownershipRoot; throw 'A writer passed a stopped reader.' }
+    catch { Assert-True ($_.Exception.Data['SkillOwnershipStatus'] -ceq 'NeedsRecovery') 'a writer still needs recovery after a stopped reader' }
+    $lease = Enter-SkillOwnership -Resources @([pscustomobject]@{ kind = 'checkout'; path = $repositoryRoot; mode = 'Read'; snapshot = 'snapshot-two' }) -Owner $secondOwner -Root $ownershipRoot
+    Exit-SkillOwnership $lease
+    Assert-True (-not (Test-Path -LiteralPath (Join-Path $ownershipRoot ($deadReader.id + '.json')))) 'a later reader passes and removes a stopped read-only claim'
+    $runtimeRead = [pscustomobject]@{ kind = 'runtime'; path = $projectRoot; mode = 'Read' }
+    $deadMixed = Enter-SkillOwnership -Resources @($runtimeRead, $checkout) -Owner $firstOwner -Root $ownershipRoot
+    Exit-SkillOwnership $deadMixed -Uncertain
+    $lease = Enter-SkillOwnership -Resources @($runtimeRead) -Owner $secondOwner -Root $ownershipRoot
+    Exit-SkillOwnership $lease
+    Assert-True (Test-Path -LiteralPath (Join-Path $ownershipRoot ($deadMixed.id + '.json'))) 'a stopped claim that holds a write stays as recovery evidence'
+    try { $null = Enter-SkillOwnership -Resources @([pscustomobject]@{ kind = 'checkout'; path = $repositoryRoot; mode = 'Read'; snapshot = 'snapshot-two' }) -Owner $secondOwner -Root $ownershipRoot; throw 'A reader passed a stopped writer.' }
+    catch { Assert-True ($_.Exception.Data['SkillOwnershipStatus'] -ceq 'NeedsRecovery') 'a stopped write still needs recovery before anyone reads it' }
+    Clear-SkillOwnership -Id $deadMixed.id -ConfirmStopped -Root $ownershipRoot
+    $linkTarget = Join-Path $fixtureRoot 'link-target'
+    New-Item -ItemType Directory -Path $linkTarget | Out-Null
+    $linkPath = Join-Path $fixtureRoot 'linked-checkout'
+    New-Item -ItemType $(if ($IsWindows) { 'Junction' } else { 'SymbolicLink' }) -Path $linkPath -Target $linkTarget | Out-Null
+    try { Assert-True (Test-Throws { ConvertTo-SkillOwnershipResource ([pscustomobject]@{ kind = 'checkout'; path = (Join-Path $linkPath 'repo'); mode = 'Write' }) }) 'ownership refuses paths through a junction or symbolic link' }
+    finally { Remove-Item -LiteralPath $linkPath -Force }
+    function Get-Item { param([string]$LiteralPath, [switch]$Force) [pscustomobject]@{ Attributes = [IO.FileAttributes]'Directory, ReparsePoint'; LinkType = $null; LinkTarget = $null } }
+    try { $null = ConvertTo-SkillOwnershipResource ([pscustomobject]@{ kind = 'checkout'; path = $linkTarget; mode = 'Write' }) }
+    finally { Remove-Item -LiteralPath Function:Get-Item }
     $lease = Enter-SkillOwnership -Resources @($checkout) -Owner $firstOwner -Root $ownershipRoot
     $registryFunction = (Get-Command Enter-SkillOwnershipRegistry).ScriptBlock
     function Enter-SkillOwnershipRegistry { throw 'Injected registry release failure' }

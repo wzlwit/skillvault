@@ -36,8 +36,8 @@ Use `/harness-setup clean` for old run history and `/harness-setup policy set re
 retention settings; the installed harness runtime guide's History Cleanup section owns that contract.
 
 Project target arguments retain `-Topic e2e|dev|review|test|<declared-topic>`, `-TestFlow`,
-`-TestEnvironment`, and `-MonitorName`. `--new <name>` maps to `-InstanceMode New -InstanceName`,
-and `--reuse` to `-InstanceMode Reuse`. Confirm **Reuse (singleton) or New?** for matching
+`-TestEnvironment`, and `-MonitorName`. Saying `as new <name>` maps to `-InstanceMode New -InstanceName`,
+and `reuse` to `-InstanceMode Reuse`. Confirm **Reuse (singleton) or New?** for matching
 schedules; unanswered choices create nothing. New requires a distinct stable name. PR and refresh
 remain singleton logical targets, not per-watch or per-repository schedules.
 

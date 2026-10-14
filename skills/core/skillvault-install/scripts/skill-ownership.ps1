@@ -23,7 +23,8 @@ function ConvertTo-SkillOwnershipResource {
     while ($parent) {
         if (Test-Path -LiteralPath $parent) {
             $item = Get-Item -LiteralPath $parent -Force
-            if ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) { throw "Ownership path crosses a linked filesystem entry: $parent" }
+            # Cloud-synced folders such as OneDrive are reparse points but not links.
+            if ($item.LinkTarget -or $item.LinkType -in @('SymbolicLink', 'Junction')) { throw "Ownership path crosses a linked filesystem entry: $parent" }
         }
         $parent = Split-Path -Parent $parent
     }
@@ -89,19 +90,33 @@ function Enter-SkillOwnership {
     $id = [guid]::NewGuid().ToString('N')
     try {
         foreach ($claim in @(Read-SkillOwnershipClaims $Root)) {
-            foreach ($requested in $resources) {
+            $overlaps = @(foreach ($requested in $resources) {
                 foreach ($held in $claim.resources) {
-                    if ($held.kind -cne $requested.kind -or $held.path -cne $requested.path) { continue }
-                    $ownerText = $claim.owner | ConvertTo-Json -Compress -Depth 6
-                    if (-not (Test-SkillOwnershipClaimActive $Root $claim)) {
-                        throw (New-SkillOwnershipFailure NeedsRecovery "Ownership requires recovery for $($requested.path); owner: $ownerText; claim: $($claim.id)." $claim.owner)
-                    }
-                    if ($held.mode -ceq 'Read' -and $requested.mode -ceq 'Read' -and
-                        ($requested.kind -ceq 'runtime' -or $held.snapshot -ceq $requested.snapshot)) { continue }
-                    $failure = New-SkillOwnershipFailure Busy "Resource is busy: $($requested.path); owner: $ownerText; claim: $($claim.id)." $claim.owner
-                    $failure.Data['SkillOwnershipProcessId'] = $claim.processId
-                    throw $failure
+                    if ($held.kind -ceq $requested.kind -and $held.path -ceq $requested.path) { [pscustomobject]@{ requested = $requested; held = $held } }
                 }
+            })
+            if ($overlaps.Count -eq 0) { continue }
+            $ownerText = $claim.owner | ConvertTo-Json -Compress -Depth 6
+            if (-not (Test-SkillOwnershipClaimActive $Root $claim)) {
+                # A stopped reader left nothing partial behind, so a later reader passes it; a stopped writer needs recovery.
+                $conflict = @($overlaps | Where-Object { $_.held.mode -cne 'Read' -or $_.requested.mode -cne 'Read' })
+                if ($conflict.Count) {
+                    throw (New-SkillOwnershipFailure NeedsRecovery "Ownership requires recovery for $($conflict[0].requested.path); owner: $ownerText; claim: $($claim.id)." $claim.owner)
+                }
+                if (-not @($claim.resources | Where-Object { $_.mode -cne 'Read' }).Count) {
+                    foreach ($extension in @('.json', '.lock')) {
+                        $path = Join-Path $Root ($claim.id + $extension)
+                        if (Test-Path -LiteralPath $path) { Remove-Item -LiteralPath $path -ErrorAction SilentlyContinue }
+                    }
+                }
+                continue
+            }
+            foreach ($pair in $overlaps) {
+                if ($pair.held.mode -ceq 'Read' -and $pair.requested.mode -ceq 'Read' -and
+                    ($pair.requested.kind -ceq 'runtime' -or $pair.held.snapshot -ceq $pair.requested.snapshot)) { continue }
+                $failure = New-SkillOwnershipFailure Busy "Resource is busy: $($pair.requested.path); owner: $ownerText; claim: $($claim.id)." $claim.owner
+                $failure.Data['SkillOwnershipProcessId'] = $claim.processId
+                throw $failure
             }
         }
         New-Item -ItemType Directory -Path $Root -Force | Out-Null

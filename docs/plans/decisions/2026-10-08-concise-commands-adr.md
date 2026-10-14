@@ -8,6 +8,12 @@
   `--repo` and the `harness-write` inputs become plain words, and `--exact` gives way to exact-or-wildcard
   selectors; see the [bare, text, and menu convention ADR](./2026-10-09-bare-text-menu-convention-adr.md).
   The rule in decision 1 stands.
+- Superseded in part 2026-10-14: the rest of decision 4's kept options become plain words too:
+  `--worker` and `--every` become `worker <flow>` and `every <duration>`, `--hold` becomes `hold`,
+  `--repo-ref <id>` becomes naming the `R-*` reference, `--follow-up <id>` becomes `follow-up of <id>`,
+  `--task <id>` becomes `for <id>`, and `--new`, `--reuse`, and `--instance` become `as new <name>`,
+  `reuse`, and `instance <name>`. `--apply` stays a compatibility answer. See the
+  [whole-project review ADR](./2026-10-14-whole-project-review-adr.md).
 - Decision owner: Zhaolong Wang
 - Scope: The options that users type for SkillVault's own skills, and how summaries describe them.
 

@@ -38,7 +38,7 @@ executor's exit-code semantics. Do not turn every repeated health observation in
 
 `/harness-dev test declare <JSON-file>` saves a declaration through the command below. It first shows
 what the file adds or changes against the current declarations and asks to save; it saves on a yes or
-after 1 minute without an answer, and `--hold`, or asking to hold, saves nothing until you say save
+after 1 minute without an answer, and asking to `hold` saves nothing until you say save
 (Ask Once in the runtime guide):
 
 ```powershell
@@ -66,7 +66,7 @@ changes runner/model settings.
 - `/harness-dev test run <flow> [environment]` calls the shared script with `-Action Test -Flow <flow>`
   and optional `-TestEnvironment <environment>`. Omitted environment uses the flow's declared
   default, never a guessed fallback.
-- Optional `--task <task-id>` maps to `-Id <task-id>`: use its saved workspace when present and
+- Naming a task, as in `for <task-id>`, maps to `-Id <task-id>`: use its saved workspace when present and
   link evidence to that task. If the task selects a repository reference but has no workspace yet,
   test that local repository checkout without allocating a development worktree. Revalidate the
   active reference and saved-worktree ownership. With no task/repository selection, test the

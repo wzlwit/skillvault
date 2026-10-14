@@ -1,6 +1,6 @@
 # Harness Layout Investigation
 
-> Topic and command names in this record were updated to the current topics on 2026-10-07; see the [old-name retirement ADR](../docs/plans/decisions/2026-10-07-retire-old-names-adr.md).
+> Topic and command names in this record were updated to the current topics on 2026-10-07; see the [old-name retirement ADR](../plans/decisions/2026-10-07-retire-old-names-adr.md).
 
 - Date: 2026-09-18
 - Scope: Suspected rollback of the agreed topic/action skill layout.
@@ -14,8 +14,8 @@ The findings below describe the pre-cleanup evidence. The recovery outcome follo
 
 The agreed contract is `/harness-<topic> <action>`, with `/harness-project` for root/init/context.
 `/hn-*` is conversational shorthand, not a second registered family. The current
-[catalog](../catalog.json), [agent notes](../AGENTS.md), and
-[topic plan](../docs/plans/2026-09-16-topic-skill-refactor.md) still specify that contract.
+[catalog](../../catalog.json), [agent notes](../../AGENTS.md), and
+[topic plan](../plans/2026-09-16-topic-skill-refactor.md) still specify that contract.
 
 All 11 cataloged harness bundles were compared byte-for-byte with their corresponding
 project-installed copies: every comparison passed. The current topic/action and Root
@@ -24,13 +24,13 @@ the obsolete folders shown in Explorer.
 
 However, 25 files remain under these 13 retired source directories:
 
-They held the former context, decision, fallback, init, location, management, reference, report-creation, restriction, and root commands, plus three shorthand wrappers. The [topic consolidation ADR](../docs/plans/decisions/2026-10-07-harness-topic-consolidation-adr.md) lists the current topic or action for each.
+They held the former context, decision, fallback, init, location, management, reference, report-creation, restriction, and root commands, plus three shorthand wrappers. The [topic consolidation ADR](../plans/decisions/2026-10-07-harness-topic-consolidation-adr.md) lists the current topic or action for each.
 
 These are not an intentionally supported compatibility layer. Some are intermediate
 wrappers, while others contain older instruction text or partial resources. For example,
 the archived init wrapper forwards to a shorthand management wrapper, and the archived
 management entry advertises `loc|init|context|status|help`. The current
-[development topic](../skills/planning/harness-dev/SKILL.md) uses `list|run|queue`.
+[development topic](../../skills/planning/harness-dev/SKILL.md) uses `list|run|queue`.
 Keeping these parallel source trees violates the repository's agreed layout and contributes
 to the existing repository-wide validation failures.
 
@@ -78,12 +78,12 @@ The current conversation `a105743a-7ff7-46eb-b242-871d42f57068` retains the rele
 Separate design work remains unfinished, not rolled back:
 
 - Q2 selected whole-repository coverage for the fresh review pass. The
-  [current worker prompt](../skills/planning/harness-runtime/scripts/harness-runner.ps1)
+  [current worker prompt](../../skills/planning/harness-runtime/scripts/harness-runner.ps1)
   still limits that pass to the selected change set; implementation was not started during grilling.
 - Q3 verified that completion means validation/review in the assigned workspace, not integration;
   final design confirmation remained pending.
 - Q4 discussed normalized exact matching. The
-  [current intake matcher](../skills/planning/harness-runtime/scripts/harness-store.ps1)
+  [current intake matcher](../../skills/planning/harness-runtime/scripts/harness-store.ps1)
   still compares source, scope, and repository reference case-sensitively.
 - Q5 linked follow-up tasks remained a proposal. No acceptance is inferred from adjacent requests.
 

@@ -15,7 +15,7 @@ Defaults to global availability, with explicit project installation supported. I
 `/handoff` writes a note using the explicit destination
 or established project handoff/documentation location; standalone work can use OS temporary storage.
 It works without harness initialization. When a harness is present, it reuses context and evidence;
-`/harness-setup policy fallback` still owns actual execution controls. Suggested next actions are not automatic resume.
+`/harness-setup policy set fallback` still owns actual execution controls. Suggested next actions are not automatic resume.
 
 The bundle includes no scripts, hooks, or upstream plugin setup. Installing it creates no handoff
 note and changes no runtime state. Original author: Matt Pocock; curator: wzlwit;

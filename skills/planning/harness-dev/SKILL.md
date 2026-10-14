@@ -3,7 +3,7 @@ name: harness-dev
 description: "[upsert|queue|sprint|test|broad] Alone: the board. Text: develop it. Record, queue, and develop tasks with the two-reviewer review loop, run goal-based sprints, and declare or run reusable tests; broad raises one task's reviews and unit tests. Shorthand: /hn-dev. Overlaps with harness-monitor on intake and checks, harness-review on code review, and harness-write on report implementation; sprints can draft status through harness-write."
 metadata:
   author: wzlwit
-  version: "3.0.0"
+  version: "4.0.0"
 argument-hint: "[upsert|queue|sprint|test|broad] [<task or request>]"
 ---
 
@@ -40,8 +40,8 @@ The same rule selects a word inside the `test` group.
   when idle and queues it when busy. A plain request is recorded through the same intake as `upsert`,
   then started or queued; there is no second task registry. `<id> now` adds `-Mode now`, a
   cooperative checkpoint request that never kills the running task. A request that revises completed
-  work can name `--follow-up <id>` (`-FollowUpOf`), and a new task can name `--repo-ref <id>` for its
-  coding repository (`-RepositoryRef`). A request for status or help shows the alone view; text that
+  work can say `follow-up of <id>` (`-FollowUpOf`), and a new task can name a registered repository
+  reference such as `R-001` for its coding repository (`-RepositoryRef`). A request for status or help shows the alone view; text that
   names no task and describes no work asks first and creates nothing.
 - `upsert` owns task records, identity, and readiness. No intake route starts execution or grants
   automatic eligibility. Keep requirement Source separate from the coding repository.

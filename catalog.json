@@ -69,13 +69,13 @@
     "name": "harness-dev",
     "description": "[upsert|queue|sprint|test|broad] Alone: the board. Text: develop it. Record, queue, and develop tasks with the two-reviewer review loop, run goal-based sprints, and declare or run reusable tests; broad raises one task's reviews and unit tests. Shorthand: /hn-dev. Overlaps with harness-monitor on intake and checks, harness-review on code review, and harness-write on report implementation; sprints can draft status through harness-write.",
     "path": "skills/planning/harness-dev",
-    "version": "3.0.0"
+    "version": "4.0.0"
   },
   {
     "name": "harness-monitor",
     "description": "[accept|auto] Alone: last results. Text: check one, or a new link. Monitor work across approved source adapters, including ADO and documents, and numeric health observations: assess relevance, verify status with AI model auto, reconcile evidence, and propose ranked tasks; auto follows a source up through an approved local-only worker flow. Shorthand: /hn-monitor. Overlaps with harness-dev on intake and checks, kpi-dashboard on metric contracts, harness-write on status and owner evidence, and dri on incidents; preserves deferred work and never launches development.",
     "path": "skills/planning/harness-monitor",
-    "version": "3.0.0"
+    "version": "4.0.0"
   },
   {
     "name": "harness-review",
@@ -87,13 +87,13 @@
     "name": "harness-runtime",
     "description": "Shared PowerShell 7 runtime for the harness topics: the harness.ps1 entry point, the runtime guide, and the default review model list. Not invoked directly; use harness-setup (setup, context, policy), harness-dev, harness-write, harness-review, harness-decide, harness-monitor, or harness-schedule.",
     "path": "skills/planning/harness-runtime",
-    "version": "4.0.0"
+    "version": "4.0.1"
   },
   {
     "name": "harness-schedule",
     "description": "[clean] Alone: all schedules. Text: set one, like pr 1d or pr off. Manage logical schedules under one user-wide heartbeat for projects, PR review, refresh, and maintenance: set, turn off or on, convert old SkillVault Windows tasks, and clean up stale schedules. Shorthand: /hn-schedule. Overlaps with schedule-manage on Windows task administration; owns SkillVault schedules. Maintenance delegates history cleanup to harness-setup clean.",
     "path": "skills/planning/harness-schedule",
-    "version": "4.0.0"
+    "version": "5.0.0"
   },
   {
     "name": "harness-setup",
@@ -213,7 +213,7 @@
     "name": "skillvault-install",
     "description": "[list|update|uninstall|clean|refresh] Alone: the catalog. Text: install it. Manage installed SkillVault copies and keep them current: install by exact name or a * pattern, list installed copies, update them from the local checkout, uninstall, clean up copies that load twice or conflict, and refresh from upstream. Shorthand: /sv-install. Clean shows overlaps, which skillvault-discover can evaluate; refresh scheduling delegates to harness-schedule. Edits no SkillVault source or application code except refresh's adaptation merges; skillvault-author owns skill authoring.",
     "path": "skills/core/skillvault-install",
-    "version": "4.0.0"
+    "version": "4.0.1"
   },
   {
     "name": "supabase-postgres-best-practices",

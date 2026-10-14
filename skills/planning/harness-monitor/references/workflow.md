@@ -46,11 +46,11 @@ Use the shared `harness-runtime/scripts/harness.ps1` with the selected project r
 | `/harness-monitor` | `-Action Monitor`; show saved state only, including timestamps and pending proposals, then offer the all-source check once |
 | A yes to that offer, or a plain request to check every source | `-Action Monitor -AllMonitors`; collect all configured sources, assess/verify, reconcile and audit one complete or Partial batch |
 | `/harness-monitor <name>` | `-Action Monitor -MonitorName <name>`; collect, assess relevance, Auto-verify status, reconcile local outcomes, then rank proposals; a complete check also runs that source's standing intake |
-| `/harness-monitor <link, folder, or file> [--hold]` | Find or draft the declaration file, ask to save (saving after 1 minute without an answer), then offer a timer; see Start or Update Monitoring below |
-| `/harness-monitor <name> <change> [--hold]` | Update that monitor's declaration file the same way |
+| `/harness-monitor <link, folder, or file> [hold]` | Find or draft the declaration file, ask to save (saving after 1 minute without an answer), then offer a timer; see Start or Update Monitoring below |
+| `/harness-monitor <name> <change> [hold]` | Update that monitor's declaration file the same way |
 | `/harness-monitor accept <id>` | `-Action MonitorTask -Id <id> -Apply -Actor <owner> -Reason <request>`; accept the named `C-...` discovery candidate or `I-...` incident at once and show the resulting task |
 | `/harness-monitor auto` | `-Action MonitorAuto`; show each monitor's standing intake, worker, limits, last check, and worker tasks |
-| `/harness-monitor auto <name> --worker <flow> [--every <duration>]` | `-Action MonitorAuto -MonitorName <name> -Flow <flow>`, plus `-MaxPerCheck <n>`, `-MaxAttempts <n>`, or `-SetupExitCode <code>...` when the request names those limits (defaults: 2 items per check, 2 attempts); show and ask once, then on a yes apply with `-Apply -Actor -Reason` and `/harness-schedule project <duration> monitor <name>` (default `1h`); hold without an answer |
+| `/harness-monitor auto <name> worker <flow> [every <duration>]` | `-Action MonitorAuto -MonitorName <name> -Flow <flow>`, plus `-MaxPerCheck <n>`, `-MaxAttempts <n>`, or `-SetupExitCode <code>...` when the request names those limits (defaults: 2 items per check, 2 attempts); show and ask once, then on a yes apply with `-Apply -Actor -Reason` and `/harness-schedule project <duration> monitor <name>` (default `1h`); hold without an answer |
 | `/harness-monitor auto <name> off` | `-Action MonitorAuto -MonitorName <name> -Off`; show and ask once, then on a yes apply with `-Apply -Actor -Reason` and `/harness-schedule <id> off` for that monitor's timer; hold without an answer |
 
 ### Start or Update Monitoring
@@ -74,7 +74,7 @@ updates its declaration:
    - No answer, including a question tool that reports the owner unavailable: say in the reply that it
      saves in 1 minute unless told to hold, wait 1 minute, and save if no other reply has arrived. The
      Reason notes that it was saved without an answer.
-   - Hold, from `--hold`, the request, or the answer: save nothing and keep the file. Save it later
+   - Hold, from the request or the answer: save nothing and keep the file. Save it later
      by replying save or by giving its file again.
 3. **Offer a timer.** Unless the monitor already has a timer, end the reply by offering to check it
    on a timer: every `1h` (recommended), another duration, or no. Show the exact

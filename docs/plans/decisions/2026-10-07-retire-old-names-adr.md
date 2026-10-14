@@ -7,6 +7,10 @@
 - Superseded in part 2026-10-09: decision 2 no longer holds, because action aliases inside topics are
   dropped too, and `harness-dev`, `harness-decide`, `/hn-dev`, and `/hn-decide` are current names
   again; see the [bare, text, and menu convention ADR](./2026-10-09-bare-text-menu-convention-adr.md).
+- Superseded in part 2026-10-14: the 2026-10-07 amendment to decision 3 no longer applies to later
+  renames. ADRs, evaluations, and review records keep the names they were written with, and a rename
+  fixes only their links; plans and guides still name the current topics. See the
+  [whole-project review ADR](./2026-10-14-whole-project-review-adr.md).
 - Decision owner: Zhaolong Wang
 - Scope: Old skill, topic, and command names that current skills still accepted or advertised, the folders and copies that carried them, and stale repository files.
 - Supersedes: Decision 5 ("Old commands") of the [harness topic consolidation](./2026-10-07-harness-topic-consolidation-adr.md) and the compatibility routes kept for older names in the [topic refactor plan](../2026-09-16-topic-skill-refactor.md). The [SkillVault topic consolidation](./2026-10-07-skillvault-topic-consolidation-adr.md) already retired the old SkillVault spellings.

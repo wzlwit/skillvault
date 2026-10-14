@@ -3,7 +3,7 @@ name: harness-monitor
 description: "[accept|auto] Alone: last results. Text: check one, or a new link. Monitor work across approved source adapters, including ADO and documents, and numeric health observations: assess relevance, verify status with AI model auto, reconcile evidence, and propose ranked tasks; auto follows a source up through an approved local-only worker flow. Shorthand: /hn-monitor. Overlaps with harness-dev on intake and checks, kpi-dashboard on metric contracts, harness-write on status and owner evidence, and dri on incidents; preserves deferred work and never launches development."
 metadata:
   author: wzlwit
-  version: "3.0.0"
+  version: "4.0.0"
 argument-hint: "[accept|auto] [<monitor, link, or folder>]"
 ---
 
@@ -24,7 +24,7 @@ confirmations. This is conversational routing, not script argument parsing.
 | Alone | Show each monitor's last results, then offer to check them all now ([monitoring procedure](./references/workflow.md#commands)) |
 | Text | A monitor name checks it now; a link, folder, or file starts monitoring it; a monitor name with a change updates its declaration ([start or update monitoring](./references/workflow.md#start-or-update-monitoring)) |
 | `accept <id>` | Accept that candidate or incident at once and show the resulting task ([task intake](./references/workflow.md#task-intake)) |
-| `auto [<name>]` | By itself, show standing intakes; `auto <name> --worker <flow> [--every <duration>]` turns one on after one question, and `auto <name> off` removes it ([standing intake](./references/discovery.md#standing-intake)) |
+| `auto [<name>]` | By itself, show standing intakes; `auto <name> worker <flow> [every <duration>]` turns one on after one question, and `auto <name> off` removes it ([standing intake](./references/discovery.md#standing-intake)) |
 
 - Alone reads saved state only (`-Action Monitor`): each monitor with the age of its last check, new
   items found, open incidents, candidates and proposals, and `pendingDefinitions` (declaration files
@@ -44,7 +44,7 @@ confirmations. This is conversational routing, not script argument parsing.
   monitoring it. Reuse the declaration file under `.harness_sv/definitions/` that covers it, or draft
   `monitor-<name>.json` there from the request; show the change
   (`-Action MonitorConfig -DefinitionPath <file>`) and ask to save. With no answer it saves after 1
-  minute; `--hold`, or asking to hold, saves nothing until you say save. After saving,
+  minute; asking to `hold` saves nothing until you say save. After saving,
   the reply offers a timer (every `1h` by default) with its exact
   `/harness-schedule project <duration> monitor <name>` command, without waiting; a yes, now or
   later, starts it. A monitor name with a change, such as a new threshold or scope, updates that
@@ -55,7 +55,7 @@ confirmations. This is conversational routing, not script argument parsing.
   execution-approved tasks.
 - `auto` follows up a source or health monitor automatically. `auto` by itself lists each monitor's
   standing intake, worker, limits, last check, and its tasks.
-  `auto <name> --worker <flow> [--every <duration>]` shows the change and asks once. It takes up to
+  `auto <name> worker <flow> [every <duration>]` shows the change and asks once. It takes up to
   2 items per check with 2 attempts each unless the request names other limits or setup exit codes,
   which map to `-MaxPerCheck`, `-MaxAttempts`, and `-SetupExitCode`. On a yes it turns the intake on
   through `-Action MonitorAuto -Apply -Actor -Reason` and delegates the `monitor <name>` schedule to

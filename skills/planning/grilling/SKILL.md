@@ -19,6 +19,10 @@ these SkillVault changes; where they differ, these changes win:
    configured accessible internal sources, then authoritative external sources only as needed.
    Keep private details out of public searches. This order never expands working permissions,
    replaces an unavailable explicit target, or overrides a stricter source-specific procedure.
+3. When answers cannot come back during the turn, as under Autopilot, where questions are answered
+   automatically, show the round in the final reply and stop there. Act on none of its questions and
+   never treat the recommended answers as the user's; the next round waits for the user's reply,
+   which may be to take the recommendations.
 
 ## Original
 

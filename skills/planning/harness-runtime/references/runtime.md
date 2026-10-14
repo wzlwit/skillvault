@@ -256,7 +256,7 @@ their declared efforts and contexts.
   chat stops. It then ends its turn and reads each result when that reviewer finishes, instead of
   waiting inside a turn, so it can answer the user meanwhile.
 - The reviewers run at the same time on the same pinned snapshot, inside the existing run lock.
-  `maxParallelReviewers: 1` in `/harness-setup policy limits` runs them one after the other.
+  `maxParallelReviewers: 1` in the limits (`/harness-setup policy set limits <file>`) runs them one after the other.
 - Findings are merged by exact file, line, and message, and record which reviewers reported them. A
   pass is clean only when both reviewers are clean, blocked when either is blocked, and has no new
   findings only when neither reports one. A failed reviewer fails the pass after both finish; the
@@ -354,8 +354,11 @@ install, migration, uninstall, and refresh take conflicting write claims first. 
 pause. There are no versioned runtime snapshots or second scheduler, and running refresh/heartbeat
 helpers cannot replace themselves; update them with the approved local-source installer afterward.
 
-Claims are released on confirmed completion. Interrupted or abandoned claims stay `NeedsRecovery`,
-never expired or stolen automatically. `Recover -ConfirmStopped` clears that controller's inactive
+Claims are released on confirmed completion. A run that stops without releasing its claim leaves it
+behind. Reads leave nothing partial, so a later reader passes a stopped read-only claim and removes it.
+A writer that meets any stopped claim, or a reader that meets a stopped claim's write, gets
+`NeedsRecovery`, and a stopped claim that holds a write stays as recovery evidence. Claims are never
+expired or stolen automatically. `Recover -ConfirmStopped` clears that controller's inactive
 claims only after inspecting the work and confirming prior workers stopped, and existing safety pauses
 remain; scheduler recovery clears its matching inactive wrapper claims. Unreadable evidence must be
 repaired, not treated as idle. Updating older runtime copies needs separate attended stopped-worker
@@ -483,8 +486,8 @@ command (owner decisions, 2026-10-08):
    else, and any of these when something had to be drafted, resolved, or chosen, takes the next steps.
 2. Show what will change: the resolved target with its current and new values, or the drafted file.
 3. Ask once with the host's question tool: **Save now** or **Hold**, or the action's own words such as
-   **Turn on**. A request that already says save, including `--apply`, is the answer; `--hold`, or
-   asking to hold, keeps everything unchanged until the owner says save.
+   **Turn on**. A request that already says save, including `--apply`, is the answer; asking to
+   `hold` keeps everything unchanged until the owner says save.
 4. With no answer, including a question tool that reports the owner unavailable:
    - **Save after 1 minute** for a monitor declaration and test `declare`. They update a declaration and run nothing
      by themselves. First say in the reply that it saves in 1 minute unless told to hold, then wait

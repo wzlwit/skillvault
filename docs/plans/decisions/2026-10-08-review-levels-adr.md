@@ -1,7 +1,9 @@
 # ADR: Review Levels
 
 - Date: 2026-10-08
-- Status: Accepted by delegation; owner review pending. The owner proposed a `critical|broad` option
+- Status: Accepted. The owner confirmed it on 2026-10-14 in the
+  [whole-project review](./2026-10-14-whole-project-review-adr.md); it was first accepted by delegation.
+  The owner proposed a `critical|broad` option
   for `/hn-review`, with `critical` as the default: critical focuses on findings that block the PR or
   the fix for the current issue, and broad tries to find every possible issue. The agent asked which
   reviews the option should cover; the owner was not available, so the agent adopted its recommended

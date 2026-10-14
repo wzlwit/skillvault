@@ -166,6 +166,10 @@ try {
     Assert-MoveFailure { Move-HarnessRoot $paths $newRoot } 'never merges or overwrites'
     if ([IO.File]::ReadAllText((Join-Path $destination.Control 'keep.txt')) -cne 'Keep the destination') { throw 'A conflicting destination was changed.' }
     Remove-Item -LiteralPath $destination.Control -Recurse -Force
+    $linkedArtifact = Join-Path $paths.Control 'artifacts/linked'
+    New-Item -ItemType $(if ($IsWindows) { 'Junction' } else { 'SymbolicLink' }) -Path $linkedArtifact -Target (Join-Path $paths.Control 'artifacts/empty') | Out-Null
+    try { Assert-MoveFailure { Move-HarnessRoot $paths $newRoot -SchedulerRoot (Join-Path $fixture 'scheduler') } 'does not follow linked' }
+    finally { Remove-Item -LiteralPath $linkedArtifact -Force }
     $held = Enter-HarnessLock $paths.RunLock
     try { Assert-MoveFailure { Move-HarnessRoot $paths $newRoot -SchedulerRoot (Join-Path $fixture 'scheduler') -Apply } 'Harness is busy' }
     finally { $held.Dispose() }

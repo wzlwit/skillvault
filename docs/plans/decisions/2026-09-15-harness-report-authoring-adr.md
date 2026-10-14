@@ -8,7 +8,7 @@
 - Scope: Report-authoring workflow and reusable KPI design guidance, not live reporting setup.
 - Supersedes: Only the report-authoring-skill deferral in the
   [harness command ADR](./2026-09-15-harness-command-and-record-contracts-adr.md).
-- Installation-default clause superseded by the [scope audit](../../../review/install-scopes-2026-09-15.md).
+- Installation-default clause superseded by the [scope audit](../../reviews/install-scopes-2026-09-15.md).
 - Topic name superseded 2026-10-07: this topic is now `/harness-write upsert report`; the decisions below stand. See the [topic consolidation ADR](./2026-10-07-harness-topic-consolidation-adr.md).
   The authoring workflow remains Accepted; the original decision below is retained for history.
 

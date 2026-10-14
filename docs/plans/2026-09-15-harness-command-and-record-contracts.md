@@ -227,12 +227,13 @@ different operations, even when `/harness-dev` performs both for an ad-hoc reque
   paths. Keep meaningful URL path/query, opaque source, path, and free-form scope case and internal
   whitespace. No fuzzy matching; independent actions from one document still need separate tasks.
 - An explicitly revised completed task creates a new `followUpOf` record through shared intake.
-  `upsert <id>` with revised requirements, revised ad-hoc intake, and explicit `--follow-up <id>` reuse the same implementation.
+  `upsert <id>` with revised requirements, revised ad-hoc intake, and an explicit `follow-up of <id>` reuse the same implementation.
   Keep the old completion, snapshot, and reports. Repeated identical revisions reuse the follow-up;
   source revision alone creates no work. Same-repository follow-ups retain the workspace/base,
   including unmerged work, but restart at Develop without an inherited verdict, risk rating, or
   automatic eligibility. Open follow-ups protect ancestor evidence from retention.
-- `--repo-ref <id>` on `upsert`, or on a new task given to `/harness-dev`, maps to `-RepositoryRef`
+- A registered repository reference such as `R-001`, named on `upsert` or on a new task given to
+  `/harness-dev`, maps to `-RepositoryRef`
   (`-RepoRef` also works). It binds one active
   local Git-root reference independently of the requirements Source. Task-scoped references can
   be assigned only to their owning task. Different repositories use separate task records.
@@ -497,7 +498,7 @@ that its service version matches the checked-out code. Reuse existing project te
 - **Declare:** `/harness-dev test declare <file>` saves reviewed configuration without running commands.
   See the [declaration schema and examples](../../skills/planning/harness-dev/references/test-flows.md).
 - **Ad-hoc:** `/harness-dev test run <flow> [environment]` tests the current workspace, or the saved task
-  workspace with `--task <task-id>`. It does not require an AI model or create a development task.
+  workspace when it names the task, as in `for <task-id>`. It does not require an AI model or create a development task.
 - **Scheduled:** `/harness-schedule project 12h test <flow> <environment>` runs that target every 12 hours after
   explicit setup and environment scheduling approval. It does not replace the development timer.
 - **Development:** `testing.afterDev` selects the test flows that run with the first (Changes) review
@@ -570,7 +571,7 @@ inaccessible, or changed evidence remains Unverified. Source Closed, disappearan
 never close tasks. The runtime advertises `monitor-discovery: 7`; no credential or source is
 configured by install. Explicit `verification.enabled: false` chooses collection/assessment only.
 A source can declare a standing `intake` and a feed `producer`, turned on through
-`/harness-monitor auto <name> --worker <flow>`: a complete named check then accepts
+`/harness-monitor auto <name> worker <flow>`: a complete named check then accepts
 what manual acceptance would and runs the declared local-only worker flow for up to `maxPerCheck`
 items. See the [standing intake ADR](decisions/2026-10-08-monitor-standing-intake-adr.md).
 

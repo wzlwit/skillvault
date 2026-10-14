@@ -19,8 +19,8 @@
    with 1 highest. Kind is feature/fix/verify. Risk defaults to Unknown.
    When authoritative input supplies ownership, use `-SourceOwner` for that display name. It is
    source metadata, not assignment of a Harness executor. Unknown/unassigned owners remain blank.
-   For a separate coding repository, map `--repo-ref <reference-id>` to `-RepositoryRef`
-   (`-RepoRef` also works). Select an active registered source (an `R-*` ID from `/harness-setup`)
+   For a separate coding repository, map a named repository reference, such as `R-001`, to
+   `-RepositoryRef` (`-RepoRef` also works). Select an active registered source (an `R-*` ID from `/harness-setup`)
    for the intended existing local Git root. Keep
    `-ProjectPath` at the controller folder; `-Source` is the requirement, not the coding destination.
 4. Match source, scope, and repository reference exactly after meaning-preserving normalization:
@@ -42,7 +42,8 @@ kind, or coding repository; ad-hoc intake also detects changed description/accep
 an existing completed source/scope/repository match. An unchanged repeat returns the existing
 ID. A source revision alone is not a new requirement and never starts follow-up work.
 
-For an explicit link, use `upsert --follow-up <task-id>` (runtime `-Action Task -FollowUpOf <id>`).
+For an explicit link, say so, as in `/harness-dev upsert follow-up of <task-id>` (runtime
+`-Action Task -FollowUpOf <id>`).
 Omitted requirement fields inherit from the completed task; repeated identical follow-ups reuse
 their ID. Report the returned new ID, not the original as though it had been reopened.
 

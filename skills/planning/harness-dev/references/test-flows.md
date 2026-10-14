@@ -156,7 +156,7 @@ it does not cancel an active or interrupted run.
 /harness-dev test declare test-flows.json
 /harness-dev test run smoke
 /harness-dev test run smoke localPPE
-/harness-dev test run smoke local --task T-001
+/harness-dev test run smoke local for T-001
 /harness-schedule project 12h test smoke localPPE
 /harness-schedule
 /harness-schedule <id> off

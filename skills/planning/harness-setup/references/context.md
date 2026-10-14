@@ -80,7 +80,7 @@ all material into every prompt.
 ## Coding Repositories
 
 For coding, register the existing local Git repository root and report its `R-*` ID separately from
-the controller path. `/harness-dev upsert`, or developing a new task with `--repo-ref <id>`,
+the controller path. `/harness-dev upsert`, or developing a new task that names its `R-*` ID,
 explicitly binds a task to that repository; `/harness-review` given that ID selects a project-wide
 source for standalone review. Task-scoped sources are available only to their owning task. A URL,
 missing checkout, ordinary folder, or inactive entry is not a coding destination. Do not clone,

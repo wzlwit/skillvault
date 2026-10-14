@@ -133,7 +133,7 @@ function Get-HarnessMoveFiles {
     while ($pending.Count) {
         $directory = $pending.Pop()
         foreach ($item in Get-ChildItem -LiteralPath $directory -Force -ErrorAction Stop) {
-            if ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) { throw 'Relocation does not follow linked files or directories. Resolve those paths explicitly before moving.' }
+            if ($item.LinkTarget -or $item.LinkType -in @('SymbolicLink', 'Junction')) { throw 'Relocation does not follow linked files or directories. Resolve those paths explicitly before moving.' }
             if ($item.PSIsContainer) {
                 if ($item.Name -eq '.git') { throw 'An embedded Git repository is application source, not movable harness state.' }
                 $pending.Push($item.FullName)
@@ -161,7 +161,8 @@ function Get-HarnessMovePlan {
     foreach ($root in @($Paths.Control, $destination.Project)) {
         $current = $root
         while ($current) {
-            if ((Get-Item -LiteralPath $current -Force).Attributes -band [IO.FileAttributes]::ReparsePoint) { throw 'Relocation requires non-linked parent directories.' }
+            $item = Get-Item -LiteralPath $current -Force
+            if ($item.LinkTarget -or $item.LinkType -in @('SymbolicLink', 'Junction')) { throw 'Relocation requires non-linked parent directories.' }
             $current = Split-Path -Parent $current
         }
     }

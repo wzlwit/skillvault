@@ -100,7 +100,7 @@ Repeated acceptance returns the existing task rather than adding another. The fi
 is stable; subsequent checks update its reference note with latest evidence. Recovered episodes
 and completed/cancelled tasks are not automatically reopened or closed by a metric reading.
 
-`/harness-monitor auto <name> --worker <flow>` gives a health monitor the same standing intake as a
+`/harness-monitor auto <name> worker <flow>` gives a health monitor the same standing intake as a
 discovery source: each complete check accepts the open incident's proposal and runs the declared
 local-only worker flow for it, with `HARNESS_ITEM_ID` set to the incident ID (`I-...`) and
 `HARNESS_SOURCE` to its `harness-monitor://` identity. Only an incident still open in that check is

@@ -1,7 +1,7 @@
 {
   "name": "harness-monitor",
   "title": "Harness Monitor",
-  "version": "3.0.0",
+  "version": "4.0.0",
   "kind": "agent",
   "description": "[accept|auto] Alone: last results. Text: check one, or a new link. Monitor work across approved source adapters, including ADO and documents, and numeric health observations: assess relevance, verify status with AI model auto, reconcile evidence, and propose ranked tasks; auto follows a source up through an approved local-only worker flow. Shorthand: /hn-monitor. Overlaps with harness-dev on intake and checks, kpi-dashboard on metric contracts, harness-write on status and owner evidence, and dri on incidents; preserves deferred work and never launches development.",
   "requiredInterfaces": {
@@ -44,7 +44,7 @@
     "/harness-monitor backlog",
     "/harness-monitor https://dev.azure.com/org/project/_queries/query/1",
     "/harness-monitor accept C-001",
-    "/harness-monitor auto backlog --worker triage",
+    "/harness-monitor auto backlog worker triage",
     "/harness-monitor auto backlog off"
   ],
   "readme": "SKILL.md",

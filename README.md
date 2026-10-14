@@ -52,7 +52,8 @@ Service details stay in each project's private DRI profile, never in this public
 ## Project Documentation
 
 `docs/` is the parent for project documentation subfolders. Plans live in `docs/plans/`, with
-decision history in `docs/plans/decisions/`. Add other documentation subfolders only when needed.
+decision history in `docs/plans/decisions/` and past review records in `docs/reviews/`. Add other
+documentation subfolders only when needed.
 
 - [Harness working plan](docs/plans/2026-09-15-harness-command-and-record-contracts.md)
 - [Topic structure, diagram, and migration map](docs/plans/2026-09-16-topic-skill-refactor.md)
@@ -123,7 +124,7 @@ available for supported, repository-pinned or customized copies; an absent manif
 still falls back to project scope. Keep sibling runtime dependencies in the selected scope.
 Global installation does not make project state, output paths, or execution permissions global,
 does not install every catalog skill through bootstrap, and does not migrate existing copies.
-See the [per-skill scope audit](review/install-scopes-2026-09-15.md) for the assessed defaults.
+See the [per-skill scope audit](docs/reviews/install-scopes-2026-09-15.md) for the assessed defaults.
 
 Keep `version` present in both the catalog and manifest: use the declared version string,
 or JSON `null` when no version is declared. `latest` describes the requested installation
@@ -388,8 +389,8 @@ placement and does not change the implementation repository or migrate existing 
 
 The harness project can be a plain, non-Git controller folder. Add each existing local coding
 repository by giving its path to `/harness-setup`, as in `/harness-setup <local-git-root>`, then
-select its returned ID through `/harness-dev upsert <requirements> --repo-ref R-001` or
-`/harness-dev <task-id> --repo-ref R-001`.
+select its returned ID through `/harness-dev upsert <requirements> R-001` or
+`/harness-dev <task-id> R-001`.
 Keep `ProjectPath` at the controller: code and validation use the selected repository/current
 worktree, while state and reports stay in the controller. `/harness-review R-001` reviews
 that repository's checkout. No reference implicitly clones a URL, grants permissions, or starts work.
@@ -463,8 +464,8 @@ drafts, then offers to check all monitors now, asking once.
 `/harness-monitor <link, folder, or file>` starts monitoring it: it reuses or drafts a
 [work discovery](skills/planning/harness-monitor/references/discovery.md)
 or [numeric health](skills/planning/harness-monitor/references/monitoring.md) declaration under
-`.harness_sv/definitions/` and asks to save it, saving after 1 minute without an answer unless held
-(`--hold`); the reply then offers a timer with its command, which starts only on a yes. A monitor
+`.harness_sv/definitions/` and asks to save it, saving after 1 minute without an answer unless told to
+`hold`; the reply then offers a timer with its command, which starts only on a yes. A monitor
 name with a change, such as a new threshold, updates that declaration after one question.
 `/harness-monitor <name>` checks that monitor now, reading the declared ADO backlog/query, text
 folder, adapter feed, or numeric snapshot. Discovery preserves source IDs/revisions and deferred status; failed or incomplete
@@ -479,7 +480,7 @@ enters the priority queue when accepted; actual blockers remain blocked. Readine
 automatic development, source authentication, and scheduling remain separately authorized. No PBI
 visual scraping, source writes, or automatic intake is enabled by installing the skill.
 When the owner's policy is to work every item a source lists, the source can declare a standing
-`intake` instead, through `/harness-monitor auto <name> --worker <flow>`: a complete named check then
+`intake` instead, through `/harness-monitor auto <name> worker <flow>`: a complete named check then
 accepts what manual acceptance would and runs a declared worker flow, marked `effects: "local"`, for
 up to `maxPerCheck` items, with an optional feed
 `producer` flow refreshing the source first. Its timer covers Monitor and Work in one job; worker tasks
@@ -543,7 +544,7 @@ schedules the existing gated E2E pipeline; explicit review, test, and monitor ta
 `<target> off` and `<target> on` stop or resume a schedule at once, and a target alone shows it.
 Durations use `m/h/d/n/y` for minutes, hours, fixed days, calendar months, and calendar years.
 New work schedules require an explicit duration; updates can reuse the exact saved cadence/context.
-For matching agents or schedules, confirm **Reuse (singleton) or New?**; `--new <name>` remains
+For matching agents or schedules, confirm **Reuse (singleton) or New?**; `as new <name>` remains
 create-only and does not authorize competing writers. In development, `/harness-dev <id> now` asks
 the running task to yield at its next checkpoint, and `/harness-dev queue <task>` never starts a worker.
 

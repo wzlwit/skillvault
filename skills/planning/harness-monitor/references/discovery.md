@@ -471,7 +471,7 @@ as a declared `producer` flow.
 ## Standing Intake
 
 When the owner's policy is to work every item a source lists, the source can carry that approval
-instead of an `accept` per item. Turn it on with `/harness-monitor auto <name> --worker <flow>`:
+instead of an `accept` per item. Turn it on with `/harness-monitor auto <name> worker <flow>`:
 it shows the intake below and asks once, writes it on a yes (with `approvedBy` set to that
 owner and `allowScheduled: true`), and delegates the `monitor <name>` timer to `/harness-schedule`;
 without an answer it holds, because it starts automatic work.

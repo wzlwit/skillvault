@@ -19,7 +19,7 @@ If those requirements cannot be met, continue only permitted investigation and r
    `/harness-dev upsert` intake and register it first. Treat feedback as claims to verify. Missing scope,
    acceptance, access, or required decisions is blocked work, not permission to invent them.
    Explicitly revised completed work uses that same intake to create a linked follow-up, not
-   reopen the completed record. A request with `--follow-up <id>` maps to `Dev -FollowUpOf`; `Dev -Id <id>`
+   reopen the completed record. A request that says `follow-up of <id>` maps to `Dev -FollowUpOf`; `Dev -Id <id>`
    with changed requirement fields also uses the shared task-update path. Report its returned ID.
    Preserve the original evidence and same-repository workspace, restart validation/review for
    the new task, and assess its risk independently. A source revision alone is not a work request.
@@ -47,8 +47,8 @@ If those requirements cannot be met, continue only permitted investigation and r
    ready task: queued work in pickup order first (now, interrupted, then next), otherwise the
    highest-priority ready task (Queued, Low risk, with scope and acceptance); a yes runs
    `-Action Dev -Id` with that task, adding `-ReviewLevel broad` for `broad`. Preserve interrupted work and report whether switching is pending or completed.
-   Use the task's saved repository reference. For a new/unallocated task, `--repo-ref <id>` maps
-   to `-RepositoryRef` (`-RepoRef` also works), selecting one active local Git-root reference. The
+   Use the task's saved repository reference. For a new/unallocated task, a named repository
+   reference such as `R-001` maps to `-RepositoryRef` (`-RepoRef` also works), selecting one active local Git-root reference. The
    harness can live in a non-Git folder; keep `-ProjectPath` there. Never infer a coding target
    from a requirements URL, another reference, or the controller location when it is not a Git root.
    Pass the resolved session/parent context to the dispatcher; it is not persisted as project

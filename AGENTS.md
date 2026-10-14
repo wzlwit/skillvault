@@ -12,8 +12,12 @@ SkillVault is a catalog-driven repository for public, shareable Copilot skills.
 
 ## Project Documentation
 
-- `docs/` is this repository's documentation root. Put project plans under `docs/plans/` and
-  ADRs under `docs/plans/decisions/`; use other documentation subfolders only when needed.
+- `docs/` is this repository's documentation root. Put project plans under `docs/plans/`, ADRs
+  under `docs/plans/decisions/`, and past review records under `docs/reviews/`; use other
+  documentation subfolders only when needed.
+- ADRs, evaluations, and review records are history: they keep the skill and command names they
+  were written with, and a rename fixes only their links (owner decision, 2026-10-14). Plans and
+  guides are current and name the current topics.
 - Keep root entrypoints such as `README.md` and `AGENTS.md` in place. Skill-owned guides,
   references, and examples stay in their skill bundles so installed copies remain self-contained.
 - When a skill writes documentation in another project, honor an explicit destination first,
@@ -463,7 +467,7 @@ Accepted postponed candidates enter the normal queue at source priority; postpon
 a block. Generic On-Hold labels mean reassess; explicit dependency blocks remain. Readiness/automatic-pickup gates remain. Checks never fix code.
 They create tasks only for a source with a declared standing `intake` (owner decision by delegation,
 2026-10-08; see the [standing intake ADR](docs/plans/decisions/2026-10-08-monitor-standing-intake-adr.md)),
-which `/harness-monitor auto <name> --worker <flow>` turns on for a discovery source or a health
+which `/harness-monitor auto <name> worker <flow>` turns on for a discovery source or a health
 monitor and `auto <name> off` removes: at the end of a complete named check it takes what manual
 acceptance would, then runs the declared worker flow, which must state `effects: "local"`, for up to
 `maxPerCheck` items. Worker tasks never enter development. Otherwise
