@@ -1,7 +1,7 @@
 {
   "name": "harness-schedule",
   "title": "Harness Schedule",
-  "version": "5.0.0",
+  "version": "5.0.1",
   "ownershipProtocol": 1,
   "runtimeInterfaces": {
     "scheduler": 1

@@ -353,7 +353,10 @@ controller or adding a runtime action. Reuse an existing approved task and its o
 controls when applicable. Reader docs follow the explicit output or coding repository's documentation
 convention, with `docs/guides/<feature>/` as the fallback; task/run records remain controller-local.
 Distinguish implemented, planned, and unverified behavior and internal, partner, and public readers.
-Use Humanizer for the final prose pass, then validate facts, terminology, links, anchors, and diagrams.
+Docs and communications spell out each acronym where it first appears, except ones readers know better
+than the full term, such as URL or PDF, or product and service names such as DAS and PACS that go by
+their short form (owner decisions, 2026-10-15).
+Use Humanizer for the final prose pass, keeping those expansions, then validate facts, terminology, links, anchors, and diagrams.
 Preserve technical content and stable headings; missing evidence or required checks leaves a Draft.
 Document moves, tool installations, and publication retain separate approval. The
 [documentation ADR](docs/plans/decisions/2026-09-26-harness-documentation-adr.md) records these choices.
@@ -465,8 +468,8 @@ writes are separately enabled/approved per source, not provided by the built-in 
 identity, revision, deferrals, and bounded evidence; partial/stale/failed reads cannot imply closure.
 Accepted postponed candidates enter the normal queue at source priority; postponement alone is not
 a block. Generic On-Hold labels mean reassess; explicit dependency blocks remain. Readiness/automatic-pickup gates remain. Checks never fix code.
-They create tasks only for a source with a declared standing `intake` (owner decision by delegation,
-2026-10-08; see the [standing intake ADR](docs/plans/decisions/2026-10-08-monitor-standing-intake-adr.md)),
+They create tasks only for a source with a declared standing `intake` (owner decision, 2026-10-14;
+see the [standing intake ADR](docs/plans/decisions/2026-10-08-monitor-standing-intake-adr.md)),
 which `/harness-monitor auto <name> worker <flow>` turns on for a discovery source or a health
 monitor and `auto <name> off` removes: at the end of a complete named check it takes what manual
 acceptance would, then runs the declared worker flow, which must state `effects: "local"`, for up to
@@ -535,7 +538,8 @@ units whole numbers. Layout-2 project declarations use `config/schedules.json`; 
 active invocation snapshots use `runtime/schedules.json`. Ticks do not overwrite declarations. A central
 registry dispatches due nonconflicting work. Faster enabled job intervals shorten the heartbeat,
 active workers retain a 30-minute check cap, and earlier deadlines still win. A tick defers already
-blocked overdue deadlines to the adaptive recheck without changing their due times. Baseline edits
+blocked overdue deadlines to the adaptive recheck without changing their due times; a job waiting
+only behind a running job is rechecked every 2 minutes until that run ends. Baseline edits
 preserve job anchors, cadence, enablement, and maintenance, and start no AI worker. Source/copy
 updates require separately approved live synchronization; no duplicate writers are allowed.
 `/harness-schedule` alone offers to convert exact existing SkillVault OS timers; preserve cadence, enabled state, ownership, and evidence.

@@ -98,16 +98,18 @@ function Enter-SkillOwnership {
             if ($overlaps.Count -eq 0) { continue }
             $ownerText = $claim.owner | ConvertTo-Json -Compress -Depth 6
             if (-not (Test-SkillOwnershipClaimActive $Root $claim)) {
-                # A stopped reader left nothing partial behind, so a later reader passes it; a stopped writer needs recovery.
-                $conflict = @($overlaps | Where-Object { $_.held.mode -cne 'Read' -or $_.requested.mode -cne 'Read' })
-                if ($conflict.Count) {
-                    throw (New-SkillOwnershipFailure NeedsRecovery "Ownership requires recovery for $($conflict[0].requested.path); owner: $ownerText; claim: $($claim.id)." $claim.owner)
-                }
-                if (-not @($claim.resources | Where-Object { $_.mode -cne 'Read' }).Count) {
-                    foreach ($extension in @('.json', '.lock')) {
-                        $path = Join-Path $Root ($claim.id + $extension)
-                        if (Test-Path -LiteralPath $path) { Remove-Item -LiteralPath $path -ErrorAction SilentlyContinue }
+                # A stopped claim that held only reads left nothing partial, so any later run passes and removes it.
+                # One that held a write stays for recovery; readers may still pass its reads.
+                if (@($claim.resources | Where-Object { $_.mode -cne 'Read' }).Count) {
+                    $conflict = @($overlaps | Where-Object { $_.held.mode -cne 'Read' -or $_.requested.mode -cne 'Read' })
+                    if ($conflict.Count) {
+                        throw (New-SkillOwnershipFailure NeedsRecovery "Ownership requires recovery for $($conflict[0].requested.path); owner: $ownerText; claim: $($claim.id)." $claim.owner)
                     }
+                    continue
+                }
+                foreach ($extension in @('.json', '.lock')) {
+                    $path = Join-Path $Root ($claim.id + $extension)
+                    if (Test-Path -LiteralPath $path) { Remove-Item -LiteralPath $path -ErrorAction SilentlyContinue }
                 }
                 continue
             }

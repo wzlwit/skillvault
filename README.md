@@ -197,8 +197,10 @@ before writing, or shows known drafts and asks what to write.
 It requires no initialized harness. Explicit output paths take precedence; otherwise reader guides
 stay in the coding repository's documentation tree while harness tracking stays with the controller.
 
-Claims come from the relevant code, configuration, designs, and verified history. Humanizer is the
-final prose-editing pass, followed by factual, link, terminology, and diagram validation. Essential
+Claims come from the relevant code, configuration, designs, and verified history. Each acronym is
+spelled out where it first appears, except ones readers know better than the full term, such as URL,
+PDF, or a service that goes by its short name. Humanizer is the final prose-editing pass and keeps those expansions; factual, link,
+terminology, and diagram validation follow. Essential
 evidence gaps or missing checks leave a clearly labeled Draft. Publication and restructuring are
 separately approved. The [accepted decision](docs/plans/decisions/2026-09-26-harness-documentation-adr.md)
 describes the scope and boundaries.
@@ -210,7 +212,7 @@ status tracker, a sync-up invite, or an email update or thread reply, and use `/
 the people to meet to compare meeting times across attendees' time zones, lunch hours, and holidays.
 The [communications skill](skills/planning/harness-write/SKILL.md) needs no
 initialized harness. It saves drafts only: sending, inviting, and sharing stay with the user or need
-an explicit request. Its bundled `rank-slots.ps1` ranks saved getSchedule data without calling a
+an explicit request. Drafts spell out acronyms at first use, as docs do. Its bundled `rank-slots.ps1` ranks saved getSchedule data without calling a
 service. The [accepted decision](docs/plans/decisions/2026-09-29-harness-communications-adr.md)
 describes the scope and boundaries.
 
@@ -554,7 +556,8 @@ shortened automatically by faster job intervals and earlier deadlines. Active wo
 `/harness-schedule heartbeat` shows it. Applying preserves job cadence, start-time anchors, and
 maintenance.
 Overdue jobs found unavailable or conflicting wait for the adaptive recheck rather than causing
-one-minute polling. The heartbeat is script-only, not an AI model configured as `auto`.
+one-minute polling; a job that waits only behind a running job is rechecked every 2 minutes until
+that run ends. The heartbeat is script-only, not an AI model configured as `auto`.
 Layout-2 project definitions and enabled settings are authoritative in `config/schedules.json`;
 nextDue and active invocation state use `runtime/schedules.json` inside `.harness_sv`. The central registry and latest job receipts are under
 `~/.copilot/skillvault/scheduler`. Intersecting coding roots serialize; independent approved roots

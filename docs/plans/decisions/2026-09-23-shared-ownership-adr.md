@@ -6,8 +6,9 @@
 - Scope: Participating harness execution and SkillVault installed-bundle updates
 - Replaces: Operator-only coordination across controllers and manual runtime updates
 - Superseded in part 2026-10-14: in decision 4, a stopped claim that holds only reads is no longer
-  preserved. Reads leave nothing partial, so a later reader passes it and removes it. A stopped claim
-  that holds a write is still kept, and writers still need explicit recovery. Linked paths mean
+  preserved. Reads leave nothing partial, so any later run passes it and removes it: readers since the
+  review's first round, and writers such as installers and refresh since its second round the same day.
+  A stopped claim that holds a write is still kept and needs explicit recovery. Linked paths mean
   symbolic links and junctions; cloud-synced folders such as OneDrive are not links. See the
   [whole-project review ADR](./2026-10-14-whole-project-review-adr.md).
 

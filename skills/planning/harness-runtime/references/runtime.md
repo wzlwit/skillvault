@@ -355,9 +355,10 @@ pause. There are no versioned runtime snapshots or second scheduler, and running
 helpers cannot replace themselves; update them with the approved local-source installer afterward.
 
 Claims are released on confirmed completion. A run that stops without releasing its claim leaves it
-behind. Reads leave nothing partial, so a later reader passes a stopped read-only claim and removes it.
-A writer that meets any stopped claim, or a reader that meets a stopped claim's write, gets
-`NeedsRecovery`, and a stopped claim that holds a write stays as recovery evidence. Claims are never
+behind. Reads leave nothing partial, so any later run, including an installer or refresh, passes a
+stopped claim that held only reads and removes it. A stopped claim that held a write stays as recovery
+evidence: a writer that meets any part of it, or a reader that meets its write, gets
+`NeedsRecovery`. Claims are never
 expired or stolen automatically. `Recover -ConfirmStopped` clears that controller's inactive
 claims only after inspecting the work and confirming prior workers stopped, and existing safety pauses
 remain; scheduler recovery clears its matching inactive wrapper claims. Unreadable evidence must be

@@ -74,7 +74,11 @@ are harder to read than a list.
 ## Prose
 
 Apply the upstream Humanizer guidance in embedded mode to the text pr-publish writes: plain words, no
-em or en dashes, no bold labels, no stock AI phrases, no restated closers. Text kept from an existing
+em or en dashes, no bold labels, no stock AI phrases, no restated closers. Spell out each acronym in
+full where it first appears in that text, as in Azure DevOps (ADO), and keep the expansion through
+the Humanizer pass. Skip acronyms that readers know better than the full term: common ones such as
+URL, PDF, JSON, or HTML, and product or service names that go by their short form, such as DAS or
+PACS. The title may keep the short form. Text kept from an existing
 description, such as a Copilot summary, stays as written. Keep template headings, code, commands,
 paths, and link targets unchanged. Title: imperative mood, under 72 characters, saying what the PR
 does.

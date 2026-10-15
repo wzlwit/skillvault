@@ -218,6 +218,10 @@ if ($ProjectionOnly) {
         if (($rows.id -join ',') -cne 'T-001,C-002,T-002' -or $rows[0].sourceType -cne 'ado' -or $rows[1].sourceType -cne 'design' -or
             $rows[1].recordType -cne 'candidate' -or $rows[1].status -cne 'Uncertain' -or $rows[0].sourceOwner -cne 'Source owner' -or
             ($state | ConvertTo-Json -Depth 20 -Compress) -cne $before) { throw 'Canonical board projection lost source coverage, priority ordering, uncertainty, or task/candidate separation.' }
+        $state.tasks += [pscustomobject]@{ id = 'T-004'; title = 'Adapter task'; priority = 5; status = 'Queued'; source = 'https://dev.azure.com/example/work/9'; sourceType = 'ADO'; sourceOwner = '' }
+        Write-HarnessViews $paths $config $state
+        $rows = @(Import-Csv (Get-HarnessCurrentPath $paths $config))
+        if (($rows | Where-Object id -CEQ 'T-004').sourceType -cne 'ADO' -or ($rows | Where-Object id -CEQ 'T-001').sourceType -cne 'ado') { throw 'Source types that differ only in case were merged or rejected in the board projection.' }
         Write-Output 'Projection checks passed: one schema, source coverage, stable priority ordering, terminal exclusion, no duplicate accepted candidate, and unchanged task state.'
     }
     finally { if (Test-Path -LiteralPath $fixture) { Remove-Item -LiteralPath $fixture -Recurse -Force } }

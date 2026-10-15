@@ -210,7 +210,7 @@ try {
     New-FixtureSkill -Name 'retryable' -Version '1.0.0' | Out-Null
     $retryTarget = Install-FixtureSkill -Name 'retryable' -Version '1.0.0'
     New-FixtureSkill -Name 'retryable' -Version '1.0.0' -Body 'retry update' | Out-Null
-    $retryLease = Enter-SkillOwnership -Resources @([pscustomobject]@{ kind = 'runtime'; path = $retryTarget; mode = 'Read' }) -Owner @{ controller = 'retry worker fixture' }
+    $retryLease = Enter-SkillOwnership -Resources @([pscustomobject]@{ kind = 'runtime'; path = $retryTarget; mode = 'Read' }, [pscustomobject]@{ kind = 'checkout'; path = (Join-Path $fixtureRoot 'retry-worker-checkout'); mode = 'Write' }) -Owner @{ controller = 'retry worker fixture' }
     $claimPath = Join-Path $retryLease.root ($retryLease.id + '.json')
     try {
         $selfResult = & $refreshScript -RunOnce -ResultJson -GlobalSkillsPath $globalRoot -CachePath $cacheRoot | ConvertFrom-Json
@@ -239,10 +239,13 @@ try {
     $recoveryResult = & $refreshScript -RunOnce -ResultJson -RetryPlanPath $retryPlanPath -GlobalSkillsPath $globalRoot -CachePath $cacheRoot | ConvertFrom-Json
     Assert-True ($recoveryResult.retryTargets.Count -eq 0 -and $recoveryResult.unresolved[0].reason -ceq 'NeedsRecovery') 'uncertain claims are not eligible for automatic retries'
     Clear-SkillOwnership -Id $retryLease.id -Root $retryLease.root -ConfirmStopped
+    $stoppedReader = Enter-SkillOwnership -Resources @([pscustomobject]@{ kind = 'runtime'; path = $retryTarget; mode = 'Read' }) -Owner @{ controller = 'stopped reader fixture' }
+    Exit-SkillOwnership $stoppedReader -Uncertain
     $alphaBeforeScopedRetry = Get-FixtureBody $alphaTarget
     New-FixtureSkill -Name 'alpha' -Version '1.0.0' -Body 'outside retry scope' | Out-Null
     $scopedRetry = & $refreshScript -RunOnce -ResultJson -RetryPlanPath $retryPlanPath -GlobalSkillsPath $globalRoot -CachePath $cacheRoot | ConvertFrom-Json
     Assert-True ($scopedRetry.status -ceq 'Succeeded' -and $scopedRetry.retryTargets.Count -eq 0 -and (Get-FixtureBody $retryTarget) -like '*retry update*') 'released ownership permits the originally approved target update'
+    Assert-True (-not (Test-Path -LiteralPath (Join-Path $stoppedReader.root ($stoppedReader.id + '.json')))) 'refresh passes and removes a stopped read-only claim'
     Assert-True ((Get-FixtureBody $alphaTarget) -ceq $alphaBeforeScopedRetry) 'a scoped retry does not refresh unrelated or previously completed targets'
     New-FixtureSkill -Name 'alpha' -Version '1.0.0' -Body 'updated' | Out-Null
     $mixedPlan = Get-Content -LiteralPath $retryPlanPath -Raw | ConvertFrom-Json

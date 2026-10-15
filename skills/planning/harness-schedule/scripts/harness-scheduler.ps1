@@ -105,7 +105,7 @@ function Get-HarnessSchedulerIdentity {
 }
 
 function Sync-HarnessHeartbeat {
-    param($Paths, $State, [datetimeoffset]$Now = [datetimeoffset]::UtcNow, [string[]]$DeferredJobIds = @())
+    param($Paths, $State, [datetimeoffset]$Now = [datetimeoffset]::UtcNow, [string[]]$DeferredJobIds = @(), [string[]]$WaitingJobIds = @())
     $identity = Get-HarnessSchedulerIdentity $Paths
     $existing = @(Get-ScheduledTask -TaskPath $identity.path -ErrorAction Stop | Where-Object { $_.TaskName -ieq $identity.name })
     if ($existing.Count -gt 1 -or ($existing.Count -eq 1 -and $existing[0].Description -cne $identity.description)) { throw 'The heartbeat task is not owned by this scheduler.' }
@@ -131,6 +131,11 @@ function Sync-HarnessHeartbeat {
         $due = Get-HarnessScheduleDue $job
         if ($due -le $Now -and $job.id -cin $DeferredJobIds) { continue }
         if ($due -lt $next) { $next = $due }
+    }
+    # A job waiting only behind a running one starts soon after that run ends, not a whole fallback later.
+    if (@($WaitingJobIds).Count -and @($State.jobs | Where-Object active).Count) {
+        $retry = $Now.AddMinutes(2)
+        if ($retry -lt $next) { $next = $retry }
     }
     if ($State.maintenance.enabled) {
         $zone = [TimeZoneInfo]::FindSystemTimeZoneById($State.maintenance.timeZoneId)
@@ -409,17 +414,19 @@ function Invoke-HarnessSchedulerTick {
         }
         $started = [Collections.Generic.List[string]]::new()
         $deferred = [Collections.Generic.List[string]]::new()
+        $waiting = [Collections.Generic.List[string]]::new()
         foreach ($job in @($state.jobs | Where-Object { $_.enabled -and -not $_.active -and -not $_.recoveryRequired } | Sort-Object @{ Expression = { Get-HarnessScheduleDue $_ } }, id)) {
             if ((Get-HarnessScheduleDue $job) -gt $Now) { continue }
             $health = Get-HarnessScheduleHealth $job
             if ($health.status -ne 'Valid') { $job.lastResult = $health; $deferred.Add($job.id); continue }
             $conflict = $false
-            foreach ($active in @($state.jobs | Where-Object active)) { if (Test-HarnessScheduleConflict $job $active) { $conflict = $true; break } }
+            $behindActive = $false
+            foreach ($active in @($state.jobs | Where-Object active)) { if (Test-HarnessScheduleConflict $job $active) { $conflict = $true; $behindActive = $true; break } }
             foreach ($unavailable in @($state.unavailableProjects)) {
                 $unknown = [pscustomobject]@{ kind = 'project'; directory = $unavailable.projectRoot; projectRoot = $unavailable.projectRoot; lockRoots = $unavailable.lockRoots }
-                if (Test-HarnessScheduleConflict $job $unknown) { $conflict = $true; break }
+                if (Test-HarnessScheduleConflict $job $unknown) { $conflict = $true; $behindActive = $false; break }
             }
-            if ($conflict) { $deferred.Add($job.id); continue }
+            if ($conflict) { $deferred.Add($job.id); if ($behindActive) { $waiting.Add($job.id) }; continue }
             $runId = [guid]::NewGuid().ToString('N')
             $job | Add-Member -NotePropertyName lockRoots -NotePropertyValue @(Get-HarnessScheduleRoots $job) -Force
             $job.active = [pscustomobject]@{ runId = $runId; processId = $null; processStartedAt = ''; claimedAt = $Now.ToString('o') }
@@ -435,7 +442,7 @@ function Invoke-HarnessSchedulerTick {
         }
         $state.lastTick = $Now.ToString('o')
         Write-HarnessSchedules $Paths $state -RuntimeOnly
-        $heartbeat = Sync-HarnessHeartbeat $Paths $state $Now -DeferredJobIds @($deferred)
+        $heartbeat = Sync-HarnessHeartbeat $Paths $state $Now -DeferredJobIds @($deferred) -WaitingJobIds @($waiting)
         [pscustomobject]@{ status = 'Ticked'; started = @($started); deferred = @($deferred); heartbeat = $heartbeat }
     }
     finally { $lock.Dispose() }

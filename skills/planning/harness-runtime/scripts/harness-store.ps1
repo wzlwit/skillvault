@@ -289,7 +289,7 @@ function Write-HarnessCsv {
                 @($Columns | Where-Object { $_ -cnotin $row.PSObject.Properties.Name }).Count) { throw 'Board projection has invalid columns, source type, identity, or priority order.' }
             $lastPriority = [int]$row.priority
         }
-        foreach ($group in @($Rows | Group-Object sourceType)) {
+        foreach ($group in @($Rows | Group-Object sourceType -CaseSensitive)) {
             if (@($projected | Where-Object sourceType -CEQ $group.Name).Count -ne $group.Count) { throw 'Board projection source counts changed during serialization.' }
         }
     }

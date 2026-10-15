@@ -1,7 +1,7 @@
 {
   "name": "pr-publish",
   "title": "PR Publish",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "kind": "agent",
   "description": "[list] Alone: publish this branch's PR. Text: adjust it, like show me first. Create or update your own pull request with a current vs. to-be scenario table. A new PR gets a short description in the style of the GitHub Pull Requests extension's create-pull-request skill and opens ready for review; an existing PR keeps its description and gets only the table. Overlaps with that skill on opening PRs and uses its VS Code tool when available, otherwise gh; pr-review reviews PRs instead. Never pushes or writes to a PR without an explicit ask.",
   "tags": [

@@ -48,9 +48,12 @@ fine, such as a page somewhat over its length budget; state them in the report.
 - Link an existing authoritative procedure. If readers need it on the page, quote it as written
   with its source and add short context notes; do not rewrite it.
 - Assume a reader lands directly on any page: give one or two sentences of background and link the
-  owning pages. Spell out each abbreviation where it first appears on the page, including tables
-  and diagram labels, not in a separate abbreviations list. An unknown expansion gets an evidenced
-  description and stays a reviewer question.
+  owning pages. Spell out each abbreviation where it first appears on the page, as in Azure DevOps
+  (ADO), including tables and diagram labels, not in a separate abbreviations list. Skip acronyms
+  that readers know better than the full term: common ones such as URL, PDF, JSON, or HTML, and
+  product or service names that go by their short form, such as DAS or PACS. Titles and headings
+  may keep the short form. An unknown expansion gets an evidenced description and stays a reviewer
+  question.
 - Use the names readers know; show IDs such as GUIDs or module names only where a step needs them.
   Put long reference material, such as command lists, in collapsible `<details>` blocks when the
   target renderer supports them, and keep the most-used items visible.

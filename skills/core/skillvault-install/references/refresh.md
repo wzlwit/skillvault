@@ -107,7 +107,8 @@ refresh tick. Other installation actions never start a refresh.
    edits must be retained. Record the skill folder's committed Git tree as the new base.
 8. Report updated, unchanged, skipped, deferred, and failed skills. Isolate per-skill failures so
    later skills can refresh; an aggregate failure makes the run exit unsuccessfully.
-   Active runtime ownership, uncertain claims, or older affected runtimes defer the affected
+   Active runtime ownership, uncertain claims (left by a stopped run that held a write), or older
+   affected runtimes defer the affected
    replacement and report its owner or transition requirement. Other eligible skills may still
    update; a deferred target is not a successful refresh. Never stop workers or infer idle from
    missing legacy ownership data. Use an attended local-source installer for confirmed transitions.

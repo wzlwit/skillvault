@@ -1,7 +1,10 @@
 # ADR: Monitor Standing Intake and Flow Workers
 
 - Date: 2026-10-08
-- Status: Accepted by delegation; owner review pending. The owner asked the agent to design and build
+- Status: Accepted. The owner confirmed all twelve decisions on 2026-10-14 in the
+  [whole-project review](./2026-10-14-whole-project-review-adr.md): decisions 1-10 in its second round
+  and 11-12 in its third, with the built-in AI follow-up worker of decision 12 kept as a later step.
+  They were first accepted by delegation. The owner asked the agent to design and build
   this overnight ("you take care of B and grilling") and was not available to answer questions, so the
   agent answered the grilling questions below with its recommendations. On 2026-10-08 at 10:33 the owner
   asked to make it generic, with an `auto` action that follows up issues or monitoring; decisions 11 and

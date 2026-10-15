@@ -239,7 +239,9 @@ The shared [ownership helper](../scripts/skill-ownership.ps1) reserves selected 
 before copying. It excludes active readers of those runtime bundles or dependencies, including
 manual harness runs, and keeps a multi-target installer or migration reservation until it finishes.
 `-Force` approves replacement; it does not bypass `Busy`, uncertain claims, or other required
-approvals. A conflict names its owner and changes no reserved targets.
+approvals. A conflict names its owner and changes no reserved targets. A stopped run that held only
+reads leaves no uncertain claim: the installer passes it and removes it. A stopped run that held a
+write still needs attended recovery.
 
 An older installed runtime without `ownershipProtocol: 1` cannot establish that it is idle.
 Affected updates require an attended transition: inspect the relevant workers, confirm they have

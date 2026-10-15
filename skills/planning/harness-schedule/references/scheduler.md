@@ -132,7 +132,10 @@ needs checking. An earlier deadline never causes other jobs to run before their 
 During a tick, overdue jobs found unavailable or blocked by conflicting roots are reported in
 `deferred`. Their nextDue and anchor remain unchanged. For that tick's re-arm only, those overdue
 deadlines do not request another one-minute wake; the adaptive fallback provides the next recheck,
-or another job's earlier deadline can trigger it. They are reconsidered normally on the next tick,
+or another job's earlier deadline can trigger it. A job that waits only because it conflicts with a
+running job is the exception: while that job runs, the heartbeat rechecks every 2 minutes, so the
+waiting job starts soon after the run ends instead of up to the 30-minute active-worker cap later.
+Deferred jobs are reconsidered normally on the next tick,
 without invented runs, automatic recovery, or a second retry queue. Already due work that has not
 been checked still receives the existing near-term trigger after a configuration change.
 

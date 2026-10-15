@@ -3,7 +3,7 @@ name: harness-write
 description: "[slots] Alone: your drafts. Text: write it. Draft and update writing for people: evidence-grounded feature docs, onboarding, and troubleshooting guides; stakeholder trackers, meeting invites, and email updates or thread replies; and dashboards, reports, and queries; slots ranks meeting times offline. Shorthand: /hn-write. Overlaps with architecture-decision-records on rationale, harness-monitor on status and owner evidence, harness-dev on report implementation, kpi-dashboard and jarvis-metrics on report design, and the office-documents and ppt-master references on document output. Drafts only: never sends, invites, shares, or publishes without explicit approval."
 metadata:
   author: wzlwit
-  version: "3.0.0"
+  version: "3.1.0"
 argument-hint: "[slots] [<what to write>]"
 ---
 
@@ -52,6 +52,12 @@ confirmations. This is conversational routing, not script argument parsing.
   planned, and unverified behavior. Owners come from authoritative records, explicit statements, or
   the user; authorship and org charts only suggest candidates. Verify each write by reading it back
   and report Draft, Saved, Verified, or Validated honestly; missing evidence or checks leaves a Draft.
+- In docs and communications, spell out each acronym in full where it first appears in the page,
+  message, tracker, or invite, as in Azure DevOps (ADO), including in tables and diagram labels.
+  Skip acronyms that readers know better than the full term: common ones such as URL, PDF, JSON,
+  or HTML, and product or service names that go by their short form, such as DAS or PACS. Titles
+  and headings may keep the short form, and quoted text stays as written. Never guess an
+  expansion: ask, or leave it as a reviewer question.
 - **Drafts only.** Never send mail, send or update invites, share pages, change link permissions,
   delete items, or publish without an explicit request naming that action. After an invite is sent,
   every edit notifies its attendees, so ask first. Moves, installs, commits, pushes, PRs, and review
@@ -74,7 +80,7 @@ confirmations. This is conversational routing, not script argument parsing.
   needed pages and navigation. Reader docs go in the selected coding repository's documentation tree
   unless the request names a save location; harness tracking stays controller-local.
 - Read owning sections and functions; keywords only locate evidence. Run `humanizer` as the final
-  prose pass, then validate. Missing guidance or checks leaves a Draft, never a silent skip or a
+  prose pass, keeping every first-use acronym expansion, then validate. Missing guidance or checks leaves a Draft, never a silent skip or a
   Validated claim. Do not change application behavior, invent expansions or contacts, or leak
   restricted details to a broader audience.
 

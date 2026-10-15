@@ -120,10 +120,11 @@ This is the final editing phase, not the final validation phase.
    old/new comparisons remain because they carry required information.
 3. Freeze headings and explicit anchors before this pass. Preserve facts, qualifications, required
    steps, warnings, code fences, inline code, commands, paths, frontmatter, data, link targets,
-   and diagram logic. Style guidance never overrides technical accuracy, accepted scope, or
+   diagram logic, and first-use abbreviation expansions. If the rewrite moves an abbreviation's
+   first use, move its expansion there. Style guidance never overrides technical accuracy, accepted scope, or
    security/audience boundaries. Bold can identify glossary terms, labels, and table keys when useful.
 4. Compare the rewrite with the factual draft. Check that it neither added an unsupported claim
-   nor lost a caveat, requirement, contact uncertainty, or limitation. Return only the final prose
+   nor lost a caveat, requirement, contact uncertainty, limitation, or first-use expansion. Return only the final prose
    in reader docs, not Humanizer's drafting commentary.
 5. If guidance is unavailable, finish only supported draft work and report the missing pass.
    Do not describe the result as humanized or fully validated. A later substantive edit repeats

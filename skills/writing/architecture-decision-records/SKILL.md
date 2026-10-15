@@ -52,7 +52,11 @@ records as part of this fallback.
    chosen option's real costs, compatibility concerns, and reversibility; do not invent
    measurements, approval, deployment dates, or benefits to make the decision sound stronger.
    Keep the record short and easy to follow: state each point once and link supporting
-   material instead of copying it.
+   material instead of copying it. Spell out each acronym in full where it first appears in the
+   record, as in Azure DevOps (ADO). Skip acronyms that readers know better than the full term:
+   common ones such as URL, PDF, JSON, or HTML, and product or service names that go by their short
+   form, such as DAS or PACS. Titles and headings may keep the short form, and a later `humanizer`
+   pass keeps the expansions.
 5. Preserve accepted history. When a decision changes, write a new record and link the
    superseded one, updating its status and index as authorized. Do not silently rewrite the
    rationale of an accepted record to match today's preference.

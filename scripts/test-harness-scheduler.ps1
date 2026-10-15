@@ -269,8 +269,8 @@ try {
     $registrationsBefore = $registeredTasks.Count
     if ((& $syncHeartbeat $paths $heartbeatState $now).state -ne 'Inactive' -or $registeredTasks.Count -ne $registrationsBefore) { throw 'An empty scheduler registered routine wakeups.' }
     function Sync-HarnessHeartbeat {
-        param($Paths, $State, $Now, [string[]]$DeferredJobIds = @())
-        & $syncHeartbeat $Paths $State $Now -DeferredJobIds $DeferredJobIds
+        param($Paths, $State, $Now, [string[]]$DeferredJobIds = @(), [string[]]$WaitingJobIds = @())
+        & $syncHeartbeat $Paths $State $Now -DeferredJobIds $DeferredJobIds -WaitingJobIds $WaitingJobIds
     }
     $blockedPaths = Get-HarnessSchedulerPaths (Join-Path $fixture 'blocked-heartbeat')
     New-Item -ItemType Directory -Path $blockedPaths.Root | Out-Null
@@ -301,17 +301,21 @@ try {
     $activeJob = $futureJob | ConvertTo-Json | ConvertFrom-Json -NoEnumerate
     $activeJob.enabled = $false
     $activeJob.active = [pscustomobject]@{ runId = [guid]::NewGuid().ToString('N'); processId = 4321; processStartedAt = $now.ToString('o') }
+    $blockedState.jobs = @($blockedJob, $activeJob)
+    Write-HarnessSchedules $blockedPaths $blockedState
+    $blockedTick = Invoke-HarnessSchedulerTick $blockedPaths -Now $now
+    if ($blockedTick.started.Count -or $blockedTick.deferred -notcontains $blockedJob.id -or [datetimeoffset]$blockedTick.heartbeat.nextWake -ne $now.AddMinutes(30)) { throw 'Unavailable work polled quickly because an unrelated worker was running.' }
     $blockedJob.directory = $project
     $blockedState.jobs = @($blockedJob, $activeJob)
     Write-HarnessSchedules $blockedPaths $blockedState
     $blockedTick = Invoke-HarnessSchedulerTick $blockedPaths -Now $now
-    if ($blockedTick.started.Count -or $blockedTick.deferred -notcontains $blockedJob.id -or [datetimeoffset]$blockedTick.heartbeat.nextWake -ne $now.AddMinutes(30)) { throw 'Conflicting overdue work did not use the active-worker recheck cap.' }
+    if ($blockedTick.started.Count -or $blockedTick.deferred -notcontains $blockedJob.id -or [datetimeoffset]$blockedTick.heartbeat.nextWake -ne $now.AddMinutes(2)) { throw 'Work waiting behind a running job was not rechecked soon after that run.' }
     New-Item -ItemType Directory -Path $blockedPaths.Receipts | Out-Null
     Write-HarnessJson (Join-Path $blockedPaths.Receipts ($activeJob.id + '.json')) ([pscustomobject]@{ runId = $activeJob.active.runId; status = 'Succeeded'; exitCode = 0 })
-    $unblockedTick = Invoke-HarnessSchedulerTick $blockedPaths -Now $now.AddMinutes(30)
+    $unblockedTick = Invoke-HarnessSchedulerTick $blockedPaths -Now $now.AddMinutes(2)
     if ($unblockedTick.started.Count -ne 1 -or $unblockedTick.started[0] -cne $blockedJob.id -or $script:workerCalls -ne $workersBefore + 1) { throw 'Completed-worker reconciliation failed to release deferred work.' }
     $registeredTasks.Clear()
-    Write-Output 'Adaptive heartbeat checks passed: daily baseline, override, exact deadlines, fast jobs, active results, calendar jobs, disabled jobs, and bounded blocked-job rechecks.'
+    Write-Output 'Adaptive heartbeat checks passed: daily baseline, override, exact deadlines, fast jobs, active results, calendar jobs, disabled jobs, bounded blocked-job rechecks, and quick rechecks behind a running job.'
     $publicResult = & $publicTimer -SchedulerRoot $paths.Root -ProjectPath $project -Action Set -Topic test -TestFlow smoke -Interval 1h -Apply | ConvertFrom-Json
     if ($publicResult.job.topic -ne 'test' -or $registeredTasks.Count -ne 1) { throw "Public timer registration mismatch: topic=$($publicResult.job.topic), registrations=$($registeredTasks.Count)." }
     $beforeBaseline = Read-HarnessSchedules $paths

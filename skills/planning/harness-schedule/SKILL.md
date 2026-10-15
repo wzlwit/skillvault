@@ -3,7 +3,7 @@ name: harness-schedule
 description: "[clean] Alone: all schedules. Text: set one, like pr 1d or pr off. Manage logical schedules under one user-wide heartbeat for projects, PR review, refresh, and maintenance: set, turn off or on, convert old SkillVault Windows tasks, and clean up stale schedules. Shorthand: /hn-schedule. Overlaps with schedule-manage on Windows task administration; owns SkillVault schedules. Maintenance delegates history cleanup to harness-setup clean."
 metadata:
   author: wzlwit
-  version: "5.0.0"
+  version: "5.0.1"
 argument-hint: "[clean] [<target> <duration|off|on>]"
 ---
 

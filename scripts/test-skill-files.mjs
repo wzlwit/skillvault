@@ -448,6 +448,26 @@ test('paginated document acceptance checks final pages without widening Markdown
   assert.match(validation, /Markdown-only output requires no Word\/PDF conversion/);
 });
 
+test('docs, communications, PR descriptions, and ADRs spell out acronyms at first use', () => {
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const read = relative => fs.readFileSync(path.join(root, relative), 'utf8');
+  const sources = {
+    'harness-write': read('skills/planning/harness-write/SKILL.md'),
+    'doc pages': read('skills/planning/harness-write/references/doc-set.md'),
+    'pr-publish': read('skills/github/pr-publish/references/description.md'),
+    'ADR wrapper': read('skills/writing/architecture-decision-records/SKILL.md').split('<!-- upstream:begin -->')[0],
+  };
+  for (const [name, text] of Object.entries(sources)) {
+    assert.match(text, /[Ss]pell out each (?:acronym|abbreviation)[\s\S]{0,40}where it first appears/, `${name} spells out acronyms at first use`);
+    assert.match(text, /URL, PDF, JSON,\s+or HTML/, `${name} limits the exception to well-known acronyms`);
+    assert.match(text, /short\s+form, such as DAS\s+or\s+PACS/, `${name} lets names that go by their short form stay short`);
+  }
+  assert.match(sources['harness-write'], /In docs and communications/);
+  const humanizerPass = read('skills/planning/harness-write/references/doc.md').split('## Humanizer pass')[1].split('## Validate and deliver')[0];
+  assert.match(humanizerPass, /first-use abbreviation expansions/);
+  assert.match(humanizerPass, /moves an abbreviation's\s+first use, move its expansion there/);
+});
+
 test('Humanizer installs its original while humanizer-ch keeps its Chinese guide', () => {
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
   const catalog = parseJson(fs.readFileSync(path.join(root, 'catalog.json'), 'utf8'), 'catalog.json');

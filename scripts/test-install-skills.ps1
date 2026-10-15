@@ -246,11 +246,9 @@ try {
     Exit-SkillOwnership $lease
     $deadReader = Enter-SkillOwnership -Resources @([pscustomobject]@{ kind = 'checkout'; path = $repositoryRoot; mode = 'Read'; snapshot = 'snapshot-one' }) -Owner $firstOwner -Root $ownershipRoot
     Exit-SkillOwnership $deadReader -Uncertain
-    try { $null = Enter-SkillOwnership -Resources @($checkout) -Owner $secondOwner -Root $ownershipRoot; throw 'A writer passed a stopped reader.' }
-    catch { Assert-True ($_.Exception.Data['SkillOwnershipStatus'] -ceq 'NeedsRecovery') 'a writer still needs recovery after a stopped reader' }
-    $lease = Enter-SkillOwnership -Resources @([pscustomobject]@{ kind = 'checkout'; path = $repositoryRoot; mode = 'Read'; snapshot = 'snapshot-two' }) -Owner $secondOwner -Root $ownershipRoot
+    $lease = Enter-SkillOwnership -Resources @($checkout) -Owner $secondOwner -Root $ownershipRoot
     Exit-SkillOwnership $lease
-    Assert-True (-not (Test-Path -LiteralPath (Join-Path $ownershipRoot ($deadReader.id + '.json')))) 'a later reader passes and removes a stopped read-only claim'
+    Assert-True (-not (Test-Path -LiteralPath (Join-Path $ownershipRoot ($deadReader.id + '.json')))) 'a later writer passes and removes a stopped read-only claim'
     $runtimeRead = [pscustomobject]@{ kind = 'runtime'; path = $projectRoot; mode = 'Read' }
     $deadMixed = Enter-SkillOwnership -Resources @($runtimeRead, $checkout) -Owner $firstOwner -Root $ownershipRoot
     Exit-SkillOwnership $deadMixed -Uncertain
@@ -259,6 +257,8 @@ try {
     Assert-True (Test-Path -LiteralPath (Join-Path $ownershipRoot ($deadMixed.id + '.json'))) 'a stopped claim that holds a write stays as recovery evidence'
     try { $null = Enter-SkillOwnership -Resources @([pscustomobject]@{ kind = 'checkout'; path = $repositoryRoot; mode = 'Read'; snapshot = 'snapshot-two' }) -Owner $secondOwner -Root $ownershipRoot; throw 'A reader passed a stopped writer.' }
     catch { Assert-True ($_.Exception.Data['SkillOwnershipStatus'] -ceq 'NeedsRecovery') 'a stopped write still needs recovery before anyone reads it' }
+    try { $null = Enter-SkillOwnership -Resources @([pscustomobject]@{ kind = 'runtime'; path = $projectRoot; mode = 'Write' }) -Owner $secondOwner -Root $ownershipRoot; throw 'A writer passed a stopped claim that held a write.' }
+    catch { Assert-True ($_.Exception.Data['SkillOwnershipStatus'] -ceq 'NeedsRecovery') 'a writer still needs recovery when a stopped claim also held a write' }
     Clear-SkillOwnership -Id $deadMixed.id -ConfirmStopped -Root $ownershipRoot
     $linkTarget = Join-Path $fixtureRoot 'link-target'
     New-Item -ItemType Directory -Path $linkTarget | Out-Null
