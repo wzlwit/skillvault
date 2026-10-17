@@ -3,6 +3,11 @@
 - Date: 2026-10-09
 - Status: Accepted and implemented. The owner proposed the convention and chose every decision below in a
   topic-by-topic walk-through on 2026-10-09, then asked for the implementation the same night.
+- Superseded in part 2026-10-16: in decision 5, `/pr-publish` alone now also commits working changes,
+  in commits grouped by concern after one question that shows them, and pushes the branch without
+  force, so "push" is no longer a text adjustment; "leave the changes out" and "rebase first" are.
+  It fetches the base first and never rebases on its own. The owner chose this when asking whether
+  pr-publish should commit, push, and then create the PR, and whether it rebases a branch that is behind.
 - Decision owner: Zhaolong Wang
 - Scope: What a bare command, the text after it, and the menu do in SkillVault's own multi-action
   skills; five renames; the review-level name; and install selectors.

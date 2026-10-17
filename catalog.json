@@ -55,7 +55,7 @@
   },
   {
     "name": "handoff",
-    "description": "Prepare a concise continuation note for another session or person. Use for /handoff or an explicit request to save work for a later session. Overlaps with harness-setup on context summaries; creates a note rather than a live status view or process-control action.",
+    "description": "Prepare a concise continuation note for another session or person. Use for /handoff or an explicit request to save work for later, hand it off, or restart in a fresh session. Overlaps with harness-setup on context summaries; creates a note rather than a live status view or process-control action.",
     "path": "skills/planning/handoff",
     "version": null
   },
@@ -81,13 +81,13 @@
     "name": "harness-review",
     "description": "[broad|list] Alone: review your changes. Text: review that scope. Review current-project changes for blocking issues with two independent reviewers per pass, GPT and Claude Opus, plus a whole-repository Fresh pass when no new findings appear, restarting when local files change; broad also reports minor and existing issues. Shorthand: /hn-review. Overlaps with pr-review on general review, differential-review on security, and harness-dev, whose development loop runs the same passes; PR URLs delegate to pr-review.",
     "path": "skills/planning/harness-review",
-    "version": "4.0.0"
+    "version": "5.0.0"
   },
   {
     "name": "harness-runtime",
     "description": "Shared PowerShell 7 runtime for the harness topics: the harness.ps1 entry point, the runtime guide, and the default review model list. Not invoked directly; use harness-setup (setup, context, policy), harness-dev, harness-write, harness-review, harness-decide, harness-monitor, or harness-schedule.",
     "path": "skills/planning/harness-runtime",
-    "version": "4.0.2"
+    "version": "5.0.0"
   },
   {
     "name": "harness-schedule",
@@ -163,9 +163,9 @@
   },
   {
     "name": "pr-publish",
-    "description": "[list] Alone: publish this branch's PR. Text: adjust it, like show me first. Create or update your own pull request with a current vs. to-be scenario table. A new PR gets a short description in the style of the GitHub Pull Requests extension's create-pull-request skill and opens ready for review; an existing PR keeps its description and gets only the table. Overlaps with that skill on opening PRs and uses its VS Code tool when available, otherwise gh; pr-review reviews PRs instead. Never pushes or writes to a PR without an explicit ask.",
+    "description": "[list] Alone: publish this branch's PR. Text: adjust it, like show me first. Commit working changes in grouped commits after one question, push, and create or update your own pull request with a current vs. to-be scenario table. A new PR gets a short description in the style of the GitHub Pull Requests extension's create-pull-request skill and opens ready for review; an existing PR keeps its description and gets only the table. Overlaps with that skill on opening PRs and uses its VS Code tool when available, otherwise gh; pr-review reviews PRs instead. Never force-pushes without approval.",
     "path": "skills/github/pr-publish",
-    "version": "3.1.0"
+    "version": "4.0.0"
   },
   {
     "name": "pr-review",

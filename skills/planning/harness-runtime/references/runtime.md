@@ -292,7 +292,8 @@ Every reviewer works at one level (owner decisions, 2026-10-08 and 2026-10-09):
   compare as `broad`.
 - The level is separate from `runner.secondReviewer`, which only decides whether the panel's second
   reviewer runs. The runtime provides interface `review-levels` 2; `harness-review`, `pr-review`, and
-  `harness-dev` require it.
+  `harness-dev` require it. It also provides `review-scope` 1, for `-ChangesOnly`, which
+  `harness-review` requires.
 
 ## Folder Controllers and Coding Repositories
 
@@ -392,7 +393,7 @@ harness skills locate this same dependency instead of duplicating storage and ex
 | `UpdateTask` | Exact `-Id` and supplied fields; revised completed requirements create a linked task; never update an active task contract or retarget an allocated task |
 | `Ref` | List references, upsert `-Source`/`-Note` with optional task `-Id`, or remove exact `-RemoveId` |
 | `Dev` | Existing `-Id`, ad-hoc fields, or `-FollowUpOf`; shares task update/intake, then optional `-Mode now` or queue-only `next`; runs the development review loop. A named request sets the task's review level: `-ReviewLevel broad` saves broad on it, otherwise blocking |
-| `Review` | Review ahead/working changes with optional `-RepositoryRef`, `-Scope`, `-BaseRef`, `-SecurityReview`, and `-ReviewLevel blocking\|broad` (default `blocking`; see [Review Levels](#review-levels)); each pass uses the review panel, with one whole-repository Fresh pass when no new findings appear |
+| `Review` | Review ahead/working changes with optional `-RepositoryRef`, `-Scope`, `-BaseRef`, `-SecurityReview`, `-ChangesOnly`, and `-ReviewLevel blocking\|broad` (default `blocking`; see [Review Levels](#review-levels)); each pass uses the review panel, with one whole-repository Fresh pass when no new findings appear. `-ChangesOnly` skips Fresh and leaves the review incomplete; with no changes, Fresh runs alone |
 | `TestConfig` | Import explicit `-DefinitionPath` JSON declarations without executing commands |
 | `Test` | List declarations and `pendingDefinitions`, or run `-Flow` with optional `-TestEnvironment`, task `-Id`, and timer `-Scheduled` |
 | `MonitorConfig` | Preview a `-DefinitionPath` declaration; apply with explicit `-Apply`, human `-Actor`, and `-Reason` |
@@ -661,7 +662,8 @@ or operationally verified. A linked follow-up receives the parent's last report 
 reusable clean verdict, and must pass its own tests and required reviews.
 
 `harness-review` owns the standalone review contract: baseline selection (explicit BaseRef, then the
-merge-base with local `origin/develop` or the configured upstream, otherwise a reported
+merge-base with local `origin/develop`, the remote's default branch that `origin/HEAD` records, or the
+configured upstream, otherwise a reported
 WorkingChangesOnly fallback, never an implicit fetch), the whole-repository Fresh pass when no new
 findings appear, the attended Changes -> Full continuation after fixes, bounded snapshot restarts,
 result fields, and optional `-SecurityReview` guidance from the installed `differential-review` skill.

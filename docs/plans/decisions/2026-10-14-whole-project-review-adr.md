@@ -186,8 +186,9 @@ for both, and the installed copy is replaced from the source.
 
 ## Open Items
 
-- Save the focused DAS query in ADO and give its link to `/harness-monitor`, which drafts the ADO
-  monitor and asks once before saving it.
+None. The last one closed the same day: at the owner's request, the agent saved the focused DAS query
+as a private query in the owner's ADO account and saved the `das-focused-backlog` ADO monitor from it,
+without a timer. Its checks read an ADO token from the session, never from saved files.
 
 ## References
 

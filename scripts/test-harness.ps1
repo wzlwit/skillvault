@@ -549,6 +549,16 @@ try {
     $aheadBase = Resolve-HarnessReviewBaseline $gitPaths
     $aheadSnapshot = Get-HarnessSnapshot $gitPaths $gitConfig $gitProject $aheadBase.commit | ConvertFrom-Json
     if ($aheadBase.reference -cne 'origin/main' -or $aheadBase.commit -cne $initialBase.commit -or $aheadSnapshot.diff -notmatch 'Committed ahead fixture') { throw 'Default review baseline lost committed-ahead changes.' }
+    $null = Invoke-HarnessGit $gitProject @('update-ref', 'refs/remotes/origin/feature', 'HEAD')
+    $null = Invoke-HarnessGit $gitProject @('config', "branch.$branchName.merge", 'refs/heads/feature')
+    $null = Invoke-HarnessGit $gitProject @('symbolic-ref', 'refs/remotes/origin/HEAD', 'refs/remotes/origin/gone')
+    if ((Resolve-HarnessReviewBaseline $gitPaths).reference -cne 'origin/feature') { throw 'An origin/HEAD naming a deleted branch did not fall back to the branch upstream.' }
+    $null = Invoke-HarnessGit $gitProject @('symbolic-ref', 'refs/remotes/origin/HEAD', 'refs/remotes/origin/main')
+    $defaultBase = Resolve-HarnessReviewBaseline $gitPaths
+    if ($defaultBase.selection -cne 'DefaultBranch' -or $defaultBase.reference -cne 'origin/main' -or $defaultBase.commit -cne $initialBase.commit) { throw 'A pushed branch was compared with its own upstream instead of the default branch, skipping its pushed commits.' }
+    $null = Invoke-HarnessGit $gitProject @('symbolic-ref', '--delete', 'refs/remotes/origin/HEAD')
+    $null = Invoke-HarnessGit $gitProject @('update-ref', '-d', 'refs/remotes/origin/feature')
+    $null = Invoke-HarnessGit $gitProject @('config', "branch.$branchName.merge", 'refs/heads/main')
     $null = Invoke-HarnessGit $gitProject @('update-ref', 'refs/remotes/origin/develop', $initialBase.commit)
     if ((Resolve-HarnessReviewBaseline $gitPaths).reference -cne 'origin/develop') { throw 'Available origin/develop was not preferred for the branch comparison.' }
     $explicitBase = Resolve-HarnessReviewBaseline $gitPaths HEAD
@@ -791,7 +801,7 @@ try {
     Write-HarnessJson $paths.Config $config
     function Get-HarnessWorkspace { param($Paths, $Config, $Task); $fixtureRoot }
     function Resolve-HarnessReviewBaseline { param($Paths, $BaseRef); [pscustomobject]@{ reference = 'fixture-upstream'; commit = 'fixture-base'; selection = 'Upstream' } }
-    function Get-HarnessSnapshot { param($Paths, $Config, $Workspace, $BaseRef); '{"head":"fixture-head","base":"fixture-head","diff":"","untracked":[]}' }
+    function Get-HarnessSnapshot { param($Paths, $Config, $Workspace, $BaseRef); '{"head":"fixture-head","base":"fixture-head","diff":"fixture change","untracked":[]}' }
     $script:phases = @()
     $script:reviewGuidance = @()
     $script:reviewTaskLevels = @()
@@ -819,6 +829,22 @@ try {
     $review = Invoke-HarnessReview $paths
     if ($review.passes -ne 2 -or $review.status -cne 'clean' -or $script:phases[-1] -cne 'Fresh') { throw 'Independent clean review did not run exactly one fresh full-scope pass.' }
     if (-not $review.complete -or $review.nextPhase) { throw 'A stable clean Changes/Full round did not complete the review.' }
+    $phasesBefore = $script:phases.Count
+    $quickReview = Invoke-HarnessReview $paths -Scope 'Changes-only fixture' -ChangesOnly
+    $quickRun = @((Read-HarnessState $paths).runs | Where-Object { $_.report -ceq $quickReview.report })
+    if ($quickReview.status -cne 'clean' -or $quickReview.passes -ne 1 -or $quickReview.complete -or -not $quickReview.changesOnly -or ($script:phases[$phasesBefore..($script:phases.Count - 1)] -join ',') -cne 'Review' -or
+        [IO.File]::ReadAllText($quickReview.report) -notmatch 'Full pass was skipped' -or -not $quickRun[0].review.changesOnly) { throw 'A changes-only review ran the Full pass or claimed to be complete.' }
+    function Get-HarnessSnapshot { param($Paths, $Config, $Workspace, $BaseRef); '{"head":"fixture-head","base":"fixture-head","diff":"","untracked":[]}' }
+    $phasesBefore = $script:phases.Count
+    $auditReview = Invoke-HarnessReview $paths -Scope 'No-change audit fixture'
+    if ($auditReview.status -cne 'clean' -or $auditReview.passes -ne 1 -or -not $auditReview.complete -or ($script:phases[$phasesBefore..($script:phases.Count - 1)] -join ',') -cne 'Fresh' -or
+        [IO.File]::ReadAllText($auditReview.report) -notmatch 'Full pass ran alone') { throw 'A review with no changes did not go straight to one complete Full pass.' }
+    $runsBefore = @((Read-HarnessState $paths).runs).Count
+    $phasesBefore = $script:phases.Count
+    $nothingToReview = Invoke-HarnessReview $paths -Scope 'No-change quick fixture' -ChangesOnly
+    if ($nothingToReview.status -cne 'NoChanges' -or @((Read-HarnessState $paths).runs).Count -ne $runsBefore -or $script:phases.Count -ne $phasesBefore) { throw 'A changes-only review with no changes started a reviewer or recorded a run.' }
+    function Get-HarnessSnapshot { param($Paths, $Config, $Workspace, $BaseRef); '{"head":"fixture-head","base":"fixture-head","diff":"fixture change","untracked":[]}' }
+    Assert-HarnessFailure { & $dispatcher -ProjectPath $fixtureRoot -Action Status -ChangesOnly } 'ChangesOnly applies only'
     if ($review.baseline.reference -cne 'fixture-upstream' -or [System.IO.File]::ReadAllText($review.report) -notmatch 'Base commit: fixture-base') { throw 'Independent review did not report its selected comparison baseline.' }
     if ([IO.File]::ReadAllText($review.report) -notmatch '"requestedScope": "Whole selected repository"') { throw 'The review report did not identify the Fresh pass scope.' }
     $securityReview = Invoke-HarnessReview $paths -SecurityReview
@@ -969,7 +995,7 @@ try {
     $reviewSnapshotCheck.Workers = 0
     $workerFailure = Invoke-HarnessReview $paths
     if ($workerFailure.status -cne 'Failed' -or $workerFailure.restarts -ne 0 -or $reviewSnapshotCheck.Workers -ne 1) { throw 'Snapshot restart retried an actual reviewer failure.' }
-    function Get-HarnessSnapshot { param($Paths, $Config, $Workspace, $BaseRef); '{"head":"fixture-head","base":"fixture-head","diff":"","untracked":[]}' }
+    function Get-HarnessSnapshot { param($Paths, $Config, $Workspace, $BaseRef); '{"head":"fixture-head","base":"fixture-head","diff":"fixture change","untracked":[]}' }
     function Invoke-HarnessAgent {
         param($Paths, $Config, $Task, $Workspace, $Phase, $Snapshot)
         if ($Phase -eq 'Develop') { return [pscustomobject]@{ outcome = 'ready'; summary = 'Fixture ready' } }
@@ -1086,7 +1112,7 @@ try {
     if (($mixedPanel.reviewers.model -join ',') -cne 'gpt-fixture-2,claude-opus-explicit') { throw 'A Claude Opus runner model did not review when the list had no Claude Opus model.' }
     $panelCalls = [System.Collections.Generic.List[object]]::new()
     $panelVerdicts = @{ 'gpt-fixture-2' = 'clean'; 'claude-opus-fixture-2' = 'findings' }
-    function Get-HarnessSnapshot { param($Paths, $Config, $Workspace, $BaseRef); '{"head":"panel-head","base":"panel-head","diff":"","untracked":[]}' }
+    function Get-HarnessSnapshot { param($Paths, $Config, $Workspace, $BaseRef); '{"head":"panel-head","base":"panel-head","diff":"panel change","untracked":[]}' }
     function Invoke-HarnessAgent {
         param($Paths, $Config, $Task, $Workspace, $Phase, $Snapshot, $ReviewGuidance, $RunnerContext, $Reviewer)
         $panelCalls.Add([pscustomobject]@{ phase = $Phase; model = $Reviewer.model })

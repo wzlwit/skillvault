@@ -169,6 +169,14 @@ function Resolve-HarnessReviewBaseline {
     $reference = @(Invoke-HarnessGit $Paths.Project @('for-each-ref', '--format=%(refname:short)', 'refs/remotes/origin/develop') -Context $GitContext | Where-Object { $_ -ceq 'origin/develop' }) | Select-Object -First 1
     $selection = 'OriginDevelop'
     if (-not $reference) {
+        # origin/HEAD records the remote's default branch; Git lists nothing when it points at a deleted branch.
+        $reference = @(Invoke-HarnessGit $Paths.Project @('for-each-ref', '--format=%(refname)%09%(symref:short)', 'refs/remotes/origin/HEAD') -Context $GitContext | ForEach-Object {
+                $name, $target = "$_" -split "`t", 2
+                if ($name -ceq 'refs/remotes/origin/HEAD' -and $target) { $target }
+            }) | Select-Object -First 1
+        $selection = 'DefaultBranch'
+    }
+    if (-not $reference) {
         $branch = [string](Invoke-HarnessGit $Paths.Project @('rev-parse', '--abbrev-ref', 'HEAD') -Context $GitContext)
         $reference = [string](Invoke-HarnessGit $Paths.Project @('for-each-ref', '--format=%(upstream:short)', "refs/heads/$branch") -Context $GitContext)
         $selection = 'Upstream'
@@ -1462,10 +1470,25 @@ function Invoke-HarnessCycle {
     }
 }
 
+function Test-HarnessSnapshotEmpty {
+    param([string]$Snapshot)
+    try { $data = $Snapshot | ConvertFrom-Json -ErrorAction Stop } catch { return $false }
+    if ($data -isnot [pscustomobject] -or -not $data.PSObject.Properties['diff']) { return $false }
+    -not $data.diff -and -not @($data.untracked | Where-Object { $_ }).Count
+}
+
+# Changes then Full by default. "Changes only" skips Full; with no changes there is no diff to review, so Full runs alone.
+function Get-HarnessReviewPhases {
+    param([string]$Snapshot, [switch]$ChangesOnly)
+    if ($ChangesOnly) { return @('Review') }
+    if (Test-HarnessSnapshotEmpty $Snapshot) { return @('Fresh') }
+    @('Review', 'Fresh')
+}
+
 function Invoke-HarnessReview {
     param($Paths, [string]$Scope = 'Current changes', [string]$BaseRef, [switch]$SecurityReview,
         [string]$Workspace, [string]$ExpectedHead, [string]$ReviewGuidance, [switch]$UntrustedInput, $RunnerProfile, [hashtable]$GitEnvironment,
-        [Alias('RepoRef')][string]$RepositoryRef, $RunnerContext, [ValidateSet('blocking', 'broad')][string]$ReviewLevel = 'blocking')
+        [Alias('RepoRef')][string]$RepositoryRef, $RunnerContext, [ValidateSet('blocking', 'broad')][string]$ReviewLevel = 'blocking', [switch]$ChangesOnly)
     if ($RepositoryRef -and $Workspace) { throw 'Select either a repository reference or a separately verified review workspace, not both.' }
     $config = Read-HarnessConfig $Paths
     $executionRoot = Get-HarnessExecutionRoot $config
@@ -1512,6 +1535,7 @@ function Invoke-HarnessReview {
         $task = [pscustomobject]@{ id = ''; title = 'Independent code review'; scope = $Scope; kind = 'verify'; acceptance = 'Report evidenced findings against the recorded snapshot.'; untrustedInput = [bool]$UntrustedInput; reviewWorkspace = $Workspace; repositoryRef = $RepositoryRef; repositoryRoot = $repositoryRoot; reviewLevel = $ReviewLevel }
         $snapshot = Get-HarnessSnapshot $Paths $config $Workspace $baseline.commit -IncludeAllFiles:$UntrustedInput -GitContext $gitContext -RepositoryRoot $repositoryRoot
         if ($ExpectedHead -and ($snapshot | ConvertFrom-Json).head -cne $ExpectedHead) { throw 'Review workspace HEAD does not match the verified PR head.' }
+        if ($ChangesOnly -and (Test-HarnessSnapshotEmpty $snapshot)) { return [pscustomobject]@{ status = 'NoChanges'; message = 'There are no changes to review. Without "changes only", the review runs the Full pass.' } }
         $ownership = Enter-HarnessOwnership -Paths $Paths -Role review -Workspace $Workspace -Mode Read -Snapshot $snapshot
         if ((Get-HarnessSnapshot $Paths $config $Workspace $baseline.commit -IncludeAllFiles:$UntrustedInput -GitContext $gitContext -RepositoryRoot $repositoryRoot) -cne $snapshot) { throw 'Review inputs changed while acquiring checkout ownership.' }
         $guidance = @($securityContext.content, $ReviewGuidance | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }) -join "`n"
@@ -1543,7 +1567,7 @@ function Invoke-HarnessReview {
         $kind = 'Failure'
         $status = 'Failed'
         try {
-            $phases = @('Review', 'Fresh')
+            $phases = @(Get-HarnessReviewPhases $snapshot -ChangesOnly:$ChangesOnly)
             $phaseIndex = 0
             while ($phaseIndex -lt $phases.Count) {
                 $phase = $phases[$phaseIndex]
@@ -1577,6 +1601,7 @@ function Invoke-HarnessReview {
                         break
                     }
                     $restarts++
+                    $phases = @(Get-HarnessReviewPhases $snapshot -ChangesOnly:$ChangesOnly)
                     $phaseIndex = 0
                     continue
                 }
@@ -1606,6 +1631,9 @@ function Invoke-HarnessReview {
         $report += "`nHarness project: $($Paths.Project)`nRepository reference: $RepositoryRef`nRepository root: $repositoryRoot`nWorkspace: $Workspace`nFresh scope when triggered: Whole selected repository`n"
         $report += "`nReviewers: $(@($panel.reviewers | ForEach-Object { "$($_.model) ($($_.effort), $(if ($_.context) { $_.context } else { 'native context' }))" }) -join ' + ')`nParallel reviewers: $($panel.parallel)`nReviewer note: $($panel.note)`n"
         $report += "`nReview complete: $reviewComplete`nNext phase after fixes: $nextPhase`n"
+        $report += "`nPasses planned: $(@($phases | ForEach-Object { if ($_ -eq 'Review') { 'Changes' } else { 'Full' } }) -join ', ')`n"
+        if ($ChangesOnly) { $report += "The Full pass was skipped at the request (changes only), so this review is not complete.`n" }
+        elseif (@($phases).Count -eq 1 -and $phases[0] -eq 'Fresh') { $report += "There were no changes to review, so the Full pass ran alone.`n" }
         if ($status -eq 'findings') { $report += "`nThis round is a findings checkpoint, not review completion. Publish these findings through the existing dev/proposal handoff, then resume Changes review after fixes. The reviewer remains read-only.`n" }
         $report += "`nAttempted passes: $passes`nReviewer sessions: $sessions`nSnapshot restarts: $restarts`n`n## Superseded attempts`n`nThese results describe older snapshots, not current findings or resolved issues.`n`n" + (ConvertTo-Json -InputObject @($superseded) -Depth 15) + "`n"
         [System.IO.File]::WriteAllText($reportPath, $report, (New-Object System.Text.UTF8Encoding($false)))
@@ -1615,11 +1643,11 @@ function Invoke-HarnessReview {
             $run.status = $status
             $run.finishedAt = [datetimeoffset]::UtcNow.ToString('o')
             $run.exitCode = if ($kind -eq 'Success') { '0' } else { '1' }
-            $run | Add-Member -NotePropertyName review -NotePropertyValue ([pscustomobject]@{ scope = $Scope; baseline = $baseline; repositoryRef = $RepositoryRef; repositoryRoot = $repositoryRoot; securityReview = [bool]$SecurityReview; reviewLevel = $ReviewLevel; findings = @($findings); newFindingCount = $newFindings.Count; passes = $passes; sessions = $sessions; reviewers = @($panel.reviewers); parallelReviewers = $panel.parallel; reviewerNote = $panel.note; restarts = $restarts; complete = $reviewComplete; nextPhase = $nextPhase })
+            $run | Add-Member -NotePropertyName review -NotePropertyValue ([pscustomobject]@{ scope = $Scope; baseline = $baseline; repositoryRef = $RepositoryRef; repositoryRoot = $repositoryRoot; securityReview = [bool]$SecurityReview; reviewLevel = $ReviewLevel; changesOnly = [bool]$ChangesOnly; findings = @($findings); newFindingCount = $newFindings.Count; passes = $passes; sessions = $sessions; reviewers = @($panel.reviewers); parallelReviewers = $panel.parallel; reviewerNote = $panel.note; restarts = $restarts; complete = $reviewComplete; nextPhase = $nextPhase })
             if ($kind -ne 'Interrupted') { $saved.active = $null }
             if ($kind -ne 'PolicyPaused') { Register-HarnessPolicyOutcome $saved $config review $runId $kind "Independent review $status. Report: $reportPath" }
         }
-        [pscustomobject]@{ status = $status; report = $reportPath; reviewLevel = $ReviewLevel; passes = $passes; sessions = $sessions; reviewers = @($panel.reviewers); parallelReviewers = $panel.parallel; reviewerNote = $panel.note; restarts = $restarts; baseline = $baseline; repositoryRef = $RepositoryRef; repositoryRoot = $repositoryRoot; securityGuide = $securityContext.path; findings = @($findings); newFindingCount = $newFindings.Count; previousReport = $previousReview.report; complete = $reviewComplete; nextPhase = $nextPhase }
+        [pscustomobject]@{ status = $status; report = $reportPath; reviewLevel = $ReviewLevel; changesOnly = [bool]$ChangesOnly; passes = $passes; sessions = $sessions; reviewers = @($panel.reviewers); parallelReviewers = $panel.parallel; reviewerNote = $panel.note; restarts = $restarts; baseline = $baseline; repositoryRef = $RepositoryRef; repositoryRoot = $repositoryRoot; securityGuide = $securityContext.path; findings = @($findings); newFindingCount = $newFindings.Count; previousReport = $previousReview.report; complete = $reviewComplete; nextPhase = $nextPhase }
     }
     catch {
         if ($_.Exception.Data['SkillOwnershipStatus'] -and -not $executionStarted) { return [pscustomobject]@{ status = $_.Exception.Data['SkillOwnershipStatus']; owner = $_.Exception.Data['SkillOwnershipOwner']; message = $_.Exception.Message } }

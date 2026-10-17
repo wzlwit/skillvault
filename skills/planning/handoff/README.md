@@ -1,6 +1,7 @@
 # Handoff
 
-A lightweight, explicitly invoked [continuation-note skill](./SKILL.md), adapted from
+A lightweight [continuation-note skill](./SKILL.md), run by `/handoff` or a plain request to hand off
+work or restart in a fresh session, and adapted from
 [Matt Pocock's handoff](https://github.com/mattpocock/skills/blob/main/skills/productivity/handoff/SKILL.md).
 It keeps artifact links, blockers, process uncertainty, and the next step together without adding
 another task store or replacing existing stop/recovery controls.

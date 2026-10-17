@@ -174,7 +174,7 @@ An optional follow-up step alone is not material overlap; describe it directly, 
 | `harness-schedule`, `skillvault-install`, `schedule-manage` | Schedule setup and controls. | harness-schedule dispatches to existing project, PR, and refresh owners; `skillvault-install refresh` performs the refresh; schedule-manage administers Windows tasks broadly. |
 | `skillvault-discover` | Search, evaluation, and explanation within one topic. | Text with a purpose finds candidates, and a URL or skill name is evaluated for adoption value; `explain` describes use. |
 | `planning-with-files` | Planning with `grilling`; decision notes with `architecture-decision-records`. | Installs OthmanAdi's original for task tracking and recovery; its hooks run local scripts in hosts that support skill hooks. |
-| `pr-publish` | Opening PRs with the GitHub Pull Requests extension's `create-pull-request` skill. | Writes a new PR's description that skill's way and adds a current vs. to-be scenario table. On an existing PR it keeps the description and adds or refreshes only that table. It opens PRs through that extension's tool when available. |
+| `pr-publish` | Opening PRs with the GitHub Pull Requests extension's `create-pull-request` skill. | Commits working changes in grouped commits after one question and pushes the branch, then writes a new PR's description that skill's way and adds a current vs. to-be scenario table. On an existing PR it keeps the description and adds or refreshes only that table. It opens PRs through that extension's tool when available. |
 | `skillvault-author` | Writing `SKILL.md` files with VS Code's `agent-customization` skill. | Use only for skills in the SkillVault repository and its catalog; it never installs. |
 
 The [brainstorming skill](skills/planning/brainstorming/SKILL.md) adapts the Superpowers
@@ -241,8 +241,11 @@ handles structured CSV reads and writes. It does not start tasks, schedules, or 
 
 Use `/handoff [next-session focus] [--output path]` to write a concise continuation note with
 artifact/evidence links, open decisions, blockers, process or side-effect uncertainty, and the
-first next action. The [handoff guide](skills/planning/handoff/SKILL.md) is a global-default
-MIT adaptation of Matt Pocock's lightweight workflow and retains explicit-only invocation.
+first next action. It ends with a ready-to-paste prompt that continues the work from the note in a
+new session, such as a VS Code **New Session**, `/clear` in the GitHub Copilot app, or `/reset` in
+the Copilot CLI. The [handoff guide](skills/planning/handoff/SKILL.md) is a global-default
+MIT adaptation of Matt Pocock's lightweight workflow. It runs on `/handoff` or a plain request such
+as "hand this off" or "restart the session", never unprompted.
 It follows the project's established handoff/documentation location unless an output is supplied;
 standalone work can use OS temporary storage. No harness initialization or Python helpers are needed.
 Actual stop, recovery, and resume stay with the `/harness-setup policy` controls; a note does not
@@ -280,8 +283,10 @@ review implementation with verified isolated checkouts, complete paginated comme
 evidence, and a fresh second pass only when the first finds nothing new. It never switches the
 user's current branch or runs untrusted PR code, hooks, builds, or tests.
 
-[PR publish](skills/github/pr-publish/SKILL.md) handles your own PRs from the current branch, with
-no options, and `/pr-publish` alone publishes. It first writes and checks the title, description, and
+[PR publish](skills/github/pr-publish/SKILL.md) takes your work on the current branch to a PR, with
+no options, and `/pr-publish` alone publishes. Working changes, staged or not, are committed first in
+commits grouped by concern, after one question that shows each commit and any file left out; then
+the branch is pushed, never by force. It writes and checks the title, description, and
 table locally and shows them; asking to see the draft first stops there. It then creates the PR,
 ready for review, with a short description written the way the `create-pull-request` skill writes
 one, plus the table. On an existing PR it adds or refreshes only
@@ -416,8 +421,9 @@ sandbox. The test suite uses fake agents and scheduled tasks, plus an isolated s
 Git snapshot and worktree checks use a temporary repository, never the user's working branch.
 
 `/harness-review` uses an explicit base, given in plain words such as "since main", or a merge-base
-with local `origin/develop`/configured upstream, so committed-ahead work is included with working
-changes. Without either ref it reports
+with local `origin/develop`, the remote's default branch (`origin/HEAD`), or the configured upstream,
+so committed-ahead work is included with working changes, and a feature branch is reviewed whole,
+as its PR would be. Without any of these refs it reports
 working-changes-only coverage. If a completed first pass finds nothing new compared with the last
 compatible report, it makes one fresh independent pass over the whole selected repository and
 keeps supported findings from both. Ordinary Review stays change-scoped;

@@ -1,10 +1,11 @@
 {
   "name": "harness-review",
   "title": "Harness Review",
-  "version": "4.0.0",
+  "version": "5.0.0",
   "requiredInterfaces": {
     "harness-runtime": {
-      "review-levels": 2
+      "review-levels": 2,
+      "review-scope": 1
     }
   },
   "kind": "agent",

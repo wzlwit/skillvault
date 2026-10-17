@@ -361,9 +361,10 @@ not install this protocol into live copies or grant execution permission.
 
 The [review skill](../../skills/planning/harness-review/references/workflow.md) owns general code-review
 guidance, independent passes, and reports. Explicit comparison refs win; otherwise the local
-runtime chooses the merge-base with `origin/develop` when present, then the configured upstream.
+runtime chooses the merge-base with `origin/develop` when present, then the remote's default branch
+that `origin/HEAD` records, then the configured upstream.
 It pins that commit while reviewing ahead commits and staged/unstaged/untracked inputs. Without
-either ref it reports HEAD-based WorkingChangesOnly coverage; no remote fetch is implied.
+any of these refs it reports HEAD-based WorkingChangesOnly coverage; no remote fetch is implied.
 For a folder-based controller, `/harness-review <id>`, given a registered repository ID such as `R-001`, selects one active project-wide local
 repository reference and resolves its baseline there. It reviews that checkout, not a task's
 detached worktree, and keeps reports in the controller. No first-reference fallback is selected.

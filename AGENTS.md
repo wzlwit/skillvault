@@ -18,6 +18,8 @@ SkillVault is a catalog-driven repository for public, shareable Copilot skills.
 - ADRs, evaluations, and review records are history: they keep the skill and command names they
   were written with, and a rename fixes only their links (owner decision, 2026-10-14). Plans and
   guides are current and name the current topics.
+- Handoff notes are working notes, not documentation. In this public repository, save them in the
+  OS temporary folder or a path the user names, never under `docs/`.
 - Keep root entrypoints such as `README.md` and `AGENTS.md` in place. Skill-owned guides,
   references, and examples stay in their skill bundles so installed copies remain self-contained.
 - When a skill writes documentation in another project, honor an explicit destination first,

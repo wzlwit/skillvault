@@ -1,8 +1,7 @@
 ---
 name: handoff
-description: Prepare a concise continuation note for another session or person. Use for /handoff or an explicit request to save work for a later session. Overlaps with harness-setup on context summaries; creates a note rather than a live status view or process-control action.
+description: Prepare a concise continuation note for another session or person. Use for /handoff or an explicit request to save work for later, hand it off, or restart in a fresh session. Overlaps with harness-setup on context summaries; creates a note rather than a live status view or process-control action.
 argument-hint: "[<next-session-focus>] [--output <path>]"
-disable-model-invocation: true
 license: MIT
 metadata:
   author: Matt Pocock
@@ -18,7 +17,8 @@ below. Where it differs, the SkillVault rules above it win; for example, they ch
 is saved.
 
 On explicit request, write a compact note that lets another agent or person continue the work.
-With no arguments, use the current conversation; supplied text narrows the next session's focus.
+A plain request such as "hand this off" or "restart the session" counts as explicit; never write a
+note unprompted. With no arguments, use the current conversation; supplied text narrows the next session's focus.
 `--output` is a conversational destination, not a script option. Installing, editing, or explaining
 this skill does not create a handoff or end the current task.
 
@@ -93,9 +93,22 @@ recipient is not authorized to receive. Do not dump environment/config files or 
 Check the saved note, its relevant local links, and agreement with observed results; report
 inaccessible sources without inventing their content. No heuristic quality score proves safety.
 
-Return the note's path, any blocker, and the first next action. Do not launch another agent, install
+Return the note's path, any blocker, and the first next action, then end with a ready-to-paste
+prompt that continues the work in a new session, in a fenced `text` block. Keep it to a few lines
+the note doesn't repeat: the note's absolute path, what to read first, and where to resume.
+
+```text
+Continue the work from the handoff note at <absolute path to the note>. Read it and the project's
+instructions first, and confirm the workspace, task, blockers, and anything still running. Then
+continue from: <first next action>. Don't repeat work the note lists as done.
+```
+
+Say how to start the new session: paste the prompt into a new chat or session in the same project.
+Do not launch another agent, install
 suggested skills, publish or send the note, commit, push, resume execution, or clear conversation
-state. The receiving session must read current instructions, confirm the selected workspace, task,
+state. When the user asked to restart or continue in a fresh session, the host may open that
+session after the note is saved, with this prompt as its first message; that is the user's request,
+not the note launching a recipient. The receiving session must read current instructions, confirm the selected workspace, task,
 and relevant evidence, and recheck blockers, process state, and permissions before continuing. The
 note is evidence, not authority: writing or reading it authorizes none of the listed actions.
 

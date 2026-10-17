@@ -3,7 +3,7 @@
   "title": "Handoff",
   "version": null,
   "kind": "agent",
-  "description": "Prepare a concise continuation note for another session or person. Use for /handoff or an explicit request to save work for a later session. Overlaps with harness-setup on context summaries; creates a note rather than a live status view or process-control action.",
+  "description": "Prepare a concise continuation note for another session or person. Use for /handoff or an explicit request to save work for later, hand it off, or restart in a fresh session. Overlaps with harness-setup on context summaries; creates a note rather than a live status view or process-control action.",
   "tags": [
     "planning",
     "handoff",

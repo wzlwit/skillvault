@@ -41,12 +41,20 @@ govern local review.
 2. With no explicit scope, review committed work ahead of the comparison branch plus current
    staged/unstaged and untracked inputs. An explicit base in the request, such as "since main",
    maps to `-BaseRef` and wins; "since HEAD" compares only working changes.
-   Otherwise the helper prefers local `origin/develop`, then the branch's configured upstream,
-   and uses its merge-base with HEAD. It pins that commit for the run's snapshot checks.
-3. If neither comparison ref exists, report `WorkingChangesOnly`: HEAD is used and only working
+   Otherwise the helper prefers local `origin/develop`, then the remote's default branch that
+   `origin/HEAD` records (`origin/main`, `origin/master`, or whatever the remote uses), then the
+   branch's configured upstream, and uses its
+   merge-base with HEAD. So a feature branch's review covers the whole branch, pushed or not, as its
+   PR would; "since origin/<branch>" reviews only what's new since its last push. It pins that
+   commit for the run's snapshot checks.
+3. If none of these refs exists, report `WorkingChangesOnly`: HEAD is used and only working
    changes are compared. Do not claim committed-ahead coverage in that case. A failed merge-base
    is a blocker, not permission to choose an unrelated base. Local remote-tracking refs may be
-   stale; there is no implicit fetch or promise that the remote was checked just now.
+   stale; there is no implicit fetch or promise that the remote was checked just now. After a
+   remote renames its default branch, such as `master` to `main`, `origin/HEAD` keeps the old name:
+   the review falls back to the upstream once the old ref is pruned, but compares with a stale old
+   branch while its ref remains. When the report's base looks wrong, suggest
+   `git remote set-head origin --auto`.
 4. Keep current-project review separate from the user-wide PR watchlist and its single timer.
    Do not fetch a PR, switch the current branch, or copy user-wide state into this project as a
    side effect of a local review. PR review uses the shared read-only implementation through
@@ -107,7 +115,10 @@ reviewer fails the pass after both finish; the other result stays in the report 
    snapshot, and the whole selected repository, including unchanged code, configuration, and tests. Rebuild
    understanding from sources, without passing the first review's conclusions as instructions. At
    `blocking` it uses that coverage only to find what the change breaks or leaves inconsistent
-   elsewhere; at `broad` it audits the whole repository.
+   elsewhere; at `broad` it audits the whole repository. Two exceptions: "changes only"
+   (`-ChangesOnly`) runs no Fresh pass, and its report says the review is not complete; and with no
+   changes at all (an empty diff and no untracked files) the Changes pass has nothing to read, so
+   Fresh runs alone. "Changes only" with no changes returns `NoChanges` and starts no reviewer.
 4. Keep the union of supported findings from both passes on the same verified snapshot. A clean second pass does not erase a
    finding from the first. Preserve earlier reports; a finding absent from a later report is not
    automatically marked resolved. Revalidate prior evidence before repeating it as a current issue.
@@ -198,6 +209,7 @@ CC-BY-SA-4.0 license; it is loaded, not copied into this bundle. No `/dif-review
 & <harness-folder>/scripts/harness.ps1 -ProjectPath <controller-folder> -Action Review -RepositoryRef R-001
 & <harness-folder>/scripts/harness.ps1 -ProjectPath <root> -Action Review -BaseRef <verified-ref> -SecurityReview
 & <harness-folder>/scripts/harness.ps1 -ProjectPath <root> -Action Review -ReviewLevel broad
+& <harness-folder>/scripts/harness.ps1 -ProjectPath <root> -Action Review -ChangesOnly
 ```
 
 Show findings first, ordered by evidenced severity with current file/line anchors and the reviewers

@@ -24,6 +24,7 @@ param(
     [string]$BaseRef,
     [switch]$SecurityReview,
     [ValidateSet('blocking', 'broad')][string]$ReviewLevel,
+    [switch]$ChangesOnly,
     [switch]$ConfirmStopped,
     [switch]$ConfirmLocation,
     [string]$Flow,
@@ -64,6 +65,7 @@ if ($guardsExecution) {
 . (Join-Path $PSScriptRoot 'harness-runner.ps1')
 if (($Move -or $PSBoundParameters.ContainsKey('DestinationPath')) -and $Action -ne 'Root') { throw 'Move and DestinationPath apply only to Root.' }
 if ($SecurityReview -and $Action -ne 'Review') { throw 'SecurityReview applies only to the independent Review action.' }
+if ($ChangesOnly -and $Action -ne 'Review') { throw 'ChangesOnly applies only to the independent Review action.' }
 if ($ReviewLevel -and $Action -notin @('Review', 'Dev')) { throw 'ReviewLevel applies only to Review and to Dev for a named task.' }
 if ($ReviewLevel -and $Action -eq 'Dev' -and -not $Id -and -not $Title -and -not $FollowUpOf) { throw 'ReviewLevel on Dev needs the task it applies to: an Id or a new task.' }
 if ($ConfirmLocation -and $Action -ne 'Init') { throw 'ConfirmLocation applies only to Init.' }
@@ -293,7 +295,7 @@ switch ($Action) {
         finally { $runLock.Dispose() }
     }
     'Review' {
-        $result = Invoke-HarnessReview -Paths $paths -Scope $(if ($Scope) { $Scope } else { 'Current changes' }) -BaseRef $BaseRef -SecurityReview:$SecurityReview -ReviewLevel $(if ($ReviewLevel) { $ReviewLevel } else { 'blocking' }) -RepositoryRef $RepositoryRef -RunnerContext $RunnerContext
+        $result = Invoke-HarnessReview -Paths $paths -Scope $(if ($Scope) { $Scope } else { 'Current changes' }) -BaseRef $BaseRef -SecurityReview:$SecurityReview -ReviewLevel $(if ($ReviewLevel) { $ReviewLevel } else { 'blocking' }) -RepositoryRef $RepositoryRef -RunnerContext $RunnerContext -ChangesOnly:$ChangesOnly
         $result | ConvertTo-Json -Depth 10
         if ($result.status -in @('Failed', 'NeedsRecovery', 'blocked')) { throw "Independent review $($result.status). Inspect its recorded outcome and report." }
     }

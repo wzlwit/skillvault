@@ -1208,6 +1208,11 @@ test('review levels default to blocking and every review entry point requires th
     assert.doesNotMatch(read(`${consumer}/SKILL.md`), /--broad/, `${consumer} no longer documents --broad`);
   }
   assert.match(read('skills/github/pr-review/references/runtime.md'), /^\| `reviewLevel` \| `blocking`/m);
+  // "changes only" skips the Full pass; harness-review needs a runtime that accepts it.
+  assert.equal(runtime.runtimeInterfaces['review-scope'], 1);
+  const review = parseJson(read('skills/planning/harness-review/skill.json'), 'harness-review/skill.json');
+  assert.equal(review.requiredInterfaces['harness-runtime']['review-scope'], 1, 'harness-review must require the review scope interface');
+  assert.match(read('skills/planning/harness-review/SKILL.md'), /"changes only"[\s\S]{0,200}-ChangesOnly/);
 });
 
 test('pr-publish has no options, keeps existing descriptions, and follows create-pull-request', () => {
@@ -1305,13 +1310,20 @@ test('command examples use current menu words and show no removed option or sepa
   assert.deepEqual(offenders, [], 'Command examples still show removed options or retired action words');
 });
 
-test('handoff preserves explicit invocation, global default, and upstream attribution', () => {
+test('handoff runs on explicit requests, installs globally, and keeps upstream attribution', () => {
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
   const directory = path.join(root, 'skills/planning/handoff');
   const manifest = parseJson(fs.readFileSync(path.join(directory, 'skill.json'), 'utf8'), 'handoff/skill.json');
-  const skill = parseSkill(fs.readFileSync(path.join(directory, 'SKILL.md'), 'utf8'), 'handoff', manifest);
-  assert.equal(skill['disable-model-invocation'], true);
+  const content = fs.readFileSync(path.join(directory, 'SKILL.md'), 'utf8');
+  const skill = parseSkill(content, 'handoff', manifest);
+  // Owner decision 2026-10-16: plain requests such as "restart the session" may load the skill.
+  assert.notEqual(skill['disable-model-invocation'], true);
   assert.notEqual(skill['user-invocable'], false);
+  assert.match(skill.description, /restart in a fresh session/);
+  assert.match(content, /never write a\s+note unprompted/);
+  const deliver = content.split(/^## Verify and Deliver\r?$/m)[1]?.split(/^## /m)[0] ?? '';
+  assert.match(deliver, /ready-to-paste\s+prompt/, 'The reply ends with a prompt that continues the work in a new session');
+  assert.match(deliver, /```text[\s\S]*handoff note at <absolute path to the note>[\s\S]*<first next action>[\s\S]*```/);
   assert.equal(manifest.install.defaultScope, 'global');
   assert.equal(manifest.install.project, true);
   assert.deepEqual(manifest.dependencies ?? [], []);

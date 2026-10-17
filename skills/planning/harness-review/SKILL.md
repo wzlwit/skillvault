@@ -3,7 +3,7 @@ name: harness-review
 description: "[broad|list] Alone: review your changes. Text: review that scope. Review current-project changes for blocking issues with two independent reviewers per pass, GPT and Claude Opus, plus a whole-repository Fresh pass when no new findings appear, restarting when local files change; broad also reports minor and existing issues. Shorthand: /hn-review. Overlaps with pr-review on general review, differential-review on security, and harness-dev, whose development loop runs the same passes; PR URLs delegate to pr-review."
 metadata:
   author: wzlwit
-  version: "4.0.0"
+  version: "5.0.0"
 argument-hint: "[broad|list] [<scope>]"
 ---
 
@@ -22,7 +22,7 @@ confirmations. This is conversational routing, not script argument parsing.
 | Input | What happens |
 | --- | --- |
 | Alone | [Reviews](./references/workflow.md) the current changes now, ahead commits plus working changes, at the `blocking` level |
-| Text | [Reviews](./references/workflow.md) that scope at `blocking`: a folder or file, a commit range such as "since main", a task ID, or "security"; a PR URL goes to `pr-review` |
+| Text | [Reviews](./references/workflow.md) that scope at `blocking`: a folder or file, a commit range such as "since main", a task ID, "security", or "changes only"; a PR URL goes to `pr-review` |
 | `broad [<scope>]` | [Reviews](./references/workflow.md) at the `broad` level, which also reports minor and existing issues and audits the whole repository |
 | `list` | Shows past review results; starts nothing |
 
@@ -35,8 +35,11 @@ confirmations. This is conversational routing, not script argument parsing.
   "since HEAD" reviews only working changes. A task ID names that task as the scope and reviews its
   bound coding repository when it has one; a registered repository ID such as `R-001` selects that
   repository (`-RepositoryRef`). "security" adds the security methodology to the same passes
-  (`-SecurityReview`). Words combine, as in "security since main". A PR URL loads `pr-review` with
-  the same level and security request.
+  (`-SecurityReview`). "changes only" runs just the Changes pass for a quick check
+  (`-ChangesOnly`); the report says the Full pass was skipped and the review isn't complete. Words
+  combine, as in "security since main" or "broad changes only". With no changes at all, the review
+  goes straight to the Full pass, so `broad` on a clean tree audits the whole repository. A PR URL
+  loads `pr-review` with the same level and security request.
 - **`broad`** maps to `-ReviewLevel broad` for the current changes or the scope that follows it.
   `blocking` reports only what blocks merging the change or completing its task, and its Full pass
   looks only for what the change breaks elsewhere. `broad` reports every issue with evidence,
