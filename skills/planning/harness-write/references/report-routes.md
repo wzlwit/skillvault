@@ -21,10 +21,15 @@ source stay in place. Pass the resolved path explicitly to the selected speciali
   documented file format. Preserve its model binding, report ID, pages, filters, and custom work.
   A model export or DAX measure is not a finished Power BI report. Do not invent binary report
   files or claim that the Modeling MCP alone creates report pages. If no report writer is available,
-  report that gap and offer design/model work only with the user's agreement.
-- Validate: open/render the report using compatible tooling, check model bindings and measures
-  under intended filters, interactions, access/RLS context where relevant, and mobile layouts when
-  requested. Publishing to a workspace is a separate operation with explicit target authorization.
+  report that gap and offer design/model work only with the user's agreement. `powerbi-build`
+  edits a Power BI project's model and report files as code; Microsoft's
+  [powerbi-report-cli](https://github.com/microsoft/skills-for-fabric/tree/main/plugins/powerbi-authoring)
+  is an alternative with its own CLI. `powerbi-localize` handles translated captions and report text.
+- Validate: run `powerbi-test` on the report files (bindings, layout, house style, PBIX-vs-PBIP
+  parity) when available, then open/render the report using compatible tooling, check model
+  bindings and measures under intended filters, interactions, access/RLS context where relevant,
+  and mobile layouts when requested. Publishing to a workspace is a separate operation with
+  explicit target authorization.
 
 ## Grafana
 

@@ -2,7 +2,7 @@
 # SkillVault Upsert
 
 Contents: Parameters; Source Repository Resolution; Check Overlap; Author From Documents; Improve
-from Task Experience; Upsert By Name; Upsert From URL; After Upsert; Validation;
+from Task Experience; Upsert By Name; Upsert From URL; Origins; After Upsert; Validation;
 Publishing; Safety.
 
 Upsert creates or edits skill source files and their catalog entries in the selected SkillVault
@@ -255,6 +255,37 @@ Set `version` as in [Versions](#versions): `null` for a reference, adaptation, o
 repository, path, and license under `upstream`; `source` describes the SkillVault folder. A
 reference installs the original with any scripts or hooks, so say so in its description; never
 claim that a guide installs them. Update `catalog.json` the same way: four fields, sorted by name.
+
+## Origins
+
+A native skill written from other skills, such as a team's internal skills generalized for public
+use, lists each one under `origins` in `skill.json`: `repo` (HTTPS URL), `branch`, `path` (a file or
+folder), and `commit` (the full commit it was written from). Unlike `upstream`, nothing is copied or
+merged: the skill is new text in its own words, and origins only make the originals' later changes
+visible. An origin URL may name a private repository (owner decision, 2026-10-16); nothing else
+private goes into the skill. Rights rules in [Author From Documents](#author-from-documents) still
+apply: internal material is evidence, not text to copy.
+
+"check origins" runs the bundled read-only [origins check](../scripts/check-origins.ps1) from the
+SkillVault checkout:
+
+```powershell
+& <upsert-skill-folder>/scripts/check-origins.ps1 -RepoPath <RepoRoot> [-Name <skill>] -Checkout <local clone> [-Fetch] [-Diff]
+```
+
+It matches each origin to the SkillVault checkout or a `-Checkout` clone by its `origin` remote
+(HTTPS and SSH forms match) and compares the recorded commit with `origin/<branch>`. `-Fetch`
+updates that remote-tracking branch first, without prompting for credentials; `-Diff` adds each
+changed path's diff. Statuses: `Current`, `Changed` with its new commits, `Removed`, `NoCheckout`
+(ask the user for a local clone; never clone one implicitly), `NoBranch`, `UnknownCommit` (try
+`-Fetch`), and `FetchFailed`. Any status also notes an origin's work that is only in that clone,
+uncommitted edits or commits not yet on the branch, and `-Diff` then shows it against the recorded
+commit. Carry over a local change when it's settled, but keep the recorded commit until the change
+reaches the branch.
+
+To bring a change in, read the new commits, carry over what generalizes in your own words, and set
+that origin's `commit` to the reviewed `latest`. Leave team-specific changes out and still move the
+commit. Version the skill only when its behavior changes, per [Versions](#versions).
 
 ## Versions
 

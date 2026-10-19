@@ -168,6 +168,7 @@ An optional follow-up step alone is not material overlap; describe it directly, 
 | `office-documents` | Document output with `harness-write`; workbook/report validation with `harness-write`. | Reference Anthropic's PDF/DOCX/XLSX skills without copying their proprietary prompts, scripts, or assets; no runtime or new report route. |
 | `jarvis-metrics` | Design with `kpi-dashboard`; authoring with `harness-write`. | Guide Jarvis metric-source selection and widget configuration without bundling a client, query executor, or alerting API. |
 | `kpi-dashboard` | Design with `harness-write`, `jarvis-metrics`, and the `ppt-master` reference; metric contracts with `harness-monitor`. | Define formulas, populations, units, freshness, and layouts independently of execution or incident intake. |
+| `powerbi-build`, `powerbi-test`, `powerbi-localize` | Model changes with `powerbi-modeling`; report authoring with `harness-write` and Microsoft's `powerbi-report-cli`. | Build changes a Power BI project's model and report files as code, test checks the report files, and localize translates captions and report text. Each was written in its own words from other skills, listed as its `origins`. |
 | `ppt-master` | Artifact validation with `harness-write`; presentation design with `kpi-dashboard`. | Installs Hugo He's original for editable PowerPoint decks and brand/template workflows; it adds no PPTX route to `harness-write`. |
 | `harness-setup` | Setup, sources and briefings, limits, and failure handling within one topic. | Text keeps one registry of sources and coding repositories and shows a task's briefing or answers a question from it; `policy set limits` defines boundaries; `policy set fallback` handles bounded test retries and failed-run thresholds, and `policy pause`, `stop`, and `resume` control durable pauses. |
 | `harness-review`, `pr-review`, `differential-review` | Code review against a baseline. | Harness review stays project-first; PR review selects remote snapshots and the user-wide list. Both share bounded review passes and can load the differential security methodology. |
@@ -186,6 +187,9 @@ design documents, or start the companion without your agreement.
 name or URL, preserves or corrects existing overlap notes on updates, and updates relevant
 repository documentation. Partial overlap is not duplication or permission to remove a skill.
 Existing design documents or task notes may already cover some of these roles.
+A native skill written from other skills lists them under `origins` in its `skill.json`;
+`/skillvault-author <skill> check origins` lists their new commits so useful changes can be carried
+over in the skill's own words.
 
 ## Feature Documentation
 

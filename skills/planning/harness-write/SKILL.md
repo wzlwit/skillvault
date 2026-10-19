@@ -3,7 +3,7 @@ name: harness-write
 description: "[slots] Alone: your drafts. Text: write it. Draft and update writing for people: evidence-grounded feature docs, onboarding, and troubleshooting guides; stakeholder trackers, meeting invites, and email updates or thread replies; and dashboards, reports, and queries; slots ranks meeting times offline. Shorthand: /hn-write. Overlaps with architecture-decision-records on rationale, harness-monitor on status and owner evidence, harness-dev on report implementation, kpi-dashboard and jarvis-metrics on report design, and the office-documents and ppt-master references on document output. Drafts only: never sends, invites, shares, or publishes without explicit approval."
 metadata:
   author: wzlwit
-  version: "3.1.0"
+  version: "3.2.0"
 argument-hint: "[slots] [<what to write>]"
 ---
 

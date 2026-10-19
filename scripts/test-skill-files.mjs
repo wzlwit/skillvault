@@ -1514,6 +1514,9 @@ test('menu skills list only their menu words and route alone and text', () => {
     'rules': ['apply', 'remove'],
     'schedule-manage': ['enable', 'disable', 'delete'],
     'dri': ['investigate'],
+    'powerbi-build': ['convert'],
+    'powerbi-test': ['compare'],
+    'powerbi-localize': ['review'],
   };
   const withMenus = catalog.filter(entry => {
     const file = path.join(root, entry.path, 'SKILL.md');
@@ -1872,6 +1875,36 @@ test('references keep only their source, and adaptations record the upstream com
     write(adapted, { kind: 'agent' }, 'adapted');
     fs.rmSync(skillFile);
     assert.throws(() => validateRepository(root), /SKILL\.md/, 'an adapted skill needs its SKILL.md');
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('a native skill lists the skills it was written from as origins with their full commits', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'skillvault-origins-'));
+  try {
+    const directory = path.join(root, 'skills/testing/fixture');
+    fs.mkdirSync(directory, { recursive: true });
+    fs.writeFileSync(path.join(root, 'catalog.json'), JSON.stringify([{ name: 'fixture', description: 'A valid fixture', path: 'skills/testing/fixture', version: '1.0.0' }]));
+    fs.writeFileSync(path.join(directory, 'SKILL.md'), validSkill);
+    const write = (origins) => fs.writeFileSync(path.join(directory, 'skill.json'), JSON.stringify({
+      name: 'fixture', version: '1.0.0', description: 'A valid fixture', kind: 'agent', install: { defaultScope: 'global', global: true, strategy: 'copy' }, origins,
+    }));
+    const valid = { repo: 'https://git.example.invalid/team/source', branch: 'develop', path: '.claude/skills/source', commit: 'c'.repeat(40) };
+    write([valid, { ...valid, path: 'commands/check.md' }]);
+    assert.equal(validateRepository(root).publicCount, 1, 'valid origins pass');
+    for (const [origins, message] of [
+      [[], /non-empty list/],
+      [[{ ...valid, repo: 'http://git.example.invalid/team/source' }], /HTTPS URL/],
+      [[{ ...valid, repo: 'https://token@git.example.invalid/team/source' }], /HTTPS URL/],
+      [[{ ...valid, branch: 'latest' }], /branch name/],
+      [[{ ...valid, path: '../escape' }], /canonical relative path/],
+      [[{ ...valid, commit: 'develop' }], /full commit/],
+      [[{ ...valid, author: 'someone' }], /only repo, branch, path, and commit/],
+    ]) {
+      write(origins);
+      assert.throws(() => validateRepository(root), message, JSON.stringify(origins));
+    }
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }

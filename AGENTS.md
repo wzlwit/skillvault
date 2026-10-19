@@ -145,6 +145,12 @@ in `skill.json`, `catalog.json`, and the `SKILL.md` metadata together.
 - Preserve verified original authorship for imports and disclose adaptations. Do not infer a redistribution license from repository access.
 - Skill sources (owner decisions, 2026-09-30 and 2026-10-01):
   - Native: write your own skill from a description, session, approach, knowledge, or task.
+  - Native, written from other skills (owner decision, 2026-10-16): when a native skill generalizes
+    other skills, such as a team's internal ones, write it in your own words, copying no text, code,
+    tables, or examples, and list each original under `origins` in `skill.json` (HTTPS `repo`,
+    `branch`, `path`, and the full `commit` it was written from). `/skillvault-author <skill> check
+    origins` lists their later commits. An origin URL may name a private repository; nothing else
+    private goes into the skill.
   - External, not adapted: keep only a reference: `skill.json` with the upstream repository, path,
     and version, `install.strategy: upstream`, and no `SKILL.md`. Installing fetches the original.
     Use version `latest`, so refresh keeps copies current; pin a tag or commit only when the author

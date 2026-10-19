@@ -1,0 +1,68 @@
+# Generic rules for pbir-utils' rule engine. verify_report.py runs this pack on every report:
+#   python scripts/verify_report.py <X.Report>
+# or on its own:
+#   pbir-utils validate <X.Report> --source rules --rules-config rules/generic.yaml
+#
+# These rules encode Power BI behavior and accessibility basics, never a house style. Put a project's own choices in
+# its style file (check_style.py) or in a separate rule pack passed with --rules. All of them are warnings.
+#
+# Expressions are simpleeval, a safe subset of Python, evaluated per page or visual. The engine silently skips a
+# visual whose expression raises, so every read goes through get_path(...) or has_path(...) with a default, and a
+# rule that does not apply returns True. Visual groups have no "visual" key; the rules let them pass.
+
+options:
+  fail_on_warning: false
+
+# Only these rules run; pbir-utils' own default rules are left out.
+rules:
+  - range_slicer_slider_height
+  - range_slicer_date_order
+  - alt_text_present
+  - named_pages
+
+definitions:
+  range_slicer_slider_height:
+    description: "A range slicer (Between mode) that shows its slider is tall enough to draw it; Power BI hides the slider on a shorter slicer"
+    severity: warning
+    scope: visual
+    params:
+      # Observed in rendered date slicers: the slider was hidden at 85 and 90 px and shown at 95 px.
+      min_height: 95
+    expression: >
+      get_path(visual, "visual.visualType", "") != "slicer"
+      or get_path(visual, "visual.objects.data[0].properties.mode.expr.Literal.Value", "") != "'Between'"
+      or get_path(visual, "visual.objects.slider[0].properties.show.expr.Literal.Value", "true") == "false"
+      or get_path(visual, "position.height", 0) >= min_height
+
+  range_slicer_date_order:
+    description: "A slicer's saved start date is not after its end date"
+    severity: warning
+    scope: visual
+    expression: >
+      get_path(visual, "visual.visualType", "") != "slicer"
+      or not has_path(visual, "visual.objects.data[0].properties.startDate.expr.Literal.Value")
+      or not has_path(visual, "visual.objects.data[0].properties.endDate.expr.Literal.Value")
+      or (str(get_path(visual, "visual.objects.data[0].properties.startDate.expr.Literal.Value", ""))
+          <= str(get_path(visual, "visual.objects.data[0].properties.endDate.expr.Literal.Value", "")))
+
+  alt_text_present:
+    description: "Every shown data visual has alt text for screen readers"
+    severity: warning
+    scope: visual
+    params:
+      # Types that carry their own labels or no data. Images, shapes and textboxes that convey meaning need alt text
+      # too; this rule leaves them to a human.
+      decorative_types: [textbox, shape, basicShape, image, actionButton, slicer, advancedSlicerVisual, pageNavigator,
+                         bookmarkNavigator]
+    expression: >
+      not has_path(visual, "visual.visualType")
+      or get_path(visual, "visual.visualType", "") in decorative_types
+      or visual.get("isHidden", False)
+      or has_path(visual, "visual.visualContainerObjects.general[0].properties.altText")
+
+  named_pages:
+    description: "Pages have their own names, not the default 'Page N'"
+    severity: warning
+    scope: page
+    expression: >
+      not re_match(r'^Page \d+$', page.get("displayName", ""))

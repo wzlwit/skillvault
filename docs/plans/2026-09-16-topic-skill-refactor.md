@@ -360,7 +360,10 @@ skill's menu words; what it does alone and with text starts its description.
 | office-documents | office-documents |
 | openapi-spec | openapi-spec |
 | planning-with-files | planning-with-files |
+| powerbi-build | powerbi-build convert |
+| powerbi-localize | powerbi-localize review |
 | powerbi-modeling | powerbi-modeling |
+| powerbi-test | powerbi-test compare |
 | ppt-master | ppt-master |
 | pr-publish | pr-publish list |
 | pr-review | pr-review broad, list, configure |

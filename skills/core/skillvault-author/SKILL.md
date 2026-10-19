@@ -3,7 +3,7 @@ name: skillvault-author
 description: "[remove] Alone: the catalog. Text: create or change it. Author and maintain skill bundles and catalog entries in the SkillVault repository, not application source or installed copies. Shorthand: /sv-author. Overlaps with VS Code's agent-customization skill on writing SKILL.md files; use this one only for skills in the SkillVault repository and its catalog. Never installs; use skillvault-install to install the result."
 metadata:
   author: wzlwit
-  version: "4.0.0"
+  version: "4.1.0"
 argument-hint: "[remove] [<what to create or change>]"
 ---
 
@@ -22,7 +22,7 @@ confirmations. This is conversational routing, not script argument parsing.
 | Input | What happens |
 | --- | --- |
 | Alone | Say what it would author when the conversation makes that clear, and ask first; otherwise show the source checkout's catalog and ask what to create or change |
-| Text | [Create or change the named skill in the resolved source](./references/upsert.md) |
+| Text | [Create or change the named skill in the resolved source](./references/upsert.md); `<skill> check origins` [lists changes in the skills it was written from](./references/upsert.md#origins) |
 | `remove <skill>` | [Delete the source bundle and catalog entry after confirmation](./references/remove.md) |
 
 - Alone never writes. When the conversation makes clear what to author, it says what it would
@@ -31,7 +31,7 @@ confirmations. This is conversational routing, not script argument parsing.
   manifest's `install.strategy` and `upstream` block), and asks what to create or change. No answer
   changes nothing.
 - The alone view ends with one line naming the text uses: a skill name or URL with the change,
-  "from this session" or "from <document>", and "in <checkout path>".
+  "from this session" or "from <document>", "in <checkout path>", and "check origins".
 - Text says what to create or change and runs the [upsert procedure](./references/upsert.md). An
   existing name is edited; a new name is created only when confirmed absent from the verified
   catalog. An ambiguous or inaccessible target is not absent. A URL adds an external skill as a
@@ -40,6 +40,9 @@ confirmations. This is conversational routing, not script argument parsing.
   [experience review](./references/upsert.md#improve-from-task-experience); "from <document>" uses
   [document-derived authoring](./references/upsert.md#author-from-documents). "in <checkout path>"
   selects another checkout, the resolver's explicit `-RepoPath`.
+- A skill written from other skills lists them in `skill.json` `origins`. "check origins" after its
+  name, or alone for every such skill, runs the read-only [origins check](./references/upsert.md#origins)
+  and lists each original's new commits; porting a change stays a separate request, in your own words.
 - `remove` deletes only source bundles and catalog entries; installed copies stay. Installed-copy
   removal belongs to `/skillvault-install uninstall`.
 - Run the [read-only resolver](./scripts/resolve-source-repo.ps1) before writing and keep its verified

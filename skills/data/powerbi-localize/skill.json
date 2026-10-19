@@ -1,0 +1,33 @@
+{
+  "name": "powerbi-localize",
+  "title": "Power BI Localization",
+  "version": "1.0.0",
+  "kind": "agent",
+  "description": "[review] Alone: translation coverage. Text: localize that. Translate Power BI semantic model captions through Tabular Model Definition Language (TMDL) culture files, often generated from .resx resource files, and report text such as visual titles, buttons, slicer headers, and alt text through a translation table bound to visuals. Use to add a language, translate captions, generate culture files, localize titles and buttons, or review a localization change or pull request. Overlaps with powerbi-build on TMDL and enhanced report format (PBIR) edits; powerbi-test on literal-text and binding checks; Microsoft's semantic-model-authoring on the culture file format.",
+  "tags": ["power-bi", "localization", "translation", "tmdl", "resx", "pbir"],
+  "author": "wzlwit",
+  "source": { "repo": "skillvault", "path": "skills/data/powerbi-localize" },
+  "install": { "global": true, "project": true, "session": true, "defaultScope": "global", "strategy": "copy" },
+  "dependencies": ["python", "power-bi-desktop", "tabular-editor"],
+  "examples": [
+    "/powerbi-localize",
+    "/powerbi-localize add Japanese to the Sales model",
+    "/powerbi-localize regenerate the culture files from the new translations",
+    "/powerbi-localize review the changes on this branch"
+  ],
+  "readme": "SKILL.md",
+  "inputs": [
+    {
+      "name": "action",
+      "required": false,
+      "type": "string",
+      "enum": ["review"],
+      "description": "Menu word: review. Alone, the skill shows translation coverage per culture and offers the next step; other text localizes what it names: a language, culture files, report text, or literal titles."
+    }
+  ],
+  "origins": [
+    { "repo": "https://microsoft.ghe.com/bic/crm.services.analytics.datapipeline", "branch": "develop", "path": ".claude/skills/pbi-tmdl-localization", "commit": "20a099b0443e71970c411b53478195abc63801b7" },
+    { "repo": "https://microsoft.ghe.com/bic/crm.services.analytics.datapipeline", "branch": "develop", "path": ".claude/skills/pbi-tmdl-localization-visual-titles", "commit": "20a099b0443e71970c411b53478195abc63801b7" },
+    { "repo": "https://microsoft.ghe.com/bic/crm.services.analytics.datapipeline", "branch": "develop", "path": ".claude/skills/pbi-localization-pr-review", "commit": "20a099b0443e71970c411b53478195abc63801b7" }
+  ]
+}

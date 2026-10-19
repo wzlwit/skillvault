@@ -105,7 +105,7 @@
     "name": "harness-write",
     "description": "[slots] Alone: your drafts. Text: write it. Draft and update writing for people: evidence-grounded feature docs, onboarding, and troubleshooting guides; stakeholder trackers, meeting invites, and email updates or thread replies; and dashboards, reports, and queries; slots ranks meeting times offline. Shorthand: /hn-write. Overlaps with architecture-decision-records on rationale, harness-monitor on status and owner evidence, harness-dev on report implementation, kpi-dashboard and jarvis-metrics on report design, and the office-documents and ppt-master references on document output. Drafts only: never sends, invites, shares, or publishes without explicit approval.",
     "path": "skills/planning/harness-write",
-    "version": "3.1.0"
+    "version": "3.2.0"
   },
   {
     "name": "humanizer",
@@ -150,10 +150,28 @@
     "version": null
   },
   {
+    "name": "powerbi-build",
+    "description": "[convert] Alone: projects here. Text: build or change that. Change Power BI project (PBIP) files as code: Tabular Model Definition Language (TMDL) models, enhanced report format (PBIR) layouts, the Power BI Desktop round-trip, and Power BI Desktop file (PBIX) to PBIP conversion, with the pitfalls that break them. Use to edit TMDL, change a measure or visual, add a slicer or page, fix a Desktop load error, or convert a PBIX. Overlaps with powerbi-modeling on model changes (it owns model design); Microsoft's powerbi-report-cli and semantic-model-authoring on PBIR and TMDL authoring (they use Microsoft's CLI; this has the file-level tricks); powerbi-test, which checks the result; and powerbi-localize on translations.",
+    "path": "skills/data/powerbi-build",
+    "version": "1.0.0"
+  },
+  {
+    "name": "powerbi-localize",
+    "description": "[review] Alone: translation coverage. Text: localize that. Translate Power BI semantic model captions through Tabular Model Definition Language (TMDL) culture files, often generated from .resx resource files, and report text such as visual titles, buttons, slicer headers, and alt text through a translation table bound to visuals. Use to add a language, translate captions, generate culture files, localize titles and buttons, or review a localization change or pull request. Overlaps with powerbi-build on TMDL and enhanced report format (PBIR) edits; powerbi-test on literal-text and binding checks; Microsoft's semantic-model-authoring on the culture file format.",
+    "path": "skills/data/powerbi-localize",
+    "version": "1.0.0"
+  },
+  {
     "name": "powerbi-modeling",
     "description": "Design and review Power BI semantic models, star schemas, fact and dimension grain, relationships, DAX measures, RLS, and performance. Use for /powerbi-modeling, model design, cardinality, cross-filter direction, or model optimization. Overlaps with kpi-dashboard on grain and metric definitions; owns model structure and validation, not dashboard layout or automatic deployment. Design-only use needs no live connection.",
     "path": "skills/data/powerbi-modeling",
     "version": null
+  },
+  {
+    "name": "powerbi-test",
+    "description": "[compare] Alone: reports here. Text: test that report. Tests Power BI reports in the enhanced report format (PBIR) before check-in or release: layout, field bindings, text fit, parity between a Power BI Desktop file (PBIX) and its Power BI project (PBIP), and house style from a project style file. Also compares two Power BI projects. Use to test, check, or verify a report, or to compare a base and a target project. Overlaps with powerbi-build on project files, which it changes and this skill checks; with Microsoft's powerbi-report-cli on validation and screenshots; and with powerbi-localize on literal-text and translation checks.",
+    "path": "skills/data/powerbi-test",
+    "version": "1.0.0"
   },
   {
     "name": "ppt-master",
@@ -201,7 +219,7 @@
     "name": "skillvault-author",
     "description": "[remove] Alone: the catalog. Text: create or change it. Author and maintain skill bundles and catalog entries in the SkillVault repository, not application source or installed copies. Shorthand: /sv-author. Overlaps with VS Code's agent-customization skill on writing SKILL.md files; use this one only for skills in the SkillVault repository and its catalog. Never installs; use skillvault-install to install the result.",
     "path": "skills/core/skillvault-author",
-    "version": "4.0.0"
+    "version": "4.1.0"
   },
   {
     "name": "skillvault-discover",

@@ -1,7 +1,7 @@
 {
   "name": "skillvault-author",
   "title": "SkillVault Author",
-  "version": "4.0.0",
+  "version": "4.1.0",
   "status": "public",
   "visibility": "public",
   "kind": "agent",
@@ -63,6 +63,7 @@
     "/skillvault-author",
     "/skillvault-author a skill that ranks PR comments",
     "/skillvault-author add a timeout to harness-review",
+    "/skillvault-author powerbi-test check origins",
     "/skillvault-author remove old-skill"
   ],
   "readme": "SKILL.md"

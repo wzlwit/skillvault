@@ -1,0 +1,61 @@
+{
+  "name": "powerbi-build",
+  "title": "Power BI Build",
+  "version": "1.0.0",
+  "kind": "agent",
+  "description": "[convert] Alone: projects here. Text: build or change that. Change Power BI project (PBIP) files as code: Tabular Model Definition Language (TMDL) models, enhanced report format (PBIR) layouts, the Power BI Desktop round-trip, and Power BI Desktop file (PBIX) to PBIP conversion, with the pitfalls that break them. Use to edit TMDL, change a measure or visual, add a slicer or page, fix a Desktop load error, or convert a PBIX. Overlaps with powerbi-modeling on model changes (it owns model design); Microsoft's powerbi-report-cli and semantic-model-authoring on PBIR and TMDL authoring (they use Microsoft's CLI; this has the file-level tricks); powerbi-test, which checks the result; and powerbi-localize on translations.",
+  "tags": [
+    "power-bi",
+    "pbip",
+    "tmdl",
+    "pbir",
+    "semantic-model",
+    "report-layout"
+  ],
+  "author": "wzlwit",
+  "source": {
+    "repo": "skillvault",
+    "path": "skills/data/powerbi-build"
+  },
+  "install": {
+    "global": true,
+    "project": true,
+    "session": true,
+    "defaultScope": "global",
+    "strategy": "copy"
+  },
+  "dependencies": [
+    "power-bi-desktop"
+  ],
+  "examples": [
+    "/powerbi-build",
+    "/powerbi-build add a Region slicer to the Sales page",
+    "/powerbi-build convert Sales.pbix"
+  ],
+  "readme": "SKILL.md",
+  "inputs": [
+    {
+      "name": "action",
+      "required": false,
+      "type": "string",
+      "enum": [
+        "convert"
+      ],
+      "description": "Menu word: convert. Alone, the skill lists the PBIP projects under the current folder with their model and report formats and offers the next step; other text builds or changes the model or report layout it names."
+    }
+  ],
+  "origins": [
+    {
+      "repo": "https://microsoft.ghe.com/bic/crm.services.analytics.datapipeline",
+      "branch": "develop",
+      "path": ".claude/skills/pbi-tmdl-workflow",
+      "commit": "20a099b0443e71970c411b53478195abc63801b7"
+    },
+    {
+      "repo": "https://github.com/wzlwit/skillvault",
+      "branch": "main",
+      "path": "templates/pbi-report-visual-conventions",
+      "commit": "ebfb40533f2552637d59b80e89e0d498eceb8266"
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+# EXAMPLE style file for powerbi-test's check_style.py. The values are illustrative, not recommendations.
+# Copy it into your project as report-style.yaml, keep only the settings your team has agreed on, and set their
+# values. A setting that is absent is not checked; an unknown setting or value stops the run, so a typo cannot
+# silently skip a check.
+#   python scripts/check_style.py <X.Report | X.pbip> --style report-style.yaml [--model <X.SemanticModel>]
+
+page:
+  view: FitToPage           # page view on every page: FitToPage, FitToWidth or ActualSize
+  width: 1280               # canvas width in px
+  height: 720               # canvas height in px; leave it out when page heights differ
+  background: "#FFFFFF"     # canvas color, set at transparency 0 (quote it: # starts a YAML comment)
+filtersPane: collapsed      # collapsed, expanded or hidden, set once in report.json and never per page
+displayUnits: none          # on card values, value axes and shown data labels: none, auto, thousands, millions,
+                            # billions or trillions
+percentDecimals: 1          # decimals on pie and donut percent labels
+dateSlicer:                 # slicers in a date mode
+  mode: Between             # Between, Relative, Before or After
+  slider: true              # true: users can drag the range; false: they type the two dates (a compact slicer)
+  sameSyncGroup: true       # all date slicers share one sync group, so a range follows the user across pages
+titles: bound               # shown titles and subtitles take their text from a field, such as a translation table
+
+# These three read the measures in the model's Tabular Model Definition Language (TMDL) files.
+formats:                    # allowed format strings: exact, or a regular expression for the whole string
+  - "#,##0"
+  - "#,##0.00"
+  - "0.0%"
+blanks: keep                # flag measures that turn a blank into 0, a dash or N/A text
+captionSeparator: " | "     # captions that join a number and a name put the number first

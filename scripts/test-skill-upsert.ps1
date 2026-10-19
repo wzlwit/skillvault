@@ -105,6 +105,61 @@ try {
     Assert-True (@(Get-ChildItem -LiteralPath $projectPath -Force).Count -eq 0) 'resolution writes nothing into the unrelated working project'
     Assert-True ([System.IO.File]::ReadAllText($markerPath) -ceq $originalMarker) 'dirty source work remains untouched'
     Assert-True ([System.IO.File]::ReadAllText((Join-Path $knownPath 'catalog.json')) -ceq $originalCatalog) 'resolution does not modify the source catalog'
+
+    $checkScript = Join-Path $PSScriptRoot '..\skills\core\skillvault-author\scripts\check-origins.ps1'
+    $originRepo = Join-Path $fixtureRoot 'origin source'
+    $vaultPath = Join-Path $fixtureRoot 'vault checkout'
+    $commitArgs = @('-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid', '-c', 'commit.gpgSign=false', '-c', "core.hooksPath=$fixtureRoot/no-hooks", 'commit', '--quiet', '-m')
+    git init --quiet $originRepo
+    New-Item -ItemType Directory -Path (Join-Path $originRepo 'skills/source') -Force | Out-Null
+    'first' | Set-Content -LiteralPath (Join-Path $originRepo 'skills/source/SKILL.md')
+    git -C $originRepo add --all
+    git -C $originRepo @commitArgs 'first version'
+    $recorded = [string](git -C $originRepo rev-parse HEAD)
+    'unrelated' | Set-Content -LiteralPath (Join-Path $originRepo 'other.txt')
+    git -C $originRepo add --all
+    git -C $originRepo @commitArgs 'unrelated change'
+    git -C $originRepo remote add origin 'git@git.example.invalid:Team/Source.git'
+    git -C $originRepo update-ref refs/remotes/origin/develop HEAD
+    New-SourceFixture -Path $vaultPath
+    New-Item -ItemType Directory -Path (Join-Path $vaultPath 'skills/data/derived') -Force | Out-Null
+    '[{"name":"derived","description":"Derived fixture","path":"skills/data/derived","version":"1.0.0"}]' | Set-Content -LiteralPath (Join-Path $vaultPath 'catalog.json')
+    $manifestPath = Join-Path $vaultPath 'skills/data/derived/skill.json'
+    $writeOrigins = {
+        param([string]$Commit)
+        (@{ name = 'derived'; origins = @(
+                    [ordered]@{ repo = 'https://git.example.invalid/team/source'; branch = 'develop'; path = 'skills/source'; commit = $Commit },
+                    [ordered]@{ repo = 'https://git.example.invalid/other/missing'; branch = 'main'; path = 'x'; commit = ('f' * 40) }
+                ) } | ConvertTo-Json -Depth 4) | Set-Content -LiteralPath $manifestPath
+    }
+    & $writeOrigins $recorded
+    $manifestBefore = [System.IO.File]::ReadAllText($manifestPath)
+    $check = @(& $checkScript -RepoPath $vaultPath -Checkout $originRepo -Json | ConvertFrom-Json | ForEach-Object { $_ })
+    Assert-True ($check.Count -eq 2 -and $check[0].status -eq 'Current' -and $check[0].latest) 'a commit outside the origin path leaves it current, and an SSH clone matches its HTTPS origin URL'
+    Assert-True ($check[1].status -eq 'NoCheckout') 'an origin without a local clone is reported, not guessed'
+    Assert-True ($check[0].local -eq '') 'a clean clone reports no local changes'
+    'second' | Set-Content -LiteralPath (Join-Path $originRepo 'skills/source/SKILL.md')
+    $check = @(& $checkScript -RepoPath $vaultPath -Name derived -Checkout $originRepo -Diff -Json | ConvertFrom-Json | ForEach-Object { $_ })
+    Assert-True ($check[0].status -eq 'Current' -and $check[0].local -eq 'uncommitted edits' -and $check[0].localDiff -match '\+second') 'an uncommitted edit to the origin is reported with its diff, while the branch stays current'
+    Assert-True ((& $checkScript -RepoPath $vaultPath -Checkout $originRepo | Out-String) -match 'derived: .*Current; in .*: uncommitted edits') 'the text report names local edits'
+    git -C $originRepo add --all
+    git -C $originRepo @commitArgs 'improve the source skill'
+    $check = @(& $checkScript -RepoPath $vaultPath -Name derived -Checkout $originRepo -Json | ConvertFrom-Json | ForEach-Object { $_ })
+    Assert-True ($check[0].status -eq 'Current' -and $check[0].local -eq '1 commit(s) not on develop') 'a local commit that has not reached the branch is reported'
+    git -C $originRepo update-ref refs/remotes/origin/develop HEAD
+    $check = @(& $checkScript -RepoPath $vaultPath -Name derived -Checkout $originRepo -Diff -Json | ConvertFrom-Json | ForEach-Object { $_ })
+    Assert-True ($check[0].status -eq 'Changed' -and @($check[0].commits).Count -eq 1 -and $check[0].commits[0].subject -eq 'improve the source skill') 'a commit to the origin path is listed'
+    Assert-True ($check[0].local -eq '' -and -not $check[0].localDiff) 'once the branch has the commit, nothing is local'
+    Assert-True ($check[0].diff -match '\+second') 'the diff shows what changed'
+    Assert-True ((& $checkScript -RepoPath $vaultPath -Checkout $originRepo | Out-String) -match 'derived: .* 1 new commit') 'the text report counts the new commits'
+    git -C $originRepo rm --quiet -r skills/source
+    git -C $originRepo @commitArgs 'remove the source skill'
+    git -C $originRepo update-ref refs/remotes/origin/develop HEAD
+    Assert-True ((@(& $checkScript -RepoPath $vaultPath -Checkout $originRepo -Json | ConvertFrom-Json | ForEach-Object { $_ }))[0].status -eq 'Removed') 'a removed origin is reported'
+    Assert-True ([System.IO.File]::ReadAllText($manifestPath) -ceq $manifestBefore) 'the check never rewrites the recorded commit'
+    & $writeOrigins ('e' * 40)
+    Assert-True ((@(& $checkScript -RepoPath $vaultPath -Checkout $originRepo -Json | ConvertFrom-Json | ForEach-Object { $_ }))[0].status -eq 'UnknownCommit') 'a recorded commit missing from the clone is reported'
+    Assert-Throws { & $checkScript -RepoPath $vaultPath -Name missing } '*Not in the catalog*'
     Write-Output 'Source checks passed: install requires the intended or explicit checkout without clone/cache fallback; upsert retains its selection order. Git identity, separate project paths, and read-only resolution verified using temporary repositories only.'
 }
 finally {

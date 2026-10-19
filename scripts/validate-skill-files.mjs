@@ -87,6 +87,24 @@ const canonicalRelative = (value) => value === '.' || (typeof value === 'string'
 const upstreamVersion = (value) => value === 'latest' || (typeof value === 'string' &&
   /^[A-Za-z0-9][A-Za-z0-9._/-]{0,199}$/.test(value) && !/\.\.|\/\/|\/$|\.$|\.lock$/.test(value));
 
+// A native skill written from other skills lists them as origins, so their later changes can be checked.
+export function checkOrigins(name, manifest) {
+  const origins = manifest.origins;
+  assert.ok(Array.isArray(origins) && origins.length > 0, `${name}: origins must be a non-empty list`);
+  for (const origin of origins) {
+    assert.ok(origin && typeof origin === 'object' && !Array.isArray(origin), `${name}: each origin must be an object`);
+    const extra = Object.keys(origin).filter((key) => !['repo', 'branch', 'path', 'commit'].includes(key));
+    assert.deepEqual(extra, [], `${name}: an origin has only repo, branch, path, and commit`);
+    let url;
+    try { url = new URL(origin.repo); } catch { url = undefined; }
+    assert.ok(url && url.protocol === 'https:' && !url.username && !url.password && !url.search && !url.hash && !/\s/.test(origin.repo),
+      `${name}: origin repo must be an HTTPS URL without credentials, query, or fragment`);
+    assert.ok(origin.branch !== 'latest' && upstreamVersion(origin.branch), `${name}: origin branch must be a branch name`);
+    assert.ok(canonicalRelative(origin.path) && origin.path !== '.', `${name}: origin path must be a canonical relative path`);
+    assert.ok(/^[0-9a-f]{40}$/.test(origin.commit ?? ''), `${name}: origin commit must be the full commit the skill was written from`);
+  }
+}
+
 export function checkUpstreamReference(directory, name, manifest) {
   const strategy = manifest.install?.strategy;
   if (strategy === 'upstream') assert.equal(manifest.kind, 'reference', `${name}: upstream references require kind reference`);
@@ -107,6 +125,7 @@ export function checkUpstreamReference(directory, name, manifest) {
 function checkBundle(directory, name, manifest) {
   assert.ok(namePattern.test(name) && name.length <= 64, `${name}: invalid skill name`);
   assert.ok(!fs.lstatSync(directory).isSymbolicLink(), `${name}: skill directory must not be a symlink`);
+  if (manifest && own(manifest, 'origins')) checkOrigins(name, manifest);
   const file = path.join(directory, 'SKILL.md');
   if (manifest?.install?.strategy === 'upstream') {
     assert.equal(manifest.name, name, `${name}: manifest name mismatch`);
