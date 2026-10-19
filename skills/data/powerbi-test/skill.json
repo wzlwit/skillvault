@@ -48,18 +48,6 @@
   ],
   "origins": [
     {
-      "repo": "https://github.com/wzlwit/skillvault",
-      "branch": "main",
-      "path": "templates/pbi-report-layout-tests",
-      "commit": "ebfb40533f2552637d59b80e89e0d498eceb8266"
-    },
-    {
-      "repo": "https://github.com/wzlwit/skillvault",
-      "branch": "main",
-      "path": "templates/pbi-report-visual-conventions",
-      "commit": "ebfb40533f2552637d59b80e89e0d498eceb8266"
-    },
-    {
       "repo": "https://microsoft.ghe.com/bic/crm.services.analytics.datapipeline",
       "branch": "develop",
       "path": ".claude/commands/pbi-parity-check.md",

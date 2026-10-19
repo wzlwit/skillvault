@@ -1,8 +1,8 @@
 # Power BI Report Visual Conventions Evaluation
 
 - Evaluated: 2026-10-16
-- Source: https://github.com/wzlwit/skillvault/tree/main/templates/pbi-report-visual-conventions, a
-  native SkillVault draft that is not in the catalog
+- Source: https://github.com/wzlwit/skillvault/tree/ebfb40533f2552637d59b80e89e0d498eceb8266/templates/pbi-report-visual-conventions,
+  a native SkillVault draft that was never in the catalog; retired on 2026-10-19
 - Reviewed revision: `ebfb405` (version `1.0.0`), plus uncommitted local edits that were in progress
   during the review and raise it to `1.1.0`
 - Author: wzlwit; no license declared, like other native SkillVault skills
@@ -71,6 +71,5 @@ publishing it as is. Its checker became `check_style.py` in
 [powerbi-test](../../skills/data/powerbi-test/SKILL.md). It checks only what a project's style file
 sets, and the bundled example uses neutral values. The draft's general Power BI behavior notes moved
 to [powerbi-build](../../skills/data/powerbi-build/SKILL.md), and its rendered check moved to
-`powerbi-test`. No team's house style is published. Both skills list this draft under `origins`, so
-`/skillvault-author <skill> check origins` shows its later commits. The draft folder stays in
-`templates/` until the owner retires it.
+`powerbi-test`. No team's house style is published. On 2026-10-19 the owner retired the draft, and
+the skills' origin entries for it were dropped; the source link above keeps the reviewed revision.

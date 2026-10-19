@@ -1,6 +1,6 @@
 ---
 name: powerbi-modeling
-description: "Design and review Power BI semantic models, star schemas, fact and dimension grain, relationships, DAX measures, RLS, and performance. Use for /powerbi-modeling, model design, cardinality, cross-filter direction, or model optimization. Overlaps with kpi-dashboard on grain and metric definitions; owns model structure and validation, not dashboard layout or automatic deployment. Design-only use needs no live connection."
+description: "Design and review Power BI semantic models, star schemas, fact and dimension grain, relationships, DAX measures, RLS, and performance. Use for /powerbi-modeling, model design, cardinality, cross-filter direction, or model optimization. Overlaps with kpi-dashboard on grain and metric definitions, and with powerbi-build, which makes model changes as project file edits; owns model structure and validation, not dashboard layout or automatic deployment. Design-only use needs no live connection."
 license: MIT
 metadata:
   author: null
@@ -79,6 +79,9 @@ item. Designing, explaining, reviewing, and installing this guide do not authori
 - `kpi-dashboard` owns metric contracts and presentation; this skill owns Power BI model
   structure and validation. Keep both. An optional implementation handoff can use the project's
   existing authoring workflow without a new runner or automatic integration.
+- This skill decides what the model should be. `powerbi-build` makes an approved change as edits to
+  a Power BI project's model files and checks that Desktop loads them; `powerbi-test` checks the
+  report files, and `powerbi-localize` translates captions.
 
 ## Using the Original
 

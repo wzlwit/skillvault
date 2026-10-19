@@ -146,6 +146,10 @@ try {
     git -C $originRepo @commitArgs 'improve the source skill'
     $check = @(& $checkScript -RepoPath $vaultPath -Name derived -Checkout $originRepo -Json | ConvertFrom-Json | ForEach-Object { $_ })
     Assert-True ($check[0].status -eq 'Current' -and $check[0].local -eq '1 commit(s) not on develop') 'a local commit that has not reached the branch is reported'
+    $squash = [string](git -C $originRepo -c user.name=Fixture -c user.email=fixture@example.invalid commit-tree 'HEAD^{tree}' -p refs/remotes/origin/develop -m 'squash merge')
+    git -C $originRepo update-ref refs/remotes/origin/develop $squash
+    $check = @(& $checkScript -RepoPath $vaultPath -Name derived -Checkout $originRepo -Json | ConvertFrom-Json | ForEach-Object { $_ })
+    Assert-True ($check[0].status -eq 'Changed' -and $check[0].local -eq '') 'a squash-merged local commit is not reported as local work'
     git -C $originRepo update-ref refs/remotes/origin/develop HEAD
     $check = @(& $checkScript -RepoPath $vaultPath -Name derived -Checkout $originRepo -Diff -Json | ConvertFrom-Json | ForEach-Object { $_ })
     Assert-True ($check[0].status -eq 'Changed' -and @($check[0].commits).Count -eq 1 -and $check[0].commits[0].subject -eq 'improve the source skill') 'a commit to the origin path is listed'

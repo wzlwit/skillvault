@@ -49,13 +49,7 @@
       "repo": "https://microsoft.ghe.com/bic/crm.services.analytics.datapipeline",
       "branch": "develop",
       "path": ".claude/skills/pbi-tmdl-workflow",
-      "commit": "20a099b0443e71970c411b53478195abc63801b7"
-    },
-    {
-      "repo": "https://github.com/wzlwit/skillvault",
-      "branch": "main",
-      "path": "templates/pbi-report-visual-conventions",
-      "commit": "ebfb40533f2552637d59b80e89e0d498eceb8266"
+      "commit": "90f8c7e836f88693979335fa899ba29dd45b759a"
     }
   ]
 }

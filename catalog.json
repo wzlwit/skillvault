@@ -163,7 +163,7 @@
   },
   {
     "name": "powerbi-modeling",
-    "description": "Design and review Power BI semantic models, star schemas, fact and dimension grain, relationships, DAX measures, RLS, and performance. Use for /powerbi-modeling, model design, cardinality, cross-filter direction, or model optimization. Overlaps with kpi-dashboard on grain and metric definitions; owns model structure and validation, not dashboard layout or automatic deployment. Design-only use needs no live connection.",
+    "description": "Design and review Power BI semantic models, star schemas, fact and dimension grain, relationships, DAX measures, RLS, and performance. Use for /powerbi-modeling, model design, cardinality, cross-filter direction, or model optimization. Overlaps with kpi-dashboard on grain and metric definitions, and with powerbi-build, which makes model changes as project file edits; owns model structure and validation, not dashboard layout or automatic deployment. Design-only use needs no live connection.",
     "path": "skills/data/powerbi-modeling",
     "version": null
   },
@@ -219,7 +219,7 @@
     "name": "skillvault-author",
     "description": "[remove] Alone: the catalog. Text: create or change it. Author and maintain skill bundles and catalog entries in the SkillVault repository, not application source or installed copies. Shorthand: /sv-author. Overlaps with VS Code's agent-customization skill on writing SKILL.md files; use this one only for skills in the SkillVault repository and its catalog. Never installs; use skillvault-install to install the result.",
     "path": "skills/core/skillvault-author",
-    "version": "4.1.0"
+    "version": "4.1.1"
   },
   {
     "name": "skillvault-discover",

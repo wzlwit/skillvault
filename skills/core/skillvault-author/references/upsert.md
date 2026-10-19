@@ -280,8 +280,8 @@ changed path's diff. Statuses: `Current`, `Changed` with its new commits, `Remov
 (ask the user for a local clone; never clone one implicitly), `NoBranch`, `UnknownCommit` (try
 `-Fetch`), and `FetchFailed`. Any status also notes an origin's work that is only in that clone,
 uncommitted edits or commits not yet on the branch, and `-Diff` then shows it against the recorded
-commit. Carry over a local change when it's settled, but keep the recorded commit until the change
-reaches the branch.
+commit. A squash-merged commit whose content is already on the branch isn't counted. Carry over a
+local change when it's settled, but keep the recorded commit until the change reaches the branch.
 
 To bring a change in, read the new commits, carry over what generalizes in your own words, and set
 that origin's `commit` to the reviewed `latest`. Leave team-specific changes out and still move the

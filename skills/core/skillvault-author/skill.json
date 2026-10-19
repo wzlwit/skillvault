@@ -1,7 +1,7 @@
 {
   "name": "skillvault-author",
   "title": "SkillVault Author",
-  "version": "4.1.0",
+  "version": "4.1.1",
   "status": "public",
   "visibility": "public",
   "kind": "agent",

@@ -3,7 +3,7 @@
   "title": "Power BI Modeling",
   "version": null,
   "kind": "agent",
-  "description": "Design and review Power BI semantic models, star schemas, fact and dimension grain, relationships, DAX measures, RLS, and performance. Use for /powerbi-modeling, model design, cardinality, cross-filter direction, or model optimization. Overlaps with kpi-dashboard on grain and metric definitions; owns model structure and validation, not dashboard layout or automatic deployment. Design-only use needs no live connection.",
+  "description": "Design and review Power BI semantic models, star schemas, fact and dimension grain, relationships, DAX measures, RLS, and performance. Use for /powerbi-modeling, model design, cardinality, cross-filter direction, or model optimization. Overlaps with kpi-dashboard on grain and metric definitions, and with powerbi-build, which makes model changes as project file edits; owns model structure and validation, not dashboard layout or automatic deployment. Design-only use needs no live connection.",
   "tags": [
     "power-bi",
     "semantic-modeling",

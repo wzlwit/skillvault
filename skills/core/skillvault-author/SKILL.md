@@ -3,7 +3,7 @@ name: skillvault-author
 description: "[remove] Alone: the catalog. Text: create or change it. Author and maintain skill bundles and catalog entries in the SkillVault repository, not application source or installed copies. Shorthand: /sv-author. Overlaps with VS Code's agent-customization skill on writing SKILL.md files; use this one only for skills in the SkillVault repository and its catalog. Never installs; use skillvault-install to install the result."
 metadata:
   author: wzlwit
-  version: "4.1.0"
+  version: "4.1.1"
 argument-hint: "[remove] [<what to create or change>]"
 ---
 

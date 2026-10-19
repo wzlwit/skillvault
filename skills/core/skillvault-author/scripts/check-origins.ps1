@@ -107,7 +107,10 @@ $results = foreach ($entry in $catalog) {
         $notes = @()
         if (@((Invoke-OriginGit $clone @('status', '--porcelain', '--', $origin.path)).Output | Where-Object { $_ }).Count) { $notes += 'uncommitted edits' }
         $ahead = @((Invoke-OriginGit $clone @('rev-list', "$target..HEAD", '--', $origin.path)).Output | Where-Object { $_ }).Count
-        if ($ahead) { $notes += "$ahead commit(s) not on $($origin.branch)" }
+        # A squash-merged branch keeps commits the branch never gets, but its content is already there.
+        if ($ahead -and @((Invoke-OriginGit $clone @('diff', '--name-only', $target, 'HEAD', '--', $origin.path)).Output | Where-Object { $_ }).Count) {
+            $notes += "$ahead commit(s) not on $($origin.branch)"
+        }
         $result.local = $notes -join ', '
         if ($Diff -and $notes) {
             $result.localDiff = (Invoke-OriginGit $clone @('-c', 'core.quotePath=false', 'diff', '--no-ext-diff', $origin.commit, '--', $origin.path)).Output -join "`n"

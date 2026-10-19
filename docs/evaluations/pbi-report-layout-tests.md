@@ -1,8 +1,8 @@
 # Power BI Report Layout Tests Evaluation
 
 - Evaluated: 2026-10-16
-- Source: https://github.com/wzlwit/skillvault/tree/main/templates/pbi-report-layout-tests, a native
-  SkillVault draft that is not in the catalog
+- Source: https://github.com/wzlwit/skillvault/tree/ebfb40533f2552637d59b80e89e0d498eceb8266/templates/pbi-report-layout-tests,
+  a native SkillVault draft that was never in the catalog; retired on 2026-10-19
 - Reviewed revision: `ebfb405` (version `1.0.0`), plus uncommitted local edits that were in progress
   during the review and raise it to `1.1.0`
 - Author: wzlwit; no license declared, like other native SkillVault skills
@@ -101,6 +101,10 @@ team skills into three native skills written in SkillVault's own words:
 [powerbi-test](../../skills/data/powerbi-test/SKILL.md), and
 [powerbi-localize](../../skills/data/powerbi-localize/SKILL.md). This draft's checker became
 `powerbi-test`'s `verify_report.py`. Its generic rules run by default, and house style moved to a
-project style file with a neutral example. Each skill's `skill.json` lists the drafts and team
-skills it was written from as `origins`. `/skillvault-author <skill> check origins` lists their
-later commits. The draft folder stays in `templates/` until the owner retires it.
+project style file with a neutral example. Each skill's `skill.json` lists the team skills it was
+written from as `origins`, and `/skillvault-author <skill> check origins` lists their later commits.
+On 2026-10-19 the owner retired this draft and the visual conventions draft, together with the local
+copies of the team skills; the skills' origin entries for the drafts were dropped. The source link
+above keeps the reviewed revision. The TMDL load check proposed above went to `powerbi-build`, which
+owns file edits and checks that Desktop loads them; `powerbi-modeling` now names `powerbi-build` as its
+counterpart instead of repeating the check.
