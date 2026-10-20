@@ -41,7 +41,8 @@ MARGIN = {"field": {"Measure": {"Expression": {"SourceRef": {"Entity": "Sales"}}
 REPORT = {"objects": {"outspacePane": props(expanded="false", visible="true")}}
 PAGE = {"name": "p1", "displayName": "Summary", "displayOption": "FitToPage", "width": 1280, "height": 720,
         "objects": {"background": [{"properties": {"color": {"solid": {"color": lit("'#FFFFFF'")}},
-                                                   "transparency": lit("0D")}}]}}
+                                                   "transparency": lit("0D")}}],
+                    "outspace": [{"properties": {"color": {"solid": {"color": lit("'#FFFFFF'")}}}}]}}
 SLICER = {"name": "dates", "position": {"x": 900, "y": 380, "width": 300, "height": 100},
           "visual": {"visualType": "slicer",
                      "objects": {"data": props(mode="'Between'"), "slider": props(show="true")},
@@ -147,9 +148,17 @@ class CheckStyle(unittest.TestCase):
             ("pages", {"page": dict(PAGE, width=1000)}),
             ("pages", {"page": dict(PAGE, height=600)}),
             ("pages", {"page": dict(PAGE, objects={"background": [{"properties": {
-                "color": {"solid": {"color": lit("'#000000'")}}, "transparency": lit("0D")}}]})}),
+                "color": {"solid": {"color": lit("'#000000'")}}, "transparency": lit("0D")}}],
+                "outspace": PAGE["objects"]["outspace"]})}),
             ("pages", {"page": dict(PAGE, objects={"background": [{"properties": {
-                "color": {"solid": {"color": lit("'#FFFFFF'")}}, "transparency": lit("50D")}}]})}),
+                "color": {"solid": {"color": lit("'#FFFFFF'")}}, "transparency": lit("50D")}}],
+                "outspace": PAGE["objects"]["outspace"]})}),
+            # The wallpaper: unset, another color, or a color made see-through.
+            ("pages", {"page": dict(PAGE, objects={"background": PAGE["objects"]["background"]})}),
+            ("pages", {"page": dict(PAGE, objects=dict(PAGE["objects"], outspace=[{"properties": {
+                "color": {"solid": {"color": lit("'#F0F0F0'")}}}}]))}),
+            ("pages", {"page": dict(PAGE, objects=dict(PAGE["objects"], outspace=[{"properties": {
+                "color": {"solid": {"color": lit("'#FFFFFF'")}}, "transparency": lit("100D")}}]))}),
             ("pages", {"report": {"objects": {"outspacePane": props(expanded="true", visible="true")}}}),
             ("pages", {"report": {"objects": {"outspacePane": props(expanded="false", visible="false")}}}),
             ("pages", {"page": dict(PAGE, objects=dict(PAGE["objects"], outspacePane=props(expanded="true")))}),
@@ -189,6 +198,7 @@ class CheckStyle(unittest.TestCase):
 
     def test_bad_style_file_stops(self):
         for text in ("colour: red\n", "page:\n  view: Fit\n", "page:\n  background: #FFFFFF\n", "displayUnits: lakhs\n",
+                     "page:\n  wallpaper: grey\n",
                      "dateSlicer:\n  slider: yes please\n", "formats: '#,##0'\n", "page: 1280\n"):
             with self.subTest(text=text), tempfile.TemporaryDirectory() as root:
                 rpt, _ = build(root)

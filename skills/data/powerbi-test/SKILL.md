@@ -3,7 +3,7 @@ name: powerbi-test
 description: "[compare] Alone: reports here. Text: test that report. Tests Power BI reports in the enhanced report format (PBIR) before check-in or release: layout, field bindings, text fit, parity between a Power BI Desktop file (PBIX) and its Power BI project (PBIP), and house style from a project style file. Also compares two Power BI projects. Use to test, check, or verify a report, or to compare a base and a target project. Overlaps with powerbi-build on project files, which it changes and this skill checks; with Microsoft's powerbi-report-cli on validation and screenshots; and with powerbi-localize on literal-text and translation checks."
 metadata:
   author: wzlwit
-  version: "1.0.0"
+  version: "1.1.0"
 argument-hint: "[compare] [<report path>]"
 ---
 
@@ -78,9 +78,9 @@ Before a release, check the PBIX files Desktop saved:
 
 ## Style checks
 
-House style (canvas size and view, background, display units, number formats, blank handling, title and caption
-rules) is a project's choice, so no style is checked by default. A project records its choices in a style file: the
-file the user names, otherwise `report-style.yaml` next to the `.pbip` or at the repository root.
+House style (canvas size and view, canvas and wallpaper colors, display units, number formats, blank handling, title
+and caption rules) is a project's choice, so no style is checked by default. A project records its choices in a style
+file: the file the user names, otherwise `report-style.yaml` next to the `.pbip` or at the repository root.
 `python scripts/check_style.py <X.Report | X.pbip | X.pbix> --style report-style.yaml [--model <X.SemanticModel>]`
 checks only the settings the file contains; `formats`, `blanks`, and `captionSeparator` read the model's measures. Start
 a new style file from the [example](./examples/report-style.example.yaml), whose values are illustrative only. Before

@@ -18,7 +18,7 @@ The report is in `<Name>.Report/definition/`:
 | --- | --- |
 | `report.json` | Report settings: theme, report-level filters, Filters pane state (`objects.outspacePane`) |
 | `pages/pages.json` | `pageOrder`, and the page the report opens on (`activePageName`) |
-| `pages/<page>/page.json` | Display name, size, page view (`displayOption`), page filters, visibility, drill-through binding |
+| `pages/<page>/page.json` | Display name, size, page view (`displayOption`), canvas background and wallpaper, page filters, visibility, drill-through binding |
 | `pages/<page>/visuals/<visual>/visual.json` | One visual or group: position, fields, formatting, visual filters |
 | `bookmarks/` | One `<name>.bookmark.json` per bookmark, and `bookmarks.json` for their order and groups |
 | `reportExtensions.json` | Report-level measures |
@@ -35,8 +35,16 @@ name.
 - Each page keeps its own view in `displayOption`: `FitToPage`, which a new page starts with, `FitToWidth`, or
   `ActualSize` ([page view settings](https://learn.microsoft.com/en-us/power-bi/create-reports/power-bi-report-display-settings)).
   The first two scale the page to the window, so its text and visuals grow or shrink with it. Actual size keeps the
-  page's pixel size: a wider window shows canvas beside the page, and viewers scroll down a page longer than the window.
-- The view and the canvas size are the project's house style. Set the view on every page, hidden pages included.
+  page's pixel size: a wider window shows the wallpaper beside the page, and viewers scroll down a page longer than
+  the window.
+- The canvas background (`objects.background` in `page.json`) colors the page itself. The wallpaper
+  (`objects.outspace`, Format page > Wallpaper) colors the area outside it, page by page
+  ([wallpaper](https://learn.microsoft.com/en-us/power-bi/create-reports/desktop-visual-elements-for-reports#using-wallpaper-in-power-bi-reports)).
+  Neither sets the other, so a colored canvas sits in a band of the default color until the wallpaper matches. When
+  they should match, set both on every page, hidden pages included. A wallpaper color shows without setting its
+  transparency (observed). `outspace` isn't `outspacePane`, the Filters pane.
+- The view, the canvas size, and the canvas and wallpaper colors are the project's house style. Set the view on every
+  page, hidden pages included.
 - In Actual size, size each page to its content: its `height` at least the bottom of its lowest visual plus a margin,
   adding a group's position to its members' positions ([Groups](#groups)). Pages may differ in height.
 - Desktop saves each page's view, the Filters pane state, and the page that was open

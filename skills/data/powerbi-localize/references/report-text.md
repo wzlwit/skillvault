@@ -111,6 +111,9 @@ column with Min. Two things go wrong without an error:
     until translations arrive.
   - If keys are stable, bindings stay, but every culture still holds a translation of the old wording. Your
     translation pipeline has to notice the changed text; check that it does.
+  - If the new wording is already translated under another key, such as a short label used elsewhere, keep the
+    published key and fill it from that other key's text in every culture. Bindings stay, and no culture waits for
+    a translation round. Don't replace the bound title with a literal to show the new wording sooner.
   - Either way, a final wording before strings are sent out saves a round.
 - Use each key's resource `comment` for translators: where the text shows, any length limit, and what an ambiguous
   word means, such as whether "Order" is a purchase or a sort order.

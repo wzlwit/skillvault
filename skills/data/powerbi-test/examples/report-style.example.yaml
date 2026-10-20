@@ -9,6 +9,7 @@ page:
   width: 1280               # canvas width in px
   height: 720               # canvas height in px; leave it out when page heights differ
   background: "#FFFFFF"     # canvas color, set at transparency 0 (quote it: # starts a YAML comment)
+  wallpaper: "#FFFFFF"      # the area outside the page (Format page > Wallpaper); match it to the canvas to avoid a band
 filtersPane: collapsed      # collapsed, expanded or hidden, set once in report.json and never per page
 displayUnits: none          # on card values, value axes and shown data labels: none, auto, thousands, millions,
                             # billions or trillions

@@ -3,7 +3,7 @@ name: powerbi-build
 description: "[convert] Alone: projects here. Text: build or change that. Change Power BI project (PBIP) files as code: Tabular Model Definition Language (TMDL) models, enhanced report format (PBIR) layouts, the Power BI Desktop round-trip, and Power BI Desktop file (PBIX) to PBIP conversion, with the pitfalls that break them. Use to edit TMDL, change a measure or visual, add a slicer or page, fix a Desktop load error, or convert a PBIX. Overlaps with powerbi-modeling on model changes (it owns model design); Microsoft's powerbi-report-cli and semantic-model-authoring on PBIR and TMDL authoring (they use Microsoft's CLI; this has the file-level tricks); powerbi-test, which checks the result; and powerbi-localize on translations."
 metadata:
   author: wzlwit
-  version: "1.0.0"
+  version: "1.1.0"
 argument-hint: "[convert] [<model or layout change>]"
 ---
 

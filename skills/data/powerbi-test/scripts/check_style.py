@@ -7,7 +7,7 @@ Usage:
 House style is a project's choice, so nothing here is checked by default: the style file (YAML) lists the settings
 the team agreed on, and only those are checked. ../examples/report-style.example.yaml shows every setting with
 illustrative values, and ../references/rules.md explains them. Checks and the settings that turn them on:
-  pages     page.view, page.width, page.height, page.background, filtersPane
+  pages     page.view, page.width, page.height, page.background, page.wallpaper, filtersPane
   units     displayUnits, percentDecimals
   slicers   dateSlicer.mode, dateSlicer.slider, dateSlicer.sameSyncGroup
   titles    titles: bound
@@ -35,7 +35,7 @@ AXIS_CHARTS = {"lineChart", "areaChart", "stackedAreaChart", "clusteredColumnCha
                "clusteredBarChart", "barChart", "lineStackedColumnComboChart", "lineClusteredColumnComboChart"}
 COMBO_CHARTS = {"lineStackedColumnComboChart", "lineClusteredColumnComboChart"}
 # Every setting a style file may hold; nested ones list their keys.
-SETTINGS = {"page": ("view", "width", "height", "background"), "filtersPane": None, "displayUnits": None,
+SETTINGS = {"page": ("view", "width", "height", "background", "wallpaper"), "filtersPane": None, "displayUnits": None,
             "percentDecimals": None, "dateSlicer": ("mode", "slider", "sameSyncGroup"), "titles": None,
             "formats": None, "blanks": None, "captionSeparator": None}
 MODEL_CHECKS = (("formats", "formats"), ("blanks", "blanks"), ("captionSeparator", "captions"))
@@ -93,9 +93,10 @@ def load_style(path):
     for k in ("width", "height"):
         if k in page:
             need(number(page[k]) and page[k] > 0, "page.%s must be a number of pixels" % k)
-    if "background" in page:
-        need(isinstance(page["background"], str) and re.fullmatch(r"#[0-9A-Fa-f]{6}", page["background"]),
-             'page.background must be a quoted color such as "#FFFFFF"')
+    for k in ("background", "wallpaper"):
+        if k in page:
+            need(isinstance(page[k], str) and re.fullmatch(r"#[0-9A-Fa-f]{6}", page[k]),
+                 'page.%s must be a quoted color such as "#FFFFFF"' % k)
     if "filtersPane" in style:
         need(style["filtersPane"] in PANES, "filtersPane must be one of %s" % ", ".join(PANES))
     if "displayUnits" in style:
@@ -126,7 +127,8 @@ def load_style(path):
 # ---------------------------------------------------------------- report checks
 
 def check_pages(report_dir, report_pages, style):
-    """Each page's view, size and canvas color; the Filters pane in the style's state, set once in report.json."""
+    """Each page's view, size, canvas color and wallpaper; the Filters pane in the style's state, set once in
+    report.json."""
     want, pane = style.get("page") or {}, style.get("filtersPane")
     if pane:
         o = vr.load(os.path.join(report_dir, "definition", "report.json")).get("objects", {})
@@ -151,6 +153,19 @@ def check_pages(report_dir, report_pages, style):
             if (color or "").upper() != "'%s'" % want["background"].upper() or not zero:
                 add("pages", where, "the canvas is %s at transparency %s; the style wants %s at 0"
                     % ((color or "unset").strip("'"), transparency or "unset", want["background"]))
+        if "wallpaper" in want:
+            # The wallpaper (objects.outspace) colors the area outside the page; it is not the Filters pane
+            # (outspacePane). Unlike the canvas, its color shows without an explicit transparency (observed).
+            try:
+                color = o["outspace"][0]["properties"]["color"]["solid"]["color"]["expr"]["Literal"]["Value"]
+            except (KeyError, IndexError, TypeError):
+                color = None
+            transparency = vr.literal(o, "outspace", "transparency")
+            clear = transparency is None or re.fullmatch(r"0(?:\.0+)?[DL]?", transparency)
+            if (color or "").upper() != "'%s'" % want["wallpaper"].upper() or not clear:
+                add("pages", where, "the wallpaper is %s%s; the style wants %s"
+                    % ((color or "unset").strip("'"), "" if transparency is None else " at transparency " + transparency,
+                       want["wallpaper"]))
         if pane and (vr.literal(o, "outspacePane", "expanded") is not None
                      or vr.literal(o, "outspacePane", "visible") is not None):
             add("pages", where, "sets the Filters pane for this page; set it once in report.json")

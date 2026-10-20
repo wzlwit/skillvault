@@ -139,6 +139,7 @@ holds pending query edits and is tracked by default (ignore it in Git to keep un
 | A small textbox shows a scrollbar (observed) | A short titled textbox has a paragraph | Empty the paragraphs and show the text as the title |
 | A date slicer shows two dates but no slider | The slider is off (`slider.show` false), or the slicer is too short to draw it (observed: under about 95 px) | Expected when users type the dates. To let them drag, turn the slider on, make the slicer about 100 px tall, and check it in a render |
 | Text and visuals grow or shrink with the window | The page view is Fit to page, a new page's default, or Fit to width | Set the project's page view on every page; Actual size keeps pixel sizes ([pages](./layout.md#pages)) |
+| A colored page sits in a band of another color | The wallpaper is unset or differs; the canvas background colors only the page | Set the wallpaper (`objects.outspace`) on every page, hidden pages included ([pages](./layout.md#pages)) |
 | A slicer is a list, not a dropdown (observed) | `mode` isn't `'Dropdown'` | Set `mode` in `objects.data` |
 | A refresh fails on a sort-by column | A label has more than one sort value | One sort value per label ([model edits](./model.md#sort-by-columns)) |
 | A visual's automatic filters are missing from `visual.json` | The Filters pane was never opened while editing | Open it once in Desktop and save |

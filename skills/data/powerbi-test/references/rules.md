@@ -26,6 +26,7 @@ silently skip a check. [The example](../examples/report-style.example.yaml) show
 | `page.view` | The view of every page (`displayOption` in `page.json`) | `FitToPage`, `FitToWidth`, `ActualSize` |
 | `page.width`, `page.height` | The canvas size of every page | Pixels |
 | `page.background` | An explicit canvas color at transparency 0 | A quoted color such as `"#FFFFFF"` |
+| `page.wallpaper` | The color of the area outside every page (Format page > Wallpaper, `objects.outspace` in `page.json`), with no transparency other than 0 | A quoted color such as `"#FFFFFF"` |
 | `filtersPane` | The Filters pane state in `report.json`, and that no page sets it itself | `collapsed`, `expanded`, `hidden` |
 | `displayUnits` | Display units on card values, value axes (both axes of a combo chart), and shown data labels | `none` (full numbers), `auto`, `thousands`, `millions`, `billions`, `trillions` |
 | `percentDecimals` | Decimals on pie and donut percent labels | A whole number |

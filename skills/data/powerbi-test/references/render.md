@@ -65,6 +65,7 @@ Embed the report in a small page served on `127.0.0.1` only, with the Power BI J
 - Both series visible where two lines can be equal.
 - "(Blank)" only where the data has nothing, and no dashes or made-up zeros unless the style says so.
 - No scrollbar in small textboxes, and no sideways scrolling at the width viewers use.
+- Beside and below the page, the wallpaper the style asks for, not a band of another color around a colored canvas.
 - Date slicers work: change the range, by dragging when the slider shows or by typing the dates when it's off, and
   check that the page's numbers change and, with synced slicers, that the range follows to the next page. A slider
   that's switched on but not drawn, as on a slicer too short for it, has no visible size in the rendered page

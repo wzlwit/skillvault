@@ -3,7 +3,7 @@ name: powerbi-localize
 description: "[review] Alone: translation coverage. Text: localize that. Translate Power BI semantic model captions through Tabular Model Definition Language (TMDL) culture files, often generated from .resx resource files, and report text such as visual titles, buttons, slicer headers, and alt text through a translation table bound to visuals. Use to add a language, translate captions, generate culture files, localize titles and buttons, or review a localization change or pull request. Overlaps with powerbi-build on TMDL and enhanced report format (PBIR) edits; powerbi-test on literal-text and binding checks; Microsoft's semantic-model-authoring on the culture file format."
 metadata:
   author: wzlwit
-  version: "1.0.0"
+  version: "1.1.0"
 argument-hint: "[review] [<model, report, or change>]"
 ---
 

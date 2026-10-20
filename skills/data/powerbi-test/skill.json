@@ -1,7 +1,7 @@
 {
   "name": "powerbi-test",
   "title": "Power BI Report Tests",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "kind": "agent",
   "description": "[compare] Alone: reports here. Text: test that report. Tests Power BI reports in the enhanced report format (PBIR) before check-in or release: layout, field bindings, text fit, parity between a Power BI Desktop file (PBIX) and its Power BI project (PBIP), and house style from a project style file. Also compares two Power BI projects. Use to test, check, or verify a report, or to compare a base and a target project. Overlaps with powerbi-build on project files, which it changes and this skill checks; with Microsoft's powerbi-report-cli on validation and screenshots; and with powerbi-localize on literal-text and translation checks.",
   "tags": [
