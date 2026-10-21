@@ -15,3 +15,7 @@ project's instructions.
   alone isn't enough. This applies to chat replies only: don't pile extra links into docs, and keep
   local paths out of text written for other people, such as emails, incident or review comments,
   and PR or commit text.
+- **Run unit tests once the review is clean.** In review-and-fix rounds, fix findings without
+  running unit tests or a full build between rounds. Once both review passes, Changes and Full, are
+  clean, run the unit tests and the final build; if either fails, fix it and send the fix through
+  review again.
