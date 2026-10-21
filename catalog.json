@@ -207,7 +207,7 @@
     "name": "rules",
     "description": "[apply|remove] Alone: rules in effect. Text: add or change a rule. Put the core and extra rules, or only the four core rules with apply core, into effect globally (default), in a project, or for this chat; add, change, or remove your own global or project rules. The SkillVault rule library changes only when you name extra or core, and persistent rule changes require confirmation.",
     "path": "skills/core/rules",
-    "version": "4.1.0"
+    "version": "4.2.0"
   },
   {
     "name": "schedule-manage",

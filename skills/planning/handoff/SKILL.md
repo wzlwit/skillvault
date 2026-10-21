@@ -95,7 +95,9 @@ inaccessible sources without inventing their content. No heuristic quality score
 
 Return the note's path, any blocker, and the first next action, then end with a ready-to-paste
 prompt that continues the work in a new session, in a fenced `text` block. Keep it to a few lines
-the note doesn't repeat: the note's absolute path, what to read first, and where to resume.
+the note doesn't repeat: the note's absolute path, what to read first, and where to resume. Put
+the path, blocker, next action, and prompt in the last message the user sees. When the host ends
+the turn with a completion summary, repeat them there; never point to an earlier message.
 
 ```text
 Continue the work from the handoff note at <absolute path to the note>. Read it and the project's

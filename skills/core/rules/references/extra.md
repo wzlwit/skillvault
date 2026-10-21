@@ -19,3 +19,6 @@ project's instructions.
   running unit tests or a full build between rounds. Once both review passes, Changes and Full, are
   clean, run the unit tests and the final build; if either fails, fix it and send the fix through
   review again.
+- **Put what the user must act on in the last message.** A prompt, command, or question left for
+  the user goes in the turn's last message, which is the completion summary when the host shows
+  one. Never point to an earlier message for it.

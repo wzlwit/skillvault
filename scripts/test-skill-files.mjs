@@ -1324,6 +1324,7 @@ test('handoff runs on explicit requests, installs globally, and keeps upstream a
   const deliver = content.split(/^## Verify and Deliver\r?$/m)[1]?.split(/^## /m)[0] ?? '';
   assert.match(deliver, /ready-to-paste\s+prompt/, 'The reply ends with a prompt that continues the work in a new session');
   assert.match(deliver, /```text[\s\S]*handoff note at <absolute path to the note>[\s\S]*<first next action>[\s\S]*```/);
+  assert.match(deliver, /last\s+message\s+the\s+user\s+sees[\s\S]*completion\s+summary,\s+repeat\s+them\s+there[\s\S]*never\s+point\s+to\s+an\s+earlier\s+message/, 'A completion summary repeats the path, blocker, next action, and prompt');
   assert.equal(manifest.install.defaultScope, 'global');
   assert.equal(manifest.install.project, true);
   assert.deepEqual(manifest.dependencies ?? [], []);

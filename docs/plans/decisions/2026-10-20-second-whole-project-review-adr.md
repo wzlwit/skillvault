@@ -6,11 +6,13 @@
   [first whole-project review](./2026-10-14-whole-project-review-adr.md) and put seven questions with
   recommended answers. The owner chose no license, no continuous integration (CI), manual Python
   tests, and keeping the committed project copies, and took the recommendations for the other three.
-  The same evening a second round settled the license fields; see [Round 2](#round-2).
+  The same evening a second round settled the license fields; see [Round 2](#round-2). A third round
+  settled where replies put what the user must act on and corrected the account of the overwrites;
+  see [Round 3](#round-3).
 - Decision owner: Zhaolong Wang
 - Scope: licensing, automated checks, the Power BI skills' Python tests, the installed copies committed
-  in `.github/skills/`, the file overwrites seen on 2026-10-19, the size of `AGENTS.md`, and four small
-  fixes.
+  in `.github/skills/`, the file overwrites seen on 2026-10-19 and 2026-10-20, the size of
+  `AGENTS.md`, four small fixes, and where replies put what the user must act on.
 
 ## Context
 
@@ -22,8 +24,13 @@
 - Eight installed project copies in `.github/skills/` are committed. They're identical to their
   sources and default to global availability, but none is installed globally.
 - Twice on 2026-10-19, at 11:00 and 21:01, files went back to their state before a long-running chat
-  first edited them: 13 files, then 9. Both times they were restored from the last commit. The likely
-  cause is the editor discarding that chat's tracked edits; it isn't proven.
+  first edited them: 13 files, then 9. On 2026-10-20 at 21:15, 19 files went back to their content
+  from about 2026-10-01: `catalog.json`, five scripts, and 13 `skill.json` files. Each time they were
+  restored from the last commit. The likely cause is an older VS Code chat in this workspace, started
+  on 2026-09-14, that still tracks 280 files whose edits were never kept or undone. Its saved editing
+  state names all 19 files and holds their old content, and VS Code reloaded that chat a minute
+  before the third overwrite. The long-running chat ran in Agent mode, which has no Keep or Undo. The
+  cause isn't proven.
 - `AGENTS.md` was 59 KB (685 lines) and loads into every chat in this repository. About 290 lines
   described harness behavior that the current plan, the ADRs, and the skills already document.
 - Two SkillVault references over 100 lines had no contents line. The topic-refactor plan's Rollout
@@ -40,8 +47,11 @@
    `powerbi-test` or `powerbi-localize` changes.
 4. **The committed project copies stay.** `AGENTS.md` records that the eight copies are committed on
    purpose, so later reviews don't propose removing them.
-5. **Overwrites.** The owner keeps the long chat's pending edits in the editor, and later SkillVault
-   work starts in a fresh session from a handoff note, so no long-running chat holds tracked edits.
+5. **Overwrites.** The owner clears the older chat's saved editing state: close VS Code completely,
+   move that chat's folder out of VS Code's workspace storage as a backup, and reopen VS Code. Keep
+   and Undo in that chat stay unused, since either could write its stale content back. Later
+   SkillVault work starts in a fresh session from a handoff note, so no long-running chat holds
+   tracked edits.
 6. **A shorter `AGENTS.md`.** It keeps what every task needs: layout, documentation rules, catalog and
    skill rules, validation, and Git safety. Harness detail becomes links to the current plan, the
    ADRs, and the skills' guides. A rule found nowhere else moves into the current harness plan instead
@@ -66,8 +76,8 @@
 - **Python tests in `test-all.ps1`.** Recommended when Python is installed; the owner kept them manual.
 - **Installing the eight copies globally and removing them.** Recommended to avoid two copies of each
   skill in the repository; the owner kept them.
-- **Watching for overwrites, or a guard script.** A fresh session takes the long chat's tracked edits
-  out of play, without new tooling.
+- **Watching for overwrites, or a guard script.** Clearing the older chat's editing state removes the
+  likely cause, without new tooling.
 - **Trimming `README.md` now.** Left for later.
 - **Regenerating the lock file with npm.** This machine reaches the public registry only through the
   company feed, so npm would have recorded the feed's address again. The tarball from the feed matched
@@ -103,8 +113,29 @@ On 2026-10-20 the owner chose to keep MIT on the five SkillVault skills:
 Not chosen: `license: null` everywhere with "public" in place of "shareable", which was recommended
 so that every file would match the repository's terms; and leaving the fields as they were.
 
-## Open Items
+## Round 3
 
-- The five MIT skills carry the label but no license text. MIT's terms require the copyright notice
-  and permission notice in copies, and none of the five folders bundles a LICENSE file. Add an MIT
-  LICENSE file to each, and whom should its copyright notice name?
+Later on 2026-10-20 a third round settled where replies put what the user must act on, and how to
+stop the overwrites:
+
+- **Handoff prompt placement.** The owner had to ask for a handoff's resume prompt, which sat in the
+  message before the host's completion summary. `handoff`'s Verify and Deliver now puts the note's
+  path, any blocker, the first next action, and the prompt in the last message the user sees,
+  repeated in a completion summary rather than pointed to in an earlier message. One assertion in the
+  existing contract test covers it. As an adaptation, `handoff` stays unversioned.
+- **A general extra rule.** Grilling rounds and decision lists run the same risk, so the extra rules
+  gained "Put what the user must act on in the last message", and `rules` became 4.2.0.
+- **The older chat.** The owner clears its saved editing state, as decision 5 now says.
+- **A correction.** Context had blamed the editor discarding the long-running chat's tracked edits,
+  and decision 5 had read "The owner keeps the long chat's pending edits in the editor". That chat
+  runs in Agent mode, which has no Keep or Undo, and the evidence points to the older chat, so both
+  were corrected. The fresh-session part of decision 5 stands.
+- **License text.** Withdrawn, because rounds 1 and 2 settled it: the five MIT skills keep the label
+  as it is, without LICENSE files.
+
+The installed `handoff` and `rules` copies are updated, and the global rules block includes the new
+rule.
+
+Not chosen: a Resume Prompt section at the end of every note, on top of the handoff change; the
+handoff change without the general rule; and, for the older chat, deleting it from VS Code's chat
+history, which is untested, or leaving it and restoring from Git after each overwrite.
