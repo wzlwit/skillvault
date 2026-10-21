@@ -12,6 +12,7 @@
     "monitoring"
   ],
   "author": "wzlwit",
+  "license": null,
   "source": {
     "repo": "skillvault",
     "path": "skills/monitoring/dri"

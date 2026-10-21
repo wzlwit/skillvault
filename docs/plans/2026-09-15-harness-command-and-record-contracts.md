@@ -767,8 +767,10 @@ All harness-owned information and files default inside `.harness_sv/` under the 
 `/harness-setup root`, unless the user explicitly specifies another destination. Board views and run
 evidence default there as well. Pass that artifact destination to delegated skills instead of
 inheriting their standalone `docs/` default. Existing project documents and configured board
-locations are not migrated or duplicated. This repository's existing design records stay at
-their established paths; new harness-run artifacts follow the following hierarchy.
+locations are not migrated or duplicated. Documentation location is independent of this storage:
+choosing or moving a documentation root never relocates `.harness_sv`, its CSV state and views, or
+run reports. This repository's existing design records stay at their established paths; new
+harness-run artifacts follow the following hierarchy.
 
 ```text
 <project-root>/

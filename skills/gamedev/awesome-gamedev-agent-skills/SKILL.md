@@ -1,7 +1,6 @@
 ---
 name: awesome-gamedev-agent-skills
 description: "Reference guide to gamedev-skills/awesome-gamedev-agent-skills for game development with Godot, Unity, Unreal, web, and other engines: gameplay, assets, UI, audio, genres, and publishing. Use /awesome-gamedev-agent-skills to find and read the matching upstream skill. Upstream skills and scripts are not bundled or installed."
-license: MIT
 metadata:
   author: Abhishek Barali and the awesome-gamedev-agent-skills contributors
   maintainer: wzlwit

@@ -10,6 +10,7 @@
     "publishing"
   ],
   "author": "wzlwit",
+  "license": null,
   "source": {
     "repo": "skillvault",
     "path": "skills/github/pr-publish"

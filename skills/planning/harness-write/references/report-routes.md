@@ -1,5 +1,7 @@
 # Report Authoring Routes
 
+Contents: Power BI; Grafana; Jarvis; Web Dashboard; Query or Saved Query; Common Handoff.
+
 Use the selected route only. This table names candidate skills, not guaranteed installed
 capabilities. Verify their current instructions and host tools before dispatch; installation and
 any platform connection retain their own approvals. None of these routes changes the monitor's

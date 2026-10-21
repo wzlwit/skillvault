@@ -111,7 +111,7 @@ The user approved removing the exact 13 obsolete harness directories after backu
 were copied and verified before editor-aware deletion; only the resulting empty directory shells
 were removed afterward. No live process or saved task referenced their source paths.
 
-Recovery copy: `C:/Users/zhaolongwang/.copilot/skillvault/recovery/harness-topics-20260918-db9c3ecceb1e40019452f0d83cf20072/`.
+Recovery copy: `~/.copilot/skillvault/recovery/harness-topics-20260918-db9c3ecceb1e40019452f0d83cf20072/`.
 
 The canonical naming test passes and now explicitly rejects every retired directory in the
 selection. Task intake remains separate from dev execution. `/harness-project clean` owns history and

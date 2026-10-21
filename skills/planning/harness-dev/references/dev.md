@@ -1,6 +1,8 @@
 
 # Harness Development
 
+Contents: Before Scripts; Workflow; Optional Continuation.
+
 ## Before Scripts
 
 Follow the installed `harness-runtime` guide's Script Permissions and Agent Fallback

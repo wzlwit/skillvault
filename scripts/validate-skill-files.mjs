@@ -152,7 +152,30 @@ function checkBundle(directory, name, manifest) {
     assert.ok(fs.existsSync(resolved), `${name}: missing linked file ${target}`);
     resolveInside(fs.realpathSync(directory), fs.realpathSync(resolved));
   }
+  // An adapted skill's references come from its original, which SkillVault leaves unchanged.
+  if (manifest?.install?.strategy !== 'adapted') checkReferenceContents(directory, name);
   return { actions, description: metadata.description };
+}
+
+// SkillVault's own references over 100 lines start with a "Contents:" line before their first section.
+function checkReferenceContents(directory, name) {
+  const pending = [path.join(directory, 'references')];
+  while (pending.length) {
+    const current = pending.pop();
+    if (!fs.existsSync(current)) continue;
+    for (const item of fs.readdirSync(current, { withFileTypes: true })) {
+      const file = path.join(current, item.name);
+      if (item.isDirectory()) pending.push(file);
+      if (!item.isFile() || !item.name.endsWith('.md')) continue;
+      const lines = textFile(file).replace(/\r?\n$/, '').split(/\r?\n/);
+      if (lines.length <= 100) continue;
+      const firstSection = lines.findIndex((line) => line.startsWith('## '));
+      const intro = lines.slice(0, firstSection < 0 ? 10 : firstSection);
+      const relative = path.relative(directory, file).split(path.sep).join('/');
+      assert.ok(intro.some((line) => line.startsWith('Contents:')),
+        `${name}: ${relative} has over 100 lines, so it starts with a "Contents:" line before its first section`);
+    }
+  }
 }
 
 export function validateRepository(root) {

@@ -413,9 +413,7 @@ replacement and live scheduler activation require separate parity/OS checks; do 
 
 Managed global and current-project copies are updated through `/skillvault-install`, and
 [verify-installed-skills.ps1](../../scripts/verify-installed-skills.ps1) checks them against the checkout.
-Saturday maintenance is enabled for 08:30-09:00 in the saved Eastern Standard Time zone, including
-its daylight-saving rules. The single owned heartbeat uses current-user Interactive logon, Limited
-privilege, weekly maintenance-only cadence, and no machine wake. There are no registered project,
-PR, or refresh work jobs. No live root destination was supplied: the selected project remains
-uninitialized and unmoved. Oh My Pi remains deferred; project-specific models, permissions, work
-schedules, and monitoring targets are not invented.
+Live schedules, heartbeat settings, and registered projects change over time, so this plan doesn't
+record them: `/harness-schedule` alone shows the schedules, and `/harness-setup` alone shows a
+project's state. This plan sets no project-specific models, permissions, work schedules, or
+monitoring targets.

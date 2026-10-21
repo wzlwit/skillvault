@@ -9,7 +9,7 @@
   "tags": ["gamedev", "game-development", "godot", "unity", "unreal", "reference"],
   "author": "Abhishek Barali and the awesome-gamedev-agent-skills contributors",
   "maintainer": "wzlwit",
-  "license": "MIT",
+  "license": null,
   "homepage": "https://github.com/gamedev-skills/awesome-gamedev-agent-skills",
   "source": {
     "repo": "skillvault",

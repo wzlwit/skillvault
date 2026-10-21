@@ -1880,6 +1880,36 @@ test('references keep only their source, and adaptations record the upstream com
   }
 });
 
+test('SkillVault references over 100 lines start with a contents line, and adapted originals are exempt', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'skillvault-contents-'));
+  try {
+    const directory = path.join(root, 'skills/testing/fixture');
+    fs.mkdirSync(path.join(directory, 'references'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'catalog.json'), JSON.stringify([{ name: 'fixture', description: 'A valid fixture', path: 'skills/testing/fixture', version: '1.0.0' }]));
+    fs.writeFileSync(path.join(directory, 'SKILL.md'), validSkill);
+    const write = (strategy, extra = {}) => fs.writeFileSync(path.join(directory, 'skill.json'), JSON.stringify({
+      name: 'fixture', version: '1.0.0', description: 'A valid fixture', kind: 'agent', install: { defaultScope: 'global', global: true, strategy }, ...extra,
+    }));
+    const reference = path.join(directory, 'references/guide.md');
+    const body = (count) => Array.from({ length: count }, (_, index) => `Step ${index + 1}.`).join('\n');
+    write('copy');
+    fs.writeFileSync(reference, `# Guide\n\n## Steps\n\n${body(100)}\n`);
+    assert.throws(() => validateRepository(root), /references\/guide\.md has over 100 lines/);
+    fs.writeFileSync(reference, `# Guide\n\n## Steps\n\nContents: Steps.\n\n${body(100)}\n`);
+    assert.throws(() => validateRepository(root), /Contents:/, 'the contents line comes before the first section');
+    fs.writeFileSync(reference, `# Guide\n\nContents: Steps.\n\n## Steps\n\n${body(100)}\n`);
+    assert.equal(validateRepository(root).publicCount, 1, 'a contents line before the first section passes');
+    fs.writeFileSync(reference, `# Guide\n\n## Steps\n\n${body(90)}\n`);
+    assert.equal(validateRepository(root).publicCount, 1, 'a short reference needs no contents line');
+    fs.writeFileSync(reference, `# Guide\n\n## Steps\n\n${body(100)}\n`);
+    write('adapted', { upstream: { repo: 'https://github.com/owner/repo', path: 'skills/fixture', version: 'latest', commit: 'a'.repeat(40) } });
+    fs.writeFileSync(path.join(directory, 'SKILL.md'), `${validSkill}<!-- upstream:begin -->\noriginal\n<!-- upstream:end -->\n`);
+    assert.equal(validateRepository(root).publicCount, 1, "an adapted skill's references come from its original");
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test('a native skill lists the skills it was written from as origins with their full commits', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'skillvault-origins-'));
   try {

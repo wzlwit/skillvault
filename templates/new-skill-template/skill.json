@@ -8,7 +8,7 @@
   "description": "Template for creating new skills in SkillVault.",
   "tags": ["template", "starter"],
   "author": "Your Name",
-  "license": "MIT",
+  "license": null,
   "source": {
     "repo": "skillvault",
     "path": "templates/new-skill-template"

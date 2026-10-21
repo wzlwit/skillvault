@@ -18,6 +18,7 @@
     "budgets"
   ],
   "author": "wzlwit",
+  "license": null,
   "source": {
     "repo": "skillvault",
     "path": "skills/planning/harness-setup"
