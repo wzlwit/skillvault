@@ -340,7 +340,7 @@ For example, install `harness-dev` through
 | `/harness-setup [root\|clean\|policy] [<link, task, or question>]` | Project setup and status, sources and briefings, the Root, historical data, and runtime limits, failure responses, and retention |
 | `/harness-dev [upsert\|queue\|sprint\|test\|broad] [<task or request>]` | Task records and readiness, development, queues, the review loop, goal-based sprints, reusable tests, and broad reviews for one task |
 | `/harness-write [slots] [<what to write>]` | Feature doc sets, stakeholder trackers, meeting slots and invites, email drafts, and report and query authoring |
-| `/harness-review [broad\|list] [<scope>]` | Independent code review with two reviewers per pass (GPT and Claude Opus) |
+| `/harness-review [broad\|list] [<scope>]` | Independent code review: GPT and Claude Opus review the changes, then Claude Opus reviews the whole repository |
 | `/harness-decide [closed\|all] [<question or ID>]` | Human decisions, explanations, and their register |
 | `/harness-monitor [accept\|auto] [<monitor, link, or folder>]` | Observations, incident proposals, and scheduled automatic follow-up |
 | `/harness-schedule [clean] [<target> <duration\|off\|on>]` | Cadence and schedule lifecycle, not historical-data cleanup |

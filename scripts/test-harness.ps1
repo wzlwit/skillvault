@@ -425,6 +425,10 @@ try {
     $queuedFollowUp = & $dispatcher -ProjectPath $commandProject -Action Dev -Id $commandTask.id -Text 'Another explicit revision' -Risk Low -Mode next | ConvertFrom-Json
     $queuedFollowUpTask = Get-HarnessTask (Read-HarnessState $commandPaths) $queuedFollowUp.taskId
     if ($queuedFollowUp.status -cne 'Queued' -or $queuedFollowUpTask.followUpOf -cne $commandTask.id -or (Read-HarnessState $commandPaths).active) { throw 'Dev did not reuse follow-up intake or queue-only semantics.' }
+    $null = & $dispatcher -ProjectPath $commandProject -Action Dev -Id $queuedFollowUp.taskId -FullPanel -Mode next
+    if ((Get-HarnessTask (Read-HarnessState $commandPaths) $queuedFollowUp.taskId).fullPanel -ne $true) { throw 'A development request for both reviewers in the Full pass was not saved on its task.' }
+    $null = & $dispatcher -ProjectPath $commandProject -Action Dev -Id $queuedFollowUp.taskId -Mode next
+    if ((Get-HarnessTask (Read-HarnessState $commandPaths) $queuedFollowUp.taskId).PSObject.Properties.Match('fullPanel').Count) { throw 'A later development request without both reviewers kept the earlier request.' }
     $sourceTask = Add-HarnessTask -Paths $identityPaths -Title 'Completed source task' -Description 'Original requirement' -Scope 'source' -Acceptance 'Original check' -Source 'https://example.invalid/revised'
     $null = Update-HarnessState $identityPaths { param($saved); (Get-HarnessTask $saved $sourceTask.id).status = 'Completed' }
     $revisionOnly = Add-HarnessTask -Paths $identityPaths -Title 'Same source task' -Scope 'source' -Source 'https://example.invalid/revised' -SourceRevision 'new-revision'
@@ -857,6 +861,8 @@ try {
     $securityContext.content | Set-Content -LiteralPath $securityContext.path -Encoding UTF8
     Assert-HarnessFailure { & $dispatcher -ProjectPath $fixtureRoot -Action Status -SecurityReview } 'only to the independent Review'
     Assert-HarnessFailure { & $dispatcher -ProjectPath $fixtureRoot -Action Status -ReviewLevel broad } 'ReviewLevel applies only'
+    Assert-HarnessFailure { & $dispatcher -ProjectPath $fixtureRoot -Action Status -FullPanel } 'FullPanel applies only'
+    Assert-HarnessFailure { & $dispatcher -ProjectPath $fixtureRoot -Action Dev -FullPanel } 'needs the task it applies to'
     if ($review.reviewLevel -cne 'blocking' -or [IO.File]::ReadAllText($review.report) -notmatch 'Review level: blocking' -or @($script:reviewTaskLevels | Where-Object { $_ -cne 'blocking' }).Count) { throw 'Development and standalone reviews did not default to the blocking level.' }
     $broadReview = Invoke-HarnessReview $paths -ReviewLevel broad
     $broadRun = @((Read-HarnessState $paths).runs | Where-Object { $_.report -ceq $broadReview.report })
@@ -1126,8 +1132,24 @@ try {
     if ([IO.File]::ReadAllText($panelFindings.report) -notmatch 'Reviewers: gpt-fixture-2 \(xhigh, default\) \+ claude-opus-fixture-2 \(max, long_context\)') { throw 'The review report did not name both reviewers and their settings.' }
     $panelVerdicts['claude-opus-fixture-2'] = 'clean'
     $panelCalls.Clear()
+    $panelCallText = { ($panelCalls | ForEach-Object { "$($_.phase):$($_.model)" }) -join ',' }
     $panelClean = Invoke-HarnessReview $paths -Scope 'Panel fixture' -RunnerContext $sequentialContext
-    if ($panelClean.status -cne 'clean' -or -not $panelClean.complete -or $panelClean.passes -ne 2 -or $panelClean.sessions -ne 4 -or $panelCalls.Count -ne 4) { throw 'A clean panel round did not run both reviewers in the Changes and Full passes.' }
+    if ($panelClean.status -cne 'clean' -or -not $panelClean.complete -or $panelClean.passes -ne 2 -or $panelClean.sessions -ne 3 -or (& $panelCallText) -cne 'Review:gpt-fixture-2,Review:claude-opus-fixture-2,Fresh:claude-opus-fixture-2' -or (@($panelClean.fullPassReviewers).model -join ',') -cne 'claude-opus-fixture-2') { throw "A clean round did not run both reviewers in the Changes pass and the Claude Opus reviewer alone in the Full pass: $(& $panelCallText)" }
+    if ([IO.File]::ReadAllText($panelClean.report) -notmatch 'Full pass reviewers: claude-opus-fixture-2 \(max, long_context\)') { throw 'The review report did not name the Full pass reviewer.' }
+    $panelCalls.Clear()
+    $panelBoth = Invoke-HarnessReview $paths -Scope 'Panel fixture' -RunnerContext $sequentialContext -FullPanel
+    if ($panelBoth.status -cne 'clean' -or $panelBoth.sessions -ne 4 -or (& $panelCallText) -cne 'Review:gpt-fixture-2,Review:claude-opus-fixture-2,Fresh:gpt-fixture-2,Fresh:claude-opus-fixture-2') { throw "A review that asked for both reviewers did not run them both in the Full pass: $(& $panelCallText)" }
+    $fullPanelConfig = $config | ConvertTo-Json -Depth 20 | ConvertFrom-Json
+    $fullPanelConfig.runner | Add-Member -NotePropertyName fullPanel -NotePropertyValue $true -Force
+    if ((@((Get-HarnessReviewPanel (Resolve-HarnessRunnerConfig $config $sequentialContext)).fullPass) -join ',') -cne 'claude-opus-fixture-2' -or (@((Get-HarnessReviewPanel (Resolve-HarnessRunnerConfig $fullPanelConfig $sequentialContext)).fullPass) -join ',') -cne 'gpt-fixture-2,claude-opus-fixture-2') { throw 'The panel view did not show which reviewers the Full pass runs.' }
+    Assert-HarnessFailure { Assert-HarnessRunnerConfig ([pscustomobject]@{ runner = [pscustomobject]@{ command = 'copilot'; model = 'auto'; reasoningEffort = 'auto'; fullPanel = 'yes' } }) } 'runner.fullPanel must be true or false'
+    Write-HarnessJson $paths.Config $fullPanelConfig
+    try {
+        $panelCalls.Clear()
+        $panelSaved = Invoke-HarnessReview $paths -Scope 'Panel fixture' -RunnerContext $sequentialContext
+        if ($panelSaved.status -cne 'clean' -or $panelSaved.sessions -ne 4 -or (& $panelCallText) -cne 'Review:gpt-fixture-2,Review:claude-opus-fixture-2,Fresh:gpt-fixture-2,Fresh:claude-opus-fixture-2') { throw "runner.fullPanel did not run both reviewers in the Full pass: $(& $panelCallText)" }
+    }
+    finally { Write-HarnessJson $paths.Config $config }
     $panelVerdicts['claude-opus-fixture-2'] = 'blocked'
     $panelBlocked = Invoke-HarnessReview $paths -Scope 'Blocked panel fixture' -RunnerContext $sequentialContext
     if ($panelBlocked.status -cne 'blocked' -or $panelBlocked.complete) { throw 'One blocked reviewer did not block a pass that the other reviewer called clean.' }
@@ -1156,8 +1178,11 @@ try {
         $failureReport = [IO.File]::ReadAllText($parallelFailure.report)
         if ($parallelFailure.status -cne 'Failed' -or $failureReport -notmatch 'Reviewer claude-opus-fixture-2 failed' -or $failureReport -notmatch 'Parallel clean') { throw 'A failed parallel reviewer did not fail the pass while keeping the other result as evidence.' }
         $panelVerdicts['claude-opus-fixture-2'] = 'clean'
+        $panelCalls.Clear()
         $parallelRecovery = Invoke-HarnessReview $paths -Scope 'Parallel failure fixture' -RunnerContext $parallelContext
-        if ($parallelRecovery.status -cne 'clean' -or $groupCalls.Count -ne 4) { throw 'A clean parallel round did not run both passes as reviewer groups.' }
+        if ($parallelRecovery.status -cne 'clean' -or $groupCalls.Count -ne 3 -or (& $panelCallText) -cne 'Fresh:claude-opus-fixture-2') { throw "A clean parallel round did not run the Changes pass as a reviewer group and the Claude Opus reviewer alone in the Full pass: $(& $panelCallText)" }
+        $parallelBoth = Invoke-HarnessReview $paths -Scope 'Parallel failure fixture' -RunnerContext $parallelContext -FullPanel
+        if ($parallelBoth.status -cne 'clean' -or $groupCalls.Count -ne 5 -or ($groupCalls[4] -join ',') -cne 'gpt-fixture-2,claude-opus-fixture-2') { throw 'Both reviewers in the Full pass did not run as a parallel group.' }
     }
     finally { Set-Item Function:Invoke-HarnessProcessGroup -Value $originalGroup }
     '{"families":[{"id":"gpt","label":"GPT","pattern":"gpt-*","models":["gpt-a","gpt-b"]},{"id":"claude-opus","label":"Claude Opus","pattern":"claude-opus-*","models":["claude-opus-a","claude-opus-b"]}]}' | Set-Content -LiteralPath $env:SKILLVAULT_REVIEW_MODELS -Encoding UTF8
@@ -1187,15 +1212,25 @@ try {
         $oneAtATime = [pscustomobject]@{ restrictions = [pscustomobject]@{ maxParallelReviewers = 1 } }
         $steppedReview = Invoke-HarnessReview $paths -Scope 'Fallback fixture' -RunnerContext $oneAtATime
         $steppedReport = [IO.File]::ReadAllText($steppedReview.report)
-        if ($steppedReview.status -cne 'clean' -or $steppedReview.sessions -ne 4 -or ($fallback.Calls -join ',') -cne 'gpt-a:max,claude-opus-a:max,gpt-b:max,claude-opus-a:high,gpt-b:max,claude-opus-a:high') { throw "A rejected model or effort was not skipped before review, or a later pass retried it: $($fallback.Calls -join ',')" }
+        if ($steppedReview.status -cne 'clean' -or $steppedReview.sessions -ne 3 -or ($fallback.Calls -join ',') -cne 'gpt-a:max,claude-opus-a:max,gpt-b:max,claude-opus-a:high,claude-opus-a:high') { throw "A rejected model or effort was not skipped before review, or a later pass retried it: $($fallback.Calls -join ',')" }
         if ($steppedReport -notmatch 'gpt-a' -or $steppedReport -notmatch 'is not available' -or $steppedReport -notmatch 'Reviewers: gpt-b \(max, long_context\) \+ claude-opus-a \(high, long_context\)') { throw 'The review report did not record the skipped choices and the reviewers that ran.' }
         $fallback.Calls.Clear()
         $parallelStepped = Invoke-HarnessReview $paths -Scope 'Parallel fallback fixture'
-        if ($parallelStepped.status -cne 'clean' -or ($fallback.Groups -join ',') -cne 'gpt-a+claude-opus-a,gpt-b+claude-opus-a,gpt-b+claude-opus-a' -or ($fallback.Calls -join ',') -cne 'gpt-a:max,claude-opus-a:max,gpt-b:max,claude-opus-a:high,gpt-b:max,claude-opus-a:high') { throw "Parallel reviewers did not relaunch only the rejected choice: $($fallback.Groups -join ',') / $($fallback.Calls -join ',')" }
+        if ($parallelStepped.status -cne 'clean' -or ($fallback.Groups -join ',') -cne 'gpt-a+claude-opus-a,gpt-b+claude-opus-a' -or ($fallback.Calls -join ',') -cne 'gpt-a:max,claude-opus-a:max,gpt-b:max,claude-opus-a:high,claude-opus-a:high') { throw "Parallel reviewers did not relaunch only the rejected choice: $($fallback.Groups -join ',') / $($fallback.Calls -join ',')" }
         $fallback.Calls.Clear()
         $fallback.Unavailable = @('gpt-a', 'claude-opus-a', 'claude-opus-b')
         $droppedFamily = Invoke-HarnessReview $paths -Scope 'Dropped family fixture' -RunnerContext $oneAtATime
         if ($droppedFamily.status -cne 'clean' -or $droppedFamily.sessions -ne 2 -or $droppedFamily.reviewerNote -notmatch 'Only one reviewer ran \(gpt-b\): the CLI accepted no allowed Claude Opus model \(claude-opus-a, claude-opus-b\)' -or @($fallback.Calls | Where-Object { $_ -like 'claude-opus-*' }).Count -ne 2) { throw "An unavailable family was retried in later passes or not reported: $($droppedFamily.reviewerNote) / $($fallback.Calls -join ',')" }
+        # When the Full pass runs first, its Claude Opus reviewer meets the rejection there; the GPT reviewer takes its place, not the runner's model.
+        $fallback.Calls.Clear()
+        $fallback.Unavailable = @('claude-opus-a', 'claude-opus-b')
+        $changedSnapshot = ${function:Get-HarnessSnapshot}
+        try {
+            function Get-HarnessSnapshot { param($Paths, $Config, $Workspace, $BaseRef); '{"head":"panel-head","base":"panel-head","diff":"","untracked":[]}' }
+            $standbyReview = Invoke-HarnessReview $paths -Scope 'Full pass standby fixture' -RunnerContext $oneAtATime
+        }
+        finally { Set-Item Function:Get-HarnessSnapshot -Value $changedSnapshot }
+        if ($standbyReview.status -cne 'clean' -or $standbyReview.passes -ne 1 -or ($fallback.Calls -join ',') -cne 'claude-opus-a:max,claude-opus-b:max,gpt-a:max' -or (@($standbyReview.fullPassReviewers).model -join ',') -cne 'gpt-a' -or $standbyReview.fullPassNote -notmatch 'Only one reviewer ran \(gpt-a\): the CLI accepted no allowed Claude Opus model') { throw "When the CLI accepted no Claude Opus model, the Full pass did not fall back to the GPT reviewer: $($fallback.Calls -join ',') / $($standbyReview.fullPassNote)" }
         $fallback.Calls.Clear()
         $fallback.Unavailable = @('gpt-a', 'gpt-b', 'claude-opus-a', 'claude-opus-b')
         $runnerOnly = Invoke-HarnessReview $paths -Scope 'Runner fallback fixture' -RunnerContext $oneAtATime
@@ -1287,7 +1322,17 @@ try {
     $null = Queue-HarnessTask $paths $legacyTask.id 'now'
     $legacyOutcome = Invoke-HarnessCycle $paths -RunnerContext $sequentialContext
     $legacyRuns = @((Read-HarnessState $paths).runs | Where-Object taskId -CEQ $legacyTask.id)
-    if ($legacyOutcome.status -cne 'Completed' -or (($loopFixture.Calls | ForEach-Object { "$($_.phase):$($_.model)" }) -join ',') -cne 'Review:gpt-fixture-2,Review:claude-opus-fixture-2,Fresh:gpt-fixture-2,Fresh:claude-opus-fixture-2' -or ($legacyRuns.phase -join ',') -cne 'Review,Fresh' -or $legacyRuns[0].model -cne 'gpt-fixture-2 + claude-opus-fixture-2') { throw 'A saved Critical task did not resume at a two-reviewer Changes review followed by the Full pass.' }
+    if ($legacyOutcome.status -cne 'Completed' -or (($loopFixture.Calls | ForEach-Object { "$($_.phase):$($_.model)" }) -join ',') -cne 'Review:gpt-fixture-2,Review:claude-opus-fixture-2,Fresh:claude-opus-fixture-2' -or ($legacyRuns.phase -join ',') -cne 'Review,Fresh' -or $legacyRuns[0].model -cne 'gpt-fixture-2 + claude-opus-fixture-2' -or $legacyRuns[1].model -cne 'claude-opus-fixture-2') { throw 'A saved Critical task did not resume at a two-reviewer Changes review followed by the Claude Opus Full pass.' }
+    # A development request for both reviewers is saved on its task, so the Full pass of a later pickup still runs both.
+    $loopFixture.Calls.Clear()
+    $bothTask = Add-HarnessTask -Paths $paths -Title 'Both Full pass reviewers' -Description 'Ask for both reviewers in the Full pass' -Scope 'both.txt' -Acceptance 'The Full pass runs both reviewers' -Kind fix -Risk Low
+    $null = Update-HarnessState $paths { param($saved); $both = Get-HarnessTask $saved $bothTask.id; $both.phase = 'Fresh'; $both.snapshot = $legacySnapshot }
+    $null = Queue-HarnessTask $paths $bothTask.id 'now' -FullPanel
+    $null = Queue-HarnessTask $paths $bothTask.id 'now'
+    if ((Get-HarnessTask (Read-HarnessState $paths) $bothTask.id).fullPanel -ne $true) { throw 'Queuing a task without deciding its Full pass reviewers dropped the saved request.' }
+    $bothOutcome = Invoke-HarnessCycle $paths -RunnerContext $sequentialContext
+    $bothRuns = @((Read-HarnessState $paths).runs | Where-Object taskId -CEQ $bothTask.id)
+    if ($bothOutcome.status -cne 'Completed' -or (($loopFixture.Calls | ForEach-Object { "$($_.phase):$($_.model)" }) -join ',') -cne 'Fresh:gpt-fixture-2,Fresh:claude-opus-fixture-2' -or $bothRuns[-1].model -cne 'gpt-fixture-2 + claude-opus-fixture-2') { throw 'A task that asked for both reviewers did not run them both in its Full pass.' }
     # Real tests: a failed test is a fix round, the same failure after a fix stops, afterReview runs on the reviewed
     # code, scheduled runs keep the environment rule, and background tests run while the first review reads the code.
     $savedSnapshotFunction = ${function:Get-HarnessSnapshot}

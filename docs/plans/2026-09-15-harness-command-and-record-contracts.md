@@ -314,10 +314,13 @@ updates do not refresh installed copies or configure live workflows.
   These local-runtime semantics do not modify unrelated schedules.
 - Reviews bind findings to the selected baseline and head, plus the captured working changes
   when applicable. If code changes, do not reuse a clean verdict as evidence for the new snapshot.
-  Every Changes and Full pass uses the review panel: the strongest allowed GPT and Claude Opus
+  The Changes pass uses the review panel: the strongest allowed GPT and Claude Opus
   models from runner-context profiles or the bundled default list (the owner's model picker),
   narrowed by `allowedModels`, in parallel unless `maxParallelReviewers` is 1, with findings merged
-  and a clean pass only when both are clean. Models or effort levels the CLI rejects before model work
+  and a clean pass only when both are clean. The Full pass runs the Claude Opus reviewer alone unless
+  a request (`-FullPanel`, saved on a development task) or `runner.fullPanel: true` asks for both; see
+  the [one Full pass reviewer ADR](decisions/2026-10-21-one-full-pass-reviewer-adr.md). Models or
+  effort levels the CLI rejects before model work
   are skipped at no cost. One usable family, or `runner.secondReviewer: false`, runs one reviewer and
   says so; `/pr-review` keeps its one profile.
   Reviewers work at a review level: `blocking` (default) reports only what blocks merging the change

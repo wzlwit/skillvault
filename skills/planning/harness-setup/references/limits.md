@@ -22,7 +22,8 @@ document, initialize the project, or start workers. Situations below are usage g
 2. For `policy list limits`, run its shared `scripts/harness.ps1 -ProjectPath <root> -Action Restrict`. Report the declared
    restrictions, configured runner permissions/model, effective numeric caps, and active pauses.
    Also list the review models from its `reviewPanel`: each family's models, which ones
-   `allowedModels` permits, and the reviewers the next pass will try.
+   `allowedModels` permits, the reviewers the next Changes pass will try, and `fullPass`, the models
+   the Full pass starts with.
    Uninitialized projects are reported without creating state; creating the harness is a separate request.
 3. Follow the runtime's Runner Inheritance procedure: missing allowances use current-session or
   parent settings, then maximum verified/native capability. Pass `-RunnerContext` or

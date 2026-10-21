@@ -38,7 +38,7 @@ function Resolve-HarnessRunnerConfig {
     $resolved | Add-Member -NotePropertyName restrictions -NotePropertyValue (ConvertTo-HarnessRestrictions $resolved.restrictions) -Force
     if (Test-HarnessUnspecifiedAllowance $resolved.runner) { $resolved | Add-Member -NotePropertyName runner -NotePropertyValue ([pscustomobject]@{}) }
     $resolved | Add-Member -NotePropertyName runner -NotePropertyValue (Convert-HarnessLegacyRunnerKeys $resolved.runner) -Force
-    $fields = @('command', 'model', 'reasoningEffort', 'contextTier', 'workspaceMode', 'maxMinutes', 'maxCredits', 'maxTasksPerCycle', 'secondReviewer', 'allowedTools', 'availableTools', 'validationCommands', 'rulesPath')
+    $fields = @('command', 'model', 'reasoningEffort', 'contextTier', 'workspaceMode', 'maxMinutes', 'maxCredits', 'maxTasksPerCycle', 'secondReviewer', 'fullPanel', 'allowedTools', 'availableTools', 'validationCommands', 'rulesPath')
     $profiles = @()
     $inheritedPolicies = @($resolved.inheritedRestrictions | Where-Object { $null -ne $_ })
     if ($null -ne $RunnerContext) {
@@ -108,6 +108,7 @@ function Resolve-HarnessRunnerConfig {
         $resolved.runner.($limit[0]) = Get-HarnessExecutionLimit $resolved $limit[1] $resolved.runner.($limit[0])
     }
     if ($null -eq $resolved.runner.secondReviewer) { $resolved.runner.secondReviewer = $true }
+    if ($null -eq $resolved.runner.fullPanel) { $resolved.runner.fullPanel = $false }
     $resolved
 }
 
@@ -133,7 +134,7 @@ function Assert-HarnessRunnerConfig {
     foreach ($limit in @('maxMinutes', 'maxCredits')) {
         if ($null -ne $runner.$limit -and ([double]$runner.$limit -le 0 -or -not [double]::IsFinite([double]$runner.$limit))) { throw 'Explicit runner.maxMinutes and runner.maxCredits must be positive finite limits.' }
     }
-    foreach ($key in @('secondReviewer', 'criticalReview')) {
+    foreach ($key in @('secondReviewer', 'criticalReview', 'fullPanel')) {
         if ($null -ne $runner.$key -and $runner.$key -isnot [bool]) { throw "runner.$key must be true or false when supplied." }
     }
     if (-not $ReviewOnly) {
@@ -800,7 +801,24 @@ function Get-HarnessReviewPanel {
         elseif ($missing.Count) { $note = "Only one reviewer ran ($($reviewers[0].model)): $($missing -join '; ')." }
     }
     $limit = Get-HarnessExecutionLimit $Config maxParallelReviewers $null
-    [pscustomobject]@{ reviewers = @($reviewers); parallel = ($reviewers.Count -gt 1 -and ($null -eq $limit -or $limit -ge $reviewers.Count)); note = $note; maxParallel = $limit; primary = $primary; families = @($listing) }
+    $panel = [pscustomobject]@{ reviewers = @($reviewers); parallel = ($reviewers.Count -gt 1 -and ($null -eq $limit -or $limit -ge $reviewers.Count)); note = $note; maxParallel = $limit; primary = $primary; families = @($listing) }
+    $panel | Add-Member -NotePropertyName fullPass -NotePropertyValue @((Get-HarnessFullPassPanel $panel ($Config.runner.fullPanel -eq $true)).reviewers | ForEach-Object { $_.model })
+    $panel
+}
+
+# The Full pass runs one reviewer, the panel's Claude Opus reviewer, unless both are asked for: -FullPanel
+# for one review or task, or runner.fullPanel. Without a usable Claude Opus reviewer the first remaining one
+# runs, and the others stand by in case the CLI accepts no model of the one that runs.
+function Get-HarnessFullPassPanel {
+    param($Panel, [bool]$Both)
+    $active = @($Panel.reviewers | Where-Object { $null -ne $_ -and -not $_.dropped })
+    if ($Both -or $active.Count -lt 2) { return $Panel }
+    $chosen = @(@($active | Where-Object { $_.family -ceq 'claude-opus' }) + $active)[0]
+    [pscustomobject]@{
+        reviewers = @($chosen); parallel = $false; maxParallel = $Panel.maxParallel; primary = $Panel.primary; families = $Panel.families
+        standby = @($active | Where-Object { -not [object]::ReferenceEquals($_, $chosen) })
+        note = 'The Full pass ran one reviewer, the default; both run when asked or when runner.fullPanel is true.'
+    }
 }
 
 # Classifies a CLI exit that happened before any model work, so another model or effort can be tried.
@@ -844,9 +862,11 @@ function Step-HarnessReviewer {
 function Invoke-HarnessReviewPass {
     param($Paths, $Config, $Task, [string]$Workspace, [ValidateSet('Review', 'Fresh')][string]$Phase, [string]$Snapshot, [string]$ReviewGuidance, $Panel)
     $outcomes = @()
-    $pending = @($Panel.reviewers)
-    foreach ($reviewer in $pending) { $reviewer.skipped = @() }
+    # A reviewer the CLI rejected in an earlier pass of this run is not tried again.
+    $pending = @($Panel.reviewers | Where-Object { -not $_.dropped })
     $usedPrimary = $false
+    if (-not $pending.Count -and $Panel.primary) { $pending = @($Panel.primary); $usedPrimary = $true }
+    foreach ($reviewer in $pending) { $reviewer.skipped = @() }
     while ($pending.Count) {
         $round = @()
         if ($Panel.parallel -and $pending.Count -gt 1) {
@@ -875,7 +895,15 @@ function Invoke-HarnessReviewPass {
             $outcomes += $entry
         }
         if (@($outcomes | Where-Object { $null -ne $_.failure }).Count) { break }
-        if (-not $pending.Count -and -not $outcomes.Count -and -not $usedPrimary -and $Panel.primary) {
+        $standby = @($Panel.standby | Where-Object { $null -ne $_ -and -not $_.dropped })
+        if (-not $pending.Count -and -not $outcomes.Count -and $standby.Count) {
+            # The Full pass's one reviewer could not start, so the next panel reviewer takes its place.
+            $Panel.standby = @($standby | Select-Object -Skip 1)
+            $standby[0].skipped = @()
+            $Panel.reviewers = @($Panel.reviewers) + @($standby[0])
+            $pending = @($standby[0])
+        }
+        elseif (-not $pending.Count -and -not $outcomes.Count -and -not $usedPrimary -and $Panel.primary) {
             $usedPrimary = $true
             $pending = @($Panel.primary)
         }
@@ -959,8 +987,9 @@ function Get-HarnessReviewSecurityContext {
 }
 
 function Queue-HarnessTask {
-    param($Paths, [string]$Id, [ValidateSet('now', 'next')][string]$Mode = 'next', [switch]$UseWorkingChanges, [string]$RepositoryRef, [ValidateSet('blocking', 'broad')][string]$ReviewLevel)
+    param($Paths, [string]$Id, [ValidateSet('now', 'next')][string]$Mode = 'next', [switch]$UseWorkingChanges, [string]$RepositoryRef, [ValidateSet('blocking', 'broad')][string]$ReviewLevel, [switch]$FullPanel)
     $setRepository = $PSBoundParameters.ContainsKey('RepositoryRef')
+    $setFullPanel = $PSBoundParameters.ContainsKey('FullPanel')
     $monitors = @((Get-HarnessMonitorSettings (Read-HarnessConfig $Paths)).monitors)
     Update-HarnessState $Paths {
         param($state)
@@ -986,6 +1015,9 @@ function Queue-HarnessTask {
         # The running task keeps its level. Broad is saved on the task so a queued pickup still runs broad; absence means blocking.
         if ($ReviewLevel -ceq 'broad') { $task | Add-Member -NotePropertyName reviewLevel -NotePropertyValue 'broad' -Force }
         elseif ($ReviewLevel -and $task.PSObject.Properties.Match('reviewLevel').Count) { $task.PSObject.Properties.Remove('reviewLevel') }
+        # Likewise a request for both reviewers in the Full pass is saved on the task; without one, the default applies.
+        if ($setFullPanel -and $FullPanel) { $task | Add-Member -NotePropertyName fullPanel -NotePropertyValue $true -Force }
+        elseif ($setFullPanel -and $task.PSObject.Properties.Match('fullPanel').Count) { $task.PSObject.Properties.Remove('fullPanel') }
         $state.nowQueue = @($state.nowQueue | Where-Object { $_ -cne $Id })
         $state.nextQueue = @($state.nextQueue | Where-Object { $_ -cne $Id })
         if ($Mode -eq 'now') { $state.nowQueue = @($state.nowQueue) + @($Id) }
@@ -1264,8 +1296,9 @@ function Invoke-HarnessCycle {
             New-Item -ItemType Directory -Path (Split-Path -Parent $reportPath) -Force | Out-Null
             $snapshot = Get-HarnessSnapshot $Paths $config $workspace -RepositoryRoot $task.repositoryRoot
             $reviewPhase = $phase -in @('Validate', 'Review', 'Fresh')
-            $runModel = if ($reviewPhase) { @($panel.reviewers | ForEach-Object { $_.model }) -join ' + ' } else { $config.runner.model }
-            $runEffort = if ($reviewPhase) { @($panel.reviewers | ForEach-Object { $_.effort }) -join ' + ' } else { $config.runner.reasoningEffort }
+            $phasePanel = if ($phase -eq 'Fresh') { Get-HarnessFullPassPanel $panel ($task.fullPanel -eq $true -or $config.runner.fullPanel -eq $true) } else { $panel }
+            $runModel = if ($reviewPhase) { @($phasePanel.reviewers | ForEach-Object { $_.model }) -join ' + ' } else { $config.runner.model }
+            $runEffort = if ($reviewPhase) { @($phasePanel.reviewers | ForEach-Object { $_.effort }) -join ' + ' } else { $config.runner.reasoningEffort }
             $run = [pscustomobject][ordered]@{ id = $runId; taskId = $taskId; phase = $phase; status = 'Running'; startedAt = [datetimeoffset]::UtcNow.ToString('o'); finishedAt = ''; model = $runModel; effort = $runEffort; repositoryRef = $task.repositoryRef; repositoryRoot = $task.repositoryRoot; workspace = $workspace; report = $reportPath; exitCode = '' }
             $null = Update-HarnessState $Paths -Config $config -Operation {
                 param($saved)
@@ -1357,7 +1390,7 @@ function Invoke-HarnessCycle {
                         # Code that changed after the tests must go through them and the review again.
                         if ($task.snapshot -cne $snapshot) { $nextPhase = 'Validate'; throw 'Code changed since validation or the prior review; run fresh validation before reusing this phase.' }
                         $reviewTask = New-HarnessReviewTask $task
-                        $pass = Invoke-HarnessReviewPass -Paths $Paths -Config $config -Task $reviewTask -Workspace $workspace -Phase $phase -Snapshot $snapshot -Panel $panel
+                        $pass = Invoke-HarnessReviewPass -Paths $Paths -Config $config -Task $reviewTask -Workspace $workspace -Phase $phase -Snapshot $snapshot -Panel $phasePanel
                         $result = $pass.result
                         if ($pass.failure) { throw $pass.failure }
                         if ((Get-HarnessSnapshot $Paths $config $workspace -RepositoryRoot $task.repositoryRoot) -cne $snapshot) { $nextPhase = 'Validate'; throw 'Code changed during review; the verdict cannot be reused.' }
@@ -1406,8 +1439,8 @@ function Invoke-HarnessCycle {
             }
             $reviewLines = ''
             if ($reviewPhase) {
-                $reviewerText = @($panel.reviewers | ForEach-Object { "$($_.model) ($($_.effort), $(if ($_.context) { $_.context } else { 'native context' }))" }) -join ' + '
-                $reviewLines = "`nReviewers: $reviewerText`nParallel reviewers: $($panel.parallel)`nReviewer note: $($panel.note)`nReview round: $([int]$task.reviewRound)"
+                $reviewerText = @($phasePanel.reviewers | ForEach-Object { "$($_.model) ($($_.effort), $(if ($_.context) { $_.context } else { 'native context' }))" }) -join ' + '
+                $reviewLines = "`nReviewers: $reviewerText`nParallel reviewers: $($phasePanel.parallel)`nReviewer note: $($phasePanel.note)`nReview round: $([int]$task.reviewRound)"
             }
             $proposalText = if ($decision -and @($decision.proposals).Count) { "`n`n## Follow-up proposals`n`nOutside the task scope; accept through task intake when wanted.`n`n" + (ConvertTo-Json -InputObject @($decision.proposals) -Depth 10) } else { '' }
             $testLines = if ($null -ne $testsRun) { "`nTests run: $(if (@($testsRun).Count) { @($testsRun) -join '; ' } else { 'none' })$(if ($testsNote) { "`nTests note: $testsNote" })" } else { '' }
@@ -1488,7 +1521,7 @@ function Get-HarnessReviewPhases {
 function Invoke-HarnessReview {
     param($Paths, [string]$Scope = 'Current changes', [string]$BaseRef, [switch]$SecurityReview,
         [string]$Workspace, [string]$ExpectedHead, [string]$ReviewGuidance, [switch]$UntrustedInput, $RunnerProfile, [hashtable]$GitEnvironment,
-        [Alias('RepoRef')][string]$RepositoryRef, $RunnerContext, [ValidateSet('blocking', 'broad')][string]$ReviewLevel = 'blocking', [switch]$ChangesOnly)
+        [Alias('RepoRef')][string]$RepositoryRef, $RunnerContext, [ValidateSet('blocking', 'broad')][string]$ReviewLevel = 'blocking', [switch]$ChangesOnly, [switch]$FullPanel)
     if ($RepositoryRef -and $Workspace) { throw 'Select either a repository reference or a separately verified review workspace, not both.' }
     $config = Read-HarnessConfig $Paths
     $executionRoot = Get-HarnessExecutionRoot $config
@@ -1566,6 +1599,7 @@ function Invoke-HarnessReview {
         $failure = ''
         $kind = 'Failure'
         $status = 'Failed'
+        $fullPassPanel = $null
         try {
             $phases = @(Get-HarnessReviewPhases $snapshot -ChangesOnly:$ChangesOnly)
             $phaseIndex = 0
@@ -1573,7 +1607,12 @@ function Invoke-HarnessReview {
                 $phase = $phases[$phaseIndex]
                 Assert-HarnessTargetRunning $Paths @('review')
                 $passes++
-                $pass = Invoke-HarnessReviewPass -Paths $Paths -Config $config -Task $task -Workspace $Workspace -Phase $phase -Snapshot $snapshot -ReviewGuidance $guidance -Panel $panel
+                $passPanel = $panel
+                if ($phase -eq 'Fresh') {
+                    $fullPassPanel = Get-HarnessFullPassPanel $panel ([bool]$FullPanel -or $config.runner.fullPanel -eq $true)
+                    $passPanel = $fullPassPanel
+                }
+                $pass = Invoke-HarnessReviewPass -Paths $Paths -Config $config -Task $task -Workspace $Workspace -Phase $phase -Snapshot $snapshot -ReviewGuidance $guidance -Panel $passPanel
                 $sessions += $pass.sessions
                 $result = $pass.result
                 $result | Add-Member -NotePropertyName phase -NotePropertyValue $phase -Force
@@ -1629,7 +1668,13 @@ function Invoke-HarnessReview {
         $nextPhase = if ($status -in @('findings', 'Partial')) { 'Review' } else { '' }
         $report = "# Independent review`n`n## Findings`n`n" + (ConvertTo-Json -InputObject @($findings) -Depth 15) + "`n`n## Review`n`nScope: $Scope`nReview level: $ReviewLevel`nStatus: $status`nBaseline: $($baseline.reference)`nBase commit: $($baseline.commit)`nBaseline selection: $($baseline.selection)`nSecurity guide: $($securityContext.path)`nNew finding count: $($newFindings.Count)`nPrevious comparable report: $($previousReview.report)`nFailure kind: $kind`nError: $failure`n`nNewness uses exact file/line/message comparison, not semantic issue tracking. Earlier reports remain evidence; absence in this report does not mark an earlier issue resolved.`n`n## Passes`n`n" + (ConvertTo-Json -InputObject @($results) -Depth 15) + "`n`n## Snapshot`n`n$snapshot`n"
         $report += "`nHarness project: $($Paths.Project)`nRepository reference: $RepositoryRef`nRepository root: $repositoryRoot`nWorkspace: $Workspace`nFresh scope when triggered: Whole selected repository`n"
-        $report += "`nReviewers: $(@($panel.reviewers | ForEach-Object { "$($_.model) ($($_.effort), $(if ($_.context) { $_.context } else { 'native context' }))" }) -join ' + ')`nParallel reviewers: $($panel.parallel)`nReviewer note: $($panel.note)`n"
+        $describeReviewers = { param($Reviewers) @($Reviewers | ForEach-Object { "$($_.model) ($($_.effort), $(if ($_.context) { $_.context } else { 'native context' }))" }) -join ' + ' }
+        $report += "`nReviewers: $(& $describeReviewers $panel.reviewers)`nParallel reviewers: $($panel.parallel)`nReviewer note: $($panel.note)`n"
+        if ($fullPassPanel) {
+            $report += "Full pass reviewers: $(& $describeReviewers $fullPassPanel.reviewers)`n"
+            if ($fullPassPanel.note -cne $panel.note) { $report += "Full pass note: $($fullPassPanel.note)`n" }
+        }
+        $fullPassReviewers = @($fullPassPanel.reviewers | Where-Object { $null -ne $_ })
         $report += "`nReview complete: $reviewComplete`nNext phase after fixes: $nextPhase`n"
         $report += "`nPasses planned: $(@($phases | ForEach-Object { if ($_ -eq 'Review') { 'Changes' } else { 'Full' } }) -join ', ')`n"
         if ($ChangesOnly) { $report += "The Full pass was skipped at the request (changes only), so this review is not complete.`n" }
@@ -1643,11 +1688,11 @@ function Invoke-HarnessReview {
             $run.status = $status
             $run.finishedAt = [datetimeoffset]::UtcNow.ToString('o')
             $run.exitCode = if ($kind -eq 'Success') { '0' } else { '1' }
-            $run | Add-Member -NotePropertyName review -NotePropertyValue ([pscustomobject]@{ scope = $Scope; baseline = $baseline; repositoryRef = $RepositoryRef; repositoryRoot = $repositoryRoot; securityReview = [bool]$SecurityReview; reviewLevel = $ReviewLevel; changesOnly = [bool]$ChangesOnly; findings = @($findings); newFindingCount = $newFindings.Count; passes = $passes; sessions = $sessions; reviewers = @($panel.reviewers); parallelReviewers = $panel.parallel; reviewerNote = $panel.note; restarts = $restarts; complete = $reviewComplete; nextPhase = $nextPhase })
+            $run | Add-Member -NotePropertyName review -NotePropertyValue ([pscustomobject]@{ scope = $Scope; baseline = $baseline; repositoryRef = $RepositoryRef; repositoryRoot = $repositoryRoot; securityReview = [bool]$SecurityReview; reviewLevel = $ReviewLevel; changesOnly = [bool]$ChangesOnly; findings = @($findings); newFindingCount = $newFindings.Count; passes = $passes; sessions = $sessions; reviewers = @($panel.reviewers); parallelReviewers = $panel.parallel; reviewerNote = $panel.note; fullPassReviewers = $fullPassReviewers; fullPassNote = [string]$fullPassPanel.note; restarts = $restarts; complete = $reviewComplete; nextPhase = $nextPhase })
             if ($kind -ne 'Interrupted') { $saved.active = $null }
             if ($kind -ne 'PolicyPaused') { Register-HarnessPolicyOutcome $saved $config review $runId $kind "Independent review $status. Report: $reportPath" }
         }
-        [pscustomobject]@{ status = $status; report = $reportPath; reviewLevel = $ReviewLevel; changesOnly = [bool]$ChangesOnly; passes = $passes; sessions = $sessions; reviewers = @($panel.reviewers); parallelReviewers = $panel.parallel; reviewerNote = $panel.note; restarts = $restarts; baseline = $baseline; repositoryRef = $RepositoryRef; repositoryRoot = $repositoryRoot; securityGuide = $securityContext.path; findings = @($findings); newFindingCount = $newFindings.Count; previousReport = $previousReview.report; complete = $reviewComplete; nextPhase = $nextPhase }
+        [pscustomobject]@{ status = $status; report = $reportPath; reviewLevel = $ReviewLevel; changesOnly = [bool]$ChangesOnly; passes = $passes; sessions = $sessions; reviewers = @($panel.reviewers); parallelReviewers = $panel.parallel; reviewerNote = $panel.note; fullPassReviewers = $fullPassReviewers; fullPassNote = [string]$fullPassPanel.note; restarts = $restarts; baseline = $baseline; repositoryRef = $RepositoryRef; repositoryRoot = $repositoryRoot; securityGuide = $securityContext.path; findings = @($findings); newFindingCount = $newFindings.Count; previousReport = $previousReview.report; complete = $reviewComplete; nextPhase = $nextPhase }
     }
     catch {
         if ($_.Exception.Data['SkillOwnershipStatus'] -and -not $executionStarted) { return [pscustomobject]@{ status = $_.Exception.Data['SkillOwnershipStatus']; owner = $_.Exception.Data['SkillOwnershipOwner']; message = $_.Exception.Message } }

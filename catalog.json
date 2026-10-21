@@ -69,7 +69,7 @@
     "name": "harness-dev",
     "description": "[upsert|queue|sprint|test|broad] Alone: the board. Text: develop it. Record, queue, and develop tasks with the two-reviewer review loop, run goal-based sprints, and declare or run reusable tests; broad raises one task's reviews and unit tests. Shorthand: /hn-dev. Overlaps with harness-monitor on intake and checks, harness-review on code review, and harness-write on report implementation; sprints can draft status through harness-write.",
     "path": "skills/planning/harness-dev",
-    "version": "4.0.0"
+    "version": "5.0.0"
   },
   {
     "name": "harness-monitor",
@@ -79,15 +79,15 @@
   },
   {
     "name": "harness-review",
-    "description": "[broad|list] Alone: review your changes. Text: review that scope. Review current-project changes for blocking issues with two independent reviewers per pass, GPT and Claude Opus, plus a whole-repository Fresh pass when no new findings appear, restarting when local files change; broad also reports minor and existing issues. Shorthand: /hn-review. Overlaps with pr-review on general review, differential-review on security, and harness-dev, whose development loop runs the same passes; PR URLs delegate to pr-review.",
+    "description": "[broad|list] Alone: review your changes. Text: review that scope. Review current-project changes for blocking issues with two independent reviewers, GPT and Claude Opus, then a whole-repository Fresh pass by Claude Opus when no new findings appear, restarting when local files change; broad also reports minor and existing issues. Shorthand: /hn-review. Overlaps with pr-review on general review, differential-review on security, and harness-dev, whose development loop runs the same passes; PR URLs delegate to pr-review.",
     "path": "skills/planning/harness-review",
-    "version": "5.0.0"
+    "version": "6.0.0"
   },
   {
     "name": "harness-runtime",
     "description": "Shared PowerShell 7 runtime for the harness topics: the harness.ps1 entry point, the runtime guide, and the default review model list. Not invoked directly; use harness-setup (setup, context, policy), harness-dev, harness-write, harness-review, harness-decide, harness-monitor, or harness-schedule.",
     "path": "skills/planning/harness-runtime",
-    "version": "5.0.0"
+    "version": "6.0.0"
   },
   {
     "name": "harness-schedule",

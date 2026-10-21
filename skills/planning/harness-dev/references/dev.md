@@ -44,7 +44,9 @@ If those requirements cannot be met, continue only permitted investigation and r
    starts the task when idle and queues it when busy; `<id> now` adds `-Mode now`, which requests a
    cooperative checkpoint; `queue` adds `-Mode next`, which queues only; `broad` adds
    `-ReviewLevel broad`, saved on the task so a queued pickup still runs broad. Any other named
-   request returns the task to the `blocking` level. With no ID or input, `-Action Dev` selects
+   request returns the task to the `blocking` level. "both on full" adds `-FullPanel`, saved on the
+   task the same way, so its Full pass runs both reviewers; any other named request returns the task
+   to the Claude Opus reviewer alone. With no ID or input, `-Action Dev` selects
    eligible queued work. The offer from `/harness-dev` alone, and `broad` with no task, names the next
    ready task: queued work in pickup order first (now, interrupted, then next), otherwise the
    highest-priority ready task (Queued, Low risk, with scope and acceptance); a yes runs
@@ -65,13 +67,16 @@ If those requirements cannot be met, continue only permitted investigation and r
      one fix round. The developer fixes the code without weakening, skipping, or deleting a test, or
      returns needs-decision when the environment caused the failure. Blocked or paused tests stop the
      task.
-   - Each Changes and Full pass uses the runtime's Review Panel: two independent read-only reviewers,
+   - The Changes pass uses the runtime's Review Panel: two independent read-only reviewers,
      the strongest allowed GPT and Claude Opus models from the bundled default list (or approved
      runner-context profiles), at `max` effort or the highest the CLI accepts, in parallel unless
      `maxParallelReviewers` is 1. The developer's or session's model never replaces them. A pass is
      clean only when both are clean. Unavailable models are
      skipped at no cost; when only one family is usable, one reviewer runs and the result says so;
-     `runner.secondReviewer: false` keeps one reviewer.
+     `runner.secondReviewer: false` keeps one reviewer. The Full pass runs the Claude Opus reviewer
+     alone unless the task was started with "both on full" (`-FullPanel`) or the project sets
+     `runner.fullPanel: true`; without a usable Claude Opus model, the GPT reviewer runs it (Full Pass
+     Reviewer in the runtime guide).
    - Development reviews at the `blocking` level unless the task was started with `broad` (Review
      Levels in the runtime guide). At `blocking`, reviewers report only what blocks the task or
      merging its change, and the Full pass looks only for what the change breaks or leaves

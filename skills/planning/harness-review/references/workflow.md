@@ -78,7 +78,7 @@ New reviewers stay read-only, keep the task/snapshot association, and retain sep
 The required Fresh pass and the panel's second reviewer are part of the existing request and need
 no extra instance prompt.
 
-Every pass uses the runtime's Review Panel: two independent read-only reviewers, the strongest
+The Changes pass uses the runtime's Review Panel: two independent read-only reviewers, the strongest
 allowed GPT model and the strongest allowed Claude Opus model. Candidates come from approved
 runner-context `profiles` or, by default, the harness's bundled model list (the owner's ranking,
 strongest first), narrowed by `allowedModels`; the session's or project's own model never replaces
@@ -90,6 +90,11 @@ merged; the pass is clean only when both are clean, blocked when either is block
 findings only when neither reports one. When restrictions or availability leave one family, or
 `runner.secondReviewer` is `false`, one reviewer runs and the result and report say why. A failed
 reviewer fails the pass after both finish; the other result stays in the report as evidence.
+
+The Full pass runs one reviewer, the panel's Claude Opus reviewer, unless the request asks for both
+("both on full", `-FullPanel`) or the project sets `runner.fullPanel: true`; then the whole panel runs
+it as above. Without a usable Claude Opus model, the GPT reviewer runs it instead. Full Pass Reviewer
+in the runtime guide defines the fallbacks. The report names the Full pass reviewers.
 
 1. Start the review panel on the current snapshot at the selected level: `blocking` by default, or
    `broad` from the `broad` menu word (`-ReviewLevel broad`). Blocking reports only what blocks merging the change
@@ -110,7 +115,8 @@ reviewer fails the pass after both finish; the other result stays in the report 
    `blocking`. Old reports without structured comparison data are not guessed from Markdown.
    Changed wording/line numbers conservatively count as new;
    this is not semantic issue tracking or automatic resolution of prior reports.
-3. If that completed first pass has **no new findings**, run exactly one `Fresh` pass. This also
+3. If that completed first pass has **no new findings**, run exactly one `Fresh` pass, with the Full
+   pass reviewer above. This also
    applies when it repeats existing findings. Use a new reviewer context, the same pinned code
    snapshot, and the whole selected repository, including unchanged code, configuration, and tests. Rebuild
    understanding from sources, without passing the first review's conclusions as instructions. At
@@ -161,8 +167,9 @@ to evade a limit. Fix-driven continuation uses the same approved review workflow
 beyond the panel or repeated attempts on unchanged code. PR review keeps its verified isolated
 workspace, single approved profile, and no-execution rules.
 
-Each script round uses up to two passes per snapshot, each with up to two reviewer sessions, so at
-most 12 attempted sessions across two local restarts. That churn bound does not limit rounds
+Each script round uses up to two passes per snapshot: the Changes pass with up to two reviewer
+sessions and the Full pass with one, or two when both are asked for. That makes at most 9 attempted
+sessions across two local restarts, or 12 with both. That churn bound does not limit rounds
 resumed after completed fixes. Each session retains its explicit, inherited, and native time/credit limits;
 outer run/scheduler budgets and pauses are never increased or reset. A restart can consume extra
 sessions, not extra permission. `runner.secondReviewer: false` keeps one reviewer per pass, here and
@@ -199,6 +206,7 @@ CC-BY-SA-4.0 license; it is loaded, not copied into this bundle. No `/dif-review
 /harness-review since origin/develop
 /harness-review since HEAD
 /harness-review security since main
+/harness-review both on full
 /harness-review broad
 /harness-review list
 /harness-review <PR-URL>
@@ -208,13 +216,15 @@ CC-BY-SA-4.0 license; it is loaded, not copied into this bundle. No `/dif-review
 & <harness-folder>/scripts/harness.ps1 -ProjectPath <root> -Action Review
 & <harness-folder>/scripts/harness.ps1 -ProjectPath <controller-folder> -Action Review -RepositoryRef R-001
 & <harness-folder>/scripts/harness.ps1 -ProjectPath <root> -Action Review -BaseRef <verified-ref> -SecurityReview
+& <harness-folder>/scripts/harness.ps1 -ProjectPath <root> -Action Review -FullPanel
 & <harness-folder>/scripts/harness.ps1 -ProjectPath <root> -Action Review -ReviewLevel broad
 & <harness-folder>/scripts/harness.ps1 -ProjectPath <root> -Action Review -ChangesOnly
 ```
 
 Show findings first, ordered by evidenced severity with current file/line anchors and the reviewers
-that reported them, then the review level, each pass's requested scope, controller, coding repository, baseline,
-security guidance source when used, reviewers and any one-reviewer note, attempted pass and session
+that reported them, then the review level, each pass's requested scope, controller, coding
+repository, baseline, security guidance source when used, reviewers, the Full pass reviewers, and
+any one-reviewer note, attempted pass and session
 counts, restart count, coverage gaps, and report path. Keep pre-existing issues separate from
 introduced regressions. The shared state retains compact review comparison data in its existing
 run rows, with full evidence in board reports; there is no new issue tracker or status dashboard.

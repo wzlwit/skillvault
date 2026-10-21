@@ -1,15 +1,16 @@
 {
   "name": "harness-review",
   "title": "Harness Review",
-  "version": "5.0.0",
+  "version": "6.0.0",
   "requiredInterfaces": {
     "harness-runtime": {
       "review-levels": 2,
-      "review-scope": 1
+      "review-scope": 1,
+      "full-pass": 1
     }
   },
   "kind": "agent",
-  "description": "[broad|list] Alone: review your changes. Text: review that scope. Review current-project changes for blocking issues with two independent reviewers per pass, GPT and Claude Opus, plus a whole-repository Fresh pass when no new findings appear, restarting when local files change; broad also reports minor and existing issues. Shorthand: /hn-review. Overlaps with pr-review on general review, differential-review on security, and harness-dev, whose development loop runs the same passes; PR URLs delegate to pr-review.",
+  "description": "[broad|list] Alone: review your changes. Text: review that scope. Review current-project changes for blocking issues with two independent reviewers, GPT and Claude Opus, then a whole-repository Fresh pass by Claude Opus when no new findings appear, restarting when local files change; broad also reports minor and existing issues. Shorthand: /hn-review. Overlaps with pr-review on general review, differential-review on security, and harness-dev, whose development loop runs the same passes; PR URLs delegate to pr-review.",
   "tags": [
     "harness",
     "review",

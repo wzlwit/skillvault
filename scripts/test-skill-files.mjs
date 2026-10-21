@@ -1215,6 +1215,26 @@ test('review levels default to blocking and every review entry point requires th
   assert.match(read('skills/planning/harness-review/SKILL.md'), /"changes only"[\s\S]{0,200}-ChangesOnly/);
 });
 
+test('the Full pass runs the Claude Opus reviewer alone unless both are asked for', () => {
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const read = relative => fs.readFileSync(path.join(root, relative), 'utf8');
+  const runtime = parseJson(read('skills/planning/harness-runtime/skill.json'), 'harness-runtime/skill.json');
+  assert.equal(runtime.runtimeInterfaces['full-pass'], 1);
+  for (const consumer of ['harness-review', 'harness-dev']) {
+    const manifest = parseJson(read(`skills/planning/${consumer}/skill.json`), `${consumer}/skill.json`);
+    // Both topics document -FullPanel, so an older runtime that rejects it must not run them.
+    assert.equal(manifest.requiredInterfaces['harness-runtime']['full-pass'], 1, `${consumer} must require the full-pass interface`);
+    assert.match(read(`skills/planning/${consumer}/SKILL.md`), /"both on full"[\s\S]{0,200}-FullPanel/, `${consumer} must map "both on full" to -FullPanel`);
+  }
+  const guide = read('skills/planning/harness-runtime/references/runtime.md');
+  const full = guide.split(/^### Full Pass Reviewer\r?$/m)[1]?.split(/^##+ /m)[0] ?? '';
+  assert.ok(full, 'The runtime guide defines the Full pass reviewer');
+  for (const identifier of ['`runner.fullPanel: true`', '`Review -FullPanel`', '`Dev -Id <task> -FullPanel`', 'Claude Opus']) {
+    assert.ok(full.includes(identifier), `Full Pass Reviewer lost ${identifier}`);
+  }
+  assert.match(guide, /^\| `fullPanel` \|/m, 'The runner settings table lists fullPanel');
+});
+
 test('pr-publish has no options, keeps existing descriptions, and follows create-pull-request', () => {
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
   const read = relative => fs.readFileSync(path.join(root, relative), 'utf8');
