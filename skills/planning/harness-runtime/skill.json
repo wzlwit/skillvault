@@ -1,7 +1,7 @@
 {
   "name": "harness-runtime",
   "title": "Harness Runtime",
-  "version": "6.0.0",
+  "version": "6.1.0",
   "ownershipProtocol": 1,
   "runtimeInterfaces": {
     "harness-runtime": 4,

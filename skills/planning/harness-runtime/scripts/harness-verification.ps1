@@ -237,7 +237,7 @@ function Invoke-HarnessDiscoveryVerification {
                 })
                 $task = [pscustomobject]@{ id = ''; kind = 'verify'; title = $candidate.title; scope = $Definition.scope; candidate = $candidate; sourceContent = [string]$fullSource.text; relatedSources = $relatedSources; factAuthorities = $correlation.authorities; authority = $entry.authority; acceptance = @($candidate.acceptance, $linkedTask.acceptance | Where-Object { $_ }); monitorTarget = $target; repositoryRef = $repositoryRef; repositoryRoot = $repositoryRoot; evidenceRoots = $roots; untrustedInput = $true }
                 $entry.attempted = $true; $attemptStarted = $clock.Elapsed.TotalMinutes; $attemptCount++
-                $payload = Invoke-HarnessAgent $Paths $verifierConfig $task $workspace Verify $snapshot
+                $payload = Invoke-HarnessAgent $Paths $verifierConfig $task $workspace Verify $snapshot -RunId $runId
                 Assert-HarnessTargetRunning $Paths @($target)
                 if ($repositoryRoot -and (Get-HarnessSnapshot $Paths $Config $workspace -RepositoryRoot $repositoryRoot -GitContext $gitContext -IncludeAllFiles:([bool]$gitContext)) -cne $snapshot) { throw 'Repository inputs changed during verification.' }
                 if ($sourceHash -and (Get-FileHash -LiteralPath $sourceUri.LocalPath -Algorithm SHA256).Hash -cne $sourceHash) { throw 'Source content changed during verification.' }

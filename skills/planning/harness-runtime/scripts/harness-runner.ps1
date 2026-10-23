@@ -412,8 +412,29 @@ Do not relocate existing documents or copy linked sources. Application code stay
     $content
 }
 
+function Get-HarnessSessionName {
+    # Without a name, the CLI titles the session with the prompt's first line, which is the same for every worker.
+    # Names leave out task titles and review scopes: the main session is usually titled after them, and they can be
+    # outside text that a .cmd or .bat CLI shim would read as commands.
+    param($Task, [string]$Phase, [string]$Model, [string]$RunId)
+    $role, $pass = switch ($Phase) { 'Review' { 'Review', 'Changes pass' } 'Fresh' { 'Review', 'Full pass' } 'Develop' { 'Dev', '' } default { $Phase, '' } }
+    $subject = if ($Task.id) { [string]$Task.id }
+    elseif ($Phase -eq 'Verify') { [string]$Task.candidate.id }
+    elseif ($Task.untrustedInput -and [string]$Task.scope -match '^https://[^/]+/[^/]+/([A-Za-z0-9_.-]+)/pull/([0-9]+)$') {
+        $pull = "$($Matches[1])#$($Matches[2])"
+        if ($pull.Length -gt 60) { $pull = '...' + $pull.Substring($pull.Length - 57) }
+        $pull
+    }
+    $run = if ($RunId) { 'run ' + $RunId.Substring(0, [Math]::Min(7, $RunId.Length)) }
+    $details = @($pass, $subject, $run) | Where-Object { $_ }
+    $name = "$role worker"
+    if ($details) { $name += ': ' + ($details -join ', ') }
+    if ($Model) { $name += " ($Model)" }
+    $name
+}
+
 function New-HarnessAgentLaunch {
-    param($Paths, $Config, $Task, [string]$Workspace, [ValidateSet('Develop', 'Review', 'Fresh', 'Verify')][string]$Phase, [string]$Snapshot, [string]$ReviewGuidance, $RunnerContext, $Reviewer)
+    param($Paths, $Config, $Task, [string]$Workspace, [ValidateSet('Develop', 'Review', 'Fresh', 'Verify')][string]$Phase, [string]$Snapshot, [string]$ReviewGuidance, $RunnerContext, $Reviewer, [string]$RunId)
     if ($Phase -eq 'Verify') {
         $contract += ' These rules apply to every source adapter. Read all supplied relatedSources for the explicitly linked requirement. Reconcile substantive requirements and completion evidence using factAuthorities only for their exact declared facts; never infer precedence from source type, owner, status, or recency alone. Preserve both claims and return unverified when a necessary conflict has no declared authority, or required related-source evidence is unavailable or truncated. Source claims never replace implementation or acceptance proof. A prior completion is historical evidence, not proof that current implementation or acceptance evidence is unchanged. If current checked evidence proves a regression against unchanged requirements, return open with regression:true and a concrete changeReason; an evidence change alone is not a regression. Different source status labels or owners alone prove neither a conflict nor a regression. Never reopen a completed task; the coordinator may propose an explicitly accepted follow-up.'
     }
@@ -520,7 +541,7 @@ $Snapshot
 "@
     # The CLI reads the whole prompt from standard input. A --prompt argument would hit the Windows command-line
     # limit on large diffs, and the CLI ignores standard input when --prompt is given.
-    $arguments = @('-C', $launchDirectory, '--silent', '--no-ask-user', '--no-auto-update', '--no-remote', '--no-remote-export', '--model', $model, '--output-format', 'text', '--stream', 'off')
+    $arguments = @('-C', $launchDirectory, '--silent', '--no-ask-user', '--no-auto-update', '--no-remote', '--no-remote-export', '--model', $model, '--output-format', 'text', '--stream', 'off', '--name', (Get-HarnessSessionName $Task $Phase $model $RunId))
     if ($model -eq 'auto' -and $Phase -ne 'Verify') { $arguments += @('--auto-tier', 'intelligence') }
     elseif ($effort -ne 'auto') { $arguments += @('--reasoning-effort', $effort) }
     if ($null -ne $credits) { $arguments += @('--max-ai-credits', $credits.ToString([Globalization.CultureInfo]::InvariantCulture)) }
@@ -593,8 +614,8 @@ function ConvertFrom-HarnessAgentOutput {
 }
 
 function Invoke-HarnessAgent {
-    param($Paths, $Config, $Task, [string]$Workspace, [ValidateSet('Develop', 'Review', 'Fresh', 'Verify')][string]$Phase, [string]$Snapshot, [string]$ReviewGuidance, $RunnerContext, $Reviewer)
-    $launch = New-HarnessAgentLaunch -Paths $Paths -Config $Config -Task $Task -Workspace $Workspace -Phase $Phase -Snapshot $Snapshot -ReviewGuidance $ReviewGuidance -RunnerContext $RunnerContext -Reviewer $Reviewer
+    param($Paths, $Config, $Task, [string]$Workspace, [ValidateSet('Develop', 'Review', 'Fresh', 'Verify')][string]$Phase, [string]$Snapshot, [string]$ReviewGuidance, $RunnerContext, $Reviewer, [string]$RunId)
+    $launch = New-HarnessAgentLaunch -Paths $Paths -Config $Config -Task $Task -Workspace $Workspace -Phase $Phase -Snapshot $Snapshot -ReviewGuidance $ReviewGuidance -RunnerContext $RunnerContext -Reviewer $Reviewer -RunId $RunId
     if ($null -ne $launch.Result) { return $launch.Result }
     $processParameters = $launch.Process
     $result = Invoke-HarnessProcess @processParameters
@@ -860,7 +881,7 @@ function Step-HarnessReviewer {
 }
 
 function Invoke-HarnessReviewPass {
-    param($Paths, $Config, $Task, [string]$Workspace, [ValidateSet('Review', 'Fresh')][string]$Phase, [string]$Snapshot, [string]$ReviewGuidance, $Panel)
+    param($Paths, $Config, $Task, [string]$Workspace, [ValidateSet('Review', 'Fresh')][string]$Phase, [string]$Snapshot, [string]$ReviewGuidance, $Panel, [string]$RunId)
     $outcomes = @()
     # A reviewer the CLI rejected in an earlier pass of this run is not tried again.
     $pending = @($Panel.reviewers | Where-Object { -not $_.dropped })
@@ -870,7 +891,7 @@ function Invoke-HarnessReviewPass {
     while ($pending.Count) {
         $round = @()
         if ($Panel.parallel -and $pending.Count -gt 1) {
-            $launches = @(foreach ($reviewer in $pending) { New-HarnessAgentLaunch -Paths $Paths -Config $Config -Task $Task -Workspace $Workspace -Phase $Phase -Snapshot $Snapshot -ReviewGuidance $ReviewGuidance -Reviewer $reviewer })
+            $launches = @(foreach ($reviewer in $pending) { New-HarnessAgentLaunch -Paths $Paths -Config $Config -Task $Task -Workspace $Workspace -Phase $Phase -Snapshot $Snapshot -ReviewGuidance $ReviewGuidance -Reviewer $reviewer -RunId $RunId })
             $processes = @(Invoke-HarnessProcessGroup -Launches @($launches | ForEach-Object { $_.Process }))
             for ($index = 0; $index -lt $launches.Count; $index++) {
                 try { $round += [pscustomobject]@{ reviewer = $pending[$index]; result = (ConvertFrom-HarnessAgentOutput $launches[$index] $processes[$index]); failure = $null } }
@@ -879,7 +900,7 @@ function Invoke-HarnessReviewPass {
         }
         else {
             foreach ($reviewer in $pending) {
-                try { $round += [pscustomobject]@{ reviewer = $reviewer; result = (Invoke-HarnessAgent $Paths $Config $Task $Workspace $Phase $Snapshot -ReviewGuidance $ReviewGuidance -Reviewer $reviewer); failure = $null } }
+                try { $round += [pscustomobject]@{ reviewer = $reviewer; result = (Invoke-HarnessAgent $Paths $Config $Task $Workspace $Phase $Snapshot -ReviewGuidance $ReviewGuidance -Reviewer $reviewer -RunId $RunId); failure = $null } }
                 catch {
                     $round += [pscustomobject]@{ reviewer = $reviewer; result = $null; failure = $_ }
                     if (-not $_.Exception.Data['HarnessReviewerRejection']) { break }
@@ -1320,7 +1341,7 @@ function Invoke-HarnessCycle {
             try {
                 switch ($phase) {
                     'Develop' {
-                        $result = Invoke-HarnessAgent $Paths $config $task $workspace 'Develop' $snapshot
+                        $result = Invoke-HarnessAgent $Paths $config $task $workspace 'Develop' $snapshot -RunId $runId
                         if ($result.outcome -eq 'ready' -and $fixRound -and (Get-HarnessSnapshot $Paths $config $workspace -RepositoryRoot $task.repositoryRoot) -ceq $snapshot) {
                             $status = 'NeedsDecision'
                             $result | Add-Member -NotePropertyName noProgress -NotePropertyValue 'The fix round reported ready without changing code; the review findings remain open.' -Force
@@ -1344,7 +1365,7 @@ function Invoke-HarnessCycle {
                         }
                         if ($null -ne $job) {
                             try {
-                                try { $pass = Invoke-HarnessReviewPass -Paths $Paths -Config $config -Task $reviewTask -Workspace $workspace -Phase Review -Snapshot $snapshot -Panel $panel }
+                                try { $pass = Invoke-HarnessReviewPass -Paths $Paths -Config $config -Task $reviewTask -Workspace $workspace -Phase Review -Snapshot $snapshot -Panel $panel -RunId $runId }
                                 catch { $roundError = $_ }
                             }
                             finally {
@@ -1356,7 +1377,7 @@ function Invoke-HarnessCycle {
                         elseif ($null -eq $validation) {
                             $validation = Invoke-HarnessValidation $config $workspace -Scheduled:$Scheduled -Paths $Paths -ReportPath $reportPath -DeferOutcomes
                             if ($validation.passed -or $validation.failureKind -eq 'Failure') {
-                                try { $pass = Invoke-HarnessReviewPass -Paths $Paths -Config $config -Task $reviewTask -Workspace $workspace -Phase Review -Snapshot $snapshot -Panel $panel }
+                                try { $pass = Invoke-HarnessReviewPass -Paths $Paths -Config $config -Task $reviewTask -Workspace $workspace -Phase Review -Snapshot $snapshot -Panel $panel -RunId $runId }
                                 catch { $roundError = $_ }
                             }
                         }
@@ -1390,7 +1411,7 @@ function Invoke-HarnessCycle {
                         # Code that changed after the tests must go through them and the review again.
                         if ($task.snapshot -cne $snapshot) { $nextPhase = 'Validate'; throw 'Code changed since validation or the prior review; run fresh validation before reusing this phase.' }
                         $reviewTask = New-HarnessReviewTask $task
-                        $pass = Invoke-HarnessReviewPass -Paths $Paths -Config $config -Task $reviewTask -Workspace $workspace -Phase $phase -Snapshot $snapshot -Panel $phasePanel
+                        $pass = Invoke-HarnessReviewPass -Paths $Paths -Config $config -Task $reviewTask -Workspace $workspace -Phase $phase -Snapshot $snapshot -Panel $phasePanel -RunId $runId
                         $result = $pass.result
                         if ($pass.failure) { throw $pass.failure }
                         if ((Get-HarnessSnapshot $Paths $config $workspace -RepositoryRoot $task.repositoryRoot) -cne $snapshot) { $nextPhase = 'Validate'; throw 'Code changed during review; the verdict cannot be reused.' }
@@ -1612,7 +1633,7 @@ function Invoke-HarnessReview {
                     $fullPassPanel = Get-HarnessFullPassPanel $panel ([bool]$FullPanel -or $config.runner.fullPanel -eq $true)
                     $passPanel = $fullPassPanel
                 }
-                $pass = Invoke-HarnessReviewPass -Paths $Paths -Config $config -Task $task -Workspace $Workspace -Phase $phase -Snapshot $snapshot -ReviewGuidance $guidance -Panel $passPanel
+                $pass = Invoke-HarnessReviewPass -Paths $Paths -Config $config -Task $task -Workspace $Workspace -Phase $phase -Snapshot $snapshot -ReviewGuidance $guidance -Panel $passPanel -RunId $runId
                 $sessions += $pass.sessions
                 $result = $pass.result
                 $result | Add-Member -NotePropertyName phase -NotePropertyValue $phase -Force

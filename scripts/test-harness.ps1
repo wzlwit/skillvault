@@ -633,7 +633,7 @@ try {
         if ($script:phaseResponses -and "$InputText" -match 'Phase: Develop') { $output = '{"outcome":"ready","summary":"Referenced fixture ready"}' }
         [pscustomobject]@{ ExitCode = $script:agentExitCode; Output = $output; Error = $script:agentError; TimedOut = $false }
     }
-    $developmentResult = Invoke-HarnessAgent $paths $config $task $fixtureRoot 'Develop' 'fixture-snapshot'
+    $developmentResult = Invoke-HarnessAgent $paths $config $task $fixtureRoot 'Develop' 'fixture-snapshot' -RunId '0123456789abcdef0123456789abcdef'
     if ($script:agentArguments -notcontains '--silent' -or $script:agentArguments -notcontains '--model' -or $script:agentArguments -notcontains '--max-ai-credits' -or $script:agentArguments -contains '--allow-all-tools') { throw 'Runner arguments lost explicit settings or granted unrestricted tools.' }
     $formatIndex = [Array]::IndexOf($script:agentArguments, '--output-format')
     $streamIndex = [Array]::IndexOf($script:agentArguments, '--stream')
@@ -641,6 +641,21 @@ try {
     if ($developmentResult.outcome -cne 'ready' -or $developmentResult.summary -cne 'Fixture implementation ready') { throw 'Development output did not round-trip through the actual envelope parser.' }
     if ($script:agentInput -notmatch 'preserve all user decisions') { throw 'Worker did not receive Rules Core.' }
     if ($script:agentArguments -contains '--prompt' -or $script:agentInput -notmatch 'Phase: Develop' -or ($script:agentArguments -join "`n") -match 'preserve all user decisions') { throw 'The worker prompt was put on the command line instead of standard input.' }
+    $nameIndex = [Array]::IndexOf($script:agentArguments, '--name')
+    if ($script:agentArguments[1] -cne $fixtureRoot -or $nameIndex -lt 0 -or $script:agentArguments[$nameIndex + 1] -cne "Dev worker: $($task.id), run 0123456 (fixture-model)") { throw 'The worker session was not named after its role, task, run, and model.' }
+    # Titles and scopes stay out of names: they can be outside text, which a .cmd or .bat CLI shim would run as commands.
+    $hostile = 'Fixture" & echo INJECTED & "x %PATH% | more'
+    $hostileNames = @(
+        Get-HarnessSessionName ([pscustomobject]@{ id = 'T-001'; title = $hostile }) Develop 'fixture-model' 'abcdef0123'
+        Get-HarnessSessionName ([pscustomobject]@{ id = ''; title = 'Independent code review'; scope = $hostile }) Fresh 'fixture-model' 'abcdef0123'
+        Get-HarnessSessionName ([pscustomobject]@{ id = ''; kind = 'verify'; title = $hostile; scope = $hostile; candidate = [pscustomobject]@{ id = 'C-012' }; untrustedInput = $true }) Verify 'auto' 'abcdef0123'
+        Get-HarnessSessionName ([pscustomobject]@{ id = ''; scope = 'https://github.example/owner/repo"&echo/pull/1'; untrustedInput = $true }) Review 'fixture-model' ''
+    )
+    if (($hostileNames -join "`n") -match 'INJECTED|%PATH%|["&|]' -or $hostileNames[1] -cne 'Review worker: Full pass, run abcdef0 (fixture-model)' -or
+        $hostileNames[2] -cne 'Verify worker: C-012, run abcdef0 (auto)' -or $hostileNames[3] -cne 'Review worker: Changes pass (fixture-model)') { throw 'A session name carried a task title or review scope.' }
+    $prName = Get-HarnessSessionName ([pscustomobject]@{ id = ''; scope = 'https://github.example/owner/repo.name/pull/2276'; untrustedInput = $true }) Review 'fixture-model' 'abcdef0123'
+    $longPrName = Get-HarnessSessionName ([pscustomobject]@{ id = ''; scope = "https://github.example/owner/$('r' * 90)/pull/42"; untrustedInput = $true }) Fresh 'fixture-model' ''
+    if ($prName -cne 'Review worker: Changes pass, repo.name#2276, run abcdef0 (fixture-model)' -or $longPrName -notmatch '^Review worker: Full pass, \.\.\.r+#42 \(fixture-model\)$' -or ($longPrName -replace '^Review worker: Full pass, | \(fixture-model\)$', '').Length -ne 60) { throw 'A PR review session name lost its repository and number.' }
     $nativeConfig = $config | ConvertTo-Json -Depth 20 | ConvertFrom-Json
     $nativeConfig.runner = [pscustomobject]@{ command = 'copilot'; rulesPath = $ruleFile; model = 'Max'; workspaceMode = 'None'; maxMinutes = 'Max'; maxCredits = 'None'; allowedTools = @(); availableTools = 'None' }
     $nativeConfig | Add-Member -NotePropertyName restrictions -NotePropertyValue ([pscustomobject]@{ allowedModels = @(); allowedTools = ''; availableTools = @(' '); maxAgentCredits = 'Max' }) -Force
@@ -656,6 +671,7 @@ try {
     $script:agentOutput = '{"verdict":"clean","summary":"Fixture clean","findings":[]}'
     $null = Invoke-HarnessAgent $paths $config $task $fixtureRoot 'Review' 'fixture-snapshot'
     if ($script:agentArguments -notcontains '--deny-tool=write' -or $script:agentArguments -notcontains '--deny-tool=shell' -or $script:agentArguments -contains '--allow-tool=write') { throw 'Reviewer received mutating permissions.' }
+    if ($script:agentArguments[[Array]::IndexOf($script:agentArguments, '--name') + 1] -cne "Review worker: Changes pass, $($task.id) (fixture-model)") { throw 'The reviewer session was not named after its pass.' }
     if ($script:agentArguments -contains '--deny-tool=') { throw 'An absent restriction policy emitted an empty CLI denial.' }
     $config.runner | Add-Member -NotePropertyName contextTier -NotePropertyValue long_context
     $prTask = [pscustomobject]@{ id = ''; kind = 'verify'; untrustedInput = $true; reviewWorkspace = $gitProject }
@@ -807,11 +823,13 @@ try {
     function Resolve-HarnessReviewBaseline { param($Paths, $BaseRef); [pscustomobject]@{ reference = 'fixture-upstream'; commit = 'fixture-base'; selection = 'Upstream' } }
     function Get-HarnessSnapshot { param($Paths, $Config, $Workspace, $BaseRef); '{"head":"fixture-head","base":"fixture-head","diff":"fixture change","untracked":[]}' }
     $script:phases = @()
+    $script:workerRunIds = @()
     $script:reviewGuidance = @()
     $script:reviewTaskLevels = @()
     function Invoke-HarnessAgent {
-        param($Paths, $Config, $Task, $Workspace, $Phase, $Snapshot, $ReviewGuidance)
+        param($Paths, $Config, $Task, $Workspace, $Phase, $Snapshot, $ReviewGuidance, $RunnerContext, $Reviewer, $RunId)
         $script:phases += $Phase
+        $script:workerRunIds += $RunId
         if ($ReviewGuidance) { $script:reviewGuidance += $ReviewGuidance }
         if ($Phase -ne 'Develop') { $script:reviewTaskLevels += (Get-HarnessReviewLevel $Task) }
         if ($Phase -eq 'Develop') { return [pscustomobject]@{ outcome = 'ready'; summary = 'Fixture ready' } }
@@ -829,9 +847,12 @@ try {
     if ($outcome.status -cne 'Completed' -or ($script:phases -join ',') -cne 'Develop,Review,Fresh') { throw 'Task did not complete through development, the Changes review, and the Full review.' }
     $state = Read-HarnessState $paths
     if (@($state.runs).Count -ne 3 -or ($state.runs.phase -join ',') -cne 'Develop,Validate,Fresh' -or $state.active -or @((Import-Csv -LiteralPath (Join-Path $fixtureRoot 'board/current.csv'))).Count -ne 0) { throw 'Completed task state or CSV view is incorrect.' }
+    if (($script:workerRunIds -join ',') -cne ($state.runs.id -join ',')) { throw 'Development workers were not given the run ID of the phase that launched them.' }
     if (-not (Test-Path -LiteralPath $outcome.report)) { throw 'Run report was not written.' }
     $review = Invoke-HarnessReview $paths
     if ($review.passes -ne 2 -or $review.status -cne 'clean' -or $script:phases[-1] -cne 'Fresh') { throw 'Independent clean review did not run exactly one fresh full-scope pass.' }
+    $reviewRunId = @((Read-HarnessState $paths).runs | Where-Object { $_.report -ceq $review.report })[0].id
+    if (-not $reviewRunId -or ($script:workerRunIds[-2..-1] -join ',') -cne "$reviewRunId,$reviewRunId") { throw 'Review workers were not given the review run ID.' }
     if (-not $review.complete -or $review.nextPhase) { throw 'A stable clean Changes/Full round did not complete the review.' }
     $phasesBefore = $script:phases.Count
     $quickReview = Invoke-HarnessReview $paths -Scope 'Changes-only fixture' -ChangesOnly

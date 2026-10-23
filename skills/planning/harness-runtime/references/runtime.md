@@ -617,6 +617,16 @@ requires exactly one JSON object with no prose or Markdown fences. Text transpor
 nor guarantees the model complies. The CLI's `--output-format json` means JSONL events, one object per
 line, not the harness schema; supporting it would need a separate tested event parser.
 
+Each worker session is named with `--name`: its role, its pass, its task or candidate ID or the PR as
+`<repository>#<number>`, the first 7 characters of the run ID, which the run's report file name
+contains, and the model, such as `Review worker: Full pass, T-001, run 598b73f (claude-opus-5.5)`.
+Without a name, the CLI would title every worker with the prompt's first line, `Rules Core:`. Names
+leave out task titles and review scopes, so workers stand apart from the main session, which is
+usually titled after them, and no outside text reaches the command line, where a `.cmd` or `.bat`
+CLI shim would run it as commands. Rounds within one run share a name. Workers still start in the
+selected workspace so its instructions load and finding paths stay repository-relative, which is why
+they appear among that folder's sessions.
+
 The whole prompt goes to the CLI on standard input as UTF-8, with no `--prompt` argument: a prompt
 argument fails once a large diff passes the 32,767-character Windows command-line limit, and the CLI
 ignores standard input when `--prompt` is given. When the CLI is a script shim such as npm's
