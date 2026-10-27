@@ -733,7 +733,7 @@ test('experience-driven authoring keeps learning destinations and edit authority
   assert.match(proposal, /low-risk does not waive confirmation/);
   assert.match(management, /Wait for explicit confirmation unless the current request already approves the exact text/);
   const core = fs.readFileSync(path.join(root, 'skills/core/rules/references/core.md'), 'utf8');
-  assert.equal([...core.matchAll(/^\d\. \*\*/gm)].length, 4);
+  assert.equal([...core.matchAll(/^\d\. \*\*/gm)].length, 5);
 });
 
 test('upsert writes only to the repository and never installs', () => {
@@ -765,8 +765,8 @@ test('quiet script execution keeps completion checks and necessary interaction',
   const directory = path.join(root, 'skills/core/rules/references');
   const core = fs.readFileSync(path.join(directory, 'core.md'), 'utf8');
   const details = fs.readFileSync(path.join(directory, 'ai-principles.md'), 'utf8');
-  const delivery = core.split('2. **')[1].split('3. **')[0];
-  const execution = details.split('### 2. Deliver simply and stay in scope')[1].split('### 3. Do not overdefend')[0];
+  const delivery = core.split('**Deliver simply and stay in scope.**')[1].split('**Do not overdefend.**')[0];
+  const execution = details.split('### Deliver simply and stay in scope')[1].split('### Do not overdefend')[0];
   assert.match(delivery, /Run routine scripts quietly, without extra windows or unexpected focus changes when supported/);
   assert.match(delivery, /interactive UI only when explicitly requested or required for user action/);
   assert.match(delivery, /quiet\s+execution is unavailable[\s\S]*approved non-GUI alternative or explain and wait for permission/);
@@ -1494,13 +1494,13 @@ test('topic map covers canonical skills and rules apply stays separate from auth
   const rules = fs.readFileSync(path.join(rulesRoot, 'SKILL.md'), 'utf8');
   const core = fs.readFileSync(path.join(rulesRoot, 'references/core.md'), 'utf8');
   const management = fs.readFileSync(path.join(rulesRoot, 'references/manage.md'), 'utf8');
-  assert.equal([...core.matchAll(/^\d\. \*\*/gm)].length, 4);
+  assert.equal([...core.matchAll(/^\d\. \*\*/gm)].length, 5);
   assert.match(rules, /apply[\s\S]*without editing files/);
   assert.match(management, /Wait for explicit confirmation/);
   assert.ok(fs.existsSync(path.join(rulesRoot, 'references/extra.md')), 'Extra rules need their repository file');
   assert.match(rules, /\]\(\.\/references\/extra\.md\)/);
   assert.match(fs.readFileSync(path.join(rulesRoot, 'scripts/always-on.ps1'), 'utf8'), /extra\.md/);
-  // The /rules core shortcut is gone (bare, text, and menu convention ADR); apply core selects the four core rules.
+  // The /rules core shortcut is gone (bare, text, and menu convention ADR); apply core selects only the core rules.
   assert.doesNotMatch(rules, /`\/rules core`|`core` aliases/);
   assert.match(rules, /apply core/);
   assert.match(rules, /another skill says to apply `\/rules apply`, it means `session`[\s\S]*never writes files/);

@@ -28,7 +28,7 @@ try {
     $result = Invoke-AlwaysOn $target $core -Apply
     $text = [IO.File]::ReadAllText($target)
     Assert-True ($result.status -eq 'Missing' -and $result.applied) 'apply creates a missing file'
-    foreach ($expected in @('<!-- rules:core:begin -->', '<!-- rules:core:end -->', '**Use current evidence.**', '**Deliver simply and stay in scope.**', '**Do not overdefend.**', '**Verify proportionately.**', '# Personal rules')) {
+    foreach ($expected in @('<!-- rules:core:begin -->', '<!-- rules:core:end -->', '**Start from the real need.**', '**Use current evidence.**', '**Deliver simply and stay in scope.**', '**Do not overdefend.**', '**Verify proportionately.**', '# Personal rules')) {
         Assert-True $text.Contains($expected) "the generated file contains $expected"
     }
     Assert-True (-not $text.Contains('For `/rules apply`')) 'the generated block copies the rules, not the skill introduction'

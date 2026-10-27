@@ -1,9 +1,9 @@
 ---
 name: rules
-description: "[apply|remove] Alone: rules in effect. Text: add or change a rule. Put the core and extra rules, or only the four core rules with apply core, into effect globally (default), in a project, or for this chat; add, change, or remove your own global or project rules. The SkillVault rule library changes only when you name extra or core, and persistent rule changes require confirmation."
+description: "[apply|remove] Alone: rules in effect. Text: add or change a rule. Put the core and extra rules, or only the core rules with apply core, into effect globally (default), in a project, or for this chat; add, change, or remove your own global or project rules. The SkillVault rule library changes only when you name extra or core, and persistent rule changes require confirmation."
 metadata:
   author: wzlwit
-  version: "4.2.0"
+  version: "4.3.0"
 argument-hint: "[apply|remove] [<rule>]"
 ---
 
@@ -35,7 +35,7 @@ confirmations. This is conversational routing, not script argument parsing.
   follows the [confirmed edit procedure](./references/manage.md#confirmed-edit-procedure): shown
   first and applied only after confirmation. Text that is not clearly a rule asks what to do and
   never approves a rule.
-- **The library** is the four core rules in [core.md](./references/core.md) and the extra rules in
+- **The library** is the core rules in [core.md](./references/core.md) and the extra rules in
   [extra.md](./references/extra.md), one bullet each, in the public SkillVault repository; load the
   [detailed reference](./references/ai-principles.md) only for clarification. Text, `apply`, and
   `remove` never change the library unless the user names `extra` or `core`.
@@ -64,4 +64,4 @@ confirmations. This is conversational routing, not script argument parsing.
 - Lessons from completed work use the same
   [proposal checks](./references/manage.md#lessons-proposed-as-rules): verify cause and scope, test
   for overgeneralization, and keep the approval boundary. This adds no reflection hook and does not
-  change the four rules applied to ordinary work.
+  change the core rules applied to ordinary work.

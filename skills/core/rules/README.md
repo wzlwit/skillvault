@@ -1,10 +1,10 @@
 # Rules
 
-The rule library is the four core working rules (`references/core.md`) and the extra rules
+The rule library is the core working rules (`references/core.md`) and the extra rules
 (`references/extra.md`) in this repository.
 
 - `/rules apply [core] [global|project|session]` puts the rules into effect: the core and extra
-  rules, or only the four core rules with `core`. `global`, the default, writes a generated block at
+  rules, or only the core rules with `core`. `global`, the default, writes a generated block at
   the top of `~/.copilot/copilot-instructions.md`, which every Copilot chat on this machine loads;
   `project` writes the same block into this project's `.github/copilot-instructions.md`; `session`
   applies them to the current chat without editing files.

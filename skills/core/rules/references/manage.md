@@ -23,7 +23,7 @@ not automatic promotion or an invented occurrence threshold.
 
 Use the confirmed edit procedure below. A lesson, recurrence count, or claim that a change is
 low-risk does not waive confirmation. Do not remove stale guidance merely because it is old;
-establish the contradiction and propose the exact scoped replacement. Keep the four shared core
+establish the contradiction and propose the exact scoped replacement. Keep the shared core
 rules compact, and do not copy incident narratives, confidence scores, or private evidence into them.
 
 ## Confirmed Edit Procedure
@@ -34,7 +34,7 @@ rules compact, and do not copy incident narratives, confidence scores, or privat
    `project` is the current project's instructions: the **Project rules** section of
    `.github/copilot-instructions.md`, or the file where the project already keeps its instructions,
    such as AGENTS.md. The SkillVault library changes only when the user names it: `extra` edits the
-   [extra rules](./extra.md), one bullet per rule, and `core` the four core rules, both in the
+   [extra rules](./extra.md), one bullet per rule, and `core` the core rules, both in the
    verified SkillVault checkout. The library is public, so a rule that needs private or work-specific
    details, such as internal system, customer, or person names, paths, or IDs, stays `global` or
    `project`. Ask if the target is still unclear; never create a second competing rules file.
