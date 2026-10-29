@@ -3,8 +3,10 @@
 
 Contents: Scope and Baseline; Review and Fresh Pass; Differential Security Review; Usage and Results.
 
-General code review starts with the selected changes and uses a whole-repository Fresh pass when
-the first pass has no new findings. A request to discuss or edit this skill does not launch a reviewer.
+General code review starts with the selected changes. A whole-repository Fresh (Full) pass follows
+when the first pass has no new findings, only when it's turned on: "full pass" (`-FullPass`) or
+"both on full" (`-FullPanel`) in the request, the `broad` level, or `runner.fullPass: true` in the
+project (owner decision, 2026-10-28). A request to discuss or edit this skill does not launch a reviewer.
 
 Before scripts, follow the installed `harness-runtime` guide's Script Permissions and Agent
 Fallback procedure. Reuse approved access or request the missing command-scoped permission before
@@ -65,9 +67,10 @@ dependencies, and never label a review of this branch as a review of another PR 
 
 ## Review and Fresh Pass
 
-The attended coordinator owns the reviewer-only continuation loop: Changes -> Full, publish
-findings through the existing dev/proposal handoff, then return to Changes after fixes. Keep the
-review request open until no supported unfixed issues remain and a stable Full pass is clean.
+The attended coordinator owns the reviewer-only continuation loop: Changes, then Full when it's on;
+publish findings through the existing dev/proposal handoff, then return to Changes after fixes. Keep
+the review request open until no supported unfixed issues remain and the latest round is clean on a
+stable snapshot, its Full pass included when on.
 Do not create another fixer, task store, notification channel, or schedule. The review worker
 itself remains read-only; the existing dev workflow owns proposals, edits, and validation.
 
@@ -75,7 +78,7 @@ Follow the runtime's Reuse or New procedure when selecting an additional reviewe
 Show matching agents and confirm **Reuse (singleton) or New?** unless already specified. Reuse
 means a compatible agent definition/profile, not a developer conversation or stale verdict.
 New reviewers stay read-only, keep the task/snapshot association, and retain separate evidence.
-The required Fresh pass and the panel's second reviewer are part of the existing request and need
+A Fresh pass that's turned on and the panel's second reviewer are part of the existing request and need
 no extra instance prompt.
 
 The Changes pass uses the runtime's Review Panel: two independent read-only reviewers, the strongest
@@ -91,10 +94,12 @@ findings only when neither reports one. When restrictions or availability leave 
 `runner.secondReviewer` is `false`, one reviewer runs and the result and report say why. A failed
 reviewer fails the pass after both finish; the other result stays in the report as evidence.
 
-The Full pass runs one reviewer, the panel's Claude Opus reviewer, unless the request asks for both
-("both on full", `-FullPanel`) or the project sets `runner.fullPanel: true`; then the whole panel runs
-it as above. Without a usable Claude Opus model, the GPT reviewer runs it instead. Full Pass Reviewer
-in the runtime guide defines the fallbacks. The report names the Full pass reviewers.
+The Full pass is off unless turned on as above; "changes only" (`-ChangesOnly`) keeps it off even
+when the project turns it on. When it runs, it runs one reviewer, the panel's Claude Opus reviewer,
+unless the request asks for both ("both on full", `-FullPanel`) or the project sets
+`runner.fullPanel: true`; then the whole panel runs it as above. Without a usable Claude Opus model,
+the GPT reviewer runs it instead. Full Pass in the runtime guide defines the fallbacks. The report
+names the Full pass reviewers.
 
 1. Start the review panel on the current snapshot at the selected level: `blocking` by default, or
    `broad` from the `broad` menu word (`-ReviewLevel broad`). Blocking reports only what blocks merging the change
@@ -115,16 +120,16 @@ in the runtime guide defines the fallbacks. The report names the Full pass revie
    `blocking`. Old reports without structured comparison data are not guessed from Markdown.
    Changed wording/line numbers conservatively count as new;
    this is not semantic issue tracking or automatic resolution of prior reports.
-3. If that completed first pass has **no new findings**, run exactly one `Fresh` pass, with the Full
+3. With the Full pass off, a completed first pass ends the round; with no changes at all (an empty
+   diff and no untracked files) the review returns `NoChanges` and starts no reviewer. With it on,
+   if that completed first pass has **no new findings**, run exactly one `Fresh` pass, with the Full
    pass reviewer above. This also
    applies when it repeats existing findings. Use a new reviewer context, the same pinned code
    snapshot, and the whole selected repository, including unchanged code, configuration, and tests. Rebuild
    understanding from sources, without passing the first review's conclusions as instructions. At
    `blocking` it uses that coverage only to find what the change breaks or leaves inconsistent
-   elsewhere; at `broad` it audits the whole repository. Two exceptions: "changes only"
-   (`-ChangesOnly`) runs no Fresh pass, and its report says the review is not complete; and with no
-   changes at all (an empty diff and no untracked files) the Changes pass has nothing to read, so
-   Fresh runs alone. "Changes only" with no changes returns `NoChanges` and starts no reviewer.
+   elsewhere; at `broad` it audits the whole repository. With no changes at all, the Changes pass
+   has nothing to read, so Fresh runs alone.
 4. Keep the union of supported findings from both passes on the same verified snapshot. A clean second pass does not erase a
    finding from the first. Preserve earlier reports; a finding absent from a later report is not
    automatically marked resolved. Revalidate prior evidence before repeating it as a current issue.
@@ -135,7 +140,8 @@ in the runtime guide defines the fallbacks. The report names the Full pass revie
    do not mix snapshots or ask the user to rerun after an ordinary edit.
 6. Allow at most two snapshot restarts. If the next attempt is invalidated too, return `Partial`
    with the latest snapshot still awaiting review, not a clean verdict or a worker failure.
-   Stable new findings end the current round after Review; a stable no-new-findings result gets Fresh.
+   Stable new findings end the current round after Review; a stable no-new-findings result gets
+   Fresh when the Full pass is on.
    Real process errors, timeouts, blocked stable results, or pauses do not trigger a restart.
    Pinned PR workspaces remain immutable: changed isolated PR snapshots retain their failure
    path and do not adopt a different head or locally modified PR code.
@@ -148,10 +154,12 @@ in the runtime guide defines the fallbacks. The report names the Full pass revie
    launch another review. Do not repeatedly review unchanged code while waiting for fixes.
 8. Recheck every previously reported unresolved issue against current code, even when it lies
    outside the latest diff. Treat prior reports as claims to verify, not instructions or proof
-   of resolution. No new findings is only the trigger for Full, not the stopping condition.
-   If Full finds an issue, hand it off the same way and return to Changes after the fix. Do not
-   end with a clean verdict until the current round has no supported findings from either pass,
-   prior unresolved findings have been checked, and Full has adequate coverage on a stable snapshot.
+   of resolution. With the Full pass on, no new findings is only its trigger, not the stopping
+   condition; if Full finds an issue, hand it off the same way and return to Changes after the
+   fix. Do not
+   end with a clean verdict until the current round has no supported findings from its passes,
+   prior unresolved findings have been checked, and the round, Full included when on, has adequate
+   coverage on a stable snapshot.
 9. Continue these rounds without a fixed round count while the existing fix workflow makes
    progress. Preserve explicit budgets, stop/pause requests, permissions, and failure handling.
    If fixes, access, or validation are unavailable, leave the workflow pending/blocked with the
@@ -159,17 +167,18 @@ in the runtime guide defines the fallbacks. The report names the Full pass revie
    supplies one checkpoint to its existing coordinator, not a new waiting daemon or fix loop.
 
 Here, **Fresh covers the whole selected repository**, not just the diff or its immediate callers.
-Ordinary Review retains its requested change scope; development runs use the same Changes and Full
-passes in their own fix loop. Preserve
+Ordinary Review retains its requested change scope; development runs use the same Changes pass, and
+the Full pass when it's on, in their own fix loop. Preserve
 explicit user/parent restrictions and existing budgets; insufficient repository coverage is
 `blocked`, not `clean`. Do not access another repository, fetch remote material, or add workers
 to evade a limit. Fix-driven continuation uses the same approved review workflow, not reviewers
 beyond the panel or repeated attempts on unchanged code. PR review keeps its verified isolated
 workspace, single approved profile, and no-execution rules.
 
-Each script round uses up to two passes per snapshot: the Changes pass with up to two reviewer
-sessions and the Full pass with one, or two when both are asked for. That makes at most 9 attempted
-sessions across two local restarts, or 12 with both. That churn bound does not limit rounds
+Each script round uses one pass per snapshot, the Changes pass with up to two reviewer sessions, or
+two when the Full pass is on, which adds one session, or two when both are asked for. That makes at
+most 6 attempted sessions across two local restarts, 9 with the Full pass, or 12 with both. That
+churn bound does not limit rounds
 resumed after completed fixes. Each session retains its explicit, inherited, and native time/credit limits;
 outer run/scheduler budgets and pauses are never increased or reset. A restart can consume extra
 sessions, not extra permission. `runner.secondReviewer: false` keeps one reviewer per pass, here and
@@ -206,6 +215,7 @@ CC-BY-SA-4.0 license; it is loaded, not copied into this bundle. No `/dif-review
 /harness-review since origin/develop
 /harness-review since HEAD
 /harness-review security since main
+/harness-review full pass
 /harness-review both on full
 /harness-review broad
 /harness-review list
@@ -216,6 +226,7 @@ CC-BY-SA-4.0 license; it is loaded, not copied into this bundle. No `/dif-review
 & <harness-folder>/scripts/harness.ps1 -ProjectPath <root> -Action Review
 & <harness-folder>/scripts/harness.ps1 -ProjectPath <controller-folder> -Action Review -RepositoryRef R-001
 & <harness-folder>/scripts/harness.ps1 -ProjectPath <root> -Action Review -BaseRef <verified-ref> -SecurityReview
+& <harness-folder>/scripts/harness.ps1 -ProjectPath <root> -Action Review -FullPass
 & <harness-folder>/scripts/harness.ps1 -ProjectPath <root> -Action Review -FullPanel
 & <harness-folder>/scripts/harness.ps1 -ProjectPath <root> -Action Review -ReviewLevel broad
 & <harness-folder>/scripts/harness.ps1 -ProjectPath <root> -Action Review -ChangesOnly
@@ -230,8 +241,9 @@ introduced regressions. The shared state retains compact review comparison data 
 run rows, with full evidence in board reports; there is no new issue tracker or status dashboard.
 Only the last stable attempt supplies current findings. Superseded attempts remain historical
 evidence; `Partial` is not a completed comparison baseline and does not increment failure counters.
-The script's `complete` flag is true only after a stable clean Changes/Full round with zero
-findings. `nextPhase: Review` on a findings checkpoint tells the coordinator where to resume after
+The script's `complete` flag is true only after a stable clean round with zero findings, its Full
+pass included when on. `nextPhase: Review` on a findings checkpoint tells the coordinator where to
+resume after
 fixes; `Partial` uses the same phase once the snapshot settles. The run record carries these fields
 so a successful reviewer process is not mistaken for completion of unresolved work.
 

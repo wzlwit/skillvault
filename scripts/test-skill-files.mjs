@@ -1208,31 +1208,36 @@ test('review levels default to blocking and every review entry point requires th
     assert.doesNotMatch(read(`${consumer}/SKILL.md`), /--broad/, `${consumer} no longer documents --broad`);
   }
   assert.match(read('skills/github/pr-review/references/runtime.md'), /^\| `reviewLevel` \| `blocking`/m);
-  // "changes only" skips the Full pass; harness-review needs a runtime that accepts it.
+  // "changes only" skips the Full pass even when a setting turns it on; harness-review needs a runtime that accepts it.
   assert.equal(runtime.runtimeInterfaces['review-scope'], 1);
   const review = parseJson(read('skills/planning/harness-review/skill.json'), 'harness-review/skill.json');
   assert.equal(review.requiredInterfaces['harness-runtime']['review-scope'], 1, 'harness-review must require the review scope interface');
   assert.match(read('skills/planning/harness-review/SKILL.md'), /"changes only"[\s\S]{0,200}-ChangesOnly/);
 });
 
-test('the Full pass runs the Claude Opus reviewer alone unless both are asked for', () => {
+test('the Full pass is off unless asked for, and runs the Claude Opus reviewer alone unless both are asked for', () => {
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
   const read = relative => fs.readFileSync(path.join(root, relative), 'utf8');
   const runtime = parseJson(read('skills/planning/harness-runtime/skill.json'), 'harness-runtime/skill.json');
-  assert.equal(runtime.runtimeInterfaces['full-pass'], 1);
+  assert.equal(runtime.runtimeInterfaces['full-pass'], 2);
+  for (const consumer of ['skills/planning/harness-review', 'skills/planning/harness-dev', 'skills/github/pr-review']) {
+    const manifest = parseJson(read(`${consumer}/skill.json`), `${consumer}/skill.json`);
+    // Each consumer passes -FullPass, so an older runtime that rejects it must not run them.
+    assert.equal(manifest.requiredInterfaces['harness-runtime']['full-pass'], 2, `${consumer} must require the full-pass interface`);
+    assert.match(read(`${consumer}/SKILL.md`), /"full pass"[\s\S]{0,200}-FullPass/, `${consumer} must map "full pass" to -FullPass`);
+  }
   for (const consumer of ['harness-review', 'harness-dev']) {
-    const manifest = parseJson(read(`skills/planning/${consumer}/skill.json`), `${consumer}/skill.json`);
-    // Both topics document -FullPanel, so an older runtime that rejects it must not run them.
-    assert.equal(manifest.requiredInterfaces['harness-runtime']['full-pass'], 1, `${consumer} must require the full-pass interface`);
     assert.match(read(`skills/planning/${consumer}/SKILL.md`), /"both on full"[\s\S]{0,200}-FullPanel/, `${consumer} must map "both on full" to -FullPanel`);
   }
   const guide = read('skills/planning/harness-runtime/references/runtime.md');
-  const full = guide.split(/^### Full Pass Reviewer\r?$/m)[1]?.split(/^##+ /m)[0] ?? '';
-  assert.ok(full, 'The runtime guide defines the Full pass reviewer');
-  for (const identifier of ['`runner.fullPanel: true`', '`Review -FullPanel`', '`Dev -Id <task> -FullPanel`', 'Claude Opus']) {
-    assert.ok(full.includes(identifier), `Full Pass Reviewer lost ${identifier}`);
+  const full = guide.split(/^### Full Pass\r?$/m)[1]?.split(/^##+ /m)[0] ?? '';
+  assert.ok(full, 'The runtime guide defines the Full pass');
+  for (const identifier of ['off by default', '`runner.fullPass: true`', '`Review -FullPass`', '`Dev -Id <task> -FullPass`', '`broad`', '`NoChanges`', '`runner.fullPanel: true`', '`Review -FullPanel`', '`Dev -Id <task> -FullPanel`', 'Claude Opus']) {
+    assert.ok(full.includes(identifier), `Full Pass lost ${identifier}`);
   }
+  assert.match(guide, /^\| `fullPass` \|/m, 'The runner settings table lists fullPass');
   assert.match(guide, /^\| `fullPanel` \|/m, 'The runner settings table lists fullPanel');
+  assert.match(read('skills/github/pr-review/references/runtime.md'), /^\| `fullPass` \| `false`/m, 'PR review settings list fullPass, off by default');
 });
 
 test('pr-publish has no options, keeps existing descriptions, and follows create-pull-request', () => {

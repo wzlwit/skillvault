@@ -10,6 +10,8 @@
 - Supersedes in part: decision 1 of the
   [review-panel ADR](./2026-10-02-review-panel-dev-loop-and-sprints-adr.md), for the Full pass only.
   The Changes pass keeps both reviewers.
+- Amended 2026-10-28: the Full pass itself is now off by default, so these decisions apply when it's
+  turned on; see the [Full pass off by default ADR](./2026-10-28-full-pass-off-by-default-adr.md).
 
 ## Context
 
@@ -78,4 +80,4 @@ The owner judged one Claude Opus reviewer enough for it by default.
 
 - [Review-panel ADR](./2026-10-02-review-panel-dev-loop-and-sprints-adr.md)
 - [Review-levels ADR](./2026-10-08-review-levels-adr.md)
-- [Runtime guide: Full Pass Reviewer](../../../skills/planning/harness-runtime/references/runtime.md#full-pass-reviewer)
+- [Runtime guide: Full Pass](../../../skills/planning/harness-runtime/references/runtime.md#full-pass)

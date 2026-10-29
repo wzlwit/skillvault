@@ -92,7 +92,7 @@ try {
     function Invoke-HarnessProcess {
         param($Executable, $Arguments, $Directory, $MaxMinutes)
         if ($script:capabilityFailure) { return $script:capabilityFailure }
-        $help = @('model', 'no-custom-instructions', 'silent', 'max-ai-credits', 'available-tools', 'deny-tool', 'no-ask-user', 'no-remote', 'no-remote-export', 'disable-builtin-mcps', 'disallow-temp-dir') | ForEach-Object { "  --$_ <value>" }
+        $help = @('model', 'no-custom-instructions', 'silent', 'max-ai-credits', 'available-tools', 'deny-tool', 'no-ask-user', 'disable-builtin-mcps', 'disallow-temp-dir') | ForEach-Object { "  --$_ <value>" }
         $help += '  --reasoning-effort <level> Set effort [possible values: none, high, max]'
         $help += '  --context <tier> Set context [possible values: default, long_context]'
         [pscustomobject]@{ ExitCode = 0; Output = ($help -join "`n") }
@@ -188,7 +188,7 @@ try {
     if (Test-Path -LiteralPath $filterMarker) { throw 'PR snapshot reads loaded a user Git clean filter.' }
     $env:GIT_CONFIG_GLOBAL = $savedGitConfigGlobal
     if (Test-Path -LiteralPath (Join-Path $paths.Workspaces 'hook-executed.txt')) { throw 'PR-supplied content executed as a checkout hook.' }
-    if ($run.status -cne 'Completed' -or $run.discovered -ne 1 -or $run.attempted -ne 1 -or $run.results[0].status -cne 'clean' -or $script:providerFixture.Workers -ne 2) { throw ('PR cycle did not deduplicate and run one bounded review: ' + ($run | ConvertTo-Json -Depth 10)) }
+    if ($run.status -cne 'Completed' -or $run.discovered -ne 1 -or $run.attempted -ne 1 -or $run.results[0].status -cne 'clean' -or $run.results[0].fullPass -or $script:providerFixture.Workers -ne 1) { throw ('PR cycle did not deduplicate and run one bounded review without the Full pass: ' + ($run | ConvertTo-Json -Depth 10)) }
     if (-not (Test-Path -LiteralPath (Join-Path $script:providerFixture.LastWorkspace '.git-empty-template/post-checkout') -PathType Leaf)) { throw 'Checkout preparation removed a PR source file that collided with a controller path.' }
     if ($script:providerFixture.Guidance -notmatch 'Last comment' -or $script:providerFixture.Guidance -notmatch 'thread-2' -or (Invoke-HarnessGit $sourceRepo @('rev-parse', 'HEAD')) -cne $headCommit) { throw 'Evidence pagination or original-checkout preservation failed.' }
     if (@(Invoke-HarnessGit $script:providerFixture.LastWorkspace @('status', '--porcelain')).Count) { throw 'Prepared PR checkout contained untracked controller input.' }
@@ -200,12 +200,16 @@ try {
     $expectedWatchers = @($readded.id, $prEntry.id | Sort-Object) -join ','
     if ($watchView.entries.Count -ne 2 -or @($watchView.entries | Where-Object { $_.PSObject.Properties['reviews'] }).Count -or $resultView.reviews.Count -ne 1 -or $firstResult.Count -ne 1 -or $firstResult[0].status -cne 'clean' -or $firstWatchers -cne $expectedWatchers) { throw 'The watch view and review results were not separated.' }
     $again = Invoke-PrReviewRun $paths
-    if ($again.results[0].status -cne 'Unchanged' -or $script:providerFixture.Workers -ne 2) { throw 'An unchanged completed snapshot was reviewed again.' }
+    if ($again.results[0].status -cne 'Unchanged' -or $script:providerFixture.Workers -ne 1) { throw 'An unchanged completed snapshot was reviewed again.' }
     if ($run.results[0].reviewLevel -cne 'blocking' -or $script:providerFixture.Level -cne 'blocking') { throw 'PR review did not default to the blocking level.' }
+    $fullRun = Invoke-PrReviewRun $paths -FullPass
+    if ($fullRun.results[0].status -cne 'clean' -or -not $fullRun.results[0].fullPass -or $script:providerFixture.Workers -ne 3 -or $null -ne (Read-HarnessConfig $runtime).prReview.fullPass) { throw 'An ad-hoc full-pass PR review did not run the Full pass, or changed the saved setting.' }
+    $afterFull = Invoke-PrReviewRun $paths
+    if ($afterFull.results[0].status -cne 'Unchanged' -or $script:providerFixture.Workers -ne 3) { throw 'A result with the Full pass did not cover a later request without it on the same snapshot.' }
     $broadRun = Invoke-PrReviewRun $paths -ReviewLevel broad
-    if ($broadRun.results[0].status -cne 'clean' -or $broadRun.results[0].reviewLevel -cne 'broad' -or $script:providerFixture.Level -cne 'broad' -or $script:providerFixture.Workers -ne 4 -or $null -ne (Read-HarnessConfig $runtime).prReview.reviewLevel) { throw 'An ad-hoc broad PR review did not run at broad, or changed the saved level.' }
+    if ($broadRun.results[0].status -cne 'clean' -or $broadRun.results[0].reviewLevel -cne 'broad' -or -not $broadRun.results[0].fullPass -or $script:providerFixture.Level -cne 'broad' -or $script:providerFixture.Workers -ne 5 -or $null -ne (Read-HarnessConfig $runtime).prReview.reviewLevel) { throw 'An ad-hoc broad PR review did not run at broad with the Full pass, or changed the saved level.' }
     $afterBroad = Invoke-PrReviewRun $paths
-    if ($afterBroad.results[0].status -cne 'Unchanged' -or $script:providerFixture.Workers -ne 4) { throw 'A broad result did not cover a later blocking request on the same snapshot.' }
+    if ($afterBroad.results[0].status -cne 'Unchanged' -or $script:providerFixture.Workers -ne 5) { throw 'A broad result did not cover a later blocking request on the same snapshot.' }
     $script:providerFixture.PullReads = 0
     $script:providerFixture.ChangeAfterReview = $true
     $stale = Invoke-PrReviewRun $paths -Again
@@ -218,7 +222,7 @@ try {
     if ((Read-HarnessState $runtime).prReviewCurrent) { throw 'A failed review left its in-progress marker.' }
     $script:providerFixture.FailEvidence = $false
     $retry = Invoke-PrReviewRun $paths
-    if ($retry.results[0].status -cne 'clean' -or $script:providerFixture.Workers -ne $beforeFailure + 2) { throw 'A failed snapshot did not remain pending for a later explicit run.' }
+    if ($retry.results[0].status -cne 'clean' -or $script:providerFixture.Workers -ne $beforeFailure + 1) { throw 'A failed snapshot did not remain pending for a later explicit run.' }
     $securityPath = Join-Path $fixtureRoot '.github/skills/differential-review'
     New-Item -ItemType Directory -Path $securityPath -Force | Out-Null
     [System.IO.File]::WriteAllText((Join-Path $securityPath 'SKILL.md'), 'Fixture security methodology only.')
@@ -238,6 +242,7 @@ try {
     finally { $cycleLock.Dispose() }
     Assert-PrFailure { Invoke-PrReviewRun $paths -Scheduled } 'not approved'
     Assert-PrFailure { Invoke-PrReviewRun $paths -Scheduled -ReviewLevel broad } 'without per-tick overrides'
+    Assert-PrFailure { Invoke-PrReviewRun $paths -Scheduled -FullPass } 'without per-tick overrides'
     $definition.prReview.maxPullRequests = 1
     $null = Set-PrReviewConfiguration $paths $definition -Apply
     $script:providerFixture.Numbers = @(2, 1)
@@ -248,7 +253,7 @@ try {
     $null = Set-PrReviewConfiguration $paths $definition -Apply
     $workersBeforeBudget = $script:providerFixture.Workers
     $creditBounded = Invoke-PrReviewRun $paths -Again
-    if ($creditBounded.status -cne 'Bounded' -or $creditBounded.attempted -ne 1 -or $creditBounded.deferred -ne 1 -or $creditBounded.reservedCreditCeiling -ne 1 -or $script:providerFixture.Workers -ne $workersBeforeBudget + 2) { throw 'The exhausted reserved-credit ceiling launched another PR review.' }
+    if ($creditBounded.status -cne 'Bounded' -or $creditBounded.attempted -ne 1 -or $creditBounded.deferred -ne 1 -or $creditBounded.reservedCreditCeiling -ne 1 -or $script:providerFixture.Workers -ne $workersBeforeBudget + 1) { throw 'The exhausted reserved-credit ceiling launched another PR review.' }
     $definition.prReview.maxCycleCredits = 8
     $null = Set-PrReviewConfiguration $paths $definition -Apply
     $unlimitedDefinition = $definition | ConvertTo-Json -Depth 15 | ConvertFrom-Json
@@ -263,12 +268,14 @@ try {
     Write-HarnessConfig $runtime $uncappedConfig
     $script:providerFixture.Credits.Clear()
     $uncapped = Invoke-PrReviewRun $paths -Again
-    if ($uncapped.attempted -ne 2 -or $uncapped.reservedCreditCeiling -ne 0 -or $script:providerFixture.Credits.Count -ne 4 -or @($script:providerFixture.Credits | Where-Object { $null -ne $_ }).Count) { throw 'Without a declared credit budget, PR review sessions received a cap or the cycle stopped on credits.' }
+    if ($uncapped.attempted -ne 2 -or $uncapped.reservedCreditCeiling -ne 0 -or $script:providerFixture.Credits.Count -ne 2 -or @($script:providerFixture.Credits | Where-Object { $null -ne $_ }).Count) { throw 'Without a declared credit budget, PR review sessions received a cap or the cycle stopped on credits.' }
     $null = Set-PrReviewConfiguration $paths $definition -Apply
     $savedSettings = (Read-HarnessConfig $runtime).prReview
     if ($savedSettings.maxCycleCredits -ne 8 -or (Read-HarnessConfig $runtime).runner.maxCredits -ne 2) { throw 'Restoring the declared budgets lost the cycle or per-session credit cap.' }
     $defaults = Get-PrReviewSettings $null
-    if (-not $defaults.defaultProfiles -or ($defaults.githubHosts -join ',') -cne 'github.com' -or $null -ne $defaults.maxPullRequests -or $null -ne $defaults.maxCycleMinutes -or $null -ne $defaults.maxCycleCredits -or $defaults.allowScheduled -or $defaults.securityReview) { throw 'Unsaved PR settings did not default to github.com, no limits, no schedule, and the review model list.' }
+    if (-not $defaults.defaultProfiles -or ($defaults.githubHosts -join ',') -cne 'github.com' -or $null -ne $defaults.maxPullRequests -or $null -ne $defaults.maxCycleMinutes -or $null -ne $defaults.maxCycleCredits -or $defaults.allowScheduled -or $defaults.securityReview -or $defaults.fullPass) { throw 'Unsaved PR settings did not default to github.com, no limits, no schedule, no Full pass, and the review model list.' }
+    if (-not (Get-PrReviewSettings ([pscustomobject]@{ fullPass = $true })).fullPass) { throw 'A saved fullPass setting was not kept.' }
+    Assert-PrFailure { Assert-PrReviewSettings ([pscustomobject]@{ fullPass = 'yes' }) } 'fullPass must be true or false'
     if ($defaults.reviewLevel -cne 'blocking' -or (Get-PrReviewSettings ([pscustomobject]@{ reviewLevel = 'broad' })).reviewLevel -cne 'broad') { throw 'The PR review level did not default to blocking or keep a saved broad level.' }
     if ((Get-PrReviewSettings ([pscustomobject]@{ reviewLevel = 'critical' })).reviewLevel -cne 'blocking') { throw 'A PR review level saved as critical was not read as blocking.' }
     Assert-PrFailure { Assert-PrReviewSettings ([pscustomobject]@{ reviewLevel = 'deep' }) } 'reviewLevel must be blocking or broad'
@@ -290,7 +297,7 @@ try {
     $zeroRuntime = Get-HarnessPaths $zeroRoot
     $zeroConfig = Read-HarnessConfig $zeroRuntime
     $zeroRecord = @((Read-HarnessState $zeroRuntime).prReviews)[-1]
-    if ($zeroRun.status -cne 'Completed' -or $zeroRun.results[0].status -cne 'clean' -or $script:providerFixture.Workers -ne $workersBeforeZero + 2) { throw ('A PR review without saved settings did not run: ' + ($zeroRun | ConvertTo-Json -Depth 8)) }
+    if ($zeroRun.status -cne 'Completed' -or $zeroRun.results[0].status -cne 'clean' -or $script:providerFixture.Workers -ne $workersBeforeZero + 1) { throw ('A PR review without saved settings did not run: ' + ($zeroRun | ConvertTo-Json -Depth 8)) }
     if ($null -ne $zeroConfig.prReview -or $zeroConfig.boardPath -cne 'reports' -or $zeroRecord.model -cne 'gpt-fixture-top' -or $zeroRecord.effort -cne 'max' -or @($script:providerFixture.Credits | Where-Object { $null -ne $_ }).Count) { throw 'The first run saved settings, misplaced reports, or used a model or cap other than the defaults.' }
     $zeroResults = Get-PrReviewResults $zeroPaths
     if (-not $zeroResults.configured -or @($zeroResults.reviews).Count -ne 1 -or $zeroResults.reviews[0].status -cne 'clean') { throw 'Results did not show a review made without saved settings.' }

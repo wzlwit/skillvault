@@ -244,6 +244,7 @@ function Initialize-Harness {
                 maxMinutes = $null
                 maxCredits = $null
                 secondReviewer = $null
+                fullPass = $null
                 fullPanel = $null
                 maxTasksPerCycle = $null
                 allowedTools = $null

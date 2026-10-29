@@ -3,7 +3,7 @@ name: pr-review
 description: "[broad|list|configure] Alone: review watched PRs. Text: review that PR. Review PRs from a URL, a repository, or the user-wide watchlist for blocking issues in isolated snapshots; broad also reports minor and existing issues. Overlaps with harness-review on general review and differential-review on security; owns remote selection and isolated evidence, while pr-watch manages targets."
 metadata:
   author: wzlwit
-  version: "3.0.0"
+  version: "4.0.0"
 argument-hint: "[broad|list|configure] [<PR or repository URL>]"
 ---
 
@@ -33,21 +33,24 @@ confirmations. This is conversational routing, not script argument parsing.
   PR whose snapshot changed since its last completed review, at the saved `reviewLevel` or
   `blocking`. An empty watchlist starts nothing and says so, pointing to `/pr-watch` to watch a PR or
   repository. Its report ends with one line naming the text uses: a PR or repository URL to review
-  now, or "again", "drafts", "security", or a count.
+  now, or "again", "drafts", "security", "full pass", or a count.
 - **Text**: an HTTPS PR or repository URL is reviewed now at `blocking` (`-Action Review -Url <URL>`)
   and adds no watch entry. Plain words adjust a run, with or without a URL: "again" reviews an
   unchanged snapshot again (`-Again`), "security" adds the security methodology
-  (`-SecurityReview`), and "blocking" runs at `blocking` when `broad` is saved
+  (`-SecurityReview`), "full pass" adds the whole-repository Full pass, which is off by default
+  (`-FullPass`), and "blocking" runs at `blocking` when `broad` is saved
   (`-ReviewLevel blocking`). For a repository URL, a count sets how many PRs to review (`-Limit`,
   default five) and "drafts" includes draft PRs (`-IncludeDrafts`).
-- **`broad`** maps to `-ReviewLevel broad` for that run only and changes no saved setting.
+- **`broad`** maps to `-ReviewLevel broad` for that run only and changes no saved setting; it also
+  turns the Full pass on.
 - **`list`** shows the latest result for every reviewed PR, watched or ad hoc, newest first, through
   `scripts/pr-review.ps1 -Action Results`. A review in progress shows `Running`; one whose process
   ended without a result shows `Interrupted` and stays pending. Results describe their recorded
   snapshot, not present remote state. Watched targets and filters belong to `/pr-watch`. It neither
   fetches a provider nor launches a reviewer.
-- **`configure`** takes saved settings, such as models, limits, `allowScheduled`, and the default
-  `reviewLevel` (`blocking` or `broad`), in plain words or as a JSON file. It drafts or reads the
+- **`configure`** takes saved settings, such as models, limits, `allowScheduled`, the default
+  `reviewLevel` (`blocking` or `broad`), and `fullPass`, in plain words or as a JSON file. It
+  drafts or reads the
   definition, shows it, and asks once (`-Action Configure -DefinitionPath <file>`); a yes adds
   `-Apply` for that exact definition, and no answer saves nothing. A definition drafted from plain
   words goes to `~/.copilot/pr-review/.harness_sv/definitions/pr-review.json`, replacing an earlier

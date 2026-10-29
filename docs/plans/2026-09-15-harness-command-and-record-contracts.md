@@ -317,27 +317,34 @@ updates do not refresh installed copies or configure live workflows.
   The Changes pass uses the review panel: the strongest allowed GPT and Claude Opus
   models from runner-context profiles or the bundled default list (the owner's model picker),
   narrowed by `allowedModels`, in parallel unless `maxParallelReviewers` is 1, with findings merged
-  and a clean pass only when both are clean. The Full pass runs the Claude Opus reviewer alone unless
+  and a clean pass only when both are clean. The whole-repository Full pass is off unless a request
+  ("full pass", "both on full", or `broad`, saved on a development task) or `runner.fullPass: true`
+  turns it on; see the
+  [Full pass off by default ADR](decisions/2026-10-28-full-pass-off-by-default-adr.md).
+  When on, it runs the Claude Opus reviewer alone unless
   a request (`-FullPanel`, saved on a development task) or `runner.fullPanel: true` asks for both; see
   the [one Full pass reviewer ADR](decisions/2026-10-21-one-full-pass-reviewer-adr.md). Models or
   effort levels the CLI rejects before model work
   are skipped at no cost. One usable family, or `runner.secondReviewer: false`, runs one reviewer and
   says so; `/pr-review` keeps its one profile.
   Reviewers work at a review level: `blocking` (default) reports only what blocks merging the change
-  or completing its task, and its Full pass looks only for what the change breaks elsewhere; `broad`
-  reports every issue with evidence and audits the whole repository. `/harness-review broad`
+  or completing its task, and its Full pass, when on, looks only for what the change breaks
+  elsewhere; `broad` reports every issue with evidence and turns the Full pass on to audit the whole
+  repository. `/harness-review broad`
   and `/pr-review broad` (or a saved PR `reviewLevel`) choose broad; development reviews use
   `blocking` unless the task was started with `/harness-dev broad <task>`, which saves broad on that
   task and raises its unit tests too. Settings and run records that use the former level name or the
   former second-reviewer key still read correctly. See the [review-levels ADR](decisions/2026-10-08-review-levels-adr.md)
   and the [convention ADR](decisions/2026-10-09-bare-text-menu-convention-adr.md).
-  Standalone Review makes one fresh whole-repository pass after a completed pass has no new findings,
-  including when it repeats existing findings. Findings are handed to the existing dev/proposal
-  workflow; after fixes, the review coordinator repeats from Changes until no supported unfixed
-  issues remain and Full is clean. Review itself neither fixes code nor starts another fixer.
+  With the Full pass on, Standalone Review makes one fresh whole-repository pass after a completed
+  pass has no new findings, including when it repeats existing findings. Findings are handed to the
+  existing dev/proposal workflow; after fixes, the review coordinator repeats from Changes until no
+  supported unfixed issues remain and the round, Full included when on, is clean. Review itself
+  neither fixes code nor starts another fixer.
 - Development runs the same loop with its own developer: Changes findings start an automatic fix
-  round (developer, validation, Changes again), a clean Changes pass gets one Full pass, and in-scope
-  Full findings start another round. Full findings outside the task become follow-up proposals that
+  round (developer, validation, Changes again), and a clean Changes pass completes the review, or,
+  with the Full pass on, gets one Full pass, whose in-scope
+  findings start another round. Full findings outside the task become follow-up proposals that
   need explicit intake, and the task can complete. There is no fixed round count; a round without
   progress (no code change, or every previous finding reported again) stops at `NeedsDecision`.
   Validation failures still stop the task. Scheduled runs take one review round per pickup, and each
@@ -400,7 +407,7 @@ notifier, or schedule. Do not repeatedly review unchanged code while waiting for
 Missing fixes/validation stay pending, and failures, access limits, pauses, and budgets stay enforced.
 
 Fresh covers the whole selected repository, including unchanged code, configuration, and tests.
-Ordinary Review keeps its change scope; development runs the same Changes and Full passes. Respect explicit user/parent
+Ordinary Review keeps its change scope; development runs the same Changes pass, and the Full pass when it's on. Respect explicit user/parent
 restrictions and existing budgets; insufficient coverage is blocked, not clean. Do not inspect
 another repository, fetch remote material, or add workers to compensate. Reports identify each
 pass's requested scope; isolated PR review retains its pinned workspace and no-execution rules.
@@ -507,7 +514,8 @@ that its service version matches the checked-out code. Reuse existing project te
   explicit setup and environment scheduling approval. It does not replace the development timer.
 - **Development:** `testing.afterDev` selects the test flows that run with the first (Changes) review
   pass of feature/fix/verify work; legacy validation commands still run first. `testing.afterReview`
-  runs flows once after a clean Full pass, on the reviewed code. A failed test goes back to the
+  runs flows once after the review is clean, its Full pass included when on, on the reviewed code.
+  A failed test goes back to the
   developer as a fix round; blocked or paused tests stop the task. An `effects: external` flow in
   `afterDev` runs on unreviewed code with a warning, and checks that need a deployment run on demand
   or on a timer.

@@ -1,7 +1,7 @@
 {
   "name": "harness-runtime",
   "title": "Harness Runtime",
-  "version": "6.1.0",
+  "version": "7.0.0",
   "ownershipProtocol": 1,
   "runtimeInterfaces": {
     "harness-runtime": 4,
@@ -9,7 +9,7 @@
     "development-tests": 1,
     "review-levels": 2,
     "review-scope": 1,
-    "full-pass": 1
+    "full-pass": 2
   },
   "requiredInterfaces": {
     "skillvault-install": {

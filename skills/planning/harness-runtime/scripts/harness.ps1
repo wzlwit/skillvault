@@ -25,6 +25,7 @@ param(
     [switch]$SecurityReview,
     [ValidateSet('blocking', 'broad')][string]$ReviewLevel,
     [switch]$ChangesOnly,
+    [switch]$FullPass,
     [switch]$FullPanel,
     [switch]$ConfirmStopped,
     [switch]$ConfirmLocation,
@@ -69,6 +70,8 @@ if ($SecurityReview -and $Action -ne 'Review') { throw 'SecurityReview applies o
 if ($ChangesOnly -and $Action -ne 'Review') { throw 'ChangesOnly applies only to the independent Review action.' }
 if ($ReviewLevel -and $Action -notin @('Review', 'Dev')) { throw 'ReviewLevel applies only to Review and to Dev for a named task.' }
 if ($ReviewLevel -and $Action -eq 'Dev' -and -not $Id -and -not $Title -and -not $FollowUpOf) { throw 'ReviewLevel on Dev needs the task it applies to: an Id or a new task.' }
+if ($FullPass -and $Action -notin @('Review', 'Dev')) { throw 'FullPass applies only to Review and to Dev for a named task.' }
+if ($FullPass -and $Action -eq 'Dev' -and -not $Id -and -not $Title -and -not $FollowUpOf) { throw 'FullPass on Dev needs the task it applies to: an Id or a new task.' }
 if ($FullPanel -and $Action -notin @('Review', 'Dev')) { throw 'FullPanel applies only to Review and to Dev for a named task.' }
 if ($FullPanel -and $Action -eq 'Dev' -and -not $Id -and -not $Title -and -not $FollowUpOf) { throw 'FullPanel on Dev needs the task it applies to: an Id or a new task.' }
 if ($ConfirmLocation -and $Action -ne 'Init') { throw 'ConfirmLocation applies only to Init.' }
@@ -238,7 +241,7 @@ switch ($Action) {
             current = Get-HarnessCurrentPath $paths $config
             task = $task
             repository = $repository
-            effectiveRunner = $effectiveConfig.runner | Select-Object command, model, reasoningEffort, contextTier, workspaceMode, maxMinutes, maxCredits, maxTasksPerCycle, secondReviewer, fullPanel, availableTools
+            effectiveRunner = $effectiveConfig.runner | Select-Object command, model, reasoningEffort, contextTier, workspaceMode, maxMinutes, maxCredits, maxTasksPerCycle, secondReviewer, fullPass, fullPanel, availableTools
             reviewPanel = Get-HarnessReviewPanel $effectiveConfig
             testing = Get-HarnessTestingSummary $config
             references = @($state.references | Where-Object { $_.active -and (-not $_.taskId -or ($Id -and $_.taskId -eq $Id)) })
@@ -298,7 +301,7 @@ switch ($Action) {
         finally { $runLock.Dispose() }
     }
     'Review' {
-        $result = Invoke-HarnessReview -Paths $paths -Scope $(if ($Scope) { $Scope } else { 'Current changes' }) -BaseRef $BaseRef -SecurityReview:$SecurityReview -ReviewLevel $(if ($ReviewLevel) { $ReviewLevel } else { 'blocking' }) -RepositoryRef $RepositoryRef -RunnerContext $RunnerContext -ChangesOnly:$ChangesOnly -FullPanel:$FullPanel
+        $result = Invoke-HarnessReview -Paths $paths -Scope $(if ($Scope) { $Scope } else { 'Current changes' }) -BaseRef $BaseRef -SecurityReview:$SecurityReview -ReviewLevel $(if ($ReviewLevel) { $ReviewLevel } else { 'blocking' }) -RepositoryRef $RepositoryRef -RunnerContext $RunnerContext -ChangesOnly:$ChangesOnly -FullPass:$FullPass -FullPanel:$FullPanel
         $result | ConvertTo-Json -Depth 10
         if ($result.status -in @('Failed', 'NeedsRecovery', 'blocked')) { throw "Independent review $($result.status). Inspect its recorded outcome and report." }
     }
@@ -319,9 +322,10 @@ switch ($Action) {
             $repositoryOptions = @{}
             if ($PSBoundParameters.ContainsKey('RepositoryRef')) { $repositoryOptions.RepositoryRef = $RepositoryRef }
             # A named development request sets that task's review level: broad from /hn-dev broad, otherwise blocking.
-            # It also decides whether the task's Full pass runs both reviewers: only when the request asks.
+            # It also decides whether the task runs the Full pass, and both reviewers in it: only when the request asks.
             if ($Action -eq 'Dev') {
                 $repositoryOptions.ReviewLevel = $(if ($ReviewLevel) { $ReviewLevel } else { 'blocking' })
+                $repositoryOptions.FullPass = [bool]$FullPass
                 $repositoryOptions.FullPanel = [bool]$FullPanel
             }
             $queued = Queue-HarnessTask -Paths $paths -Id $Id -Mode $queueMode -UseWorkingChanges:$UseWorkingChanges @repositoryOptions

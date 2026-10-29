@@ -1,7 +1,7 @@
 # Local Harness Runtime
 
 Contents: Root Inheritance; Configuration and State; Layout Migration; Artifact Storage; Runner
-Inheritance; Review Panel (Full Pass Reviewer, Review Levels); Folder Controllers and Coding
+Inheritance; Review Panel (Full Pass, Review Levels); Folder Controllers and Coding
 Repositories; Commands; History Cleanup; Restrictions and Fallback; Ask Once; Reuse or New; Script
 Permissions and Agent Fallback; Worker Output; Evidence and Recovery; Timers; Test Flows; Monitoring;
 Report Authoring.
@@ -193,7 +193,8 @@ authorized session-agent path instead of inventing grants or treating unknown ca
 | `maxCredits` | Optional inherited CLI credit ceiling; omission means no cap (native account limits only), not a billing guarantee. The CLI refuses a declared cap below 30 |
 | `maxTasksPerCycle` | Optional positive inherited cap; otherwise the existing task set bounds one invocation |
 | `secondReviewer` | Inherit the choice; otherwise the review panel's second-family reviewer runs in every pass; explicit false keeps one reviewer. The former name `criticalReview` is still read |
-| `fullPanel` | Inherit the choice; otherwise false, so the Full pass runs the Claude Opus reviewer alone; true runs both panel reviewers in it. See [Full Pass Reviewer](#full-pass-reviewer) |
+| `fullPass` | Inherit the choice; otherwise false, so reviews and development run the Full pass only when a request or the `broad` level asks for it; true runs it in every review round. See [Full Pass](#full-pass) |
+| `fullPanel` | Inherit the choice; otherwise false, so the Full pass runs the Claude Opus reviewer alone; true runs both panel reviewers in it when it runs. See [Full Pass](#full-pass) |
 | `allowedTools` | Inherit approved CLI permission patterns; otherwise keep native grants without adding allow-all |
 | `availableTools` | Inherit available CLI tool names; otherwise native availability, constrained by explicit policy |
 | `validationCommands` | Inherit applicable executable/argument checks or discover supported repository test scripts |
@@ -227,8 +228,9 @@ validation unverified until it runs; missing configuration never yields a false 
 
 Every Changes pass in `/harness-review` and development runs uses two independent read-only
 reviewers: the strongest allowed GPT model and the strongest allowed Claude Opus model, each at `max`
-effort. The Full pass runs one of them by default, the Claude Opus reviewer (owner decision,
-2026-10-21); see [Full Pass Reviewer](#full-pass-reviewer). Each family takes its candidates in this
+effort. The Full pass is off by default; when on, it runs one of them, the Claude Opus reviewer
+(owner decisions, 2026-10-21 and 2026-10-28); see [Full Pass](#full-pass). Each family takes its
+candidates in this
 order: runner-context `profiles` in that family, then the bundled default list
 `scripts/review-models.json`. That list holds the owner's ranking,
 strongest first, as Copilot CLI IDs; `gpt-6-astra` leads the GPT family. The runner's own model,
@@ -239,7 +241,7 @@ their declared efforts and contexts.
 
 - Inspect the list with `/harness-setup policy list limits` or `Context`: each family
   shows its models, which ones `allowedModels` permits, and the reviewers the next Changes pass will
-  try; `fullPass` lists the models the Full pass starts with.
+  try; `fullPass` lists the models the Full pass starts with when it's on.
   Narrow the list by declaring `allowedModels`; reorder or update it by editing the bundled file.
 - The CLI has no command that lists models, so availability is checked when a reviewer starts. The CLI
   rejects an unavailable model, or an effort level that model doesn't accept, before any model work,
@@ -256,8 +258,9 @@ their declared efforts and contexts.
 - When the session runs the reviewers itself as sub-agents, the attended agent fallback, it sets each
   sub-agent's model explicitly to its family's first allowed profile or listed model, with reasoning
   effort `max`, or the highest the host accepts, and long context. It never leaves the model to the
-  host's default or uses the session's own model. For the Full pass it starts only the Claude Opus
-  sub-agent unless both are asked for. It starts them in the background as general-purpose
+  host's default or uses the session's own model. It runs the Full pass only when it's on, and then
+  starts only the Claude Opus sub-agent unless both are asked for. It starts them in the background
+  as general-purpose
   agents told to stay read-only, never the host's Code Review agent type: launching that type switches
   the whole chat to it, and when the host switches the chat back, every agent still running in the
   chat stops. It then ends its turn and reads each result when that reviewer finishes, instead of
@@ -271,17 +274,33 @@ their declared efforts and contexts.
 - Run records list the models and efforts; reports name each reviewer with its effort, context, and
   skipped choices. Fixtures point `SKILLVAULT_REVIEW_MODELS` at a temporary list instead of the bundle.
 
-### Full Pass Reviewer
+### Full Pass
 
-The Full pass runs one reviewer by default, the panel's Claude Opus reviewer (owner decision,
+The whole-repository Full pass is off by default (owner decision, 2026-10-28): a clean Changes pass,
+with passing tests in development, completes the review. It runs, after a Changes pass with no new
+findings, only when turned on:
+
+- For one request: plain words such as "full pass" with `/harness-review` (`Review -FullPass`) or with
+  `/harness-dev <task>` (`Dev -Id <task> -FullPass`), "both on full" (`-FullPanel`, below), or the
+  `broad` level, whose Full pass audits the whole repository. Development saves the request on the
+  task, so a later pickup keeps it; any other named development request returns the task to the
+  default, as it does with the review level. `/pr-review` takes the same words, or its saved
+  `fullPass` setting.
+- For every run of the project: `runner.fullPass: true` in the project configuration, or inherited
+  from the session's runner context. "Changes only" (`Review -ChangesOnly`) skips it for one review.
+
+With the Full pass off, a review with no changes returns `NoChanges` and starts no reviewer; with it
+on, the Full pass runs alone. A task that reached the Full pass before it was turned off completes
+without one. Results and run records add `fullPass`, and reports say when the Full pass was off.
+
+When it runs, it runs one reviewer by default, the panel's Claude Opus reviewer (owner decision,
 2026-10-21). Both panel reviewers run it only when asked:
 
 - For one request: plain words such as "both on full" with `/harness-review` (`Review -FullPanel`) or
-  with `/harness-dev <task>` (`Dev -Id <task> -FullPanel`). Development saves the request on the task,
-  so a later pickup's Full pass keeps it; any other named development request returns the task to one
-  reviewer, as it does with the review level.
+  with `/harness-dev <task>` (`Dev -Id <task> -FullPanel`). Either also turns the Full pass on.
+  Development saves the request on the task, like `-FullPass`.
 - For every run of the project: `runner.fullPanel: true` in the project configuration, or inherited
-  from the session's runner context.
+  from the session's runner context. It picks the reviewers; it doesn't turn the Full pass on.
 
 When the panel has no Claude Opus reviewer, because restrictions exclude the family,
 `runner.secondReviewer` is false, or the CLI accepted no Claude Opus model in the Changes pass, the
@@ -289,8 +308,8 @@ remaining reviewer runs the Full pass. When the CLI accepts no Claude Opus model
 itself, the GPT reviewer takes its place there; the runner's own model never replaces a listed
 reviewer that is available. The Changes pass keeps the whole panel, and `/pr-review` keeps its one
 profile. Reports name the Full pass reviewers, and standalone results and run records add
-`fullPassReviewers` and `fullPassNote`. The runtime provides interface `full-pass` 1 for this;
-`harness-review` and `harness-dev` require it.
+`fullPassReviewers` and `fullPassNote`. The runtime provides interface `full-pass` 2 for this, with
+`-FullPass`; `harness-review`, `harness-dev`, and `pr-review` require it.
 
 ### Review Levels
 
@@ -298,8 +317,8 @@ Every reviewer works at one level (owner decisions, 2026-10-08 and 2026-10-09):
 
 | Level | Reports | Full pass |
 | --- | --- | --- |
-| `blocking` (default) | Only what blocks merging the change or completing its task: a defect or regression the change introduces; the change not achieving its purpose, such as the task's issue left unfixed; a security, permission, or data-loss risk; a broken public contract, or a caller, consumer, or configuration the change breaks; a crash or unhandled error on a realistic path; or a missing unit test the declared `unitTests` level calls for. Rated P1 or P2. | Reads the whole repository, but only to find what the change breaks or leaves inconsistent: callers, other copies of the changed logic, configuration, contracts, and tests |
-| `broad` | Every issue the reviewer can support with evidence, rated P1 (blocks merging), P2 (should be fixed), or P3 (minor): also edge cases, performance, maintainability such as duplicated or inconsistent logic, documentation that no longer matches the code, test gaps, and pre-existing issues | Audits the whole repository, including code the change does not touch |
+| `blocking` (default) | Only what blocks merging the change or completing its task: a defect or regression the change introduces; the change not achieving its purpose, such as the task's issue left unfixed; a security, permission, or data-loss risk; a broken public contract, or a caller, consumer, or configuration the change breaks; a crash or unhandled error on a realistic path; or a missing unit test the declared `unitTests` level calls for. Rated P1 or P2. | Off unless turned on; then reads the whole repository, but only to find what the change breaks or leaves inconsistent: callers, other copies of the changed logic, configuration, contracts, and tests |
+| `broad` | Every issue the reviewer can support with evidence, rated P1 (blocks merging), P2 (should be fixed), or P3 (minor): also edge cases, performance, maintainability such as duplicated or inconsistent logic, documentation that no longer matches the code, test gaps, and pre-existing issues | On: audits the whole repository, including code the change does not touch |
 
 - Blocking never reports style, naming, refactoring ideas, performance without a concrete failure,
   speculative risks, or pre-existing issues the change neither causes nor depends on. A severe
@@ -420,8 +439,8 @@ harness skills locate this same dependency instead of duplicating storage and ex
 | `Task` | List tasks, add with requirement fields, or use `-FollowUpOf <completed-id>` for a linked follow-up; optional source/revision/kind/priority/risk and `-RepositoryRef` |
 | `UpdateTask` | Exact `-Id` and supplied fields; revised completed requirements create a linked task; never update an active task contract or retarget an allocated task |
 | `Ref` | List references, upsert `-Source`/`-Note` with optional task `-Id`, or remove exact `-RemoveId` |
-| `Dev` | Existing `-Id`, ad-hoc fields, or `-FollowUpOf`; shares task update/intake, then optional `-Mode now` or queue-only `next`; runs the development review loop. A named request sets the task's review level: `-ReviewLevel broad` saves broad on it, otherwise blocking; likewise `-FullPanel` saves both reviewers for its Full pass, otherwise one |
-| `Review` | Review ahead/working changes with optional `-RepositoryRef`, `-Scope`, `-BaseRef`, `-SecurityReview`, `-ChangesOnly`, `-FullPanel`, and `-ReviewLevel blocking\|broad` (default `blocking`; see [Review Levels](#review-levels)); the Changes pass uses the review panel, with one whole-repository Fresh pass, by the Claude Opus reviewer unless `-FullPanel` adds the other, when no new findings appear. `-ChangesOnly` skips Fresh and leaves the review incomplete; with no changes, Fresh runs alone |
+| `Dev` | Existing `-Id`, ad-hoc fields, or `-FollowUpOf`; shares task update/intake, then optional `-Mode now` or queue-only `next`; runs the development review loop. A named request sets the task's review level: `-ReviewLevel broad` saves broad on it, otherwise blocking; likewise `-FullPass` saves the Full pass on it, otherwise off, and `-FullPanel` both reviewers for it, otherwise one |
+| `Review` | Review ahead/working changes with optional `-RepositoryRef`, `-Scope`, `-BaseRef`, `-SecurityReview`, `-FullPass`, `-FullPanel`, `-ChangesOnly`, and `-ReviewLevel blocking\|broad` (default `blocking`; see [Review Levels](#review-levels)); the Changes pass uses the review panel. A whole-repository Fresh pass follows when no new findings appear only when the Full pass is on (`-FullPass`, `-FullPanel`, broad, or `runner.fullPass`), by the Claude Opus reviewer unless `-FullPanel` adds the other; `-ChangesOnly` keeps it off. With no changes, Fresh runs alone when on; otherwise the result is `NoChanges` |
 | `TestConfig` | Import explicit `-DefinitionPath` JSON declarations without executing commands |
 | `Test` | List declarations and `pendingDefinitions`, or run `-Flow` with optional `-TestEnvironment`, task `-Id`, and timer `-Scheduled` |
 | `MonitorConfig` | Preview a `-DefinitionPath` declaration; apply with explicit `-Apply`, human `-Actor`, and `-Reason` |
@@ -547,8 +566,8 @@ allowance inheritance and is not another permission prompt.
 
 - **Reuse (singleton):** select the exact compatible owned instance. An active development task stays
   `AlreadyRunning`; never launch a second writer or attach to an unknown process. Reuse an agent
-  definition or profile where supported, not its old conclusions: required Review and Fresh passes
-  and both panel reviewers still use a fresh reviewer context. A reused schedule keeps its identity; changing
+  definition or profile where supported, not its old conclusions: the Review pass, a turned-on
+  Fresh pass, and both panel reviewers still use a fresh reviewer context. A reused schedule keeps its identity; changing
   cadence or context updates that schedule.
 - **New:** confirm its role, target/workspace, and distinct identity through the host's supported
   agent-instance mechanism. Keep the same logical task with separate agent, run, and report
@@ -669,9 +688,10 @@ A failed test becomes a finding with `source: test`, keyed by its command or flo
 with the end of its output. Test findings and review findings go to the developer together as
 `reviewFindings` in one fix round; the developer fixes the code without weakening or skipping the test,
 or returns `needs-decision` when the environment caused the failure. Then the tests and the Changes
-pass run again. A clean Changes pass with passing tests gets one whole-repository Full pass; in-scope
+pass run again. A clean Changes pass with passing tests completes the review, or, when the Full pass
+is on, gets one whole-repository Full pass; in-scope
 Full findings start another fix round, and findings marked `outsideTaskScope` are saved as the task's
-`followUpProposals` without blocking completion. A clean Full pass then runs any `testing.afterReview`
+`followUpProposals` without blocking completion. A clean review then runs any `testing.afterReview`
 flows once in the AfterReview phase, on that snapshot; a failure starts a fix round, and the task keeps
 `afterReviewFailures` to recognize a repeat. There is no fixed round count. The task stops at
 `NeedsDecision` when a round makes no progress: ready without a code change, every previous finding
@@ -702,8 +722,8 @@ reusable clean verdict, and must pass its own tests and required reviews.
 `harness-review` owns the standalone review contract: baseline selection (explicit BaseRef, then the
 merge-base with local `origin/develop`, the remote's default branch that `origin/HEAD` records, or the
 configured upstream, otherwise a reported
-WorkingChangesOnly fallback, never an implicit fetch), the whole-repository Fresh pass when no new
-findings appear, the attended Changes -> Full continuation after fixes, bounded snapshot restarts,
+WorkingChangesOnly fallback, never an implicit fetch), the whole-repository Fresh pass when it's on
+and no new findings appear, the attended continuation after fixes, bounded snapshot restarts,
 result fields, and optional `-SecurityReview` guidance from the installed `differential-review` skill.
 The runtime pins the resolved commit for the run, never extends outer budgets or retries failed
 workers, and uses the same Review Panel as development.
@@ -771,7 +791,8 @@ saved), the `Context` testing summary repeats them, and a Validate run that exec
 task's `testsNote`. Runs preflight directories, variable
 names, commands, and positive budgets, and environment overrides reach only the child process; a
 round whose tests cannot start starts no reviewers either. `afterDev` flows run with the first review
-pass and `afterReview` flows after a clean Full pass, as described under
+pass and `afterReview` flows after the review is clean, its Full pass included when on, as
+described under
 [Evidence and Recovery](#evidence-and-recovery). The `Context` action's `testing` field summarizes
 them. Test timers run `Test -Scheduled` with no AI worker or task creation and share the development
 run lock, so a busy run is reported, not interrupted or silently queued. Task-linked tests reuse the

@@ -16,6 +16,10 @@
 - Superseded in part 2026-10-09: the unit-test level `critical` in decision 7 is renamed `blocking`,
   with saved values still read, and `/hn-dev broad` raises it to `broad` for one task; see the
   [bare, text, and menu convention ADR](./2026-10-09-bare-text-menu-convention-adr.md).
+- Superseded in part 2026-10-28: the Full pass is off by default, so in decisions 3 and 9 the review
+  completes, and `afterReview` runs, after a clean Changes pass with passing tests; the Full pass
+  comes first only when it's turned on. See the
+  [Full pass off by default ADR](./2026-10-28-full-pass-off-by-default-adr.md).
 - Scope: Which tests the development loop runs, when, what happens when they fail, and how much unit
   testing the developer adds.
 

@@ -118,15 +118,17 @@ task's development loop:
   review pass, on the same code. With neither declared, the harness runs the repository test entry
   (`scripts/test-all.ps1`, then `npm test`) and stops as Blocked when none exists. A failed test goes
   back to the developer with the end of its output, together with any review findings, as one fix
-  round; the Full pass waits until both are clean. If the same test fails again right after a fix
+  round; the review completes, or the Full pass when it's on starts, only when both are clean. If
+  the same test fails again right after a fix
   round, the loop stops for a decision. Timeouts, stops, and blocked starts keep their outcomes. A
   blocked review, or code that changes after the tests or a review, sends the task back to these
   tests, so a retry never skips them.
   An `external` flow, such as a local PPE test you want every round, may be listed here. It then
   runs on code that review has not passed yet, so the declaration result and the context summary
   carry a warning, and each run's report notes that it ran before review was clean.
-- `afterReview` flows run once after the Full pass is clean, on that exact code. A failure starts a
-  fix round that goes through the tests and both review passes again. This is the safer place for
+- `afterReview` flows run once after the review is clean, its Full pass included when on, on that
+  exact code. A failure starts a fix round that goes through the tests and the review passes again.
+  This is the safer place for
   flows that write shared data or take long, such as a bounded local PPE smoke check. A repeat
   failure of the same flow stops for a decision.
 - Scheduled runs use only environments with `allowScheduled: true`, in both lists. Otherwise the

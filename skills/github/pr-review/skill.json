@@ -1,12 +1,13 @@
 {
   "name": "pr-review",
   "title": "PR Review",
-  "version": "3.0.0",
+  "version": "4.0.0",
   "ownershipProtocol": 1,
   "requiredInterfaces": {
     "harness-runtime": {
       "harness-runtime": 4,
-      "review-levels": 2
+      "review-levels": 2,
+      "full-pass": 2
     }
   },
   "kind": "agent",

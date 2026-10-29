@@ -168,7 +168,7 @@ function Assert-PrReviewSettings {
     param($Settings)
     if ($null -eq $Settings) { return }
     if ($Settings -is [array] -or $Settings -isnot [pscustomobject]) { throw 'PR review settings must be a JSON object.' }
-    $allowedFields = @('profiles', 'githubHosts', 'maxPullRequests', 'maxCycleMinutes', 'maxCycleCredits', 'allowScheduled', 'securityReview', 'reviewLevel')
+    $allowedFields = @('profiles', 'githubHosts', 'maxPullRequests', 'maxCycleMinutes', 'maxCycleCredits', 'allowScheduled', 'securityReview', 'reviewLevel', 'fullPass')
     foreach ($field in $Settings.PSObject.Properties.Name) { if ($field -cnotin $allowedFields) { throw "Unknown PR review setting: $field" } }
     foreach ($field in @('maxPullRequests', 'maxCycleMinutes', 'maxCycleCredits')) {
         $value = $Settings.$field
@@ -176,7 +176,7 @@ function Assert-PrReviewSettings {
         if ($value -is [string] -or $value -is [bool] -or [double]$value -le 0 -or -not [double]::IsFinite([double]$value)) { throw "$field must be a positive finite number when supplied." }
     }
     if (-not (Test-HarnessUnspecifiedAllowance $Settings.maxPullRequests) -and ($Settings.maxPullRequests -ne [Math]::Floor($Settings.maxPullRequests) -or $Settings.maxPullRequests -gt 100)) { throw 'maxPullRequests must be an integer from 1 through 100.' }
-    foreach ($field in @('allowScheduled', 'securityReview')) { if ($null -ne $Settings.$field -and $Settings.$field -isnot [bool]) { throw "$field must be true or false when supplied." } }
+    foreach ($field in @('allowScheduled', 'securityReview', 'fullPass')) { if ($null -ne $Settings.$field -and $Settings.$field -isnot [bool]) { throw "$field must be true or false when supplied." } }
     if (-not (Test-HarnessUnspecifiedAllowance $Settings.reviewLevel) -and ($Settings.reviewLevel -isnot [string] -or $Settings.reviewLevel -cnotin @('blocking', 'broad', 'critical'))) { throw 'reviewLevel must be blocking or broad when supplied.' }
     if (-not (Test-HarnessUnspecifiedAllowance $Settings.githubHosts)) {
         if ($Settings.githubHosts -isnot [array]) { throw 'githubHosts must be a list of DNS names.' }
@@ -201,7 +201,7 @@ function Get-PrReviewSettings {
     param($Settings)
     if ($null -ne $Settings -and $Settings.PSObject.Properties['defaultProfiles']) { return $Settings }
     Assert-PrReviewSettings $Settings
-    $effective = [ordered]@{ profiles = @(); githubHosts = @('github.com'); maxPullRequests = $null; maxCycleMinutes = $null; maxCycleCredits = $null; allowScheduled = $false; securityReview = $false; reviewLevel = 'blocking' }
+    $effective = [ordered]@{ profiles = @(); githubHosts = @('github.com'); maxPullRequests = $null; maxCycleMinutes = $null; maxCycleCredits = $null; allowScheduled = $false; securityReview = $false; reviewLevel = 'blocking'; fullPass = $false }
     if ($null -ne $Settings) {
         foreach ($field in @($effective.Keys)) { if (-not (Test-HarnessUnspecifiedAllowance $Settings.$field)) { $effective[$field] = $Settings.$field } }
     }
@@ -303,7 +303,7 @@ function Get-PrReviewCapabilities {
     param($Runtime, $Config, [Nullable[double]]$MaxMinutes)
     $result = Invoke-HarnessProcess -Executable $Config.runner.command -Arguments @('--no-auto-update', '--help') -Directory $Runtime.Project -MaxMinutes $MaxMinutes -Paths $Runtime -Config $Config -Targets @('review')
     Assert-HarnessProcessSuccess $result 'Unable to inspect the configured Copilot CLI; no review started.' -FailureKind Blocked
-    foreach ($flag in @('model', 'reasoning-effort', 'context', 'no-custom-instructions', 'silent', 'max-ai-credits', 'available-tools', 'deny-tool', 'no-ask-user', 'no-remote', 'no-remote-export', 'disable-builtin-mcps', 'disallow-temp-dir')) {
+    foreach ($flag in @('model', 'reasoning-effort', 'context', 'no-custom-instructions', 'silent', 'max-ai-credits', 'available-tools', 'deny-tool', 'no-ask-user', 'disable-builtin-mcps', 'disallow-temp-dir')) {
         if ($result.Output -notmatch ('(?m)^\s*--' + [regex]::Escape($flag) + '(?:[\s,]|$)') -and $result.Output -notmatch ('(?m)^\s*-[a-z],\s*--' + [regex]::Escape($flag) + '(?:[\s,]|$)')) { throw "Configured CLI does not advertise --$flag; update or explicitly revise the approved profile." }
     }
     $efforts = [regex]::Match($result.Output, '(?s)--reasoning-effort\s+<[^>]+>.*?\[possible values:\s*([^\]]+)\]')

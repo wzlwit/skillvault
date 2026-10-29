@@ -69,7 +69,7 @@
     "name": "harness-dev",
     "description": "[upsert|queue|sprint|test|broad] Alone: the board. Text: develop it. Record, queue, and develop tasks with the two-reviewer review loop, run goal-based sprints, and declare or run reusable tests; broad raises one task's reviews and unit tests. Shorthand: /hn-dev. Overlaps with harness-monitor on intake and checks, harness-review on code review, and harness-write on report implementation; sprints can draft status through harness-write.",
     "path": "skills/planning/harness-dev",
-    "version": "5.0.0"
+    "version": "6.0.0"
   },
   {
     "name": "harness-monitor",
@@ -79,15 +79,15 @@
   },
   {
     "name": "harness-review",
-    "description": "[broad|list] Alone: review your changes. Text: review that scope. Review current-project changes for blocking issues with two independent reviewers, GPT and Claude Opus, then a whole-repository Fresh pass by Claude Opus when no new findings appear, restarting when local files change; broad also reports minor and existing issues. Shorthand: /hn-review. Overlaps with pr-review on general review, differential-review on security, and harness-dev, whose development loop runs the same passes; PR URLs delegate to pr-review.",
+    "description": "[broad|list] Alone: review your changes. Text: review that scope. Review current-project changes for blocking issues with two independent reviewers, GPT and Claude Opus, restarting when local files change; a whole-repository Full pass runs only when asked, and broad adds it and also reports minor and existing issues. Shorthand: /hn-review. Overlaps with pr-review on general review, differential-review on security, and harness-dev, whose development loop runs the same passes; PR URLs delegate to pr-review.",
     "path": "skills/planning/harness-review",
-    "version": "6.0.0"
+    "version": "7.0.0"
   },
   {
     "name": "harness-runtime",
     "description": "Shared PowerShell 7 runtime for the harness topics: the harness.ps1 entry point, the runtime guide, and the default review model list. Not invoked directly; use harness-setup (setup, context, policy), harness-dev, harness-write, harness-review, harness-decide, harness-monitor, or harness-schedule.",
     "path": "skills/planning/harness-runtime",
-    "version": "6.1.0"
+    "version": "7.0.0"
   },
   {
     "name": "harness-schedule",
@@ -189,7 +189,7 @@
     "name": "pr-review",
     "description": "[broad|list|configure] Alone: review watched PRs. Text: review that PR. Review PRs from a URL, a repository, or the user-wide watchlist for blocking issues in isolated snapshots; broad also reports minor and existing issues. Overlaps with harness-review on general review and differential-review on security; owns remote selection and isolated evidence, while pr-watch manages targets.",
     "path": "skills/github/pr-review",
-    "version": "3.0.0"
+    "version": "4.0.0"
   },
   {
     "name": "pr-watch",
@@ -207,7 +207,7 @@
     "name": "rules",
     "description": "[apply|remove] Alone: rules in effect. Text: add or change a rule. Put the core and extra rules, or only the core rules with apply core, into effect globally (default), in a project, or for this chat; add, change, or remove your own global or project rules. The SkillVault rule library changes only when you name extra or core, and persistent rule changes require confirmation.",
     "path": "skills/core/rules",
-    "version": "4.3.0"
+    "version": "4.3.1"
   },
   {
     "name": "schedule-manage",

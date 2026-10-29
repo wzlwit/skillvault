@@ -44,9 +44,10 @@ If those requirements cannot be met, continue only permitted investigation and r
    starts the task when idle and queues it when busy; `<id> now` adds `-Mode now`, which requests a
    cooperative checkpoint; `queue` adds `-Mode next`, which queues only; `broad` adds
    `-ReviewLevel broad`, saved on the task so a queued pickup still runs broad. Any other named
-   request returns the task to the `blocking` level. "both on full" adds `-FullPanel`, saved on the
-   task the same way, so its Full pass runs both reviewers; any other named request returns the task
-   to the Claude Opus reviewer alone. With no ID or input, `-Action Dev` selects
+   request returns the task to the `blocking` level. "full pass" adds `-FullPass`, and "both on full"
+   `-FullPanel`, saved on the task the same way, so its review includes the Full pass, with both
+   reviewers for "both on full"; any other named request returns the task to the default, no Full
+   pass. With no ID or input, `-Action Dev` selects
    eligible queued work. The offer from `/harness-dev` alone, and `broad` with no task, names the next
    ready task: queued work in pickup order first (now, interrupted, then next), otherwise the
    highest-priority ready task (Queued, Low risk, with scope and acceptance); a yes runs
@@ -73,10 +74,12 @@ If those requirements cannot be met, continue only permitted investigation and r
      `maxParallelReviewers` is 1. The developer's or session's model never replaces them. A pass is
      clean only when both are clean. Unavailable models are
      skipped at no cost; when only one family is usable, one reviewer runs and the result says so;
-     `runner.secondReviewer: false` keeps one reviewer. The Full pass runs the Claude Opus reviewer
+     `runner.secondReviewer: false` keeps one reviewer. The whole-repository Full pass is off unless
+     the task asks for it ("full pass", "both on full", or `broad`) or the project sets
+     `runner.fullPass: true` (owner decision, 2026-10-28). When on, it runs the Claude Opus reviewer
      alone unless the task was started with "both on full" (`-FullPanel`) or the project sets
      `runner.fullPanel: true`; without a usable Claude Opus model, the GPT reviewer runs it (Full Pass
-     Reviewer in the runtime guide).
+     in the runtime guide).
    - Development reviews at the `blocking` level unless the task was started with `broad` (Review
      Levels in the runtime guide). At `blocking`, reviewers report only what blocks the task or
      merging its change, and the Full pass looks only for what the change breaks or leaves
@@ -86,11 +89,12 @@ If those requirements cannot be met, continue only permitted investigation and r
      repository. For a wider audit without development, use `/harness-review broad`.
    - Changes findings start a fix round: the developer receives them as `reviewFindings`, verifies each,
      and fixes those within scope; the tests and the Changes review then run again. A clean Changes
-     pass with passing tests gets one Full pass, and in-scope Full findings start another fix round.
+     pass with passing tests completes the review, or, when the Full pass is on, gets one Full pass,
+     and in-scope Full findings start another fix round.
      Full findings marked `outsideTaskScope` become follow-up proposals in the task and report, and the
      task can still complete. A proposal becomes a task only through `/harness-dev upsert` intake.
-   - `testing.afterReview` flows run once after a clean Full pass, on that exact code. A failure starts a
-     fix round that repeats the tests and both review passes.
+   - `testing.afterReview` flows run once after the review is clean, on that exact code. A failure
+     starts a fix round that repeats the tests and the review passes.
    - The developer adds unit tests at the declared `unitTests` level (`blocking` by default, or
      `broad` for a task started with `broad`), and the reviewers judge a missing test by the same level.
    - There is no fixed round count. The loop stops at `NeedsDecision` when a round makes no progress

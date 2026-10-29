@@ -13,6 +13,10 @@
   `/hn-dev broad`, replacing decision 4's rule that development always uses the default level. See the
   [bare, text, and menu convention ADR](./2026-10-09-bare-text-menu-convention-adr.md). What each level
   reports is unchanged.
+- Superseded in part 2026-10-28: at the owner's request, the Full pass is off by default, the
+  alternative "Skipping the Full pass" rejected below. `broad` turns it on, and at `blocking` it runs
+  only when a request or `runner.fullPass` turns it on; what it reads at each level, decision 2, is
+  unchanged. See the [Full pass off by default ADR](./2026-10-28-full-pass-off-by-default-adr.md).
 - Decision owner: Zhaolong Wang
 - Scope: What reviewers report in `/harness-review`, development runs, and `/pr-review`.
 - Supersedes in part: decision 6 of the [review-panel ADR](./2026-10-02-review-panel-dev-loop-and-sprints-adr.md)

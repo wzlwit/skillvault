@@ -23,7 +23,7 @@ document, initialize the project, or start workers. Situations below are usage g
    restrictions, configured runner permissions/model, effective numeric caps, and active pauses.
    Also list the review models from its `reviewPanel`: each family's models, which ones
    `allowedModels` permits, the reviewers the next Changes pass will try, and `fullPass`, the models
-   the Full pass starts with.
+   the Full pass starts with when it's on.
    Uninitialized projects are reported without creating state; creating the harness is a separate request.
 3. Follow the runtime's Runner Inheritance procedure: missing allowances use current-session or
   parent settings, then maximum verified/native capability. Pass `-RunnerContext` or

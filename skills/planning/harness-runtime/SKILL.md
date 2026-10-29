@@ -3,7 +3,7 @@ name: harness-runtime
 description: "Shared PowerShell 7 runtime for the harness topics: the harness.ps1 entry point, the runtime guide, and the default review model list. Not invoked directly; use harness-setup (setup, context, policy), harness-dev, harness-write, harness-review, harness-decide, harness-monitor, or harness-schedule."
 metadata:
   author: wzlwit
-  version: "6.1.0"
+  version: "7.0.0"
 user-invocable: false
 disable-model-invocation: true
 ---

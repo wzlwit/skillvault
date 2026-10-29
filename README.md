@@ -428,8 +428,10 @@ Git snapshot and worktree checks use a temporary repository, never the user's wo
 with local `origin/develop`, the remote's default branch (`origin/HEAD`), or the configured upstream,
 so committed-ahead work is included with working changes, and a feature branch is reviewed whole,
 as its PR would be. Without any of these refs it reports
-working-changes-only coverage. If a completed first pass finds nothing new compared with the last
-compatible report, it makes one fresh independent pass over the whole selected repository and
+working-changes-only coverage. The whole-repository Full pass is off by default: ask for it with
+"full pass", "both on full", or `broad`, or set `runner.fullPass: true` for a project. When it's on
+and a completed first pass finds nothing new compared with the last compatible report, it makes one
+fresh independent pass over the whole selected repository and
 keeps supported findings from both. Ordinary Review stays change-scoped;
 Fresh keeps the same permissions and budgets, with inadequate coverage reported as blocked.
 The [review guide](skills/planning/harness-review/references/workflow.md) explains exact
@@ -441,18 +443,20 @@ keeping the original baseline and restrictions. Superseded findings remain in th
 current verdict. Persistent edits return `Partial`; pinned PR snapshots and worker errors do not retry.
 
 Reviewers report at the `blocking` level by default: only what blocks merging the change or completing
-its task, with the Full pass looking only for what the change breaks elsewhere. `/harness-review broad`
-(or `/pr-review broad`, or a saved PR `reviewLevel`) reports every issue with evidence,
-including minor and pre-existing ones, and audits the whole repository. Development reviews use
+its task, with the Full pass, when on, looking only for what the change breaks elsewhere.
+`/harness-review broad` (or `/pr-review broad`, or a saved PR `reviewLevel`) reports every issue with
+evidence, including minor and pre-existing ones, and turns the Full pass on to audit the whole
+repository. Development reviews use
 `blocking` unless the task was started with `/harness-dev broad <task>`, which also raises that
 task's unit tests to broad. Saved settings and run records that use the level's former name read as
 `blocking`. Review Levels in the
 [runtime guide](skills/planning/harness-runtime/references/runtime.md#review-levels) defines both.
 
 The review coordinator keeps the request open across findings checkpoints: hand findings to the
-existing dev/proposal workflow, let dev fix and validate, then repeat Changes -> Full until no
-supported unfixed issues remain. Each script round releases the run lock for dev. No new findings
-only triggers Full; it does not mean clean. Recheck older issues, including Full findings outside
+existing dev/proposal workflow, let dev fix and validate, then repeat the round, Changes and then
+Full when it's on, until no supported unfixed issues remain. Each script round releases the run lock
+for dev. With the Full pass on, no new findings only triggers it; it does not mean clean. Recheck
+older issues, including Full findings outside
 the diff. Do not launch another fixer or repeat unchanged snapshots while waiting. Existing budgets,
 permissions, failures, and pause/stop requests still apply; unavailable fixes remain pending.
 

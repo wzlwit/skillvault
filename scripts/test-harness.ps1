@@ -609,6 +609,8 @@ try {
     $config.runner.maxMinutes = 2
     $config.runner.maxCredits = 1
     $config.runner.secondReviewer = $true
+    # The Full pass is off by default; these fixtures turn it on to cover it, and the default has its own checks.
+    $config.runner | Add-Member -NotePropertyName fullPass -NotePropertyValue $true -Force
     $config.runner.maxTasksPerCycle = 3
     $config.runner.workspaceMode = 'current'
     $config.runner.allowedTools = @('write')
@@ -857,8 +859,8 @@ try {
     $phasesBefore = $script:phases.Count
     $quickReview = Invoke-HarnessReview $paths -Scope 'Changes-only fixture' -ChangesOnly
     $quickRun = @((Read-HarnessState $paths).runs | Where-Object { $_.report -ceq $quickReview.report })
-    if ($quickReview.status -cne 'clean' -or $quickReview.passes -ne 1 -or $quickReview.complete -or -not $quickReview.changesOnly -or ($script:phases[$phasesBefore..($script:phases.Count - 1)] -join ',') -cne 'Review' -or
-        [IO.File]::ReadAllText($quickReview.report) -notmatch 'Full pass was skipped' -or -not $quickRun[0].review.changesOnly) { throw 'A changes-only review ran the Full pass or claimed to be complete.' }
+    if ($quickReview.status -cne 'clean' -or $quickReview.passes -ne 1 -or -not $quickReview.complete -or -not $quickReview.changesOnly -or $quickReview.fullPass -or ($script:phases[$phasesBefore..($script:phases.Count - 1)] -join ',') -cne 'Review' -or
+        [IO.File]::ReadAllText($quickReview.report) -notmatch 'Full pass was skipped' -or -not $quickRun[0].review.changesOnly) { throw 'A changes-only review ran the Full pass that the project turns on, or did not complete on its clean Changes pass.' }
     function Get-HarnessSnapshot { param($Paths, $Config, $Workspace, $BaseRef); '{"head":"fixture-head","base":"fixture-head","diff":"","untracked":[]}' }
     $phasesBefore = $script:phases.Count
     $auditReview = Invoke-HarnessReview $paths -Scope 'No-change audit fixture'
@@ -868,6 +870,31 @@ try {
     $phasesBefore = $script:phases.Count
     $nothingToReview = Invoke-HarnessReview $paths -Scope 'No-change quick fixture' -ChangesOnly
     if ($nothingToReview.status -cne 'NoChanges' -or @((Read-HarnessState $paths).runs).Count -ne $runsBefore -or $script:phases.Count -ne $phasesBefore) { throw 'A changes-only review with no changes started a reviewer or recorded a run.' }
+    # By default the Full pass is off: only a request, the broad level, or runner.fullPass turns it on.
+    $offConfig = $config | ConvertTo-Json -Depth 20 | ConvertFrom-Json
+    $offConfig.runner.PSObject.Properties.Remove('fullPass')
+    Write-HarnessJson $paths.Config $offConfig
+    try {
+        $emptyDefault = Invoke-HarnessReview $paths -Scope 'No-change default fixture'
+        if ($emptyDefault.status -cne 'NoChanges' -or $emptyDefault.message -notmatch 'full pass' -or @((Read-HarnessState $paths).runs).Count -ne $runsBefore -or $script:phases.Count -ne $phasesBefore) { throw 'A default review with no changes started a reviewer instead of reporting no changes.' }
+        function Get-HarnessSnapshot { param($Paths, $Config, $Workspace, $BaseRef); '{"head":"fixture-head","base":"fixture-head","diff":"fixture change","untracked":[]}' }
+        $levelsBefore = @($script:reviewTaskLevels)
+        foreach ($case in @(
+                @{ name = 'default'; options = @{}; phases = 'Review' }
+                @{ name = 'full pass'; options = @{ FullPass = $true }; phases = 'Review,Fresh' }
+                @{ name = 'both on full'; options = @{ FullPanel = $true }; phases = 'Review,Fresh' }
+                @{ name = 'broad'; options = @{ ReviewLevel = 'broad' }; phases = 'Review,Fresh' })) {
+            $phasesBefore = $script:phases.Count
+            $options = $case.options
+            $caseReview = Invoke-HarnessReview $paths -Scope "Full pass $($case.name) fixture" @options
+            $caseRun = @((Read-HarnessState $paths).runs | Where-Object { $_.report -ceq $caseReview.report })
+            $ran = $script:phases[$phasesBefore..($script:phases.Count - 1)] -join ','
+            if ($caseReview.status -cne 'clean' -or -not $caseReview.complete -or $ran -cne $case.phases -or $caseReview.fullPass -ne ($case.phases -cne 'Review') -or $caseRun[0].review.fullPass -ne $caseReview.fullPass) { throw "A $($case.name) review ran the wrong passes: $ran" }
+            if ($case.name -ceq 'default' -and [IO.File]::ReadAllText($caseReview.report) -notmatch 'The Full pass was off') { throw 'A default review report did not say the Full pass was off.' }
+        }
+        $script:reviewTaskLevels = $levelsBefore
+    }
+    finally { Write-HarnessJson $paths.Config $config }
     function Get-HarnessSnapshot { param($Paths, $Config, $Workspace, $BaseRef); '{"head":"fixture-head","base":"fixture-head","diff":"fixture change","untracked":[]}' }
     Assert-HarnessFailure { & $dispatcher -ProjectPath $fixtureRoot -Action Status -ChangesOnly } 'ChangesOnly applies only'
     if ($review.baseline.reference -cne 'fixture-upstream' -or [System.IO.File]::ReadAllText($review.report) -notmatch 'Base commit: fixture-base') { throw 'Independent review did not report its selected comparison baseline.' }
@@ -884,6 +911,8 @@ try {
     Assert-HarnessFailure { & $dispatcher -ProjectPath $fixtureRoot -Action Status -ReviewLevel broad } 'ReviewLevel applies only'
     Assert-HarnessFailure { & $dispatcher -ProjectPath $fixtureRoot -Action Status -FullPanel } 'FullPanel applies only'
     Assert-HarnessFailure { & $dispatcher -ProjectPath $fixtureRoot -Action Dev -FullPanel } 'needs the task it applies to'
+    Assert-HarnessFailure { & $dispatcher -ProjectPath $fixtureRoot -Action Status -FullPass } 'FullPass applies only'
+    Assert-HarnessFailure { & $dispatcher -ProjectPath $fixtureRoot -Action Dev -FullPass } 'needs the task it applies to'
     if ($review.reviewLevel -cne 'blocking' -or [IO.File]::ReadAllText($review.report) -notmatch 'Review level: blocking' -or @($script:reviewTaskLevels | Where-Object { $_ -cne 'blocking' }).Count) { throw 'Development and standalone reviews did not default to the blocking level.' }
     $broadReview = Invoke-HarnessReview $paths -ReviewLevel broad
     $broadRun = @((Read-HarnessState $paths).runs | Where-Object { $_.report -ceq $broadReview.report })
@@ -1164,6 +1193,7 @@ try {
     $fullPanelConfig.runner | Add-Member -NotePropertyName fullPanel -NotePropertyValue $true -Force
     if ((@((Get-HarnessReviewPanel (Resolve-HarnessRunnerConfig $config $sequentialContext)).fullPass) -join ',') -cne 'claude-opus-fixture-2' -or (@((Get-HarnessReviewPanel (Resolve-HarnessRunnerConfig $fullPanelConfig $sequentialContext)).fullPass) -join ',') -cne 'gpt-fixture-2,claude-opus-fixture-2') { throw 'The panel view did not show which reviewers the Full pass runs.' }
     Assert-HarnessFailure { Assert-HarnessRunnerConfig ([pscustomobject]@{ runner = [pscustomobject]@{ command = 'copilot'; model = 'auto'; reasoningEffort = 'auto'; fullPanel = 'yes' } }) } 'runner.fullPanel must be true or false'
+    Assert-HarnessFailure { Assert-HarnessRunnerConfig ([pscustomobject]@{ runner = [pscustomobject]@{ command = 'copilot'; model = 'auto'; reasoningEffort = 'auto'; fullPass = 'yes' } }) } 'runner.fullPass must be true or false'
     Write-HarnessJson $paths.Config $fullPanelConfig
     try {
         $panelCalls.Clear()
@@ -1354,6 +1384,38 @@ try {
     $bothOutcome = Invoke-HarnessCycle $paths -RunnerContext $sequentialContext
     $bothRuns = @((Read-HarnessState $paths).runs | Where-Object taskId -CEQ $bothTask.id)
     if ($bothOutcome.status -cne 'Completed' -or (($loopFixture.Calls | ForEach-Object { "$($_.phase):$($_.model)" }) -join ',') -cne 'Fresh:gpt-fixture-2,Fresh:claude-opus-fixture-2' -or $bothRuns[-1].model -cne 'gpt-fixture-2 + claude-opus-fixture-2') { throw 'A task that asked for both reviewers did not run them both in its Full pass.' }
+    # By default a clean Changes pass completes the task. A request saved on the task turns the Full pass on,
+    # and a task left waiting at the Full pass after it was turned off completes without a reviewer.
+    $offConfig = $config | ConvertTo-Json -Depth 20 | ConvertFrom-Json
+    $offConfig.runner.PSObject.Properties.Remove('fullPass')
+    Write-HarnessJson $paths.Config $offConfig
+    try {
+        $loopFixture.Calls.Clear()
+        $offTask = Add-HarnessTask -Paths $paths -Title 'Default review' -Description 'Complete on the Changes pass' -Scope 'off.txt' -Acceptance 'The Changes review is clean' -Kind fix -Risk Low
+        $null = Queue-HarnessTask $paths $offTask.id 'now'
+        $offOutcome = Invoke-HarnessCycle $paths
+        $offRuns = @((Read-HarnessState $paths).runs | Where-Object taskId -CEQ $offTask.id)
+        if ($offOutcome.status -cne 'Completed' -or (& $loopPhases) -cne 'Develop,Review' -or ($offRuns.phase -join ',') -cne 'Develop,Validate') { throw "A default development review ran the Full pass: $(& $loopPhases)" }
+        $loopFixture.Calls.Clear()
+        $fullTask = Add-HarnessTask -Paths $paths -Title 'Full pass task' -Description 'Ask for the Full pass' -Scope 'full.txt' -Acceptance 'The Full pass runs' -Kind fix -Risk Low
+        $null = Queue-HarnessTask $paths $fullTask.id 'next' -FullPass
+        $null = Queue-HarnessTask $paths $fullTask.id 'now'
+        if ((Get-HarnessTask (Read-HarnessState $paths) $fullTask.id).fullPass -ne $true) { throw 'Queuing a task without deciding its Full pass dropped the saved request.' }
+        $fullOutcome = Invoke-HarnessCycle $paths
+        if ($fullOutcome.status -cne 'Completed' -or (& $loopPhases) -cne 'Develop,Review,Fresh') { throw "A task that asked for the Full pass did not run it: $(& $loopPhases)" }
+        $clearTask = Add-HarnessTask -Paths $paths -Title 'Cleared Full pass' -Description 'A later request without it' -Scope 'clear.txt' -Acceptance 'The default applies' -Kind fix -Risk Low
+        $null = Queue-HarnessTask $paths $clearTask.id 'next' -FullPass
+        $null = Queue-HarnessTask $paths $clearTask.id 'next' -FullPass:$false
+        if ((Get-HarnessTask (Read-HarnessState $paths) $clearTask.id).PSObject.Properties.Match('fullPass').Count) { throw 'A later development request without the Full pass kept the earlier request.' }
+        $loopFixture.Calls.Clear()
+        $waitingTask = Add-HarnessTask -Paths $paths -Title 'Waiting at the Full pass' -Description 'Reached the Full pass before it was turned off' -Scope 'waiting.txt' -Acceptance 'Complete without the Full pass' -Kind fix -Risk Low
+        $waitingSnapshot = Get-HarnessSnapshot $paths $offConfig $fixtureRoot
+        $null = Update-HarnessState $paths { param($saved); $waiting = Get-HarnessTask $saved $waitingTask.id; $waiting.phase = 'Fresh'; $waiting.snapshot = $waitingSnapshot }
+        $null = Queue-HarnessTask $paths $waitingTask.id 'now'
+        $waitingOutcome = Invoke-HarnessCycle $paths
+        if ($waitingOutcome.status -cne 'Completed' -or $loopFixture.Calls.Count -ne 0) { throw 'A task waiting at the Full pass after it was turned off started a reviewer.' }
+    }
+    finally { Write-HarnessJson $paths.Config $config }
     # Real tests: a failed test is a fix round, the same failure after a fix stops, afterReview runs on the reviewed
     # code, scheduled runs keep the environment rule, and background tests run while the first review reads the code.
     $savedSnapshotFunction = ${function:Get-HarnessSnapshot}
@@ -1413,6 +1475,17 @@ try {
         $fixRuns = @((Read-HarnessState $paths).runs | Where-Object taskId -CEQ $fixTask.id)
         if ($fixOutcome.status -cne 'Completed' -or ($testLoop.Calls -join ',') -cne 'Develop,test:unit,Review,Develop,test:unit,Review,Fresh,test:smoke' -or ($fixRuns.phase -join ',') -cne 'Develop,Validate,Develop,Validate,Fresh,AfterReview') { throw "A failed test did not return to the developer, or the after-review test did not run once on the reviewed code: $($testLoop.Calls -join ',') / $($fixRuns.phase -join ',')" }
         if ((@($fixSaved.testsRun) -join ',') -cne 'flow unit (local),flow ppe-smoke (local)' -or [IO.File]::ReadAllText($fixOutcome.report) -notmatch 'Tests run: flow unit \(local\); flow ppe-smoke \(local\)' -or [IO.File]::ReadAllText($fixRuns[1].report) -notmatch 'Assertion failed in unit') { throw 'The task or its reports did not record which tests ran and how they failed.' }
+        # Without the Full pass, the after-review test runs once right after the clean Changes pass.
+        $testLoop.Calls.Clear()
+        $offTestConfig = $testLoopConfig | ConvertTo-Json -Depth 20 | ConvertFrom-Json
+        $offTestConfig.runner.PSObject.Properties.Remove('fullPass')
+        Write-HarnessJson $paths.Config $offTestConfig
+        $offTestTask = Add-HarnessTask -Paths $paths -Title 'After-review test without the Full pass' -Description 'Test after the Changes pass' -Scope 'off-tests.txt' -Acceptance 'Declared tests pass' -Kind fix -Risk Low
+        $null = Queue-HarnessTask $paths $offTestTask.id 'now'
+        $offTestOutcome = Invoke-HarnessCycle $paths
+        $offTestRuns = @((Read-HarnessState $paths).runs | Where-Object taskId -CEQ $offTestTask.id)
+        Write-HarnessJson $paths.Config $testLoopConfig
+        if ($offTestOutcome.status -cne 'Completed' -or ($testLoop.Calls -join ',') -cne 'Develop,test:unit,Review,test:smoke' -or ($offTestRuns.phase -join ',') -cne 'Develop,Validate,AfterReview') { throw "Without the Full pass, the after-review test did not run once after the clean Changes pass: $($testLoop.Calls -join ',') / $($offTestRuns.phase -join ',')" }
         $testLoop.Calls.Clear()
         $testLoop.Fail = @{ unit = 2 }
         $repeatTask = Add-HarnessTask -Paths $paths -Title 'Repeated test failure' -Description 'The fix leaves the test failing' -Scope 'repeat.txt' -Acceptance 'Stop for a decision' -Kind fix -Risk Low

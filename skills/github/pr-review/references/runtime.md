@@ -63,6 +63,7 @@ Nothing needs configuring before the first review. Without saved settings, PR re
 | `allowScheduled` | `false`; set it to `true` before timer setup |
 | `securityReview` | `false`; "security" in a request (`-SecurityReview`) adds it for one run |
 | `reviewLevel` | `blocking`: report only what blocks merging the PR; `broad` reports every issue with evidence. The `broad` menu word or the plain word "blocking" (`-ReviewLevel`) chooses either for one run |
+| `fullPass` | `false`: the whole-repository Full pass is off; `broad` or "full pass" in a request (`-FullPass`) turns it on for one run |
 
 To override any of these, use a JSON definition with `runner`, `prReview`, or both, preview it, then
 apply the exact approved contents. Every field is optional; omitted fields keep their defaults. A
@@ -130,6 +131,11 @@ or authorization. Choose them with the owner before writing/applying a real defi
   `Unchanged` treats an earlier broad review of the same snapshot as covering a blocking request;
   results saved before levels existed count as broad, and a saved or recorded `critical` reads as
   `blocking`.
+- `fullPass` turns the Full pass on for watchlist and timer runs (Full Pass in the harness runtime
+  guide); "full pass" in a request (`-FullPass`) or `broad` turns it on for one run without changing
+  settings, and timer ticks take no override. Results and reports record whether it ran. `Unchanged`
+  treats an earlier review of the same snapshot with the Full pass as covering a request without it;
+  results saved before it was off by default count as having run it.
 - Enterprise hosts require explicit `githubHosts` entries and an existing authenticated `gh`
   account on each host. There is no implicit host/account discovery or Azure DevOps adapter.
 - An authenticated `gh` read uses only fixed REST GET endpoints and a fixed GraphQL query.
