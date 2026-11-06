@@ -27,6 +27,7 @@ param(
     [switch]$ChangesOnly,
     [switch]$FullPass,
     [switch]$FullPanel,
+    [switch]$ReviewAnyway,
     [switch]$ConfirmStopped,
     [switch]$ConfirmLocation,
     [string]$Flow,
@@ -73,6 +74,8 @@ if ($ReviewLevel -and $Action -eq 'Dev' -and -not $Id -and -not $Title -and -not
 if ($FullPass -and $Action -notin @('Review', 'Dev')) { throw 'FullPass applies only to Review and to Dev for a named task.' }
 if ($FullPass -and $Action -eq 'Dev' -and -not $Id -and -not $Title -and -not $FollowUpOf) { throw 'FullPass on Dev needs the task it applies to: an Id or a new task.' }
 if ($FullPanel -and $Action -notin @('Review', 'Dev')) { throw 'FullPanel applies only to Review and to Dev for a named task.' }
+if ($ReviewAnyway -and $Action -notin @('Review', 'Dev')) { throw 'ReviewAnyway applies only to Review and to Dev for a named task.' }
+if ($ReviewAnyway -and $Action -eq 'Dev' -and -not $Id -and -not $Title -and -not $FollowUpOf) { throw 'ReviewAnyway on Dev needs the task it applies to: an Id or a new task.' }
 if ($FullPanel -and $Action -eq 'Dev' -and -not $Id -and -not $Title -and -not $FollowUpOf) { throw 'FullPanel on Dev needs the task it applies to: an Id or a new task.' }
 if ($ConfirmLocation -and $Action -ne 'Init') { throw 'ConfirmLocation applies only to Init.' }
 if ($AllMonitors -and ($Action -ne 'Monitor' -or $MonitorName)) { throw 'AllMonitors requires Monitor without a single MonitorName.' }
@@ -301,7 +304,7 @@ switch ($Action) {
         finally { $runLock.Dispose() }
     }
     'Review' {
-        $result = Invoke-HarnessReview -Paths $paths -Scope $(if ($Scope) { $Scope } else { 'Current changes' }) -BaseRef $BaseRef -SecurityReview:$SecurityReview -ReviewLevel $(if ($ReviewLevel) { $ReviewLevel } else { 'blocking' }) -RepositoryRef $RepositoryRef -RunnerContext $RunnerContext -ChangesOnly:$ChangesOnly -FullPass:$FullPass -FullPanel:$FullPanel
+        $result = Invoke-HarnessReview -Paths $paths -Scope $(if ($Scope) { $Scope } else { 'Current changes' }) -BaseRef $BaseRef -SecurityReview:$SecurityReview -ReviewLevel $(if ($ReviewLevel) { $ReviewLevel } else { 'blocking' }) -RepositoryRef $RepositoryRef -RunnerContext $RunnerContext -ChangesOnly:$ChangesOnly -FullPass:$FullPass -FullPanel:$FullPanel -ReviewAnyway:$ReviewAnyway
         $result | ConvertTo-Json -Depth 10
         if ($result.status -in @('Failed', 'NeedsRecovery', 'blocked')) { throw "Independent review $($result.status). Inspect its recorded outcome and report." }
     }
@@ -327,6 +330,7 @@ switch ($Action) {
                 $repositoryOptions.ReviewLevel = $(if ($ReviewLevel) { $ReviewLevel } else { 'blocking' })
                 $repositoryOptions.FullPass = [bool]$FullPass
                 $repositoryOptions.FullPanel = [bool]$FullPanel
+                $repositoryOptions.ReviewAnyway = [bool]$ReviewAnyway
             }
             $queued = Queue-HarnessTask -Paths $paths -Id $Id -Mode $queueMode -UseWorkingChanges:$UseWorkingChanges @repositoryOptions
             if ($Mode -eq 'next' -or $queued.status -in @('AlreadyRunning', 'QueuedForWorker', 'ReleasedFromWorker')) { $queued | ConvertTo-Json; return }

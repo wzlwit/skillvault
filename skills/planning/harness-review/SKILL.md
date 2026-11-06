@@ -1,9 +1,9 @@
 ---
 name: harness-review
-description: "[broad|list] Alone: review your changes. Text: review that scope. Review current-project changes for blocking issues with two independent reviewers, GPT and Claude Opus, restarting when local files change; a whole-repository Full pass runs only when asked, and broad adds it and also reports minor and existing issues. Shorthand: /hn-review. Overlaps with pr-review on general review, differential-review on security, and harness-dev, whose development loop runs the same passes; PR URLs delegate to pr-review."
+description: "[broad|list] Alone: review your changes. Text: review that scope. Review current-project changes for blocking issues with two independent reviewers, GPT and Claude Opus, restarting when local files change and skipping rounds that change only documentation or configuration; a whole-repository Full pass runs only when asked, and broad adds it and also reports minor and existing issues. Shorthand: /hn-review. Overlaps with pr-review on general review, differential-review on security, and harness-dev, whose development loop runs the same passes; PR URLs delegate to pr-review."
 metadata:
   author: wzlwit
-  version: "7.0.0"
+  version: "8.0.0"
 argument-hint: "[broad|list] [<scope>]"
 ---
 
@@ -11,7 +11,8 @@ argument-hint: "[broad|list] [<scope>]"
 
 `/harness-review` reviews current-project changes with two independent reviewers. A
 whole-repository Full pass, by the Claude Opus reviewer alone by default, follows only when it's
-turned on and no new findings appear. PR URLs delegate to `pr-review`.
+turned on and no new findings appear. A round that changed only documentation or configuration
+starts no Changes reviewer. PR URLs delegate to `pr-review`.
 `/hn-review` is chat shorthand for the same topic, not a separate skill or folder.
 
 Menu words are the actions in brackets. A first word that is a menu word, or exactly 3 or 4 leading letters
@@ -23,15 +24,19 @@ confirmations. This is conversational routing, not script argument parsing.
 | Input | What happens |
 | --- | --- |
 | Alone | [Reviews](./references/workflow.md) the current changes now, ahead commits plus working changes, at the `blocking` level |
-| Text | [Reviews](./references/workflow.md) that scope at `blocking`: a folder or file, a commit range such as "since main", a task ID, "security", "full pass", "both on full", or "changes only"; a PR URL goes to `pr-review` |
+| Text | [Reviews](./references/workflow.md) that scope at `blocking`: a folder or file, a commit range such as "since main", a task ID, "security", "full pass", "both on full", "changes only", or "review anyway"; a PR URL goes to `pr-review` |
 | `broad [<scope>]` | [Reviews](./references/workflow.md) at the `broad` level, which also reports minor and existing issues and adds the Full pass, auditing the whole repository |
 | `list` | Shows past review results; starts nothing |
 
 - **Alone** acts at once, because the target is fixed: committed work ahead of the comparison branch
   plus staged, unstaged, and untracked changes, at `blocking`, with two reviewers in the Changes pass
-  and no Full pass unless the project turns it on (`runner.fullPass: true`). The loop runs until
-  nothing more is found. Its report ends with one line naming the text uses: a folder, file, commit
-  range, task ID, "security", or "full pass" to review that way, or a PR URL.
+  and no Full pass unless the project turns it on (`runner.fullPass: true`). When everything that
+  changed since the last review is documentation or configuration, it starts no Changes reviewer and
+  returns `Skipped` with the changed files, or runs a turned-on Full pass alone (owner decision,
+  2026-11-05); Skipped Rounds in the runtime guide lists the file types and what still gets reviewed,
+  such as AI instruction files. The loop runs until nothing more is found. Its report ends with one
+  line naming the text uses: a folder, file, commit range, task ID, "security", "full pass", or
+  "review anyway" to review that way, or a PR URL.
 - **Text** follows the same [review procedure](./references/workflow.md) at `blocking`. A folder or
   file guides the reviewers (`-Scope`). "since <ref>" sets the comparison base (`-BaseRef`), and
   "since HEAD" reviews only working changes. A task ID names that task as the scope and reviews its
@@ -39,11 +44,12 @@ confirmations. This is conversational routing, not script argument parsing.
   repository (`-RepositoryRef`). "security" adds the security methodology to the same passes
   (`-SecurityReview`). The Full pass is off by default (owner decision, 2026-10-28): "full pass"
   adds it (`-FullPass`), and "both on full" adds it with the GPT reviewer too (`-FullPanel`).
-  "changes only" (`-ChangesOnly`) skips it even when the project turns it on. Words combine, as in
-  "security since main" or "broad changes only". With no changes at all, a review without the Full
-  pass returns `NoChanges` and starts no reviewer; with it, the Full pass runs alone, so `broad` on
-  a clean tree audits the whole repository. A PR URL loads `pr-review` with the same level,
-  security, and Full pass request.
+  "changes only" (`-ChangesOnly`) skips it even when the project turns it on. "review anyway"
+  (`-ReviewAnyway`) runs the Changes review even when only documentation or configuration changed.
+  Words combine, as in "security since main" or "broad changes only". With no changes at all, a
+  review without the Full pass returns `NoChanges` and starts no reviewer; with it, the Full pass
+  runs alone, so `broad` on a clean tree audits the whole repository. A PR URL loads `pr-review`
+  with the same level, security, and Full pass request.
 - **`broad`** maps to `-ReviewLevel broad` for the current changes or the scope that follows it.
   `blocking` reports only what blocks merging the change or completing its task, and its Full pass,
   when on, looks only for what the change breaks elsewhere. `broad` reports every issue with
@@ -57,7 +63,8 @@ confirmations. This is conversational routing, not script argument parsing.
 - The coordinator repeats the round, Changes and then Full when it's on, until no supported unfixed
   issues remain: findings go through the existing dev/proposal workflow, and review resumes after
   fixes without a new request. Only a stable clean round with no outstanding issues completes the
-  request; unavailable fixes, access, or validation leave it pending or blocked.
+  request; a `Skipped` round, whose earlier findings were all in the files it changed, counts as
+  clean. Unavailable fixes, access, or validation leave it pending or blocked.
 - Keep snapshots, read-only permissions, and up to two passes per snapshot. Inadequate coverage is
   blocked, not clean. Local edits restart review up to twice; continued edits return `Partial`.
 - The Changes pass has two independent read-only reviewers: the strongest allowed GPT and Claude Opus
@@ -67,9 +74,10 @@ confirmations. This is conversational routing, not script argument parsing.
   request asks for both ("both on full") or the project sets `runner.fullPanel: true`; without a
   usable Claude Opus model, the GPT reviewer runs it. The session's or project's own model never
   replaces them. When the session runs the reviewers as its own sub-agents, it sets each one's model
-  and `max` effort explicitly instead of leaving the host's default, runs the Full pass only when
-  it's on, and then starts only the Claude Opus sub-agent unless both are asked for. It starts them
-  in the background as read-only
+  and `max` effort explicitly instead of leaving the host's default, starts no Changes reviewer for a
+  round that changed only documentation or configuration unless asked to review anyway, runs the Full
+  pass only when it's on, and then starts only the Claude Opus sub-agent unless both are asked for.
+  It starts them in the background as read-only
   general-purpose agents, never the Code Review agent type, whose launch switches the whole chat so
   that switching back stops every running agent. It then ends its turn and reads each result as it
   arrives, so it can answer the user meanwhile. `/harness-setup policy list limits` lists the

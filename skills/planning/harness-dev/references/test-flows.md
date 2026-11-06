@@ -115,7 +115,9 @@ The harness runs tests; the developer AI does not choose them. Only these lists 
 task's development loop:
 
 - `afterDev` flows run after `runner.validationCommands`, at the same time as the first (Changes)
-  review pass, on the same code. With neither declared, the harness runs the repository test entry
+  review pass, on the same code; they still run in a round that changed only documentation or
+  configuration, which skips the Changes review. With neither declared, the harness runs the
+  repository test entry
   (`scripts/test-all.ps1`, then `npm test`) and stops as Blocked when none exists. A failed test goes
   back to the developer with the end of its output, together with any review findings, as one fix
   round; the review completes, or the Full pass when it's on starts, only when both are clean. If

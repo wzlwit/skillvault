@@ -434,6 +434,11 @@ and a completed first pass finds nothing new compared with the last compatible r
 fresh independent pass over the whole selected repository and
 keeps supported findings from both. Ordinary Review stays change-scoped;
 Fresh keeps the same permissions and budgets, with inadequate coverage reported as blocked.
+A round that changed only documentation or configuration since the last review starts no Changes
+reviewer, in `/harness-review` and in the `/harness-dev` loop, whose tests still run; AI instruction
+files, dependency manifests, continuous integration and delivery (CI/CD) pipelines, and `.env` files
+are still reviewed, and "review anyway" reviews regardless. See the
+[skipped rounds ADR](docs/plans/decisions/2026-11-05-skip-documentation-and-configuration-rounds-adr.md).
 The [review guide](skills/planning/harness-review/references/workflow.md) explains exact
 newness matching, scope, and the optional security review, which composes
 [differential-review](skills/security/differential-review/SKILL.md) on request. General review and

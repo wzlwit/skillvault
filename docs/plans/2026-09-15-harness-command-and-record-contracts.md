@@ -341,6 +341,13 @@ updates do not refresh installed copies or configure live workflows.
   existing dev/proposal workflow; after fixes, the review coordinator repeats from Changes until no
   supported unfixed issues remain and the round, Full included when on, is clean. Review itself
   neither fixes code nor starts another fixer.
+- A local round that changed only documentation or configuration starts no Changes reviewer: a
+  standalone review returns `Skipped`, or runs a turned-on Full pass alone, and a development round
+  runs only its tests. AI instruction
+  files, dependency manifests and lock files, continuous integration and delivery (CI/CD) pipelines,
+  and `.env` files are reviewed like code, an earlier finding in a file the round didn't change keeps
+  the review, and "review anyway" reviews regardless; `/pr-review` never skips. See the
+  [skipped rounds ADR](decisions/2026-11-05-skip-documentation-and-configuration-rounds-adr.md).
 - Development runs the same loop with its own developer: Changes findings start an automatic fix
   round (developer, validation, Changes again), and a clean Changes pass completes the review, or,
   with the Full pass on, gets one Full pass, whose in-scope

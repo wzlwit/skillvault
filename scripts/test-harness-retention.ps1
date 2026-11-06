@@ -125,6 +125,26 @@ try {
     $state.monitoring.candidates[0].disposition = 'Resolved'
     $closedDiscovery = Get-HarnessHistoryCleanupPlan $paths $config $state $now
     if ('parent' -notin $closedDiscovery.candidates.id -or 'child' -notin $closedDiscovery.candidates.id) { throw 'Resolved unlinked candidates permanently bypassed retention.' }
+    # Each comparable standalone review keeps its latest completed result and its latest attempt, so a later review that
+    # didn't finish still keeps the next round reviewed.
+    $comparison = [pscustomobject]@{ scope = 'Current changes'; baseline = [pscustomobject]@{ reference = 'origin/main'; commit = 'fixture-base' }; repositoryRef = ''; repositoryRoot = ''; securityReview = $false; reviewLevel = 'blocking' }
+    foreach ($entry in @(@('review-old', 'clean', 103), @('review-baseline', 'findings', 102), @('review-interrupted', 'Interrupted', 101))) {
+        $report = Join-Path $history ($entry[0] + '.md')
+        [IO.File]::WriteAllText($report, 'Review evidence')
+        $state.runs += [pscustomobject]@{ id = $entry[0]; taskId = ''; phase = 'Review'; status = $entry[1]; finishedAt = $now.AddDays(-$entry[2]).ToString('o'); report = $report; review = $comparison }
+    }
+    $reviewPlan = Get-HarnessHistoryCleanupPlan $paths $config $state $now
+    if ('review-old' -notin $reviewPlan.candidates.id -or 'review-baseline' -notin $reviewPlan.protected.id -or 'review-interrupted' -notin $reviewPlan.protected.id) { throw 'Retention dropped the latest comparable review or a later attempt that keeps the next round reviewed.' }
+    # Scopes that differ only in case are different reviews, as the runner compares them.
+    foreach ($entry in @(@('upper-clean', 'clean', 106, 'docs/API.md'), @('upper-interrupted', 'Interrupted', 105, 'docs/API.md'), @('lower-clean', 'clean', 104, 'docs/api.md'))) {
+        $report = Join-Path $history ($entry[0] + '.md')
+        [IO.File]::WriteAllText($report, 'Review evidence')
+        $caseComparison = $comparison | Select-Object *
+        $caseComparison.scope = $entry[3]
+        $state.runs += [pscustomobject]@{ id = $entry[0]; taskId = ''; phase = 'Review'; status = $entry[1]; finishedAt = $now.AddDays(-$entry[2]).ToString('o'); report = $report; review = $caseComparison }
+    }
+    $casePlan = Get-HarnessHistoryCleanupPlan $paths $config $state $now
+    if (@('upper-clean', 'upper-interrupted', 'lower-clean' | Where-Object { $_ -notin $casePlan.protected.id }).Count) { throw 'Retention merged review scopes that differ only in case.' }
     Write-Output 'Retention checks passed: aggregate defaults, age/count limits, no-write preview, protected evidence, coordinated pruning, and active-run isolation.'
 }
 finally {

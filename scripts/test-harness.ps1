@@ -429,6 +429,10 @@ try {
     if ((Get-HarnessTask (Read-HarnessState $commandPaths) $queuedFollowUp.taskId).fullPanel -ne $true) { throw 'A development request for both reviewers in the Full pass was not saved on its task.' }
     $null = & $dispatcher -ProjectPath $commandProject -Action Dev -Id $queuedFollowUp.taskId -Mode next
     if ((Get-HarnessTask (Read-HarnessState $commandPaths) $queuedFollowUp.taskId).PSObject.Properties.Match('fullPanel').Count) { throw 'A later development request without both reviewers kept the earlier request.' }
+    $null = & $dispatcher -ProjectPath $commandProject -Action Dev -Id $queuedFollowUp.taskId -ReviewAnyway -Mode next
+    if ((Get-HarnessTask (Read-HarnessState $commandPaths) $queuedFollowUp.taskId).reviewAnyway -ne $true) { throw 'A development request to review anyway was not saved on its task.' }
+    $null = & $dispatcher -ProjectPath $commandProject -Action Dev -Id $queuedFollowUp.taskId -Mode next
+    if ((Get-HarnessTask (Read-HarnessState $commandPaths) $queuedFollowUp.taskId).PSObject.Properties.Match('reviewAnyway').Count) { throw 'A later development request kept the earlier "review anyway".' }
     $sourceTask = Add-HarnessTask -Paths $identityPaths -Title 'Completed source task' -Description 'Original requirement' -Scope 'source' -Acceptance 'Original check' -Source 'https://example.invalid/revised'
     $null = Update-HarnessState $identityPaths { param($saved); (Get-HarnessTask $saved $sourceTask.id).status = 'Completed' }
     $revisionOnly = Add-HarnessTask -Paths $identityPaths -Title 'Same source task' -Scope 'source' -Source 'https://example.invalid/revised' -SourceRevision 'new-revision'
@@ -581,6 +585,20 @@ try {
     if (-not $dirtySnapshot.diff -or @($dirtySnapshot.untracked).Count -ne 1 -or $dirtySnapshot.untracked[0].path -cne 'extra input.txt') { throw 'Snapshot lost tracked or untracked input evidence.' }
     $combinedSnapshot = Get-HarnessSnapshot $gitPaths $gitConfig $gitProject $aheadBase.commit | ConvertFrom-Json
     if ($combinedSnapshot.diff -notmatch 'Committed ahead fixture' -or $combinedSnapshot.diff -notmatch 'User change' -or $combinedSnapshot.untracked[0].path -cne 'extra input.txt') { throw 'Ahead review did not include committed, working, and untracked changes in the same snapshot.' }
+    # Local snapshots keep Git's plain format, so a submodule log or an external diff tool can't hide a changed file.
+    $plainProject = Join-Path $fixtureRoot 'plain diff project'
+    New-Item -ItemType Directory -Path $plainProject | Out-Null
+    $null = Invoke-HarnessGit $plainProject @('init', '--quiet')
+    [IO.File]::WriteAllText((Join-Path $plainProject 'README.md'), "one`n")
+    $null = Invoke-HarnessGit $plainProject @('add', '--', 'README.md')
+    $null = Invoke-HarnessGit $plainProject @('update-index', '--add', '--cacheinfo', '160000,1111111111111111111111111111111111111111,sub')
+    $null = Invoke-HarnessGit $plainProject @('-c', 'user.name=Harness Test', '-c', 'user.email=harness@example.invalid', '-c', 'commit.gpgSign=false', '-c', ('core.hooksPath=' + (Join-Path $plainProject 'no-hooks')), 'commit', '--quiet', '-m', 'Plain diff fixture')
+    [IO.File]::WriteAllText((Join-Path $plainProject 'README.md'), "two`n")
+    $null = Invoke-HarnessGit $plainProject @('update-index', '--cacheinfo', '160000,2222222222222222222222222222222222222222,sub')
+    $null = Invoke-HarnessGit $plainProject @('config', 'diff.submodule', 'log')
+    $null = Invoke-HarnessGit $plainProject @('config', 'diff.external', 'echo external-diff-output')
+    $plainFiles = Get-HarnessSnapshotFiles (Get-HarnessSnapshot $gitPaths $gitConfig $plainProject -RepositoryRoot $plainProject)
+    if ($null -eq $plainFiles -or (@($plainFiles.Keys | Sort-Object) -join '|') -cne 'README.md|sub') { throw 'A submodule log or an external diff tool hid a changed file from a local snapshot.' }
     $gitTask.id = 'T-002'
     Assert-HarnessFailure { Get-HarnessWorkspace $gitPaths $gitConfig $gitTask } 'Uncommitted project inputs'
     $gitConfig.runner.workspaceMode = 'current'
@@ -658,6 +676,50 @@ try {
     $prName = Get-HarnessSessionName ([pscustomobject]@{ id = ''; scope = 'https://github.example/owner/repo.name/pull/2276'; untrustedInput = $true }) Review 'fixture-model' 'abcdef0123'
     $longPrName = Get-HarnessSessionName ([pscustomobject]@{ id = ''; scope = "https://github.example/owner/$('r' * 90)/pull/42"; untrustedInput = $true }) Fresh 'fixture-model' ''
     if ($prName -cne 'Review worker: Changes pass, repo.name#2276, run abcdef0 (fixture-model)' -or $longPrName -notmatch '^Review worker: Full pass, \.\.\.r+#42 \(fixture-model\)$' -or ($longPrName -replace '^Review worker: Full pass, | \(fixture-model\)$', '').Length -ne 60) { throw 'A PR review session name lost its repository and number.' }
+    # Rounds that change only documentation or configuration skip the Changes review; these files are still reviewed.
+    foreach ($exempt in @('README.md', 'docs/guide.txt', 'config/app.yaml', '.editorconfig', 'src/.gitignore', 'appsettings.Development.json')) { if (-not (Test-HarnessReviewExemptPath $exempt)) { throw "$exempt was not treated as documentation or configuration." } }
+    foreach ($reviewed in @('src/app.ps1', 'skills/x/SKILL.md', 'AGENTS.md', 'GEMINI.md', '.github/copilot-instructions.md', 'docs/a.instructions.md', '.github/prompts/x.prompt.md', '.github/chatmodes/plan.chatmode.md', '.github/agents/reviewer.md', '.claude/commands/audit.md', '.claude/agents/reviewer.md', '.clinerules/style.md', 'package.json', 'requirements-dev.txt', 'dev-requirements.txt', 'requirements/base.txt', 'collections/requirements.yml', 'pyproject.toml', 'tools/setup.cfg', 'pubspec.yaml', 'environment.yml', 'gradle/libs.versions.toml', 'gradle/wrapper/gradle-wrapper.properties', '.config/dotnet-tools.json', 'conanfile.txt', '.github/workflows/ci.yml', '.gitea/workflows/ci.yml', 'action.yml', 'tools/build/action.yaml', 'azure-pipelines.yml', 'build/azure-pipelines/product-build.yml', '.pipelines/build.yaml', '.gitlab/ci/build.yml', '.drone.yml', '.appveyor.yml', 'cloudbuild.yaml', '.env', '.env.local', 'logo.png')) { if (Test-HarnessReviewExemptPath $reviewed) { throw "$reviewed was skipped instead of reviewed." } }
+    $chunk = { param([string]$Path, [string]$Line) "diff --git a/$Path b/$Path`nindex 1..2 100644`n--- a/$Path`n+++ b/$Path`n@@ -1,2 +1,2 @@`n context`n$Line" }
+    $snapshotOf = { param([string[]]$Chunks, [string]$Base = 'skip-base') [ordered]@{ head = 'skip-head'; base = $Base; diff = ($Chunks -join "`n"); untracked = @([ordered]@{ path = 'docs/new guide.txt'; blob = 'abc' }) } | ConvertTo-Json -Depth 5 -Compress }
+    # A removed line that looks like a file header must not read as another file.
+    $readme = & $chunk 'README.md' "--- a/fake.ps1`n+changed"
+    $rename = "diff --git a/old name.md b/new name.md`nsimilarity index 100%`nrename from old name.md`nrename to new name.md"
+    $code = & $chunk 'src/app.ps1' '+Write-Output 2'
+    $docsOnly = & $snapshotOf @($readme, $rename)
+    if ((@((Get-HarnessSnapshotFiles $docsOnly).Keys | Sort-Object) -join '|') -cne 'docs/new guide.txt|new name.md|old name.md|README.md') { throw 'Snapshot files were not read from the diff headers and untracked files.' }
+    if ((@((Get-HarnessReviewSkip -Current $docsOnly -Previous '').files | Sort-Object) -join '|') -cne 'docs/new guide.txt|new name.md|old name.md|README.md') { throw 'A documentation-only change was not skippable.' }
+    $withCode = & $snapshotOf @($readme, $rename, $code)
+    if (Get-HarnessReviewSkip -Current $withCode -Previous $docsOnly) { throw 'A round that changed code was skippable.' }
+    $docsAgain = & $snapshotOf @((& $chunk 'README.md' '+changed again'), $rename, $code)
+    # A file added after another changed file doesn't make that file look changed.
+    $added = & $snapshotOf @($readme, $rename, $code, (& $chunk 'zz/settings.json' '+{}'))
+    if ((@((Get-HarnessReviewSkip -Current $added -Previous $withCode).files) -join '|') -cne 'zz/settings.json') { throw 'A file added after a changed code file made the code file look changed.' }
+    $codeFinding = [pscustomobject]@{ file = 'src/app.ps1'; line = 1; message = 'Fixture defect' }
+    $readmeFinding = [pscustomobject]@{ file = '.\README.md'; line = 1; message = 'Fixture defect' }
+    $testFinding = [pscustomobject]@{ file = ''; line = 0; source = 'test'; test = 'unit'; message = '' }
+    if ((@((Get-HarnessReviewSkip -Current $docsAgain -Previous $withCode -Findings @($readmeFinding, $testFinding)).files) -join '|') -cne 'README.md' -or
+        (Get-HarnessReviewSkip -Current $docsAgain -Previous $withCode -Findings @($codeFinding)) -or (Get-HarnessReviewSkip -Current $docsAgain -Previous $docsAgain) -or
+        (Get-HarnessReviewSkip -Current $docsAgain -Previous (& $snapshotOf @($readme, $rename, $code) 'other-base')) -or $null -ne (Get-HarnessSnapshotFiles '{"head":"h","base":"b","diff":"fixture change","untracked":[]}')) { throw 'A round was skipped despite an open code finding, no change, another base, or a diff without file headers.' }
+    # A copy made from a changed file doesn't hide that file's own later change.
+    $copyOf = "diff --git a/src/app.ps1 b/zz/example.md`nsimilarity index 90%`ncopy from src/app.ps1`ncopy to zz/example.md`n--- a/src/app.ps1`n+++ b/zz/example.md`n@@ -1 +1 @@`n-old`n+example"
+    $copied = & $snapshotOf @($readme, $code, $copyOf)
+    $copiedAgain = & $snapshotOf @((& $chunk 'README.md' '+changed again'), (& $chunk 'src/app.ps1' '+Write-Output 3'), $copyOf)
+    if (Get-HarnessReviewSkip -Current $copiedAgain -Previous $copied) { throw 'A copy made from a code file hid that file''s later change.' }
+    # A finding's file matches a changed file only with the same case, as on a case-sensitive checkout.
+    $settingsBefore = & $snapshotOf @((& $chunk 'config/Settings.json' '+{"a":1}'), (& $chunk 'config/settings.json' '+{"b":1}'))
+    $settingsAfter = & $snapshotOf @((& $chunk 'config/Settings.json' '+{"a":1}'), (& $chunk 'config/settings.json' '+{"b":2}'))
+    if (Get-HarnessReviewSkip -Current $settingsAfter -Previous $settingsBefore -Findings @([pscustomobject]@{ file = 'config/Settings.json'; line = 1; message = 'Fixture defect' })) { throw 'A change to one file passed for a change to another file that differs only in case.' }
+    # A report that can't be read turns the skip off instead of stopping the review.
+    $lockedReport = Join-Path $fixtureRoot 'locked report.md'
+    [IO.File]::WriteAllText($lockedReport, "## Snapshot`n`n{}`n")
+    $reportLock = [IO.File]::Open($lockedReport, 'Open', 'ReadWrite', 'None')
+    try {
+        $lockHolds = $false
+        try { $null = [IO.File]::ReadAllText($lockedReport) } catch { $lockHolds = $true }
+        if ($lockHolds -and (Read-HarnessReportSnapshot $lockedReport) -cne '') { throw 'A report that could not be read was used as a snapshot.' }
+    }
+    finally { $reportLock.Dispose() }
+    if ((Read-HarnessReportSnapshot $lockedReport) -cne '{}') { throw 'A readable report lost its snapshot.' }
     $nativeConfig = $config | ConvertTo-Json -Depth 20 | ConvertFrom-Json
     $nativeConfig.runner = [pscustomobject]@{ command = 'copilot'; rulesPath = $ruleFile; model = 'Max'; workspaceMode = 'None'; maxMinutes = 'Max'; maxCredits = 'None'; allowedTools = @(); availableTools = 'None' }
     $nativeConfig | Add-Member -NotePropertyName restrictions -NotePropertyValue ([pscustomobject]@{ allowedModels = @(); allowedTools = ''; availableTools = @(' '); maxAgentCredits = 'Max' }) -Force
@@ -674,6 +736,11 @@ try {
     $null = Invoke-HarnessAgent $paths $config $task $fixtureRoot 'Review' 'fixture-snapshot'
     if ($script:agentArguments -notcontains '--deny-tool=write' -or $script:agentArguments -notcontains '--deny-tool=shell' -or $script:agentArguments -contains '--allow-tool=write') { throw 'Reviewer received mutating permissions.' }
     if ($script:agentArguments[[Array]::IndexOf($script:agentArguments, '--name') + 1] -cne "Review worker: Changes pass, $($task.id) (fixture-model)") { throw 'The reviewer session was not named after its pass.' }
+    # Worker prompts leave out the runner's own review start point, a full earlier snapshot.
+    $baseTask = $task | Select-Object *
+    $baseTask | Add-Member -NotePropertyName reviewBase -NotePropertyValue 'review-base-marker' -Force
+    $null = Invoke-HarnessAgent $paths $config $baseTask $fixtureRoot 'Review' 'fixture-snapshot'
+    if ($script:agentInput -match 'review-base-marker' -or $script:agentInput -notmatch [regex]::Escape($task.id)) { throw 'A worker prompt carried the runner''s review start point or lost its task data.' }
     if ($script:agentArguments -contains '--deny-tool=') { throw 'An absent restriction policy emitted an empty CLI denial.' }
     $config.runner | Add-Member -NotePropertyName contextTier -NotePropertyValue long_context
     $prTask = [pscustomobject]@{ id = ''; kind = 'verify'; untrustedInput = $true; reviewWorkspace = $gitProject }
@@ -893,10 +960,78 @@ try {
             if ($case.name -ceq 'default' -and [IO.File]::ReadAllText($caseReview.report) -notmatch 'The Full pass was off') { throw 'A default review report did not say the Full pass was off.' }
         }
         $script:reviewTaskLevels = $levelsBefore
+        # A round that changed only documentation or configuration since the last review starts no Changes reviewer.
+        $skipFiles = [ordered]@{ 'README.md' = 'one' }
+        function Get-HarnessSnapshot { param($Paths, $Config, $Workspace, $BaseRef) [ordered]@{ head = 'skip-head'; base = 'skip-base'; diff = (@(foreach ($path in @($skipFiles.Keys)) { "diff --git a/$path b/$path`n--- a/$path`n+++ b/$path`n@@ -1 +1 @@`n-old`n+$($skipFiles[$path])" }) -join "`n"); untracked = @() } | ConvertTo-Json -Compress }
+        $ranSince = { param([int]$From) $script:phases[$From..($script:phases.Count - 1)] -join ',' }
+        $runsBefore = @((Read-HarnessState $paths).runs).Count
+        $phasesBefore = $script:phases.Count
+        $firstDocs = Invoke-HarnessReview $paths -Scope 'Skipped rounds fixture'
+        if ($firstDocs.status -cne 'Skipped' -or -not $firstDocs.complete -or (@($firstDocs.changedFiles) -join ',') -cne 'README.md' -or @((Read-HarnessState $paths).runs).Count -ne $runsBefore -or $script:phases.Count -ne $phasesBefore) { throw 'A review of documentation-only changes started a reviewer or recorded a run.' }
+        $skipFiles['src/app.ps1'] = 'one'
+        $codeRound = Invoke-HarnessReview $paths -Scope 'Skipped rounds fixture'
+        if ($codeRound.status -cne 'clean' -or $codeRound.changesSkipped -or (& $ranSince $phasesBefore) -cne 'Review') { throw 'A round that changed code skipped the Changes review.' }
+        $skipFiles['README.md'] = 'two'
+        $skipFiles['config/app.json'] = 'one'
+        $phasesBefore = $script:phases.Count
+        $docsRound = Invoke-HarnessReview $paths -Scope 'Skipped rounds fixture'
+        if ($docsRound.status -cne 'Skipped' -or (@($docsRound.changedFiles | Sort-Object) -join ',') -cne 'config/app.json,README.md' -or $docsRound.previousReport -cne $codeRound.report -or $docsRound.message -notmatch 'review anyway' -or $script:phases.Count -ne $phasesBefore) { throw "A documentation and configuration round after a review was not skipped: $($docsRound | Select-Object status, changedFiles, previousReport | ConvertTo-Json -Compress)" }
+        $anyway = Invoke-HarnessReview $paths -Scope 'Skipped rounds fixture' -ReviewAnyway
+        if ($anyway.status -cne 'clean' -or (& $ranSince $phasesBefore) -cne 'Review') { throw '"review anyway" did not run the Changes review.' }
+        $skipFiles['README.md'] = 'three'
+        $phasesBefore = $script:phases.Count
+        $fullAlone = Invoke-HarnessReview $paths -Scope 'Skipped rounds fixture' -FullPass
+        if ($fullAlone.status -cne 'clean' -or -not $fullAlone.changesSkipped -or -not $fullAlone.complete -or (& $ranSince $phasesBefore) -cne 'Fresh' -or [IO.File]::ReadAllText($fullAlone.report) -notmatch 'Changes pass was skipped and the Full pass ran alone: README\.md') { throw 'A turned-on Full pass did not run alone after a skipped Changes pass.' }
+        # An open finding in a file the round didn't change keeps the review.
+        $savedSkipAgent = ${function:Invoke-HarnessAgent}
+        function Invoke-HarnessAgent { param($Paths, $Config, $Task, $Workspace, $Phase); $script:phases += $Phase; [pscustomobject]@{ verdict = 'findings'; summary = 'Code finding'; findings = @([pscustomobject]@{ file = 'src/app.ps1'; line = 1; severity = 'P1'; message = 'Skipped rounds fixture defect' }) } }
+        $skipFiles['src/app.ps1'] = 'two'
+        $withFinding = Invoke-HarnessReview $paths -Scope 'Skipped rounds fixture'
+        Set-Item Function:Invoke-HarnessAgent -Value $savedSkipAgent
+        $skipFiles['README.md'] = 'four'
+        $phasesBefore = $script:phases.Count
+        $kept = Invoke-HarnessReview $paths -Scope 'Skipped rounds fixture'
+        if ($withFinding.status -cne 'findings' -or $kept.status -cne 'clean' -or (& $ranSince $phasesBefore) -cne 'Review') { throw 'A documentation round skipped the review while a code finding was open.' }
+        # Without the snapshot in the last review's report, the round can't be measured, so an unchanged documentation
+        # finding can't pass for a fixed one.
+        $skipFiles.Remove('src/app.ps1')
+        function Invoke-HarnessAgent { param($Paths, $Config, $Task, $Workspace, $Phase); $script:phases += $Phase; [pscustomobject]@{ verdict = 'findings'; summary = 'Guide finding'; findings = @([pscustomobject]@{ file = 'README.md'; line = 1; severity = 'P2'; message = 'Stale guide' }) } }
+        $guideReview = Invoke-HarnessReview $paths -Scope 'Missing report fixture' -ReviewAnyway
+        Set-Item Function:Invoke-HarnessAgent -Value $savedSkipAgent
+        $skipFiles['config/app.json'] = 'two'
+        Remove-Item -LiteralPath $guideReview.report
+        $phasesBefore = $script:phases.Count
+        $noReport = Invoke-HarnessReview $paths -Scope 'Missing report fixture'
+        if ($guideReview.status -cne 'findings' -or $noReport.status -cne 'clean' -or (& $ranSince $phasesBefore) -cne 'Review') { throw "A round was skipped although the last review's report was gone: $($noReport.status)" }
+        # After a later comparable review ends blocked, the next round is reviewed, so that review's finding isn't skipped.
+        $guideFirst = Invoke-HarnessReview $paths -Scope 'Blocked review fixture' -ReviewAnyway
+        function Invoke-HarnessAgent { param($Paths, $Config, $Task, $Workspace, $Phase); $script:phases += $Phase; [pscustomobject]@{ verdict = 'blocked'; summary = 'One reviewer could not finish'; findings = @([pscustomobject]@{ file = 'src/app.ps1'; line = 1; severity = 'P1'; message = 'Blocked review fixture defect' }) } }
+        $blockedReview = Invoke-HarnessReview $paths -Scope 'Blocked review fixture'
+        Set-Item Function:Invoke-HarnessAgent -Value $savedSkipAgent
+        $skipFiles['README.md'] = 'six'
+        $phasesBefore = $script:phases.Count
+        $afterBlocked = Invoke-HarnessReview $paths -Scope 'Blocked review fixture'
+        if ($guideFirst.status -cne 'clean' -or $blockedReview.status -cne 'blocked' -or $afterBlocked.status -cne 'clean' -or (& $ranSince $phasesBefore) -cne 'Review') { throw "A round right after a blocked review was skipped: $($afterBlocked.status)" }
+        # A review saves its comparison fields when it starts, so one that is interrupted still counts as a later attempt.
+        $script:inFlightRun = ''
+        function Invoke-HarnessAgent { param($Paths, $Config, $Task, $Workspace, $Phase); $script:phases += $Phase; $script:inFlightRun = @((Read-HarnessState $Paths).runs)[-1] | ConvertTo-Json -Depth 10; [pscustomobject]@{ verdict = 'clean'; summary = 'Fixture clean'; findings = @() } }
+        $interruptedFirst = Invoke-HarnessReview $paths -Scope 'Interrupted review fixture' -ReviewAnyway
+        Set-Item Function:Invoke-HarnessAgent -Value $savedSkipAgent
+        $interrupted = $script:inFlightRun | ConvertFrom-Json
+        $interrupted.id = 'interrupted-fixture-run'
+        $interrupted.status = 'Interrupted'
+        $interrupted.finishedAt = [datetimeoffset]::UtcNow.ToString('o')
+        $null = Update-HarnessState $paths { param($state) $state.runs = @($state.runs) + @($interrupted) }
+        $skipFiles['README.md'] = 'seven'
+        $phasesBefore = $script:phases.Count
+        $afterInterrupted = Invoke-HarnessReview $paths -Scope 'Interrupted review fixture'
+        if ($interruptedFirst.status -cne 'clean' -or $interrupted.review.scope -cne 'Interrupted review fixture' -or $afterInterrupted.status -cne 'clean' -or (& $ranSince $phasesBefore) -cne 'Review') { throw "A round right after an interrupted review was skipped: $($afterInterrupted.status)" }
     }
     finally { Write-HarnessJson $paths.Config $config }
     function Get-HarnessSnapshot { param($Paths, $Config, $Workspace, $BaseRef); '{"head":"fixture-head","base":"fixture-head","diff":"fixture change","untracked":[]}' }
     Assert-HarnessFailure { & $dispatcher -ProjectPath $fixtureRoot -Action Status -ChangesOnly } 'ChangesOnly applies only'
+    Assert-HarnessFailure { & $dispatcher -ProjectPath $fixtureRoot -Action Status -ReviewAnyway } 'ReviewAnyway applies only'
+    Assert-HarnessFailure { & $dispatcher -ProjectPath $fixtureRoot -Action Dev -ReviewAnyway } 'needs the task it applies to'
     if ($review.baseline.reference -cne 'fixture-upstream' -or [System.IO.File]::ReadAllText($review.report) -notmatch 'Base commit: fixture-base') { throw 'Independent review did not report its selected comparison baseline.' }
     if ([IO.File]::ReadAllText($review.report) -notmatch '"requestedScope": "Whole selected repository"') { throw 'The review report did not identify the Fresh pass scope.' }
     $securityReview = Invoke-HarnessReview $paths -SecurityReview
@@ -1060,6 +1195,11 @@ try {
     $externalReview = Invoke-HarnessReview $paths -Scope 'Verified PR fixture' -BaseRef fixture-base -Workspace $gitProject -ExpectedHead fixture-head -UntrustedInput
     $externalRun = (Read-HarnessState $paths).runs | Select-Object -Last 1
     if ($externalReview.status -cne 'clean' -or $externalRun.workspace -cne $gitProject) { throw 'Explicit PR review did not retain the selected workspace.' }
+    # PR review never skips, even when a pull request changes only documentation.
+    function Get-HarnessSnapshot { param($Paths, $Config, $Workspace, $BaseRef); '{"head":"fixture-head","base":"fixture-base","diff":"diff --git a/README.md b/README.md\n--- a/README.md\n+++ b/README.md\n@@ -1 +1 @@\n-old\n+new","untracked":[]}' }
+    $docsPr = Invoke-HarnessReview $paths -Scope 'Documentation-only PR fixture' -BaseRef fixture-base -Workspace $gitProject -ExpectedHead fixture-head -UntrustedInput
+    if ($docsPr.status -cne 'clean' -or $docsPr.changesSkipped) { throw "A pull request that changed only documentation skipped its Changes review: $($docsPr.status)" }
+    function Get-HarnessSnapshot { param($Paths, $Config, $Workspace, $BaseRef); '{"head":"fixture-head","base":"fixture-head","diff":"fixture change","untracked":[]}' }
     $beforeHeadMismatch = @((Read-HarnessState $paths).runs).Count
     Assert-HarnessFailure { Invoke-HarnessReview $paths -BaseRef fixture-base -Workspace $gitProject -ExpectedHead wrong-head -UntrustedInput } 'does not match the verified PR head'
     if (@((Read-HarnessState $paths).runs).Count -ne $beforeHeadMismatch) { throw 'A mismatched PR head started a review.' }
@@ -1416,6 +1556,111 @@ try {
         if ($waitingOutcome.status -cne 'Completed' -or $loopFixture.Calls.Count -ne 0) { throw 'A task waiting at the Full pass after it was turned off started a reviewer.' }
     }
     finally { Write-HarnessJson $paths.Config $config }
+    # A development round that changed only documentation or configuration runs its tests without a reviewer,
+    # unless an open finding is in a file it didn't change or the task asks to review anyway.
+    $savedLoopSnapshot = ${function:Get-HarnessSnapshot}
+    $savedLoopAgent = ${function:Invoke-HarnessAgent}
+    $docsLoop = [pscustomobject]@{ Files = [ordered]@{}; Edits = @(); Calls = [System.Collections.Generic.List[string]]::new(); Findings = @(); Repeat = $false; Reviews = 0; Block = @(); Watch = $false; SeenBase = '' }
+    function Get-HarnessSnapshot {
+        param($Paths, $Config, $Workspace, $BaseRef)
+        $chunks = foreach ($path in @($docsLoop.Files.Keys)) { "diff --git a/$path b/$path`n--- a/$path`n+++ b/$path`n@@ -1 +1 @@`n-old`n+$($docsLoop.Files[$path])" }
+        [ordered]@{ head = 'docs-loop'; base = 'docs-loop'; diff = (@($chunks) -join "`n"); untracked = @() } | ConvertTo-Json -Compress
+    }
+    function Invoke-HarnessAgent {
+        param($Paths, $Config, $Task, $Workspace, $Phase)
+        $docsLoop.Calls.Add($Phase)
+        # A listed call is blocked, as when a worker can't finish.
+        $blocked = $docsLoop.Block -contains $docsLoop.Calls.Count
+        if ($Phase -eq 'Develop') {
+            if ($docsLoop.Watch) { $docsLoop.SeenBase = [string](Get-HarnessTask (Read-HarnessState $Paths) $Task.id).reviewBase }
+            $round = [int]$Task.reviewRound
+            foreach ($path in ($docsLoop.Edits[[Math]::Min($round, $docsLoop.Edits.Count - 1)] -split ',')) { $docsLoop.Files[$path] = "$($Task.id) round $round" }
+            return [pscustomobject]@{ outcome = $(if ($blocked) { 'blocked' } else { 'ready' }); summary = 'Docs loop ready' }
+        }
+        if ($blocked) { return [pscustomobject]@{ verdict = 'blocked'; summary = 'Docs loop blocked'; findings = @() } }
+        $docsLoop.Reviews++
+        $found = if ($docsLoop.Reviews -eq 1 -or $docsLoop.Repeat) { @($docsLoop.Findings) } else { @() }
+        [pscustomobject]@{ verdict = $(if ($found.Count) { 'findings' } else { 'clean' }); summary = 'Docs loop review'; findings = $found }
+    }
+    $runDocsLoop = {
+        param([string]$Title, [string[]]$Edits, [object[]]$Findings = @(), [switch]$Repeat, [switch]$ReviewAnyway)
+        $docsLoop.Calls.Clear(); $docsLoop.Edits = $Edits; $docsLoop.Findings = $Findings; $docsLoop.Repeat = [bool]$Repeat; $docsLoop.Reviews = 0; $docsLoop.Block = @()
+        $docsTask = Add-HarnessTask -Paths $paths -Title $Title -Description 'Skipped rounds fixture' -Scope 'docs.txt' -Acceptance 'Tests pass' -Kind fix -Risk Low
+        if ($ReviewAnyway) { $null = Queue-HarnessTask $paths $docsTask.id 'next' -ReviewAnyway }
+        $null = Queue-HarnessTask $paths $docsTask.id 'now'
+        $docsOutcome = Invoke-HarnessCycle $paths
+        [pscustomobject]@{ outcome = $docsOutcome; calls = $docsLoop.Calls -join ','; runs = @((Read-HarnessState $paths).runs | Where-Object taskId -CEQ $docsTask.id); task = Get-HarnessTask (Read-HarnessState $paths) $docsTask.id }
+    }
+    Write-HarnessJson $paths.Config $offConfig
+    try {
+        $docsFirst = & $runDocsLoop 'Documentation round' @('README.md,config/app.json')
+        $skippedRun = @($docsFirst.runs | Where-Object phase -EQ 'Validate')[0]
+        if ($docsFirst.outcome.status -cne 'Completed' -or $docsFirst.calls -cne 'Develop' -or $skippedRun.model -or [IO.File]::ReadAllText($skippedRun.report) -notmatch 'Changes review: skipped; this round changed only documentation or configuration: config/app\.json, README\.md') { throw "A documentation and configuration round started a reviewer: $($docsFirst.calls)" }
+        if ((& $runDocsLoop 'Code round' @('src/app.ps1,README.md')).calls -cne 'Develop,Review') { throw 'A round that changed code skipped its review.' }
+        $anywayLoop = & $runDocsLoop 'Review anyway' @('README.md') -ReviewAnyway
+        if ($anywayLoop.calls -cne 'Develop,Review' -or $anywayLoop.task.reviewAnyway -ne $true) { throw '"review anyway" saved on a task did not keep its Changes review.' }
+        $readmeFix = & $runDocsLoop 'Documentation fix' @('src/app.ps1,README.md', 'README.md') @([pscustomobject]@{ file = 'README.md'; line = 1; severity = 'P2'; message = 'Stale guide' })
+        if ($readmeFix.outcome.status -cne 'Completed' -or $readmeFix.calls -cne 'Develop,Review,Develop') { throw "A documentation fix to a documentation finding was reviewed again: $($readmeFix.calls)" }
+        $codeLeft = & $runDocsLoop 'Code finding left open' @('src/app.ps1,README.md', 'README.md') @([pscustomobject]@{ file = 'src/app.ps1'; line = 1; severity = 'P1'; message = 'Code defect' }) -Repeat
+        if ($codeLeft.outcome.status -cne 'NeedsDecision' -or $codeLeft.calls -cne 'Develop,Review,Develop,Review') { throw "A documentation-only fix round skipped the review of an open code finding: $($codeLeft.calls)" }
+        # A retry after a blocked review or blocked development still counts the code changed before it.
+        $retryRound = {
+            param([string]$Title, [string]$FirstEdits, [string]$RetryEdits, [int]$BlockedCall)
+            $docsLoop.Calls.Clear(); $docsLoop.Edits = @($FirstEdits); $docsLoop.Findings = @(); $docsLoop.Repeat = $false; $docsLoop.Reviews = 0; $docsLoop.Block = @($BlockedCall)
+            $retryTask = Add-HarnessTask -Paths $paths -Title $Title -Description 'Skipped rounds fixture' -Scope 'docs.txt' -Acceptance 'Tests pass' -Kind fix -Risk Low
+            $null = Queue-HarnessTask $paths $retryTask.id 'now'
+            $first = Invoke-HarnessCycle $paths
+            $docsLoop.Edits = @($RetryEdits)
+            $docsLoop.Files['README.md'] = "$($retryTask.id) edited before the retry"
+            $null = Queue-HarnessTask $paths $retryTask.id 'now'
+            [pscustomobject]@{ first = $first.status; retry = (Invoke-HarnessCycle $paths).status; calls = $docsLoop.Calls -join ',' }
+        }
+        $reviewRetry = & $retryRound 'Blocked review retry' 'src/app.ps1' 'src/app.ps1' 2
+        if ($reviewRetry.first -cne 'Blocked' -or $reviewRetry.retry -cne 'Completed' -or $reviewRetry.calls -cne 'Develop,Review,Review') { throw "A retry after a blocked review skipped the code its round changed: $($reviewRetry | ConvertTo-Json -Compress)" }
+        $developRetry = & $retryRound 'Blocked development retry' 'src/app.ps1' 'README.md' 1
+        if ($developRetry.first -cne 'Blocked' -or $developRetry.retry -cne 'Completed' -or $developRetry.calls -cne 'Develop,Develop,Review') { throw "A retry after blocked development skipped the code it changed first: $($developRetry | ConvertTo-Json -Compress)" }
+        # The first development run saves where it started before its worker runs, so an interrupted run's code still
+        # counts; a task saved before this version has no start point and is reviewed until a review completes.
+        $docsLoop.Watch = $true
+        $startPoint = & $runDocsLoop 'Start point' @('README.md')
+        $docsLoop.Watch = $false
+        if (-not $docsLoop.SeenBase -or $docsLoop.SeenBase.Contains("$($startPoint.task.id) round 0") -or $startPoint.calls -cne 'Develop') { throw 'The first development run did not save where it started before its worker ran.' }
+        $legacy = Add-HarnessTask -Paths $paths -Title 'Saved before reviewBase' -Description 'Skipped rounds fixture' -Scope 'docs.txt' -Acceptance 'Tests pass' -Kind fix -Risk Low
+        $docsLoop.Files['src/app.ps1'] = "$($legacy.id) unreviewed code"
+        $legacySnapshot = Get-HarnessSnapshot $paths $offConfig $fixtureRoot
+        $null = Update-HarnessState $paths { param($state) (Get-HarnessTask $state $legacy.id).snapshot = $legacySnapshot }
+        $docsLoop.Calls.Clear(); $docsLoop.Edits = @('README.md'); $docsLoop.Findings = @(); $docsLoop.Repeat = $false; $docsLoop.Reviews = 0; $docsLoop.Block = @()
+        $null = Queue-HarnessTask $paths $legacy.id 'now'
+        $legacyOutcome = Invoke-HarnessCycle $paths
+        if ($legacyOutcome.status -cne 'Completed' -or ($docsLoop.Calls -join ',') -cne 'Develop,Review') { throw "A task saved before reviewBase existed skipped its review: $($docsLoop.Calls -join ',')" }
+        # A review that ends blocked keeps the next round reviewed, even after "review anyway" is cleared.
+        $docsLoop.Calls.Clear(); $docsLoop.Edits = @('README.md'); $docsLoop.Findings = @([pscustomobject]@{ file = 'README.md'; line = 1; severity = 'P2'; message = 'Stale guide' }); $docsLoop.Repeat = $false; $docsLoop.Reviews = 0; $docsLoop.Block = @(4)
+        $pendingTask = Add-HarnessTask -Paths $paths -Title 'Blocked review with review anyway' -Description 'Skipped rounds fixture' -Scope 'docs.txt' -Acceptance 'Tests pass' -Kind fix -Risk Low
+        $null = Queue-HarnessTask $paths $pendingTask.id 'now' -ReviewAnyway
+        $pendingFirst = Invoke-HarnessCycle $paths
+        $null = Queue-HarnessTask $paths $pendingTask.id 'now' -ReviewAnyway:$false
+        $pendingRetry = Invoke-HarnessCycle $paths
+        if ($pendingFirst.status -cne 'Blocked' -or $pendingRetry.status -cne 'Completed' -or ($docsLoop.Calls -join ',') -cne 'Develop,Review,Develop,Review,Review') { throw "A round after a blocked review was skipped: $($docsLoop.Calls -join ',')" }
+    }
+    finally { Write-HarnessJson $paths.Config $config }
+    $docsFull = & $runDocsLoop 'Documentation round with the Full pass' @('README.md')
+    if ($docsFull.outcome.status -cne 'Completed' -or $docsFull.calls -cne 'Develop,Fresh') { throw "A skipped Changes review did not lead to the turned-on Full pass: $($docsFull.calls)" }
+    # A Full pass that ends blocked keeps the next round reviewed, even after the task is updated and the Full pass is off.
+    $docsLoop.Calls.Clear(); $docsLoop.Edits = @('src/app.ps1'); $docsLoop.Findings = @(); $docsLoop.Repeat = $false; $docsLoop.Reviews = 0; $docsLoop.Block = @(3)
+    $freshTask = Add-HarnessTask -Paths $paths -Title 'Blocked Full pass' -Description 'Skipped rounds fixture' -Scope 'docs.txt' -Acceptance 'Tests pass' -Kind fix -Risk Low
+    $null = Queue-HarnessTask $paths $freshTask.id 'now'
+    $freshFirst = Invoke-HarnessCycle $paths
+    $null = Update-HarnessTask $paths $freshTask.id @{ Description = 'Retry without the Full pass' }
+    $docsLoop.Edits = @('README.md')
+    Write-HarnessJson $paths.Config $offConfig
+    try {
+        $null = Queue-HarnessTask $paths $freshTask.id 'now'
+        $freshRetry = Invoke-HarnessCycle $paths
+    }
+    finally { Write-HarnessJson $paths.Config $config }
+    if ($freshFirst.status -cne 'Blocked' -or $freshRetry.status -cne 'Completed' -or ($docsLoop.Calls -join ',') -cne 'Develop,Review,Fresh,Develop,Review') { throw "A round after a blocked Full pass was skipped: $($docsLoop.Calls -join ',')" }
+    Set-Item Function:Get-HarnessSnapshot -Value $savedLoopSnapshot
+    Set-Item Function:Invoke-HarnessAgent -Value $savedLoopAgent
     # Real tests: a failed test is a fix round, the same failure after a fix stops, afterReview runs on the reviewed
     # code, scheduled runs keep the environment rule, and background tests run while the first review reads the code.
     $savedSnapshotFunction = ${function:Get-HarnessSnapshot}

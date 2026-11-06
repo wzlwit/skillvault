@@ -44,10 +44,11 @@ If those requirements cannot be met, continue only permitted investigation and r
    starts the task when idle and queues it when busy; `<id> now` adds `-Mode now`, which requests a
    cooperative checkpoint; `queue` adds `-Mode next`, which queues only; `broad` adds
    `-ReviewLevel broad`, saved on the task so a queued pickup still runs broad. Any other named
-   request returns the task to the `blocking` level. "full pass" adds `-FullPass`, and "both on full"
-   `-FullPanel`, saved on the task the same way, so its review includes the Full pass, with both
-   reviewers for "both on full"; any other named request returns the task to the default, no Full
-   pass. With no ID or input, `-Action Dev` selects
+   request returns the task to the `blocking` level. "full pass" adds `-FullPass`, "both on full"
+   `-FullPanel`, and "review anyway" `-ReviewAnyway`, each saved on the task the same way: its review
+   includes the Full pass, with both reviewers for "both on full", or keeps the Changes review in
+   rounds that change only documentation or configuration; any other named request returns the task
+   to the defaults. With no ID or input, `-Action Dev` selects
    eligible queued work. The offer from `/harness-dev` alone, and `broad` with no task, names the next
    ready task: queued work in pickup order first (now, interrupted, then next), otherwise the
    highest-priority ready task (Queued, Low risk, with scope and acceptance); a yes runs
@@ -93,6 +94,13 @@ If those requirements cannot be met, continue only permitted investigation and r
      and in-scope Full findings start another fix round.
      Full findings marked `outsideTaskScope` become follow-up proposals in the task and report, and the
      task can still complete. A proposal becomes a task only through `/harness-dev upsert` intake.
+   - A round whose development changed only documentation or configuration skips the Changes review
+     and runs only its tests (owner decision, 2026-11-05); passing tests complete the round, or lead
+     to the Full pass when it's on. The round still gets the review when a finding from the last
+     review is in a file it didn't change, or when "review anyway" is saved on the task. Skipped
+     Rounds in the runtime guide lists the file types and the files reviewed like code, such as AI
+     instruction files, dependency manifests, continuous integration and delivery (CI/CD) pipelines,
+     and `.env` files; the report names the changed files.
    - `testing.afterReview` flows run once after the review is clean, on that exact code. A failure
      starts a fix round that repeats the tests and the review passes.
    - The developer adds unit tests at the declared `unitTests` level (`blocking` by default, or

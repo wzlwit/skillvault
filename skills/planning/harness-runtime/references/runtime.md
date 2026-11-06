@@ -1,7 +1,7 @@
 # Local Harness Runtime
 
 Contents: Root Inheritance; Configuration and State; Layout Migration; Artifact Storage; Runner
-Inheritance; Review Panel (Full Pass, Review Levels); Folder Controllers and Coding
+Inheritance; Review Panel (Full Pass, Skipped Rounds, Review Levels); Folder Controllers and Coding
 Repositories; Commands; History Cleanup; Restrictions and Fallback; Ask Once; Reuse or New; Script
 Permissions and Agent Fallback; Worker Output; Evidence and Recovery; Timers; Test Flows; Monitoring;
 Report Authoring.
@@ -311,6 +311,45 @@ profile. Reports name the Full pass reviewers, and standalone results and run re
 `fullPassReviewers` and `fullPassNote`. The runtime provides interface `full-pass` 2 for this, with
 `-FullPass`; `harness-review`, `harness-dev`, and `pr-review` require it.
 
+### Skipped Rounds
+
+A local round whose changed files are all documentation or configuration starts no Changes reviewer
+(owner decision, 2026-11-05):
+
+- Documentation is `.md`, `.mdx`, `.markdown`, `.rst`, `.adoc`, and `.txt` files. Configuration is
+  `.json`, `.jsonc`, `.yaml`, `.yml`, `.toml`, `.ini`, `.cfg`, `.conf`, `.config`, `.properties`,
+  `.editorconfig`, `.gitattributes`, and `.gitignore` files.
+- These are reviewed like code, because they change what runs: AI instruction files (`SKILL.md`,
+  `AGENTS.md`, `AGENT.md`, `CLAUDE.md`, `GEMINI.md`, `copilot-instructions.md`,
+  `*.instructions.md`, `*.prompt.md`, `*.agent.md`, `*.chatmode.md`, and files under
+  `.claude/commands`, `.claude/agents`, `.github/agents`, and `.clinerules`), dependency manifests
+  and lock files (such as `package.json`, `package-lock.json`, `requirements*.txt` and files under
+  `requirements/`, `pyproject.toml`, `setup.cfg`, `pubspec.yaml`, and `dotnet-tools.json`),
+  continuous integration and delivery (CI/CD) pipelines (such as `.github/workflows`, `action.yml`,
+  `azure-pipelines*.yml` and `pipelines` folders, and `.gitlab-ci.yml`), and `.env` files. The
+  runtime knows these by name and folder; for another such file, say "review anyway".
+- A round is what changed since the last review that read the code: in `/harness-review`, since the
+  last comparable review that finished clean or with findings, whose report holds the snapshot it
+  read, or the whole change for a first review; in development, since the task's last completed
+  review, or since its first development started, so a retry after a blocked, failed, or interrupted
+  run still counts what came before it.
+- A round still gets the review when a finding from the last review is in a file the round didn't
+  change, so an unfixed finding is never skipped, and when the comparison could miss something: in
+  `/harness-review`, a later comparable review didn't finish clean or with findings, such as a
+  blocked, partial, or interrupted one, or the last review's report is gone or can't be read; in
+  development, the task's last review started but didn't complete, a commit moved the round's base,
+  or the task was saved before this version and hasn't completed a review yet.
+- Files are compared by their own sections of a local snapshot's diff, which uses Git's plain format,
+  without external diff tools or submodule logs, so every changed file has a section of its own.
+- `/harness-review` then returns `Skipped`, with the changed files, records no run, and starts no
+  reviewer; the next review still compares with the last one that ran. In development, the round's
+  tests still run, and the round completes, or moves to the Full pass, when they pass. A Full pass
+  that's on still runs, alone in a standalone review.
+- "review anyway" keeps the Changes review for one review (`Review -ReviewAnyway`) or a task
+  (`Dev -Id <task> -ReviewAnyway`, saved on the task and cleared by any other named request).
+  `/pr-review` never skips. Standalone results and run records add `changesSkipped`; reports, including
+  development ones, name the skipped files.
+
 ### Review Levels
 
 Every reviewer works at one level (owner decisions, 2026-10-08 and 2026-10-09):
@@ -339,8 +378,9 @@ Every reviewer works at one level (owner decisions, 2026-10-08 and 2026-10-09):
   compare as `broad`.
 - The level is separate from `runner.secondReviewer`, which only decides whether the panel's second
   reviewer runs. The runtime provides interface `review-levels` 2; `harness-review`, `pr-review`, and
-  `harness-dev` require it. It also provides `review-scope` 1, for `-ChangesOnly`, which
-  `harness-review` requires.
+  `harness-dev` require it. It also provides `review-scope` 2, for `-ChangesOnly` and
+  `-ReviewAnyway` with [Skipped Rounds](#skipped-rounds), which `harness-review` and `harness-dev`
+  require.
 
 ## Folder Controllers and Coding Repositories
 
@@ -439,8 +479,8 @@ harness skills locate this same dependency instead of duplicating storage and ex
 | `Task` | List tasks, add with requirement fields, or use `-FollowUpOf <completed-id>` for a linked follow-up; optional source/revision/kind/priority/risk and `-RepositoryRef` |
 | `UpdateTask` | Exact `-Id` and supplied fields; revised completed requirements create a linked task; never update an active task contract or retarget an allocated task |
 | `Ref` | List references, upsert `-Source`/`-Note` with optional task `-Id`, or remove exact `-RemoveId` |
-| `Dev` | Existing `-Id`, ad-hoc fields, or `-FollowUpOf`; shares task update/intake, then optional `-Mode now` or queue-only `next`; runs the development review loop. A named request sets the task's review level: `-ReviewLevel broad` saves broad on it, otherwise blocking; likewise `-FullPass` saves the Full pass on it, otherwise off, and `-FullPanel` both reviewers for it, otherwise one |
-| `Review` | Review ahead/working changes with optional `-RepositoryRef`, `-Scope`, `-BaseRef`, `-SecurityReview`, `-FullPass`, `-FullPanel`, `-ChangesOnly`, and `-ReviewLevel blocking\|broad` (default `blocking`; see [Review Levels](#review-levels)); the Changes pass uses the review panel. A whole-repository Fresh pass follows when no new findings appear only when the Full pass is on (`-FullPass`, `-FullPanel`, broad, or `runner.fullPass`), by the Claude Opus reviewer unless `-FullPanel` adds the other; `-ChangesOnly` keeps it off. With no changes, Fresh runs alone when on; otherwise the result is `NoChanges` |
+| `Dev` | Existing `-Id`, ad-hoc fields, or `-FollowUpOf`; shares task update/intake, then optional `-Mode now` or queue-only `next`; runs the development review loop. A named request sets the task's review level: `-ReviewLevel broad` saves broad on it, otherwise blocking; likewise `-FullPass` saves the Full pass on it, otherwise off, `-FullPanel` both reviewers for it, otherwise one, and `-ReviewAnyway` the Changes review in rounds that change only documentation or configuration, otherwise skipped |
+| `Review` | Review ahead/working changes with optional `-RepositoryRef`, `-Scope`, `-BaseRef`, `-SecurityReview`, `-FullPass`, `-FullPanel`, `-ChangesOnly`, `-ReviewAnyway`, and `-ReviewLevel blocking\|broad` (default `blocking`; see [Review Levels](#review-levels)); the Changes pass uses the review panel. A whole-repository Fresh pass follows when no new findings appear only when the Full pass is on (`-FullPass`, `-FullPanel`, broad, or `runner.fullPass`), by the Claude Opus reviewer unless `-FullPanel` adds the other; `-ChangesOnly` keeps it off. With no changes, Fresh runs alone when on; otherwise the result is `NoChanges`. When only documentation or configuration changed since the last review, the result is `Skipped` unless `-ReviewAnyway`; see [Skipped Rounds](#skipped-rounds) |
 | `TestConfig` | Import explicit `-DefinitionPath` JSON declarations without executing commands |
 | `Test` | List declarations and `pendingDefinitions`, or run `-Flow` with optional `-TestEnvironment`, task `-Id`, and timer `-Scheduled` |
 | `MonitorConfig` | Preview a `-DefinitionPath` declaration; apply with explicit `-Apply`, human `-Actor`, and `-Reason` |
@@ -501,7 +541,8 @@ per topic:
 Topics group development with its validation and review phases, standalone review, tests, monitors,
 and PR review; named flows get no extra allowance. Preserve active or incomplete runs, open-task
 evidence including completed ancestors of open follow-ups, pinned or linked reports, current monitor
-readings, unresolved incidents, policy and recovery evidence, and the latest comparable review. Report
+readings, unresolved incidents, policy and recovery evidence, and for each comparable standalone
+review its latest completed result and its latest attempt. Report
 protected overages instead of deleting required context. Project `maintenance.enabled: false` opts out
 of automatic cleanup; attended Clean stays available.
 
@@ -688,8 +729,10 @@ A failed test becomes a finding with `source: test`, keyed by its command or flo
 with the end of its output. Test findings and review findings go to the developer together as
 `reviewFindings` in one fix round; the developer fixes the code without weakening or skipping the test,
 or returns `needs-decision` when the environment caused the failure. Then the tests and the Changes
-pass run again. A clean Changes pass with passing tests completes the review, or, when the Full pass
-is on, gets one whole-repository Full pass; in-scope
+pass run again. A round whose development changed only documentation or configuration skips the
+Changes pass and runs only its tests ([Skipped Rounds](#skipped-rounds)). A clean Changes pass with
+passing tests completes the review, or, when the Full pass is on, gets one whole-repository Full
+pass; in-scope
 Full findings start another fix round, and findings marked `outsideTaskScope` are saved as the task's
 `followUpProposals` without blocking completion. A clean review then runs any `testing.afterReview`
 flows once in the AfterReview phase, on that snapshot; a failure starts a fix round, and the task keeps

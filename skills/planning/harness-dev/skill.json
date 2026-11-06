@@ -1,11 +1,12 @@
 {
   "name": "harness-dev",
   "title": "Harness Dev",
-  "version": "6.0.0",
+  "version": "7.0.0",
   "requiredInterfaces": {
     "harness-runtime": {
       "development-tests": 1,
       "review-levels": 2,
+      "review-scope": 2,
       "full-pass": 2
     }
   },

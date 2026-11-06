@@ -1209,9 +1209,9 @@ test('review levels default to blocking and every review entry point requires th
   }
   assert.match(read('skills/github/pr-review/references/runtime.md'), /^\| `reviewLevel` \| `blocking`/m);
   // "changes only" skips the Full pass even when a setting turns it on; harness-review needs a runtime that accepts it.
-  assert.equal(runtime.runtimeInterfaces['review-scope'], 1);
+  assert.equal(runtime.runtimeInterfaces['review-scope'], 2);
   const review = parseJson(read('skills/planning/harness-review/skill.json'), 'harness-review/skill.json');
-  assert.equal(review.requiredInterfaces['harness-runtime']['review-scope'], 1, 'harness-review must require the review scope interface');
+  assert.equal(review.requiredInterfaces['harness-runtime']['review-scope'], 2, 'harness-review must require the review scope interface');
   assert.match(read('skills/planning/harness-review/SKILL.md'), /"changes only"[\s\S]{0,200}-ChangesOnly/);
 });
 
@@ -1238,6 +1238,27 @@ test('the Full pass is off unless asked for, and runs the Claude Opus reviewer a
   assert.match(guide, /^\| `fullPass` \|/m, 'The runner settings table lists fullPass');
   assert.match(guide, /^\| `fullPanel` \|/m, 'The runner settings table lists fullPanel');
   assert.match(read('skills/github/pr-review/references/runtime.md'), /^\| `fullPass` \| `false`/m, 'PR review settings list fullPass, off by default');
+});
+
+test('local rounds that change only documentation or configuration skip the Changes review', () => {
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const read = relative => fs.readFileSync(path.join(root, relative), 'utf8');
+  const runtime = parseJson(read('skills/planning/harness-runtime/skill.json'), 'harness-runtime/skill.json');
+  assert.equal(runtime.runtimeInterfaces['review-scope'], 2);
+  for (const consumer of ['harness-review', 'harness-dev']) {
+    const manifest = parseJson(read(`skills/planning/${consumer}/skill.json`), `${consumer}/skill.json`);
+    // Both topics document -ReviewAnyway, so an older runtime that rejects it must not run them.
+    assert.equal(manifest.requiredInterfaces['harness-runtime']['review-scope'], 2, `${consumer} must require the review scope interface`);
+    assert.match(read(`skills/planning/${consumer}/SKILL.md`), /"review anyway"[\s\S]{0,200}-ReviewAnyway/, `${consumer} must map "review anyway" to -ReviewAnyway`);
+  }
+  const guide = read('skills/planning/harness-runtime/references/runtime.md');
+  const skipped = guide.split(/^### Skipped Rounds\r?$/m)[1]?.split(/^##+ /m)[0] ?? '';
+  assert.ok(skipped, 'The runtime guide defines skipped rounds');
+  for (const identifier of ['`.md`', '`.txt`', '`.json`', '`.yaml`', '`SKILL.md`', '`AGENTS.md`', '`package.json`', '`requirements*.txt`', '`.github/workflows`', '`.env`', '`Skipped`', '`Review -ReviewAnyway`', '`Dev -Id <task> -ReviewAnyway`', '`/pr-review` never skips']) {
+    assert.ok(skipped.includes(identifier), `Skipped Rounds lost ${identifier}`);
+  }
+  const pr = parseJson(read('skills/github/pr-review/skill.json'), 'pr-review/skill.json');
+  assert.equal(pr.requiredInterfaces['harness-runtime']['review-scope'], undefined, 'PR review never skips, so it needs no review scope interface');
 });
 
 test('pr-publish has no options, keeps existing descriptions, and follows create-pull-request', () => {

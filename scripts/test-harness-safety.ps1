@@ -341,7 +341,8 @@ $null = Set-HarnessPause $paths project 'Fixture child requests its own stop' 'F
         Assert-PolicyFailure { Enter-HarnessLock $Paths.RunLock } 'busy'
         [pscustomobject]@{ verdict = 'clean'; summary = 'Fixture clean'; findings = @() }
     }
-    $review = Invoke-HarnessReview -Paths $paths
+    # The Full pass is off by default, so the fresh pass under the shared lock is requested explicitly.
+    $review = Invoke-HarnessReview -Paths $paths -FullPass
     if ($review.status -cne 'clean' -or $script:policyReviewCalls -ne 2 -or (Read-HarnessState $paths).active) { throw 'Independent review did not finish its fresh pass with shared-lock tracking.' }
     $null = Set-HarnessPause $paths review 'Review pause fixture' Owner
     $review = Invoke-HarnessReview -Paths $paths

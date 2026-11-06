@@ -3,7 +3,7 @@ name: harness-dev
 description: "[upsert|queue|sprint|test|broad] Alone: the board. Text: develop it. Record, queue, and develop tasks with the two-reviewer review loop, run goal-based sprints, and declare or run reusable tests; broad raises one task's reviews and unit tests. Shorthand: /hn-dev. Overlaps with harness-monitor on intake and checks, harness-review on code review, and harness-write on report implementation; sprints can draft status through harness-write."
 metadata:
   author: wzlwit
-  version: "6.0.0"
+  version: "7.0.0"
 argument-hint: "[upsert|queue|sprint|test|broad] [<task or request>]"
 ---
 
@@ -42,9 +42,10 @@ The same rule selects a word inside the `test` group.
   cooperative checkpoint request that never kills the running task. A request that revises completed
   work can say `follow-up of <id>` (`-FollowUpOf`), and a new task can name a registered repository
   reference such as `R-001` for its coding repository (`-RepositoryRef`). "full pass" adds the
-  whole-repository Full pass to the task's review (`-FullPass`), and "both on full" adds it with
-  both reviewers (`-FullPanel`); each is saved on the task like `broad`, and any other named request
-  returns the task to the default, no Full pass. A request for status or help shows the alone
+  whole-repository Full pass to the task's review (`-FullPass`), "both on full" adds it with both
+  reviewers (`-FullPanel`), and "review anyway" keeps the Changes review in rounds that change only
+  documentation or configuration (`-ReviewAnyway`); each is saved on the task like `broad`, and any
+  other named request returns the task to the defaults. A request for status or help shows the alone
   view; text that names no task and describes no work asks first and creates nothing.
 - `upsert` owns task records, identity, and readiness. No intake route starts execution or grants
   automatic eligibility. Keep requirement Source separate from the coding repository.
@@ -81,7 +82,11 @@ The same rule selects a word inside the `test` group.
   passing tests completes the review: the whole-repository Full pass is off unless the task asks for
   it ("full pass", "both on full", or `broad`) or the project sets `runner.fullPass: true` (owner
   decision, 2026-10-28). When on, it runs the Claude Opus reviewer alone unless the request asks for
-  both or the project sets `runner.fullPanel: true`. Development reviews at
+  both or the project sets `runner.fullPanel: true`. A round whose development changed only
+  documentation or configuration skips the Changes review and runs only its tests (owner decision,
+  2026-11-05), unless a finding from the last review is in a file the round didn't change; Skipped
+  Rounds in the runtime guide lists the file types and what's still reviewed, such as AI instruction
+  files. Development reviews at
   the `blocking` level unless the task was started with `broad`: reviewers report only what blocks the
   task or merging its change, and the Full pass looks only for what the change breaks elsewhere. At
   `broad`, they also report minor and existing issues in the task's code, and the Full pass audits the

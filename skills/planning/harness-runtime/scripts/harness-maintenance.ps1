@@ -111,9 +111,13 @@ function Get-HarnessHistoryCleanupPlan {
     foreach ($candidate in @($State.monitoring.candidates | Where-Object { $_.verification.report })) { $null = $protectedReports.Add([string]$candidate.verification.report) }
     foreach ($candidate in @($State.monitoring.candidates | Where-Object { $_.completion.report })) { $null = $protectedReports.Add([string]$candidate.completion.report) }
     foreach ($candidate in @($State.monitoring.candidates | Where-Object { $_.verificationCheckpoint.report })) { $null = $protectedReports.Add([string]$candidate.verificationCheckpoint.report) }
-    $reviews = @($State.runs | Where-Object { $_.phase -eq 'Review' -and -not $_.taskId -and $_.status -in @('clean', 'findings') })
-    foreach ($group in @($reviews | Group-Object { @($_.review.repositoryRef, $_.review.repositoryRoot, $_.review.scope, $_.review.baseline.reference, $_.review.baseline.commit, $_.review.securityReview) | ConvertTo-Json -Compress })) {
+    # Each comparable standalone review keeps its latest completed result, which the next review compares with, and its
+    # latest attempt, because one that didn't finish keeps the next round reviewed.
+    $reviews = @($State.runs | Where-Object { $_.phase -eq 'Review' -and -not $_.taskId -and $_.review })
+    foreach ($group in @($reviews | Group-Object -CaseSensitive { @($_.review.repositoryRef, $_.review.repositoryRoot, $_.review.scope, $_.review.baseline.reference, $_.review.baseline.commit, $_.review.securityReview, [string]$_.review.reviewLevel) | ConvertTo-Json -Compress })) {
         $null = $protectedIds.Add(($group.Group | Select-Object -Last 1).id)
+        $completedReview = @($group.Group | Where-Object { $_.status -in @('clean', 'findings') }) | Select-Object -Last 1
+        if ($completedReview) { $null = $protectedIds.Add($completedReview.id) }
     }
     foreach ($entry in @($State.prReviews | Group-Object key | ForEach-Object { $_.Group | Select-Object -Last 1 })) {
         if ($entry.id) { $null = $protectedIds.Add($entry.id) }

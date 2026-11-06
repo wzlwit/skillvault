@@ -101,6 +101,18 @@ unless the request asks for both ("both on full", `-FullPanel`) or the project s
 the GPT reviewer runs it instead. Full Pass in the runtime guide defines the fallbacks. The report
 names the Full pass reviewers.
 
+A round that changed only documentation or configuration starts no Changes reviewer (owner decision,
+2026-11-05). The round is what changed since the last comparable review that ran, or the whole change
+for a first review; Skipped Rounds in the runtime guide lists the file types and the files reviewed
+like code, such as AI instruction files, dependency manifests, continuous integration and delivery
+(CI/CD) pipelines, and `.env` files.
+The script returns `Skipped` with the changed files and records no run; with the Full pass on, the
+Full pass runs alone instead. A finding from the last review in a file the round didn't change keeps
+the review, so an unfixed finding is never skipped, and so do a later review that didn't finish clean
+or with findings, such as a blocked, partial, or interrupted one, and a last review whose report is
+gone or can't be read; earlier findings in the changed files are listed as not checked again. "review
+anyway" (`-ReviewAnyway`) runs the review regardless. PR review never skips.
+
 1. Start the review panel on the current snapshot at the selected level: `blocking` by default, or
    `broad` from the `broad` menu word (`-ReviewLevel broad`). Blocking reports only what blocks merging the change
    or completing its task, such as defects and regressions it introduces, an unfixed target issue,
@@ -216,6 +228,7 @@ CC-BY-SA-4.0 license; it is loaded, not copied into this bundle. No `/dif-review
 /harness-review since HEAD
 /harness-review security since main
 /harness-review full pass
+/harness-review review anyway
 /harness-review both on full
 /harness-review broad
 /harness-review list
@@ -227,6 +240,7 @@ CC-BY-SA-4.0 license; it is loaded, not copied into this bundle. No `/dif-review
 & <harness-folder>/scripts/harness.ps1 -ProjectPath <controller-folder> -Action Review -RepositoryRef R-001
 & <harness-folder>/scripts/harness.ps1 -ProjectPath <root> -Action Review -BaseRef <verified-ref> -SecurityReview
 & <harness-folder>/scripts/harness.ps1 -ProjectPath <root> -Action Review -FullPass
+& <harness-folder>/scripts/harness.ps1 -ProjectPath <root> -Action Review -ReviewAnyway
 & <harness-folder>/scripts/harness.ps1 -ProjectPath <root> -Action Review -FullPanel
 & <harness-folder>/scripts/harness.ps1 -ProjectPath <root> -Action Review -ReviewLevel broad
 & <harness-folder>/scripts/harness.ps1 -ProjectPath <root> -Action Review -ChangesOnly
@@ -242,8 +256,9 @@ run rows, with full evidence in board reports; there is no new issue tracker or 
 Only the last stable attempt supplies current findings. Superseded attempts remain historical
 evidence; `Partial` is not a completed comparison baseline and does not increment failure counters.
 The script's `complete` flag is true only after a stable clean round with zero findings, its Full
-pass included when on. `nextPhase: Review` on a findings checkpoint tells the coordinator where to
-resume after
+pass included when on, or for a `Skipped` round. For `Skipped`, show the changed files and any earlier
+findings not checked again instead of findings. `nextPhase: Review` on a findings checkpoint tells
+the coordinator where to resume after
 fixes; `Partial` uses the same phase once the snapshot settles. The run record carries these fields
 so a successful reviewer process is not mistaken for completion of unresolved work.
 
