@@ -181,7 +181,7 @@
   },
   {
     "name": "pr-publish",
-    "description": "[list] Alone: publish this branch's PR. Text: adjust it, like show me first. Commit working changes in grouped commits after one question, push, and create or update your own pull request with a current vs. to-be scenario table. A new PR gets a short description in the style of the GitHub Pull Requests extension's create-pull-request skill and opens ready for review; an existing PR keeps its description and gets only the table. Overlaps with that skill on opening PRs and uses its VS Code tool when available, otherwise gh; pr-review reviews PRs instead. Never force-pushes without approval.",
+    "description": "[list] Alone: commit and publish the PR. Text: adjust, like show me first. Commit working changes in grouped commits after one question, push, and create or update your own pull request with a current vs. to-be scenario table. A new PR gets a short description in the style of the GitHub Pull Requests extension's create-pull-request skill and opens ready for review; an existing PR keeps its description and gets only the table. Overlaps with that skill on opening PRs and uses its VS Code tool when available, otherwise gh; pr-review reviews PRs instead. Never force-pushes without approval.",
     "path": "skills/github/pr-publish",
     "version": "4.0.0"
   },
