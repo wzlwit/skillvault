@@ -1,9 +1,10 @@
 
 # Rules Core
 
-`/rules apply` puts these rules and the [extra rules](extra.md) into effect: globally by default,
-through a generated block in `~/.copilot/copilot-instructions.md` that every Copilot chat loads, in a
-project, or for the current chat only. `/rules apply core` leaves out the extra rules.
+`/rules apply` puts these rules and the [extra rules](extra.md) into effect: for the current chat by
+default, or, with `global` or `project`, through a generated block in
+`~/.copilot/copilot-instructions.md`, which every Copilot chat on this machine loads, or in a
+project's instructions. `/rules apply core` leaves out the extra rules.
 Another skill that says to apply `/rules apply` means following them in that work, without editing
 files; installing the skill writes nothing by itself.
 

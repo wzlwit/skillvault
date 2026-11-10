@@ -60,7 +60,7 @@ try {
 
     [IO.File]::WriteAllText($extra, $extraText)
     $null = Invoke-AlwaysOn $target $core -Apply
-    Assert-True ([IO.File]::ReadAllText($target).Contains('(set: all)')) 'the block records that it holds all rules'
+    Assert-True ([IO.File]::ReadAllText($target).Contains('(set: all)') -and [IO.File]::ReadAllText($target).Contains('/rules apply global rewrites this block')) 'the block records that it holds all rules and names the command that rewrites it'
     $coreOnly = (& $script -Path $target -CorePath $core -Set core) | ConvertFrom-Json
     Assert-True ($coreOnly.status -eq 'Drifted' -and $coreOnly.set -eq 'core') 'choosing only the core rules is reported as drift'
     $null = & $script -Path $target -CorePath $core -Set core -Apply
@@ -76,7 +76,7 @@ try {
     $projectFile = Join-Path $project '.github\copilot-instructions.md'
     $projectResult = (& $script -Scope project -ProjectPath $project -CorePath $core -Apply) | ConvertFrom-Json
     $projectText = [IO.File]::ReadAllText($projectFile)
-    Assert-True ($projectResult.scope -eq 'project' -and $projectResult.path -eq $projectFile -and $projectText.Contains('# Extra rules') -and $projectText.Contains('# Project rules') -and -not $projectText.Contains('# Personal rules')) 'project scope writes the block and a Project rules section'
+    Assert-True ($projectResult.scope -eq 'project' -and $projectResult.path -eq $projectFile -and $projectText.Contains('# Extra rules') -and $projectText.Contains('# Project rules') -and -not $projectText.Contains('# Personal rules') -and $projectText.Contains('/rules apply project rewrites this block')) 'project scope writes the block and a Project rules section'
     Assert-True (-not $projectText.Contains('For clarification')) 'a project file never links a local path'
     Set-Content -LiteralPath (Join-Path $fixtureRoot 'skill\skill.json') -Value '{"homepage":"https://example.com/vault","source":{"path":"skills/core/rules"}}'
     $null = & $script -Scope project -ProjectPath $project -CorePath $core -Apply

@@ -1544,6 +1544,20 @@ test('topic map covers canonical skills and rules apply stays separate from auth
   assert.match(source, /installation target/);
 });
 
+test('rules apply acts on this chat unless global or project is named, and alone lists every rule', () => {
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const rules = fs.readFileSync(path.join(root, 'skills/core/rules/SKILL.md'), 'utf8');
+  // Owner decision 2026-11-10 (rules apply in chat ADR): applying writes no file unless global or project is named.
+  const applyRow = rules.split(/\r?\n/).find(line => line.startsWith('| `apply ')) ?? '';
+  assert.match(applyRow, /`apply \[core\\\|extra\\\|<number or name>\\\|<your words>\] \[global\\\|project\\\|session\]`/, 'apply selects core, extra, one rule, or the user\'s own words');
+  assert.match(applyRow, /\(`session`, the default\)/, 'apply acts on this chat by default');
+  const flat = rules.replace(/\s+/g, ' ');
+  assert.match(flat, /Your own words are followed in this chat only and saved nowhere/, 'apply <words> saves nothing');
+  assert.match(flat, /Words that could name several rules show them and apply nothing/, 'an unclear rule name applies nothing');
+  assert.match(flat, /Alone lists every rule with one running number[^.]*Personal rules[^.]*Project rules/, 'alone lists the Personal and project rules too');
+  assert.doesNotMatch(flat, /`global` \(default\), `project`, or `session`|globally \(default\)/, 'global is no longer the apply default');
+});
+
 test('menu skills list only their menu words and route alone and text', () => {
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
   const catalog = parseJson(fs.readFileSync(path.join(root, 'catalog.json'), 'utf8'), 'catalog.json');

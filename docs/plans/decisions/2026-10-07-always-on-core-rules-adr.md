@@ -10,6 +10,10 @@
   remove still default to the private Personal rules, now with a `project` option, and change the
   library only when the owner names `extra` or `core`. Another skill's "apply `/rules apply`" means
   session. This closes decision 5; `rules` moves to 3.0.0.
+- Superseded in part 2026-11-10: The [rules apply in chat ADR](./2026-11-10-rules-apply-in-chat-adr.md)
+  makes the current chat the default for `/rules apply`, which writes the global or project block only
+  when `global` or `project` is named, and adds `extra`, one rule, or the user's own words as
+  selections for the chat. Bare `/rules` lists every rule, numbered. The rest of this decision stands.
 - Decision owner: Zhaolong Wang
 - Scope: How the four core working rules reach every chat, where rule edits go, and how `/rules`
   relates to `/hn-project policy`.

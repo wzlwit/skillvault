@@ -1,11 +1,11 @@
 {
   "name": "rules",
   "title": "Rules",
-  "version": "4.3.1",
+  "version": "5.0.0",
   "status": "public",
   "visibility": "public",
   "kind": "instruction",
-  "description": "[apply|remove] Alone: rules in effect. Text: add or change a rule. Put the core and extra rules, or only the core rules with apply core, into effect globally (default), in a project, or for this chat; add, change, or remove your own global or project rules. The SkillVault rule library changes only when you name extra or core, and persistent rule changes require confirmation.",
+  "description": "[apply|remove] Alone: every rule. Text: add or change a rule. Apply the core and extra rules, only the core or extra rules, one rule, or your own words to this chat, or write the rules into the global or project instructions; add, change, or remove your own global or project rules. The SkillVault rule library changes only when you name extra or core, and persistent rule changes require confirmation.",
   "tags": [
     "core",
     "engineering",
@@ -37,12 +37,15 @@
         "apply",
         "remove"
       ],
-      "description": "Menu word: apply or remove. Alone, the skill shows the rules and where they apply; other text adds or changes your own rule after confirmation. Operation-specific approvals still apply."
+      "description": "Menu word: apply or remove. Alone, the skill lists every rule, numbered, and where the rules apply; other text adds or changes your own rule after confirmation. Operation-specific approvals still apply."
     }
   ],
   "examples": [
     "/rules",
     "/rules apply",
+    "/rules apply extra",
+    "/rules apply 7",
+    "/rules apply global",
     "/rules apply core project",
     "/rules always run the focused test first",
     "/rules remove 2"
