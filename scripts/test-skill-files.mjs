@@ -1371,6 +1371,10 @@ test('handoff runs on explicit requests, installs globally, and keeps upstream a
   assert.match(deliver, /ready-to-paste\s+prompt/, 'The reply ends with a prompt that continues the work in a new session');
   assert.match(deliver, /```text[\s\S]*handoff note at <absolute path to the note>[\s\S]*<first next action>[\s\S]*```/);
   assert.match(deliver, /last\s+message\s+the\s+user\s+sees[\s\S]*completion\s+summary,\s+repeat\s+them\s+there[\s\S]*never\s+point\s+to\s+an\s+earlier\s+message/, 'A completion summary repeats the path, blocker, next action, and prompt');
+  // A session can't drop its own context: a partial handoff offers the host's summarize command, and the user decides.
+  const partial = content.split(/^## Partial Handoff\r?$/m)[1]?.split(/^## /m)[0] ?? '';
+  assert.match(partial, /`\/compact`/, 'A partial handoff offers the command that summarizes the conversation');
+  assert.match(partial, /never\s+run\s+it/, 'The user decides whether to summarize the conversation');
   assert.equal(manifest.install.defaultScope, 'global');
   assert.equal(manifest.install.project, true);
   assert.deepEqual(manifest.dependencies ?? [], []);

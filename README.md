@@ -246,10 +246,12 @@ handles structured CSV reads and writes. It does not start tasks, schedules, or 
 Use `/handoff [next-session focus] [--output path]` to write a concise continuation note with
 artifact/evidence links, open decisions, blockers, process or side-effect uncertainty, and the
 first next action. It ends with a ready-to-paste prompt that continues the work from the note in a
-new session, such as a VS Code **New Session**, `/clear` in the GitHub Copilot app, or `/reset` in
-the Copilot CLI. The [handoff guide](skills/planning/handoff/SKILL.md) is a global-default
-MIT adaptation of Matt Pocock's lightweight workflow. It runs on `/handoff` or a plain request such
-as "hand this off" or "restart the session", never unprompted.
+new session, such as a VS Code **New Session**, `/clear` in the GitHub Copilot app, or `/new` in
+the Copilot CLI. Text after `/handoff` hands off just that part: the current session keeps a short
+record of it, leaves it to the new session, and gets an optional `/compact` line, in the Copilot
+CLI, to drop that part's details. The [handoff guide](skills/planning/handoff/SKILL.md) is a
+global-default MIT adaptation of Matt Pocock's lightweight workflow. It runs on `/handoff` or a
+plain request such as "hand this off" or "restart the session", never unprompted.
 It follows the project's established handoff/documentation location unless an output is supplied;
 standalone work can use OS temporary storage. No harness initialization or Python helpers are needed.
 Actual stop, recovery, and resume stay with the `/harness-setup policy` controls; a note does not

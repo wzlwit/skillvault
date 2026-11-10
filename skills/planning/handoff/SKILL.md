@@ -18,9 +18,11 @@ is saved.
 
 On explicit request, write a compact note that lets another agent or person continue the work.
 A plain request such as "hand this off" or "restart the session" counts as explicit; never write a
-note unprompted. With no arguments, use the current conversation; supplied text narrows the next session's focus.
-`--output` is a conversational destination, not a script option. Installing, editing, or explaining
-this skill does not create a handoff or end the current task.
+note unprompted. With no arguments, the note covers the current conversation's work. Text after
+`/handoff` names the part to hand off, and the rest stays in this session; see
+[Partial Handoff](#partial-handoff). `--output` is a conversational destination, not a script
+option. Installing, editing, or explaining this skill does not create a handoff or end the current
+task.
 
 ## Create the Note
 
@@ -42,7 +44,7 @@ this skill does not create a handoff or end the current task.
 
 | Section | Capture |
 | --- | --- |
-| Goal and Scope | Latest request, intended recipient/focus, project/workspace, task ID and branch when known |
+| Goal and Scope | Latest request, intended recipient/focus, project/workspace, task ID and branch when known; for a partial handoff, what stays in this session |
 | Completed and Evidence | What changed, actual checks/results, artifact links, and work not verified |
 | Decisions and Constraints | Accepted choices, open/deferred questions, relevant instructions, and permission limits |
 | Blocker and Owner | Exact blocked step, evidence, and required human or specialist action; do not invent an owner |
@@ -53,6 +55,27 @@ this skill does not create a handoff or end the current task.
 Omit irrelevant detail; label items unknown, not checked, or not applicable where needed. Do not
 mark processes stopped from a timeout, lost connection, or summary alone. Unknown write outcomes
 need reconciliation before retry, not an assumption that nothing changed.
+
+## Partial Handoff
+
+Text that names part of the work hands off only that part: the note covers it alone, and the rest
+stays in this session. A request to restart, or to move everything to a fresh session, hands off all
+the work instead, with the text as the new session's first focus.
+
+- The note says what stays in this session, so the two sessions don't redo or change the same work.
+  This session then leaves the part to the new one and returns to it only when the user asks.
+- An agent can't drop details from its own conversation, so the reply gives this session a short
+  record instead: one or two lines naming the part, the note's path, and that it continues in a new
+  session.
+- When the host can summarize the conversation, offer that as an optional step and let the user
+  decide; never run it. The Copilot CLI's `/compact` takes focus instructions, so give a
+  ready-to-type line that keeps the remaining work and reduces the part to that record. Don't
+  suggest `/clear`, which drops the remaining work too. On a host without such a command, the record
+  is enough.
+
+```text
+/compact Keep the work that stays in this session. <part> continues in a new session from <absolute path to the note>; keep only that line about it.
+```
 
 ## Harness Integration
 
@@ -96,8 +119,9 @@ inaccessible sources without inventing their content. No heuristic quality score
 Return the note's path, any blocker, and the first next action, then end with a ready-to-paste
 prompt that continues the work in a new session, in a fenced `text` block. Keep it to a few lines
 the note doesn't repeat: the note's absolute path, what to read first, and where to resume. Put
-the path, blocker, next action, and prompt in the last message the user sees. When the host ends
-the turn with a completion summary, repeat them there; never point to an earlier message.
+the path, blocker, next action, and prompt, plus a partial handoff's record and compaction line, in
+the last message the user sees. When the host ends the turn with a completion summary, repeat them
+there; never point to an earlier message.
 
 ```text
 Continue the work from the handoff note at <absolute path to the note>. Read it and the project's
@@ -106,6 +130,8 @@ continue from: <first next action>. Don't repeat work the note lists as done.
 ```
 
 Say how to start the new session: paste the prompt into a new chat or session in the same project.
+After a partial handoff, open it next to this one, such as in another chat or terminal, so this
+session stays open for the rest.
 Do not launch another agent, install
 suggested skills, publish or send the note, commit, push, resume execution, or clear conversation
 state. When the user asked to restart or continue in a fresh session, the host may open that

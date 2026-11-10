@@ -12,6 +12,10 @@ another task store or replacing existing stop/recovery controls.
 /handoff prepare for the next reviewer --output docs/handoff-review.md
 ```
 
+Text after `/handoff` hands off just that part. The current session keeps a short record of it,
+leaves it to the new session, and gets an optional `/compact` line, in the Copilot CLI, that drops
+that part's details from the conversation; you decide whether to run it.
+
 Defaults to global availability, with explicit project installation supported. Invoking
 `/handoff` writes a note using the explicit destination
 or established project handoff/documentation location; standalone work can use OS temporary storage.
