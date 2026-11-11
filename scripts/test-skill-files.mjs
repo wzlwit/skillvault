@@ -1544,18 +1544,21 @@ test('topic map covers canonical skills and rules apply stays separate from auth
   assert.match(source, /installation target/);
 });
 
-test('rules apply acts on this chat unless global or project is named, and alone lists every rule', () => {
+test('rules apply writes core to global and extra to the project, applies the rest to this chat, and alone lists every rule', () => {
   const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
   const rules = fs.readFileSync(path.join(root, 'skills/core/rules/SKILL.md'), 'utf8');
-  // Owner decision 2026-11-10 (rules apply in chat ADR): applying writes no file unless global or project is named.
+  // Owner decisions 2026-11-10 (rules apply in chat ADR, amended): core defaults to global, extra to the project, the rest to this chat.
   const applyRow = rules.split(/\r?\n/).find(line => line.startsWith('| `apply ')) ?? '';
   assert.match(applyRow, /`apply \[core\\\|extra\\\|<number or name>\\\|<your words>\] \[global\\\|project\\\|session\]`/, 'apply selects core, extra, one rule, or the user\'s own words');
-  assert.match(applyRow, /\(`session`, the default\)/, 'apply acts on this chat by default');
+  assert.match(applyRow, /\(`session`, the default\)/, 'bare apply, one rule, and the user\'s words act on this chat');
+  assert.match(applyRow, /`core` writes the \[core rules\][^|]*global instructions[^|]*`extra` the \[extra rules\][^|]*this project's/, 'core defaults to global and extra to the project');
   const flat = rules.replace(/\s+/g, ' ');
+  assert.match(flat, /A file's block holds exactly what was last applied there/, 'a file holds only the set applied there');
   assert.match(flat, /Your own words are followed in this chat only and saved nowhere/, 'apply <words> saves nothing');
   assert.match(flat, /Words that could name several rules show them and apply nothing/, 'an unclear rule name applies nothing');
   assert.match(flat, /Alone lists every rule with one running number[^.]*Personal rules[^.]*Project rules/, 'alone lists the Personal and project rules too');
-  assert.doesNotMatch(flat, /`global` \(default\), `project`, or `session`|globally \(default\)/, 'global is no longer the apply default');
+  assert.doesNotMatch(flat, /`global` \(default\), `project`, or `session`|globally \(default\)/, 'global is not the default for apply as a whole');
+  assert.match(fs.readFileSync(path.join(root, 'skills/core/rules/scripts/always-on.ps1'), 'utf8'), /ValidateSet\('all', 'core', 'extra'\)/, 'the helper writes an extra-only block');
 });
 
 test('menu skills list only their menu words and route alone and text', () => {

@@ -6,7 +6,15 @@
   pointed out that the 2026-10-09 convention retired the `/rules core` shortcut, that `core` and
   `extra` at the start of plain text edit the rule library, and that with the global default `apply
   core` drops the extra rules from every chat. It put four questions with recommended answers, and
-  the owner took all four.
+  the owner took all four. Amended 2026-11-10: the owner then gave each set a file default:
+  `apply core` writes the core rules into the global instructions, and `apply extra` writes only the
+  extra rules, through a new `extra` set, into the project's `.github/copilot-instructions.md`, so a
+  chat in that project gets each rule once. A file's block holds exactly what was last applied
+  there, so `apply core` on a global block that held all the rules removes the extra rules from it.
+  The agent recommended keeping the extra rules in the global file as well, so that chats outside
+  those projects keep them, and the owner chose this split. Bare `apply`, one rule, and the owner's
+  own words still apply to the chat. This replaces decision 2's sentence that a file always keeps
+  the core rules; `rules` moves to 6.0.0.
 - Decision owner: Zhaolong Wang
 - Scope: What `/rules apply` and bare `/rules` do. Adding, changing, and removing rules is unchanged.
 - Supersedes in part: the 2026-10-08 amendment of the

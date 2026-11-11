@@ -1,11 +1,10 @@
 # Extra Rules
 
 Rules beyond the [core rules](core.md), kept in the SkillVault repository so every machine with
-the `rules` skill gets the same list. `/rules apply` puts them into effect with the core rules, in
-the current chat by default or, with `global` or `project`, in those instructions; `/rules apply core`
-leaves them out, and `/rules apply extra` follows only these in the current chat. Change this list
-only with a `/rules` request that names `extra`, to add, change, or remove a rule; each rule is one
-bullet.
+the `rules` skill gets the same list. `/rules apply extra` writes them into the current project's
+`.github/copilot-instructions.md`, and `/rules apply` alone follows them with the core rules in the
+current chat. Change this list only with a `/rules` request that names `extra`, to add, change, or
+remove a rule; each rule is one bullet.
 
 This file is public. A rule that needs private or work-specific details stays in your global
 Personal rules or a project's own instructions: type it after `/rules`, adding `project` for the

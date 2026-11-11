@@ -65,7 +65,7 @@ try {
     Assert-True ($coreOnly.status -eq 'Drifted' -and $coreOnly.set -eq 'core') 'choosing only the core rules is reported as drift'
     $null = & $script -Path $target -CorePath $core -Set core -Apply
     $text = [IO.File]::ReadAllText($target)
-    Assert-True (-not $text.Contains('# Extra rules') -and $text.Contains('(set: core)') -and $text.Contains('- Prefer short status updates.')) 'core only leaves out the extra rules and keeps personal rules'
+    Assert-True (-not $text.Contains('# Extra rules') -and $text.Contains('(set: core)') -and $text.Contains('- Prefer short status updates.') -and $text.Contains('/rules apply core rewrites this block')) 'core only leaves out the extra rules, keeps personal rules, and names its command'
     $kept = Invoke-AlwaysOn $target $core
     Assert-True ($kept.status -eq 'InSync' -and $kept.set -eq 'core') 'a later run without a set keeps the recorded set'
     $null = & $script -Path $target -CorePath $core -Set all -Apply
@@ -87,7 +87,19 @@ try {
     [IO.File]::WriteAllText($teamFile, "Use the team style guide.`n")
     $null = & $script -Scope project -ProjectPath $team -CorePath $core -Set core -Apply
     $teamText = [IO.File]::ReadAllText($teamFile)
-    Assert-True ($teamText.Contains('Use the team style guide.') -and -not $teamText.Contains('# Project rules') -and -not $teamText.Contains('# Extra rules') -and $teamText.IndexOf('<!-- rules:core:end -->') -lt $teamText.IndexOf('Use the team style guide.')) 'an existing project file keeps its instructions below the block without a new heading'
+    Assert-True ($teamText.Contains('Use the team style guide.') -and -not $teamText.Contains('# Project rules') -and -not $teamText.Contains('# Extra rules') -and $teamText.IndexOf('<!-- rules:core:end -->') -lt $teamText.IndexOf('Use the team style guide.') -and $teamText.Contains('/rules apply core project rewrites this block')) 'an existing project file keeps its instructions below the block without a new heading'
+    # The extra rules default to a project, where they can sit alone because the global file holds the core rules.
+    $extraProject = Join-Path $fixtureRoot 'extra project'
+    New-Item -ItemType Directory -Path $extraProject | Out-Null
+    $extraFile = Join-Path $extraProject '.github\copilot-instructions.md'
+    $extraResult = (& $script -Scope project -ProjectPath $extraProject -CorePath $core -Set extra -Apply) | ConvertFrom-Json
+    $extraOnly = [IO.File]::ReadAllText($extraFile)
+    Assert-True ($extraResult.set -eq 'extra' -and $extraOnly.Contains('(set: extra)') -and $extraOnly.Contains('- **Fixture rule one.** Keep replies short.') -and $extraOnly.Contains('# Project rules') -and -not $extraOnly.Contains('# Core working rules') -and -not $extraOnly.Contains('**Start from the real need.**') -and -not $extraOnly.Contains('For clarification') -and $extraOnly.Contains('/rules apply extra rewrites this block')) 'the extra set writes only the extra rules into a project'
+    $keptExtra = (& $script -Scope project -ProjectPath $extraProject -CorePath $core) | ConvertFrom-Json
+    Assert-True ($keptExtra.status -eq 'InSync' -and $keptExtra.set -eq 'extra') 'a later run without a set keeps the extra set'
+    $extraGlobal = Join-Path $fixtureRoot 'extra-global.md'
+    $null = & $script -Path $extraGlobal -CorePath $core -Set extra -Apply
+    Assert-True ([IO.File]::ReadAllText($extraGlobal).Contains('/rules apply extra global rewrites this block')) 'a set written outside its default scope names that scope'
 
     $unmanaged = Join-Path $fixtureRoot 'unmanaged.md'
     [IO.File]::WriteAllText($unmanaged, "Existing personal preference.`r`n")
@@ -104,7 +116,7 @@ try {
     try { $null = Invoke-AlwaysOn $malformed $core -Apply } catch { $failed = $true }
     Assert-True ($failed -and [IO.File]::ReadAllText($malformed) -ceq $broken) 'malformed markers stop without changing the file'
 
-    Write-Output 'Rules always-on checks passed: read-only check, creation, sync, drift repair that keeps personal rules, extra rules after the core rules, core-only sets that later runs keep, project files with a public link and kept instructions, adoption of an existing file, line endings, and malformed markers.'
+    Write-Output 'Rules always-on checks passed: read-only check, creation, sync, drift repair that keeps personal rules, extra rules after the core rules, core-only and extra-only sets that later runs keep, the command each block names, project files with a public link and kept instructions, adoption of an existing file, line endings, and malformed markers.'
 }
 finally {
     Remove-Item -LiteralPath $fixtureRoot -Recurse -Force -ErrorAction SilentlyContinue

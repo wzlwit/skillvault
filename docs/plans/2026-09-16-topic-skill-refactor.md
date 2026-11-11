@@ -383,10 +383,10 @@ skill's menu words; what it does alone and with text starts its description.
 - `/skillvault-author` authors skill bundles and catalog entries in a verified SkillVault repository,
   never the working project's application source. Show source and working project separately;
   authoring never installs. Preserve the source resolver's existing selection rules.
-- `/rules apply [core|extra|<number or name>|<your words>] [global|project|session]` follows the core
-  and extra rules, only the core or extra rules, one rule, or the user's own words in the current
-  chat by default; `global` or `project` writes the core and extra rules, or only the core rules, into
-  the global always-on file or a project's `.github/copilot-instructions.md`. Other skills' "apply
+- `/rules apply [core|extra|<number or name>|<your words>] [global|project|session]` writes the core
+  rules into the global always-on file (`apply core`) and the extra rules into a project's
+  `.github/copilot-instructions.md` (`apply extra`); bare `apply`, one rule, or the user's own words
+  apply to the current chat, and a named scope overrides these defaults. Other skills' "apply
   `/rules apply`" means the current chat. Bare `/rules` lists every rule, numbered. Text with a
   rule and `remove` change private Personal rules by default, or project rules, and the public
   library only when the owner names `extra` or `core`, always after explicit approval. Workers
